@@ -24,7 +24,7 @@ type E2e struct {
 // that matches the E2e structure.
 func newE2eJS(api *bindings.E2e) map[string]interface{} {
 	e := E2e{api}
-	e2e := map[string]interface{}{
+	e2eMap := map[string]interface{}{
 		// e2e.go
 		"GetID":               js.FuncOf(e.GetID),
 		"GetContact":          js.FuncOf(e.GetContact),
@@ -63,7 +63,7 @@ func newE2eJS(api *bindings.E2e) map[string]interface{} {
 		"DeletePartnerCallback":   js.FuncOf(e.DeletePartnerCallback),
 	}
 
-	return e2e
+	return e2eMap
 }
 
 // GetID returns the ID for this [bindings.E2e] in the e2eTracker.
@@ -87,8 +87,8 @@ func (e *E2e) GetID(js.Value, []js.Value) interface{} {
 //  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array).
 //
 // Returns:
-//  - Javascript representation of the E2e object
-//  - Throws a TypeError if logging in fails
+//  - Javascript representation of the E2e object.
+//  - Throws a TypeError if logging in fails.
 func Login(_ js.Value, args []js.Value) interface{} {
 	callbacks := newAuthCallbacks(args[1])
 	identity := CopyBytesToGo(args[2])

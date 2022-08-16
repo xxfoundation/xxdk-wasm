@@ -88,6 +88,10 @@ func main() {
 	js.Global().Set("UpdateCommonErrors",
 		js.FuncOf(wasm.UpdateCommonErrors))
 
+	// bindings/fileTransfer.go
+	js.Global().Set("InitFileTransfer",
+		js.FuncOf(wasm.InitFileTransfer))
+
 	<-make(chan bool)
 	os.Exit(0)
 }
