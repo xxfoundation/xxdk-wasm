@@ -74,8 +74,13 @@ func main() {
 	js.Global().Set("NewDummyTrafficManager",
 		js.FuncOf(wasm.NewDummyTrafficManager))
 
-	// bindings/broadcast
+	// bindings/broadcast.go
 	js.Global().Set("NewBroadcastChannel", js.FuncOf(wasm.NewBroadcastChannel))
+
+	// bindings/backup.go
+	js.Global().Set("NewCmixFromBackup", js.FuncOf(wasm.NewCmixFromBackup))
+	js.Global().Set("InitializeBackup", js.FuncOf(wasm.InitializeBackup))
+	js.Global().Set("ResumeBackup", js.FuncOf(wasm.ResumeBackup))
 
 	<-make(chan bool)
 	os.Exit(0)

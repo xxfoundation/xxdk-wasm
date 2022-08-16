@@ -80,11 +80,11 @@ func (e *E2e) GetID(js.Value, []js.Value) interface{} {
 // default [auth.Callbacks] will be used.
 //
 // Parameters:
-//  - args[0] - ID of Cmix object in tracker (int)
+//  - args[0] - ID of Cmix object in tracker (int).
 //  - args[1] - Javascript object that has functions that implement the
-//    [bindings.AuthCallbacks] interface
-//  - args[2] - JSON of the [xxdk.ReceptionIdentity] object (Uint8Array)
-//  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array)
+//    [bindings.AuthCallbacks] interface.
+//  - args[2] - JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
+//  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array).
 //
 // Returns:
 //  - Javascript representation of the E2e object

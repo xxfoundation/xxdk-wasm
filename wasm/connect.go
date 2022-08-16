@@ -17,14 +17,14 @@ import (
 // Connection wraps the [bindings.Connection] object so its methods can be
 // wrapped to be Javascript compatible.
 type Connection struct {
-	c *bindings.Connection
+	api *bindings.Connection
 }
 
 // newConnectJS creates a new Javascript compatible object
 // (map[string]interface{}) that matches the Connection structure.
 func newConnectJS(api *bindings.Connection) map[string]interface{} {
 	c := Connection{api}
-	connection := map[string]interface{}{
+	connectionMap := map[string]interface{}{
 		// connect.go
 		"GetID":            js.FuncOf(c.GetID),
 		"SendE2E":          js.FuncOf(c.SendE2E),
@@ -33,7 +33,7 @@ func newConnectJS(api *bindings.Connection) map[string]interface{} {
 		"RegisterListener": js.FuncOf(c.RegisterListener),
 	}
 
-	return connection
+	return connectionMap
 }
 
 // GetID returns the ID for this [bindings.Connection] in the connectionTracker.
@@ -41,7 +41,7 @@ func newConnectJS(api *bindings.Connection) map[string]interface{} {
 // Returns:
 //  - int of the ID
 func (c *Connection) GetID(js.Value, []js.Value) interface{} {
-	return c.c.GetId()
+	return c.api.GetId()
 }
 
 // Connect performs auth key negotiation with the given recipient and returns a
@@ -86,7 +86,7 @@ func (c *Cmix) Connect(_ js.Value, args []js.Value) interface{} {
 //    cmix.WaitForRoundResult to see if the send succeeded (Uint8Array)
 //  - throws a TypeError if sending fails
 func (c *Connection) SendE2E(_ js.Value, args []js.Value) interface{} {
-	sendReport, err := c.c.SendE2E(args[0].Int(), CopyBytesToGo(args[1]))
+	sendReport, err := c.api.SendE2E(args[0].Int(), CopyBytesToGo(args[1]))
 	if err != nil {
 		Throw(TypeError, err.Error())
 		return nil
@@ -99,7 +99,7 @@ func (c *Connection) SendE2E(_ js.Value, args []js.Value) interface{} {
 // Returns:
 //  - throws a TypeError if closing fails
 func (c *Connection) Close(js.Value, []js.Value) interface{} {
-	err := c.c.Close()
+	err := c.api.Close()
 	if err != nil {
 		Throw(TypeError, err.Error())
 		return nil
@@ -113,7 +113,7 @@ func (c *Connection) Close(js.Value, []js.Value) interface{} {
 // Returns:
 //  - bytes of the partner's [id.ID] (Uint8Array)
 func (c *Connection) GetPartner(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(c.c.GetPartner())
+	return CopyBytesToJS(c.api.GetPartner())
 }
 
 // listener adheres to the [bindings.Listener] interface.
@@ -136,7 +136,7 @@ func (l *listener) Name() string     { return l.name().String() }
 // Returns:
 //  - throws a TypeError is registering the listener fails
 func (c *Connection) RegisterListener(_ js.Value, args []js.Value) interface{} {
-	err := c.c.RegisterListener(args[0].Int(),
+	err := c.api.RegisterListener(args[0].Int(),
 		&listener{args[1].Get("Hear").Invoke, args[1].Get("Name").Invoke})
 	if err != nil {
 		Throw(TypeError, err.Error())

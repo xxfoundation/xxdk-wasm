@@ -39,10 +39,9 @@ func (ac *AuthenticatedConnection) IsAuthenticated(js.Value, []js.Value) interfa
 // ConnectWithAuthentication is called by the client (i.e., the one establishing
 // connection with the server). Once a connect.Connection has been established
 // with the server, it then authenticates their identity to the server.
-// accepts a marshalled ReceptionIdentity and contact.Contact object
 //
 // Parameters:
-//  - args[0] - ID of E2e object in tracker (int)
+//  - args[0] - ID of E2e object in tracker (int).
 //  - args[1] - marshalled recipient [contact.Contact] (Uint8Array).
 //  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array).
 //

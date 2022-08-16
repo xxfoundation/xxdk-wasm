@@ -66,13 +66,13 @@ func newCmixJS(api *bindings.Cmix) map[string]interface{} {
 // Users of this function should delete the storage directory on error.
 //
 // Parameters:
-//  - args[0] - NDF JSON (string)
-//  - args[1] - storage directory path (string)
-//  - args[2] - password used for storage (Uint8Array)
-//  - args[3] - registration code (string)
+//  - args[0] - NDF JSON (string).
+//  - args[1] - storage directory path (string).
+//  - args[2] - password used for storage (Uint8Array).
+//  - args[3] - registration code (string).
 //
 // Returns:
-//  - throws a TypeError if creating new Cmix fails
+//  - throws a TypeError if creating new Cmix fails.
 func NewCmix(_ js.Value, args []js.Value) interface{} {
 	password := CopyBytesToGo(args[2])
 
