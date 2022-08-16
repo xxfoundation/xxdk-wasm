@@ -5,8 +5,6 @@
 // LICENSE file                                                               //
 ////////////////////////////////////////////////////////////////////////////////
 
-//go:build js && wasm
-
 package wasm
 
 import (
@@ -15,19 +13,20 @@ import (
 	"testing"
 )
 
-// Tests that the map representing Channel returned by newChannelJS contains
-// all of the methods on Channel.
-func Test_newChannelJS(t *testing.T) {
-	chanType := reflect.TypeOf(&Channel{})
+// Tests that the map representing AuthenticatedConnection returned by
+// newAuthenticatedConnectionJS contains all of the methods on
+// AuthenticatedConnection.
+func Test_newAuthenticatedConnectionJS(t *testing.T) {
+	acType := reflect.TypeOf(&AuthenticatedConnection{})
 
-	ch := newChannelJS(&bindings.Channel{})
-	if len(ch) != chanType.NumMethod() {
-		t.Errorf("Channel JS object does not have all methods."+
-			"\nexpected: %d\nreceived: %d", chanType.NumMethod(), len(ch))
+	ch := newAuthenticatedConnectionJS(&bindings.AuthenticatedConnection{})
+	if len(ch) != acType.NumMethod() {
+		t.Errorf("AuthenticatedConnection JS object does not have all methods."+
+			"\nexpected: %d\nreceived: %d", acType.NumMethod(), len(ch))
 	}
 
-	for i := 0; i < chanType.NumMethod(); i++ {
-		method := chanType.Method(i)
+	for i := 0; i < acType.NumMethod(); i++ {
+		method := acType.Method(i)
 
 		if _, exists := ch[method.Name]; !exists {
 			t.Errorf("Method %s does not exist.", method.Name)

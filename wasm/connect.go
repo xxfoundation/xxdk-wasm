@@ -22,8 +22,8 @@ type Connection struct {
 
 // newConnectJS creates a new Javascript compatible object
 // (map[string]interface{}) that matches the Connection structure.
-func newConnectJS(conn *bindings.Connection) map[string]interface{} {
-	c := Connection{conn}
+func newConnectJS(api *bindings.Connection) map[string]interface{} {
+	c := Connection{api}
 	connection := map[string]interface{}{
 		// connect.go
 		"GetID":            js.FuncOf(c.GetID),
@@ -51,9 +51,9 @@ func (c *Connection) GetID(js.Value, []js.Value) interface{} {
 // [partner.Manager] is confirmed.
 //
 // Parameters:
-//  - args[0] - ID of the E2E object in the E2E tracker (int)
-//  - args[1] - marshalled recipient [contact.Contact] object (Uint8Array)
-//  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array)
+//  - args[0] - ID of the E2E object in the E2E tracker (int).
+//  - args[1] - marshalled recipient [contact.Contact] (Uint8Array).
+//  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array).
 //
 // Returns:
 //  - Javascript representation of the Connection object
@@ -61,13 +61,13 @@ func (c *Connection) GetID(js.Value, []js.Value) interface{} {
 func (c *Cmix) Connect(_ js.Value, args []js.Value) interface{} {
 	recipientContact := CopyBytesToGo(args[1])
 	e2eParamsJSON := CopyBytesToGo(args[2])
-	conn, err := c.api.Connect(args[0].Int(), recipientContact, e2eParamsJSON)
+	api, err := c.api.Connect(args[0].Int(), recipientContact, e2eParamsJSON)
 	if err != nil {
 		Throw(TypeError, err.Error())
 		return nil
 	}
 
-	return newConnectJS(conn)
+	return newConnectJS(api)
 }
 
 // SendE2E is a wrapper for sending specifically to the Connection's

@@ -50,6 +50,9 @@ func newCmixJS(api *bindings.Cmix) map[string]interface{} {
 
 		// delivery.go
 		"WaitForRoundResult": js.FuncOf(c.WaitForRoundResult),
+
+		// authenticatedConnection.go
+		"ConnectWithAuthentication": js.FuncOf(c.ConnectWithAuthentication),
 	}
 
 	return cmix
