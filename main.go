@@ -94,6 +94,16 @@ func main() {
 	// bindings/group.go
 	js.Global().Set("NewGroupChat", js.FuncOf(wasm.NewGroupChat))
 
+	// bindings/restlike.go
+	js.Global().Set("RestlikeRequest", js.FuncOf(wasm.RestlikeRequest))
+	js.Global().Set("RestlikeRequestAuth", js.FuncOf(wasm.RestlikeRequestAuth))
+
+	// bindings/restlikeSingle.go
+	js.Global().Set("RequestRestLike",
+		js.FuncOf(wasm.RequestRestLike))
+	js.Global().Set("AsyncRequestRestLike",
+		js.FuncOf(wasm.AsyncRequestRestLike))
+
 	<-make(chan bool)
 	os.Exit(0)
 }
