@@ -82,6 +82,12 @@ func main() {
 	js.Global().Set("InitializeBackup", js.FuncOf(wasm.InitializeBackup))
 	js.Global().Set("ResumeBackup", js.FuncOf(wasm.ResumeBackup))
 
+	// bindings/errors.go
+	js.Global().Set("CreateUserFriendlyErrorMessage",
+		js.FuncOf(wasm.CreateUserFriendlyErrorMessage))
+	js.Global().Set("UpdateCommonErrors",
+		js.FuncOf(wasm.UpdateCommonErrors))
+
 	<-make(chan bool)
 	os.Exit(0)
 }
