@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package bindings
+package wasm
 
 import (
 	"syscall/js"
@@ -31,6 +31,7 @@ func (e *E2e) GetAllPartnerIDs(js.Value, []js.Value) interface{} {
 	partnerIDs, err := e.api.GetAllPartnerIDs()
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 	return CopyBytesToJS(partnerIDs)
 }
@@ -83,6 +84,7 @@ func (e *E2e) GetHistoricalDHPrivkey(js.Value, []js.Value) interface{} {
 	privKey, err := e.api.GetHistoricalDHPrivkey()
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 	return CopyBytesToJS(privKey)
 }
@@ -97,6 +99,7 @@ func (e *E2e) GetHistoricalDHPubkey(js.Value, []js.Value) interface{} {
 	pubKey, err := e.api.GetHistoricalDHPubkey()
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 	return CopyBytesToJS(pubKey)
 }
@@ -114,6 +117,7 @@ func (e *E2e) HasAuthenticatedChannel(_ js.Value, args []js.Value) interface{} {
 	exists, err := e.api.HasAuthenticatedChannel(CopyBytesToGo(args[0]))
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 	return exists
 }
@@ -129,6 +133,7 @@ func (e *E2e) RemoveService(_ js.Value, args []js.Value) interface{} {
 	err := e.api.RemoveService(args[0].String())
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return nil
@@ -156,6 +161,7 @@ func (e *E2e) SendE2E(_ js.Value, args []js.Value) interface{} {
 		args[0].Int(), recipientId, payload, e2eParams)
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return CopyBytesToJS(sendReport)
@@ -200,6 +206,7 @@ func (e *E2e) AddService(_ js.Value, args []js.Value) interface{} {
 	err := e.api.AddService(args[0].String(), p)
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return nil
@@ -224,6 +231,7 @@ func (e *E2e) RegisterListener(_ js.Value, args []js.Value) interface{} {
 	err := e.api.RegisterListener(recipientId, args[1].Int(), l)
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return nil

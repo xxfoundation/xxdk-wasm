@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package bindings
+package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
@@ -38,6 +38,7 @@ func LogLevel(_ js.Value, args []js.Value) interface{} {
 	err := bindings.LogLevel(args[0].Int())
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return nil

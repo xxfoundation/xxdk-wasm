@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package bindings
+package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
@@ -64,6 +64,7 @@ func (c *Cmix) Connect(_ js.Value, args []js.Value) interface{} {
 	conn, err := c.api.Connect(args[0].Int(), recipientContact, e2eParamsJSON)
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return newConnectJS(conn)
@@ -88,6 +89,7 @@ func (c *Connection) SendE2E(_ js.Value, args []js.Value) interface{} {
 	sendReport, err := c.c.SendE2E(args[0].Int(), CopyBytesToGo(args[1]))
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 	return CopyBytesToJS(sendReport)
 }
@@ -100,6 +102,7 @@ func (c *Connection) Close(js.Value, []js.Value) interface{} {
 	err := c.c.Close()
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return nil
@@ -137,6 +140,7 @@ func (c *Connection) RegisterListener(_ js.Value, args []js.Value) interface{} {
 		&listener{args[1].Get("Hear").Invoke, args[1].Get("Name").Invoke})
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return nil

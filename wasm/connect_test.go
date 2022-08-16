@@ -5,10 +5,7 @@
 // LICENSE file                                                               //
 ////////////////////////////////////////////////////////////////////////////////
 
-//go:build js && wasm
-// +build js,wasm
-
-package bindings
+package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
@@ -16,21 +13,21 @@ import (
 	"testing"
 )
 
-// Tests that the map representing Cmix returned by newCmixJS contains all of
-// the methods on Cmix.
-func Test_newCmixJS(t *testing.T) {
-	cmixType := reflect.TypeOf(&Cmix{})
+// Tests that the map representing Connection returned by newConnectJS contains
+// all of the methods on Connection.
+func Test_newConnectJS(t *testing.T) {
+	connType := reflect.TypeOf(&Connection{})
 
-	cmix := newCmixJS(&bindings.Cmix{})
-	if len(cmix) != cmixType.NumMethod() {
-		t.Errorf("Cmix JS object does not have all methods."+
-			"\nexpected: %d\nreceived: %d", cmixType.NumMethod(), len(cmix))
+	conn := newConnectJS(&bindings.Connection{})
+	if len(conn) != connType.NumMethod() {
+		t.Errorf("Connection JS object does not have all methods."+
+			"\nexpected: %d\nreceived: %d", connType.NumMethod(), len(conn))
 	}
 
-	for i := 0; i < cmixType.NumMethod(); i++ {
-		method := cmixType.Method(i)
+	for i := 0; i < connType.NumMethod(); i++ {
+		method := connType.Method(i)
 
-		if _, exists := cmix[method.Name]; !exists {
+		if _, exists := conn[method.Name]; !exists {
 			t.Errorf("Method %s does not exist.", method.Name)
 		}
 	}

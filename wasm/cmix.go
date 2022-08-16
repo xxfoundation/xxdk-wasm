@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package bindings
+package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
@@ -22,8 +22,8 @@ type Cmix struct {
 
 // newCmixJS creates a new Javascript compatible object (map[string]interface{})
 // that matches the Cmix structure.
-func newCmixJS(net *bindings.Cmix) map[string]interface{} {
-	c := Cmix{net}
+func newCmixJS(api *bindings.Cmix) map[string]interface{} {
+	c := Cmix{api}
 	cmix := map[string]interface{}{
 		// cmix.go
 		"GetID": js.FuncOf(c.GetID),

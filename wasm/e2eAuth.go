@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package bindings
+package wasm
 
 import (
 	"syscall/js"
@@ -44,6 +44,7 @@ func (e *E2e) Request(_ js.Value, args []js.Value) interface{} {
 	rid, err := e.api.Request(partnerContact, factsListJson)
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return rid
@@ -76,6 +77,7 @@ func (e *E2e) Confirm(_ js.Value, args []js.Value) interface{} {
 	rid, err := e.api.Confirm(partnerContact)
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return rid
@@ -106,6 +108,7 @@ func (e *E2e) Reset(_ js.Value, args []js.Value) interface{} {
 	rid, err := e.api.Reset(partnerContact)
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return rid
@@ -130,6 +133,7 @@ func (e *E2e) ReplayConfirm(_ js.Value, args []js.Value) interface{} {
 	rid, err := e.api.ReplayConfirm(partnerContact)
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return rid
@@ -154,6 +158,7 @@ func (e *E2e) DeleteRequest(_ js.Value, args []js.Value) interface{} {
 	err := e.api.DeleteRequest(partnerContact)
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return nil
@@ -167,6 +172,7 @@ func (e *E2e) DeleteAllRequests(js.Value, []js.Value) interface{} {
 	err := e.api.DeleteAllRequests()
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return nil
@@ -180,6 +186,7 @@ func (e *E2e) DeleteSentRequests(js.Value, []js.Value) interface{} {
 	err := e.api.DeleteSentRequests()
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return nil
@@ -193,6 +200,7 @@ func (e *E2e) DeleteReceiveRequests(js.Value, []js.Value) interface{} {
 	err := e.api.DeleteReceiveRequests()
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return nil
@@ -211,6 +219,7 @@ func (e *E2e) GetReceivedRequest(_ js.Value, args []js.Value) interface{} {
 	c, err := e.api.GetReceivedRequest(partnerContact)
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return CopyBytesToJS(c)
@@ -233,6 +242,7 @@ func (e *E2e) VerifyOwnership(_ js.Value, args []js.Value) interface{} {
 		receivedContact, verifiedContact, args[2].Int())
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return isValid
@@ -254,6 +264,7 @@ func (e *E2e) AddPartnerCallback(_ js.Value, args []js.Value) interface{} {
 	err := e.api.AddPartnerCallback(partnerID, callbacks)
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return nil
@@ -272,6 +283,7 @@ func (e *E2e) DeletePartnerCallback(_ js.Value, args []js.Value) interface{} {
 	err := e.api.DeletePartnerCallback(partnerID)
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return nil

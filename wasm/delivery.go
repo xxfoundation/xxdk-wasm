@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package bindings
+package wasm
 
 import (
 	"syscall/js"
@@ -53,6 +53,7 @@ func (c *Cmix) WaitForRoundResult(_ js.Value, args []js.Value) interface{} {
 	err := c.api.WaitForRoundResult(roundList, mdc, args[2].Int())
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return nil

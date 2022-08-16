@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package bindings
+package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
@@ -29,6 +29,7 @@ func DownloadAndVerifySignedNdfWithUrl(_ js.Value, args []js.Value) interface{} 
 		args[0].String(), args[1].String())
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return nil
 	}
 
 	return CopyBytesToJS(ndf)

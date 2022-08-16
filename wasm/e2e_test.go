@@ -8,7 +8,7 @@
 //go:build js && wasm
 // +build js,wasm
 
-package bindings
+package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"

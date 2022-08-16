@@ -7,33 +7,23 @@
 
 //go:build js && wasm
 
-package bindings
+package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
 	"syscall/js"
 )
 
-// GetVersion returns the xxdk.SEMVER.
+// GenerateSecret creates a secret password using a system-based pseudorandom
+// number generator.
+//
+// Parameters:
+//  - args[0] - The size of secret. It should be set to 32, but can be set
+//   higher in certain cases, but not lower (int).
 //
 // Returns:
-//  - string
-func GetVersion(js.Value, []js.Value) interface{} {
-	return bindings.GetVersion()
-}
-
-// GetGitVersion returns the xxdk.GITVERSION.
-//
-// Returns:
-//  - string
-func GetGitVersion(js.Value, []js.Value) interface{} {
-	return bindings.GetGitVersion()
-}
-
-// GetDependencies returns the xxdk.DEPENDENCIES.
-//
-// Returns:
-//  - string
-func GetDependencies(js.Value, []js.Value) interface{} {
-	return bindings.GetDependencies()
+//  - secret password (Uint8Array).
+func GenerateSecret(_ js.Value, args []js.Value) interface{} {
+	secret := bindings.GenerateSecret(args[0].Int())
+	return CopyBytesToJS(secret)
 }

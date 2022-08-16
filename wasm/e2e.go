@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package bindings
+package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
@@ -22,8 +22,8 @@ type E2e struct {
 
 // newE2eJS creates a new Javascript compatible object (map[string]interface{})
 // that matches the E2e structure.
-func newE2eJS(newE2E *bindings.E2e) map[string]interface{} {
-	e := E2e{newE2E}
+func newE2eJS(api *bindings.E2e) map[string]interface{} {
+	e := E2e{api}
 	e2e := map[string]interface{}{
 		// e2e.go
 		"GetID":               js.FuncOf(e.GetID),

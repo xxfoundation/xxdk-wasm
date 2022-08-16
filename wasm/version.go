@@ -5,12 +5,35 @@
 // LICENSE file                                                               //
 ////////////////////////////////////////////////////////////////////////////////
 
-package bindings
+//go:build js && wasm
+
+package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"syscall/js"
 )
 
-type Channel struct {
-	api *bindings.Channel
+// GetVersion returns the xxdk.SEMVER.
+//
+// Returns:
+//  - string
+func GetVersion(js.Value, []js.Value) interface{} {
+	return bindings.GetVersion()
+}
+
+// GetGitVersion returns the xxdk.GITVERSION.
+//
+// Returns:
+//  - string
+func GetGitVersion(js.Value, []js.Value) interface{} {
+	return bindings.GetGitVersion()
+}
+
+// GetDependencies returns the xxdk.DEPENDENCIES.
+//
+// Returns:
+//  - string
+func GetDependencies(js.Value, []js.Value) interface{} {
+	return bindings.GetDependencies()
 }

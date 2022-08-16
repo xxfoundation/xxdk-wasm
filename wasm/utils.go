@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package bindings
+package wasm
 
 import (
 	"encoding/json"
@@ -31,6 +31,7 @@ func JsonToJS(src []byte) js.Value {
 	err := json.Unmarshal(src, &inInterface)
 	if err != nil {
 		Throw(TypeError, err.Error())
+		return js.ValueOf(nil)
 	}
 
 	return js.ValueOf(inInterface)

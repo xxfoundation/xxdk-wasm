@@ -11,10 +11,8 @@ package main
 
 import (
 	"fmt"
-	"gitlab.com/elixxir/xxdk-wasm/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/wasm"
 	"os"
-	"os/signal"
-	"syscall"
 	"syscall/js"
 )
 
@@ -22,64 +20,63 @@ func main() {
 	fmt.Println("Go Web Assembly")
 
 	// wasm/cmix.go
-	js.Global().Set("NewCmix", js.FuncOf(bindings.NewCmix))
-	js.Global().Set("LoadCmix", js.FuncOf(bindings.LoadCmix))
+	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
+	js.Global().Set("LoadCmix", js.FuncOf(wasm.LoadCmix))
 
 	// wasm/e2e.go
-	js.Global().Set("Login", js.FuncOf(bindings.Login))
-	js.Global().Set("LoginEphemeral", js.FuncOf(bindings.LoginEphemeral))
+	js.Global().Set("Login", js.FuncOf(wasm.Login))
+	js.Global().Set("LoginEphemeral", js.FuncOf(wasm.LoginEphemeral))
 
 	// wasm/identity.go
 	js.Global().Set("StoreReceptionIdentity",
-		js.FuncOf(bindings.StoreReceptionIdentity))
+		js.FuncOf(wasm.StoreReceptionIdentity))
 	js.Global().Set("LoadReceptionIdentity",
-		js.FuncOf(bindings.LoadReceptionIdentity))
+		js.FuncOf(wasm.LoadReceptionIdentity))
 	js.Global().Set("GetIDFromContact",
-		js.FuncOf(bindings.GetIDFromContact))
+		js.FuncOf(wasm.GetIDFromContact))
 	js.Global().Set("GetPubkeyFromContact",
-		js.FuncOf(bindings.GetPubkeyFromContact))
+		js.FuncOf(wasm.GetPubkeyFromContact))
 	js.Global().Set("SetFactsOnContact",
-		js.FuncOf(bindings.SetFactsOnContact))
+		js.FuncOf(wasm.SetFactsOnContact))
 	js.Global().Set("GetFactsFromContact",
-		js.FuncOf(bindings.GetFactsFromContact))
+		js.FuncOf(wasm.GetFactsFromContact))
 
 	// wasm/params.go
 	js.Global().Set("GetDefaultCMixParams",
-		js.FuncOf(bindings.GetDefaultCMixParams))
+		js.FuncOf(wasm.GetDefaultCMixParams))
 	js.Global().Set("GetDefaultE2EParams",
-		js.FuncOf(bindings.GetDefaultE2EParams))
+		js.FuncOf(wasm.GetDefaultE2EParams))
 	js.Global().Set("GetDefaultFileTransferParams",
-		js.FuncOf(bindings.GetDefaultFileTransferParams))
+		js.FuncOf(wasm.GetDefaultFileTransferParams))
 	js.Global().Set("GetDefaultSingleUseParams",
-		js.FuncOf(bindings.GetDefaultSingleUseParams))
+		js.FuncOf(wasm.GetDefaultSingleUseParams))
 	js.Global().Set("GetDefaultE2eFileTransferParams",
-		js.FuncOf(bindings.GetDefaultE2eFileTransferParams))
+		js.FuncOf(wasm.GetDefaultE2eFileTransferParams))
 
 	// wasm/logging.go
-	js.Global().Set("LogLevel", js.FuncOf(bindings.LogLevel))
-	js.Global().Set("RegisterLogWriter", js.FuncOf(bindings.RegisterLogWriter))
-	js.Global().Set("EnableGrpcLogs", js.FuncOf(bindings.EnableGrpcLogs))
+	js.Global().Set("LogLevel", js.FuncOf(wasm.LogLevel))
+	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
+	js.Global().Set("EnableGrpcLogs", js.FuncOf(wasm.EnableGrpcLogs))
 
 	// wasm/ndf.go
 	js.Global().Set("DownloadAndVerifySignedNdfWithUrl",
-		js.FuncOf(bindings.DownloadAndVerifySignedNdfWithUrl))
+		js.FuncOf(wasm.DownloadAndVerifySignedNdfWithUrl))
 
 	// wasm/version.go
-	js.Global().Set("GetVersion", js.FuncOf(bindings.GetVersion))
-	js.Global().Set("GetGitVersion", js.FuncOf(bindings.GetGitVersion))
-	js.Global().Set("GetDependencies", js.FuncOf(bindings.GetDependencies))
+	js.Global().Set("GetVersion", js.FuncOf(wasm.GetVersion))
+	js.Global().Set("GetGitVersion", js.FuncOf(wasm.GetGitVersion))
+	js.Global().Set("GetDependencies", js.FuncOf(wasm.GetDependencies))
 
 	// wasm/secrets.go
-	js.Global().Set("GenerateSecret", js.FuncOf(bindings.GenerateSecret))
+	js.Global().Set("GenerateSecret", js.FuncOf(wasm.GenerateSecret))
 
 	// wasm/dummy.go
 	js.Global().Set("NewDummyTrafficManager",
-		js.FuncOf(bindings.NewDummyTrafficManager))
+		js.FuncOf(wasm.NewDummyTrafficManager))
 
-	// Wait until the user terminates the program
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
+	// bindings/broadcast
+	js.Global().Set("NewBroadcastChannel", js.FuncOf(wasm.NewBroadcastChannel))
 
+	<-make(chan bool)
 	os.Exit(0)
 }
