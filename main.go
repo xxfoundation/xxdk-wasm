@@ -89,8 +89,10 @@ func main() {
 		js.FuncOf(wasm.UpdateCommonErrors))
 
 	// bindings/fileTransfer.go
-	js.Global().Set("InitFileTransfer",
-		js.FuncOf(wasm.InitFileTransfer))
+	js.Global().Set("InitFileTransfer", js.FuncOf(wasm.InitFileTransfer))
+
+	// bindings/group.go
+	js.Global().Set("NewGroupChat", js.FuncOf(wasm.NewGroupChat))
 
 	<-make(chan bool)
 	os.Exit(0)

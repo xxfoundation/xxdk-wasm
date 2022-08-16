@@ -8,6 +8,19 @@ WebAssembly bindings for xxDK.
 $ GOOS=js GOARCH=wasm go build -o xxdk.wasm
 ```
 
+### Running Tests
+
+To run unit tests, you need to first install
+[wasmbrowsertest](https://github.com/agnivade/wasmbrowsertest).
+
+`wasm/wasm_js.s` contains commands only recognized by the Go WebAssembly
+compiler and thus cause compile errors when running tests. It needs to be
+excluded when running tests.
+
+```shell
+$ GOOS=js GOARCH=wasm go test
+```
+
 ## Testing
 
 The `test` directory contains a website and server to run the compiled
