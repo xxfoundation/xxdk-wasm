@@ -104,6 +104,10 @@ func main() {
 	js.Global().Set("AsyncRequestRestLike",
 		js.FuncOf(wasm.AsyncRequestRestLike))
 
+	// bindings/single.go
+	js.Global().Set("TransmitSingleUse", js.FuncOf(wasm.TransmitSingleUse))
+	js.Global().Set("Listen", js.FuncOf(wasm.Listen))
+
 	<-make(chan bool)
 	os.Exit(0)
 }
