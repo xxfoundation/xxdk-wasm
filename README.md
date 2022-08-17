@@ -38,8 +38,11 @@ directory. Then run the server
 
 ```shell
 $ GOOS=js GOARCH=wasm go build -o test/assets/xxdk.wasm
-$ go run test/server/main.go
+$ cd test/server/
+$ go run main.go
 ```
+
+Navigate to http://localhost:9090 to see the web page.
 
 ## `wasm_exec.js`
 
@@ -62,7 +65,7 @@ global.Go = class {
             go: {
                 // ...
                 // func Throw(exception string, message string)
-                'gitlab.com/elixxir/client/wasm.Throw': (sp) => {
+                'gitlab.com/elixxir/xxdk-wasm/wasm.Throw': (sp) => {
                     const exception = loadString(sp + 8)
                     const message = loadString(sp + 24)
                     throw globalThis[exception](message)

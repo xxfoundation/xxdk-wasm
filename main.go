@@ -11,13 +11,15 @@ package main
 
 import (
 	"fmt"
+	"gitlab.com/elixxir/client/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
 	"os"
 	"syscall/js"
 )
 
 func main() {
-	fmt.Println("Go Web Assembly")
+	fmt.Println("Starting xxDK WebAssembly bindings.")
+	fmt.Printf("Client version %s\n", bindings.GetVersion())
 
 	// wasm/backup.go
 	js.Global().Set("NewCmixFromBackup", js.FuncOf(wasm.NewCmixFromBackup))

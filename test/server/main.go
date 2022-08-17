@@ -7,7 +7,7 @@ import (
 
 func main() {
 	port := "9090"
-	root := "test/assets"
+	root := "../assets"
 	fmt.Printf("Starting server on port %s from %s\n", port, root)
 
 	err := http.ListenAndServe(":"+port, http.FileServer(http.Dir(root)))
