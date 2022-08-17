@@ -1,38 +1,47 @@
 # xxdk-WASM
 
-WebAssembly bindings for xxDK.
+This repository contains the WebAssembly bindings for xxDK. It also includes a
+test server to serve the compiled WebAssembly module.
 
 ## Building
+
+The repository can only be compiled to a WebAssembly binary using `GOOS=js` and
+`GOARCH=wasm`.
 
 ```shell
 $ GOOS=js GOARCH=wasm go build -o xxdk.wasm
 ```
 
-### Running Tests
+### Running Unit Tests
 
-To run unit tests, you need to first install
-[wasmbrowsertest](https://github.com/agnivade/wasmbrowsertest).
-
-`wasm/wasm_js.s` contains commands only recognized by the Go WebAssembly
-compiler and thus cause compile errors when running tests. It needs to be
-excluded when running tests.
+Because the bindings use `syscall/js`, tests cannot only be run in a browser. To
+automate this process first install
+[wasmbrowsertest](https://github.com/agnivade/wasmbrowsertest). Then, tests can
+be run using the following command.
 
 ```shell
-$ GOOS=js GOARCH=wasm go test
+$ GOOS=js GOARCH=wasm go test ./...
 ```
+
+Note, this will fail because `wasm/wasm_js.s` contains commands only recognized
+by the Go WebAssembly compiler and for some reason not recognized by the test
+runner. To get tests to run, temporarily delete the body of `wasm/wasm_js.s`
+during testing.
 
 ## Testing
 
-The `test` directory contains a website and server to run the compiled
-WebAssembly module. `assets` contains the website and `server` contains a small
-Go HTTP server.
+The `test` directory contains `assets`, a simple web page to run the Javascript,
+and `server`, which runs a simple Go HTTP server to deliver the webpage.
+
+To run the server, first compile the bindings and save them to the `assets`
+directory. Then run the server
 
 ```shell
 $ GOOS=js GOARCH=wasm go build -o test/assets/xxdk.wasm
 $ go run test/server/main.go
 ```
 
-### `wasm_exec.js`
+## `wasm_exec.js`
 
 `wasm_exec.js` is provided by Go and is used to import the WebAssembly module in
 the browser. It can be retrieved from Go using the following command.

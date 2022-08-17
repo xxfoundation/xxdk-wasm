@@ -32,6 +32,7 @@ func newGroupChatJS(api *bindings.GroupChat) map[string]interface{} {
 		"MakeGroup":     js.FuncOf(gc.MakeGroup),
 		"ResendRequest": js.FuncOf(gc.ResendRequest),
 		"JoinGroup":     js.FuncOf(gc.JoinGroup),
+		"LeaveGroup":    js.FuncOf(gc.LeaveGroup),
 		"Send":          js.FuncOf(gc.Send),
 		"GetGroups":     js.FuncOf(gc.GetGroups),
 		"GetGroup":      js.FuncOf(gc.GetGroup),

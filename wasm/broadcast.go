@@ -14,6 +14,8 @@ import (
 	"syscall/js"
 )
 
+// Channel wraps the [bindings.Channel] object so its methods can be wrapped to
+// be Javascript compatible.
 type Channel struct {
 	api *bindings.Channel
 }

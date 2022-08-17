@@ -14,18 +14,23 @@ import (
 	"syscall/js"
 )
 
+// CopyBytesToGo copies the Uint8Array stored in the js.Value to []byte. This is
+// a wrapper for js.CopyBytesToGo to make it more convenient.
 func CopyBytesToGo(src js.Value) []byte {
 	b := make([]byte, src.Length())
 	js.CopyBytesToGo(b, src)
 	return b
 }
 
+// CopyBytesToJS copies the []byte to a Uint8Array stored in a js.Value. This is
+// a wrapper for js.CopyBytesToJS to make it more convenient.
 func CopyBytesToJS(src []byte) js.Value {
 	dst := js.Global().Get("Uint8Array").New(len(src))
 	js.CopyBytesToJS(dst, src)
 	return dst
 }
 
+// JsonToJS converts a marshalled JSON bytes to a Javascript object.
 func JsonToJS(src []byte) js.Value {
 	var inInterface map[string]interface{}
 	err := json.Unmarshal(src, &inInterface)
@@ -37,9 +42,12 @@ func JsonToJS(src []byte) js.Value {
 	return js.ValueOf(inInterface)
 }
 
-// Throw function stub to throws Javascript exceptions.
+// Throw function stub to throws Javascript exceptions. The exception must be
+// one of the defined Exception below.  Any other error types will result in an
+// error.
 func Throw(exception Exception, message string)
 
+// Exception are the possible Javascript error types that can be thrown.
 type Exception string
 
 const (

@@ -33,11 +33,11 @@ func newDummyTrafficJS(newDT *bindings.DummyTraffic) map[string]interface{} {
 }
 
 // NewDummyTrafficManager creates a DummyTraffic manager and initialises the
-// dummy traffic sending thread. Note that the manager does not start sending dummy
-// traffic until `True` is passed into DummyTraffic.SetStatus. The time duration
-// between each sending operation and the amount of messages sent each interval
-// are randomly generated values with bounds defined by the
-// given parameters below.
+// dummy traffic sending thread. Note that the manager does not start sending
+// dummy traffic until true is passed into DummyTraffic.SetStatus. The time
+// duration between each sending operation and the amount of messages sent each
+// interval are randomly generated values with bounds defined by the given
+// parameters below.
 //
 // Parameters:
 //  - args[0] - a Cmix object ID in the tracker (int).
@@ -45,9 +45,9 @@ func newDummyTrafficJS(newDT *bindings.DummyTraffic) map[string]interface{} {
 //    sending cycle (int).
 //  - args[2] - the average duration, in milliseconds, to wait between sends
 //    (int).
-//  - args[3] - the upper bound of the interval between sending cycles,
-//    in milliseconds (int). Sends occur every average send (args[2]) +/- a
-//    random duration with an upper bound of args[3].
+//  - args[3] - the upper bound of the interval between sending cycles, in
+//    milliseconds. Sends occur every average send (args[2]) +/- a random
+//    duration with an upper bound of args[3] (int).
 //
 // Returns:
 //  - Javascript representation of the DummyTraffic object.
@@ -71,8 +71,8 @@ func NewDummyTrafficManager(_ js.Value, args []js.Value) interface{} {
 // once that operation has completed.
 //
 // Parameters:
-//  - args[0] - Input should be true if you want to send dummy messages and false
-//    if you want to pause dummy messages (boolean).
+//  - args[0] - Input should be true if you want to send dummy messages and
+//    false if you want to pause dummy messages (boolean).
 //
 // Returns:
 //  - Throws a TypeError if the DummyTraffic.SetStatus is called too frequently,

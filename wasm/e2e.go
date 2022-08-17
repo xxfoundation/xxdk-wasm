@@ -111,7 +111,7 @@ func Login(_ js.Value, args []js.Value) interface{} {
 //
 // Parameters:
 //  - args[0] - ID of Cmix object in tracker (int).
-//  - args[1] - Javascript object that has functions that implement the.
+//  - args[1] - Javascript object that has functions that implement the
 //    [bindings.AuthCallbacks] interface.
 //  - args[2] - JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
 //  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array).
@@ -210,19 +210,22 @@ func newAuthCallbacks(value js.Value) *authCallbacks {
 	return a
 }
 
-func (a *authCallbacks) Request(contact, receptionId []byte, ephemeralId, roundId int64) {
+func (a *authCallbacks) Request(
+	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.request != nil {
 		a.request(contact, receptionId, ephemeralId, roundId)
 	}
 }
 
-func (a *authCallbacks) Confirm(contact, receptionId []byte, ephemeralId, roundId int64) {
+func (a *authCallbacks) Confirm(
+	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.confirm != nil {
 		a.confirm(contact, receptionId, ephemeralId, roundId)
 	}
 
 }
-func (a *authCallbacks) Reset(contact, receptionId []byte, ephemeralId, roundId int64) {
+func (a *authCallbacks) Reset(
+	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.reset != nil {
 		a.reset(contact, receptionId, ephemeralId, roundId)
 	}

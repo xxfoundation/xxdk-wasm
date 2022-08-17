@@ -51,9 +51,9 @@ func (ubf *updateBackupFunc) UpdateBackup(encryptedBackup []byte) {
 // Client functions                                                           //
 ////////////////////////////////////////////////////////////////////////////////
 
-// NewCmixFromBackup initializes a new e2e storage from an encrypted
-// backup. Users of this function should delete the storage directory on error.
-// Users of this function should call LoadCmix as normal once this call succeeds.
+// NewCmixFromBackup initializes a new e2e storage from an encrypted backup.
+// Users of this function should delete the storage directory on error. Users of
+// this function should call LoadCmix as normal once this call succeeds.
 //
 // Parameters:
 //  - args[0] - JSON of the NDF (string).

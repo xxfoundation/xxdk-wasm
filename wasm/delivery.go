@@ -24,9 +24,10 @@ func (mdc *messageDeliveryCallback) EventCallback(
 	mdc.eventCallback(delivered, timedOut, CopyBytesToJS(roundResults))
 }
 
-// WaitForRoundResult allows the caller to get notified if the rounds a message was sent in successfully completed. Under the hood, this uses an API
-// that uses the internal round data, network historical round lookup, and
-// waiting on network events to determine what has (or will) occur.
+// WaitForRoundResult allows the caller to get notified if the rounds a message
+// was sent in successfully completed. Under the hood, this uses an API that
+// uses the internal round data, network historical round lookup, and waiting on
+// network events to determine what has (or will) occur.
 //
 // This function takes the marshaled send report to ensure a memory leak does
 // not occur as a result of both sides of the bindings holding a reference to
