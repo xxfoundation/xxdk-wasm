@@ -66,10 +66,10 @@ func newE2eJS(api *bindings.E2e) map[string]interface{} {
 	return e2eMap
 }
 
-// GetID returns the ID for this [bindings.E2e] in the e2eTracker.
+// GetID returns the ID for this E2e in the E2e tracker.
 //
 // Returns:
-//  - int of the ID
+//  - int
 func (e *E2e) GetID(js.Value, []js.Value) interface{} {
 	return e.api.GetID()
 }
@@ -110,15 +110,15 @@ func Login(_ js.Value, args []js.Value) interface{} {
 // in here. If callbacks is left nil, a default [auth.Callbacks] will be used.
 //
 // Parameters:
-//  - args[0] - ID of Cmix object in tracker (int)
-//  - args[1] - Javascript object that has functions that implement the
-//    [bindings.AuthCallbacks] interface
-//  - args[2] - JSON of the [xxdk.ReceptionIdentity] object (Uint8Array)
-//  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array)
+//  - args[0] - ID of Cmix object in tracker (int).
+//  - args[1] - Javascript object that has functions that implement the.
+//    [bindings.AuthCallbacks] interface.
+//  - args[2] - JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
+//  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array).
 //
 // Returns:
-//  - Javascript representation of the E2e object
-//  - Throws a TypeError if logging in fails
+//  - Javascript representation of the E2e object.
+//  - Throws a TypeError if logging in fails.
 func LoginEphemeral(_ js.Value, args []js.Value) interface{} {
 	callbacks := newAuthCallbacks(args[1])
 	identity := CopyBytesToGo(args[2])

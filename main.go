@@ -19,13 +19,37 @@ import (
 func main() {
 	fmt.Println("Go Web Assembly")
 
+	// wasm/backup.go
+	js.Global().Set("NewCmixFromBackup", js.FuncOf(wasm.NewCmixFromBackup))
+	js.Global().Set("InitializeBackup", js.FuncOf(wasm.InitializeBackup))
+	js.Global().Set("ResumeBackup", js.FuncOf(wasm.ResumeBackup))
+
+	// wasm/broadcast.go
+	js.Global().Set("NewBroadcastChannel", js.FuncOf(wasm.NewBroadcastChannel))
+
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
 	js.Global().Set("LoadCmix", js.FuncOf(wasm.LoadCmix))
 
+	// wasm/dummy.go
+	js.Global().Set("NewDummyTrafficManager",
+		js.FuncOf(wasm.NewDummyTrafficManager))
+
 	// wasm/e2e.go
 	js.Global().Set("Login", js.FuncOf(wasm.Login))
 	js.Global().Set("LoginEphemeral", js.FuncOf(wasm.LoginEphemeral))
+
+	// wasm/errors.go
+	js.Global().Set("CreateUserFriendlyErrorMessage",
+		js.FuncOf(wasm.CreateUserFriendlyErrorMessage))
+	js.Global().Set("UpdateCommonErrors",
+		js.FuncOf(wasm.UpdateCommonErrors))
+
+	// wasm/fileTransfer.go
+	js.Global().Set("InitFileTransfer", js.FuncOf(wasm.InitFileTransfer))
+
+	// wasm/group.go
+	js.Global().Set("NewGroupChat", js.FuncOf(wasm.NewGroupChat))
 
 	// wasm/identity.go
 	js.Global().Set("StoreReceptionIdentity",
@@ -41,6 +65,15 @@ func main() {
 	js.Global().Set("GetFactsFromContact",
 		js.FuncOf(wasm.GetFactsFromContact))
 
+	// wasm/logging.go
+	js.Global().Set("LogLevel", js.FuncOf(wasm.LogLevel))
+	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
+	js.Global().Set("EnableGrpcLogs", js.FuncOf(wasm.EnableGrpcLogs))
+
+	// wasm/ndf.go
+	js.Global().Set("DownloadAndVerifySignedNdfWithUrl",
+		js.FuncOf(wasm.DownloadAndVerifySignedNdfWithUrl))
+
 	// wasm/params.go
 	js.Global().Set("GetDefaultCMixParams",
 		js.FuncOf(wasm.GetDefaultCMixParams))
@@ -53,60 +86,34 @@ func main() {
 	js.Global().Set("GetDefaultE2eFileTransferParams",
 		js.FuncOf(wasm.GetDefaultE2eFileTransferParams))
 
-	// wasm/logging.go
-	js.Global().Set("LogLevel", js.FuncOf(wasm.LogLevel))
-	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
-	js.Global().Set("EnableGrpcLogs", js.FuncOf(wasm.EnableGrpcLogs))
-
-	// wasm/ndf.go
-	js.Global().Set("DownloadAndVerifySignedNdfWithUrl",
-		js.FuncOf(wasm.DownloadAndVerifySignedNdfWithUrl))
-
-	// wasm/version.go
-	js.Global().Set("GetVersion", js.FuncOf(wasm.GetVersion))
-	js.Global().Set("GetGitVersion", js.FuncOf(wasm.GetGitVersion))
-	js.Global().Set("GetDependencies", js.FuncOf(wasm.GetDependencies))
-
-	// wasm/secrets.go
-	js.Global().Set("GenerateSecret", js.FuncOf(wasm.GenerateSecret))
-
-	// wasm/dummy.go
-	js.Global().Set("NewDummyTrafficManager",
-		js.FuncOf(wasm.NewDummyTrafficManager))
-
-	// bindings/broadcast.go
-	js.Global().Set("NewBroadcastChannel", js.FuncOf(wasm.NewBroadcastChannel))
-
-	// bindings/backup.go
-	js.Global().Set("NewCmixFromBackup", js.FuncOf(wasm.NewCmixFromBackup))
-	js.Global().Set("InitializeBackup", js.FuncOf(wasm.InitializeBackup))
-	js.Global().Set("ResumeBackup", js.FuncOf(wasm.ResumeBackup))
-
-	// bindings/errors.go
-	js.Global().Set("CreateUserFriendlyErrorMessage",
-		js.FuncOf(wasm.CreateUserFriendlyErrorMessage))
-	js.Global().Set("UpdateCommonErrors",
-		js.FuncOf(wasm.UpdateCommonErrors))
-
-	// bindings/fileTransfer.go
-	js.Global().Set("InitFileTransfer", js.FuncOf(wasm.InitFileTransfer))
-
-	// bindings/group.go
-	js.Global().Set("NewGroupChat", js.FuncOf(wasm.NewGroupChat))
-
-	// bindings/restlike.go
+	// wasm/restlike.go
 	js.Global().Set("RestlikeRequest", js.FuncOf(wasm.RestlikeRequest))
 	js.Global().Set("RestlikeRequestAuth", js.FuncOf(wasm.RestlikeRequestAuth))
 
-	// bindings/restlikeSingle.go
+	// wasm/restlikeSingle.go
 	js.Global().Set("RequestRestLike",
 		js.FuncOf(wasm.RequestRestLike))
 	js.Global().Set("AsyncRequestRestLike",
 		js.FuncOf(wasm.AsyncRequestRestLike))
 
-	// bindings/single.go
+	// wasm/secrets.go
+	js.Global().Set("GenerateSecret", js.FuncOf(wasm.GenerateSecret))
+
+	// wasm/single.go
 	js.Global().Set("TransmitSingleUse", js.FuncOf(wasm.TransmitSingleUse))
 	js.Global().Set("Listen", js.FuncOf(wasm.Listen))
+
+	// wasm/ud.go
+	js.Global().Set("NewOrLoadUd", js.FuncOf(wasm.NewOrLoadUd))
+	js.Global().Set("NewUdManagerFromBackup",
+		js.FuncOf(wasm.NewUdManagerFromBackup))
+	js.Global().Set("LookupUD", js.FuncOf(wasm.LookupUD))
+	js.Global().Set("SearchUD", js.FuncOf(wasm.SearchUD))
+
+	// wasm/version.go
+	js.Global().Set("GetVersion", js.FuncOf(wasm.GetVersion))
+	js.Global().Set("GetGitVersion", js.FuncOf(wasm.GetGitVersion))
+	js.Global().Set("GetDependencies", js.FuncOf(wasm.GetDependencies))
 
 	<-make(chan bool)
 	os.Exit(0)
