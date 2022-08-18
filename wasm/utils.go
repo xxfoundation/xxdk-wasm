@@ -43,7 +43,7 @@ func JsonToJS(src []byte) js.Value {
 }
 
 // Throw function stub to throws Javascript exceptions. The exception must be
-// one of the defined Exception below.  Any other error types will result in an
+// one of the defined Exception below. Any other error types will result in an
 // error.
 func Throw(exception Exception, message string)
 

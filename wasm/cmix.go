@@ -78,7 +78,6 @@ func NewCmix(_ js.Value, args []js.Value) interface{} {
 
 	err := bindings.NewCmix(
 		args[0].String(), args[1].String(), password, args[3].String())
-
 	if err != nil {
 		Throw(TypeError, err.Error())
 		return nil
