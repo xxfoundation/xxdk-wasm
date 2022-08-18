@@ -30,6 +30,14 @@ func CopyBytesToJS(src []byte) js.Value {
 	return dst
 }
 
+// WrapCB wraps a js.Call so that it can be called later with only the arguments
+// and without specifying the function name
+func WrapCB(call func(m string, args ...interface{}) js.Value, m string) func(args ...interface{}) js.Value {
+	return func(args ...interface{}) js.Value {
+		return call(m, args)
+	}
+}
+
 // JsonToJS converts a marshalled JSON bytes to a Javascript object.
 func JsonToJS(src []byte) js.Value {
 	var inInterface map[string]interface{}

@@ -137,7 +137,7 @@ func (l *listener) Name() string     { return l.name().String() }
 //  - throws a TypeError is registering the listener fails
 func (c *Connection) RegisterListener(_ js.Value, args []js.Value) interface{} {
 	err := c.api.RegisterListener(args[0].Int(),
-		&listener{args[1].Get("Hear").Invoke, args[1].Get("Name").Invoke})
+		&listener{WrapCB(args[1].Call, "Hear"), WrapCB(args[1].Call, "Name")})
 	if err != nil {
 		Throw(TypeError, err.Error())
 		return nil

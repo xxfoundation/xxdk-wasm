@@ -97,7 +97,7 @@ func (rpc *fileTransferReceiveProgressCallback) Callback(
 //  - Javascript representation of the FileTransfer object.
 //  - Throws a TypeError initialising the file transfer manager fails.
 func InitFileTransfer(_ js.Value, args []js.Value) interface{} {
-	rfc := &receiveFileCallback{args[1].Get("Callback").Invoke}
+	rfc := &receiveFileCallback{WrapCB(args[1].Call, "Callback")}
 	e2eFileTransferParamsJson := CopyBytesToGo(args[2])
 	fileTransferParamsJson := CopyBytesToGo(args[3])
 
@@ -129,7 +129,7 @@ func (f *FileTransfer) Send(_ js.Value, args []js.Value) interface{} {
 	payload := CopyBytesToGo(args[0])
 	recipientID := CopyBytesToGo(args[1])
 	retry := float32(args[2].Float())
-	spc := &fileTransferSentProgressCallback{args[3].Get("Callback").Invoke}
+	spc := &fileTransferSentProgressCallback{WrapCB(args[3].Call, "Callback")}
 
 	ftID, err := f.api.Send(payload, recipientID, retry, spc, args[4].String())
 	if err != nil {
@@ -209,7 +209,7 @@ func (f *FileTransfer) CloseSend(_ js.Value, args []js.Value) interface{} {
 func (f *FileTransfer) RegisterSentProgressCallback(
 	_ js.Value, args []js.Value) interface{} {
 	tidBytes := CopyBytesToGo(args[0])
-	spc := &fileTransferSentProgressCallback{args[1].Get("Callback").Invoke}
+	spc := &fileTransferSentProgressCallback{WrapCB(args[1].Call, "Callback")}
 
 	err := f.api.RegisterSentProgressCallback(tidBytes, spc, args[2].String())
 	if err != nil {
@@ -237,7 +237,7 @@ func (f *FileTransfer) RegisterSentProgressCallback(
 func (f *FileTransfer) RegisterReceivedProgressCallback(
 	_ js.Value, args []js.Value) interface{} {
 	tidBytes := CopyBytesToGo(args[0])
-	rpc := &fileTransferReceiveProgressCallback{args[1].Get("Callback").Invoke}
+	rpc := &fileTransferReceiveProgressCallback{WrapCB(args[1].Call, "Callback")}
 
 	err := f.api.RegisterReceivedProgressCallback(
 		tidBytes, rpc, args[2].String())
