@@ -40,7 +40,7 @@ func TransmitSingleUse(_ js.Value, args []js.Value) interface{} {
 	tag := args[2].String()
 	payload := CopyBytesToGo(args[3])
 	paramsJSON := CopyBytesToGo(args[4])
-	responseCB := &singleUseResponse{WrapCB(args[5].Call, "Callback")}
+	responseCB := &singleUseResponse{WrapCB(args[5], "Callback")}
 
 	report, err := bindings.TransmitSingleUse(
 		e2eID, recipient, tag, payload, paramsJSON, responseCB)
@@ -67,7 +67,7 @@ func TransmitSingleUse(_ js.Value, args []js.Value) interface{} {
 //    function used to stop the listener.
 //  - Throws a TypeError if listening fails.
 func Listen(_ js.Value, args []js.Value) interface{} {
-	cb := &singleUseCallback{WrapCB(args[2].Call, "Callback")}
+	cb := &singleUseCallback{WrapCB(args[2], "Callback")}
 	api, err := bindings.Listen(args[0].Int(), args[1].String(), cb)
 	if err != nil {
 		Throw(TypeError, err.Error())

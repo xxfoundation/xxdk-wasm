@@ -55,9 +55,9 @@ func newGroupChatJS(api *bindings.GroupChat) map[string]interface{} {
 //  - Javascript representation of the GroupChat object.
 //  - Throws a TypeError if creating the GroupChat fails.
 func NewGroupChat(_ js.Value, args []js.Value) interface{} {
-	requestFunc := &groupRequest{WrapCB(args[1].Call, "Callback")}
+	requestFunc := &groupRequest{WrapCB(args[1], "Callback")}
 	p := &groupChatProcessor{
-		WrapCB(args[2].Call, "Process"), WrapCB(args[2].Call, "String")}
+		WrapCB(args[2], "Process"), WrapCB(args[2], "String")}
 
 	api, err := bindings.NewGroupChat(args[0].Int(), requestFunc, p)
 	if err != nil {

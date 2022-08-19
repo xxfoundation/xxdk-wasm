@@ -20,4 +20,5 @@ localdev_*
 # Ignore temp files
 *.bak
 
+vendor/
 *.wasm

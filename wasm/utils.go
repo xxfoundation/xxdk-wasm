@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"encoding/json"
+	jww "github.com/spf13/jwalterweatherman"
 	"syscall/js"
 )
 
@@ -30,11 +31,17 @@ func CopyBytesToJS(src []byte) js.Value {
 	return dst
 }
 
-// WrapCB wraps a js.Call so that it can be called later with only the arguments
-// and without specifying the function name
-func WrapCB(call func(m string, args ...interface{}) js.Value, m string) func(args ...interface{}) js.Value {
+// WrapCB wraps a Javascript function in an object so that it can be called
+// later with only the arguments and without specifying the function name.
+//
+// Panics if m is not a function.
+func WrapCB(parent js.Value, m string) func(args ...interface{}) js.Value {
+	if parent.Get("m").Type() != js.TypeFunction {
+		jww.FATAL.Panicf("Function %q is not of type %s", m, js.TypeFunction)
+	}
+
 	return func(args ...interface{}) js.Value {
-		return call(m, args)
+		return parent.Call(m, args)
 	}
 }
 

@@ -97,7 +97,7 @@ func (uns *udNetworkStatus) UdNetworkStatus() int {
 //  - Throws a TypeError if creating or loading fails.
 func NewOrLoadUd(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
-	follower := &udNetworkStatus{WrapCB(args[1].Call, "UdNetworkStatus")}
+	follower := &udNetworkStatus{WrapCB(args[1], "UdNetworkStatus")}
 	username := args[2].String()
 	registrationValidationSignature := CopyBytesToGo(args[3])
 	cert := CopyBytesToGo(args[4])
@@ -147,7 +147,7 @@ func NewOrLoadUd(_ js.Value, args []js.Value) interface{} {
 //  - Throws a TypeError if getting UD from backup fails.
 func NewUdManagerFromBackup(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
-	follower := &udNetworkStatus{WrapCB(args[1].Call, "UdNetworkStatus")}
+	follower := &udNetworkStatus{WrapCB(args[1], "UdNetworkStatus")}
 	emailFactJson := CopyBytesToGo(args[2])
 	phoneFactJson := CopyBytesToGo(args[3])
 	cert := CopyBytesToGo(args[4])
@@ -303,7 +303,7 @@ func (ulc *udLookupCallback) Callback(contactBytes []byte, err error) {
 func LookupUD(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
 	udContact := CopyBytesToGo(args[1])
-	cb := &udLookupCallback{WrapCB(args[2].Call, "Callback")}
+	cb := &udLookupCallback{WrapCB(args[2], "Callback")}
 	lookupId := CopyBytesToGo(args[3])
 	singleRequestParamsJSON := CopyBytesToGo(args[4])
 
@@ -350,7 +350,7 @@ func (usc *udSearchCallback) Callback(contactListJSON []byte, err error) {
 func SearchUD(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
 	udContact := CopyBytesToGo(args[1])
-	cb := &udSearchCallback{WrapCB(args[2].Call, "Callback")}
+	cb := &udSearchCallback{WrapCB(args[2], "Callback")}
 	factListJSON := CopyBytesToGo(args[3])
 	singleRequestParamsJSON := CopyBytesToGo(args[4])
 

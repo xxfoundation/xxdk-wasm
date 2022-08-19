@@ -82,7 +82,7 @@ func (bl *broadcastListener) Callback(payload []byte, err error) {
 //  - Throws a TypeError if registering the listener fails.
 func (c *Channel) Listen(_ js.Value, args []js.Value) interface{} {
 	err := c.api.Listen(
-		&broadcastListener{WrapCB(args[0].Call, "Callback")}, args[1].Int())
+		&broadcastListener{WrapCB(args[0], "Callback")}, args[1].Int())
 	if err != nil {
 		Throw(TypeError, err.Error())
 		return nil

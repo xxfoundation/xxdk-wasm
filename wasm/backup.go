@@ -101,7 +101,7 @@ func NewCmixFromBackup(_ js.Value, args []js.Value) interface{} {
 //  - Javascript representation of the Backup object
 //  - Throws a TypeError if initializing the Backup fails.
 func InitializeBackup(_ js.Value, args []js.Value) interface{} {
-	cb := &updateBackupFunc{WrapCB(args[3].Call, "UpdateBackup")}
+	cb := &updateBackupFunc{WrapCB(args[3], "UpdateBackup")}
 	api, err := bindings.InitializeBackup(
 		args[0].Int(), args[1].Int(), args[2].String(), cb)
 	if err != nil {
@@ -130,7 +130,7 @@ func InitializeBackup(_ js.Value, args []js.Value) interface{} {
 //  - Javascript representation of the Backup object
 //  - Throws a TypeError if initializing the Backup fails.
 func ResumeBackup(_ js.Value, args []js.Value) interface{} {
-	cb := &updateBackupFunc{WrapCB(args[2].Call, "UpdateBackup")}
+	cb := &updateBackupFunc{WrapCB(args[2], "UpdateBackup")}
 	api, err := bindings.ResumeBackup(args[0].Int(), args[1].Int(), cb)
 	if err != nil {
 		Throw(TypeError, err.Error())

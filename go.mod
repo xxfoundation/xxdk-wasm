@@ -2,7 +2,10 @@ module gitlab.com/elixxir/xxdk-wasm
 
 go 1.17
 
-require gitlab.com/elixxir/client v1.5.1-0.20220812185448-678f627877c6
+require (
+	github.com/spf13/jwalterweatherman v1.1.0
+	gitlab.com/elixxir/client v1.5.1-0.20220812185448-678f627877c6
+)
 
 require (
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
@@ -17,7 +20,6 @@ require (
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
-	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/stretchr/testify v1.7.2 // indirect
 	github.com/ttacon/builder v0.0.0-20170518171403-c099f663e1c2 // indirect
 	github.com/ttacon/libphonenumber v1.2.1 // indirect

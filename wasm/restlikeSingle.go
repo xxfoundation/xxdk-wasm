@@ -71,7 +71,7 @@ func AsyncRequestRestLike(_ js.Value, args []js.Value) interface{} {
 	recipient := CopyBytesToGo(args[1])
 	request := CopyBytesToGo(args[2])
 	paramsJSON := CopyBytesToGo(args[3])
-	cb := &restlikeCallback{WrapCB(args[4].Call, "Callback")}
+	cb := &restlikeCallback{WrapCB(args[4], "Callback")}
 
 	err := bindings.AsyncRequestRestLike(
 		e2eID, recipient, request, paramsJSON, cb)

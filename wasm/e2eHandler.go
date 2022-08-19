@@ -201,7 +201,7 @@ func (p *processor) String() string {
 // Returns:
 //  - Throws TypeError if registering the service fails
 func (e *E2e) AddService(_ js.Value, args []js.Value) interface{} {
-	p := &processor{WrapCB(args[1].Call, "Process"), WrapCB(args[1].Call, "String")}
+	p := &processor{WrapCB(args[1], "Process"), WrapCB(args[1], "String")}
 
 	err := e.api.AddService(args[0].String(), p)
 	if err != nil {
@@ -226,7 +226,7 @@ func (e *E2e) AddService(_ js.Value, args []js.Value) interface{} {
 //  - Throws TypeError if registering the service fails
 func (e *E2e) RegisterListener(_ js.Value, args []js.Value) interface{} {
 	recipientId := CopyBytesToGo(args[0])
-	l := &listener{WrapCB(args[1].Call, "Hear"), WrapCB(args[1].Call, "Name")}
+	l := &listener{WrapCB(args[1], "Hear"), WrapCB(args[1], "Name")}
 
 	err := e.api.RegisterListener(recipientId, args[1].Int(), l)
 	if err != nil {

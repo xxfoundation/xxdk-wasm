@@ -163,7 +163,7 @@ func (nhc *networkHealthCallback) Callback(health bool) { nhc.callback(health) }
 //  - Returns a registration ID that can be used to unregister (int)
 func (c *Cmix) AddHealthCallback(_ js.Value, args []js.Value) interface{} {
 	return c.api.AddHealthCallback(
-		&networkHealthCallback{WrapCB(args[0].Call, "Callback")})
+		&networkHealthCallback{WrapCB(args[0], "Callback")})
 }
 
 // RemoveHealthCallback removes a health callback using its registration ID.
@@ -192,6 +192,6 @@ func (ce *clientError) Report(source, message, trace string) {
 //  - args[0] - Javascript object that has functions that implement the
 //    [bindings.ClientError] interface
 func (c *Cmix) RegisterClientErrorCallback(_ js.Value, args []js.Value) interface{} {
-	c.api.RegisterClientErrorCallback(&clientError{WrapCB(args[0].Call, "Report")})
+	c.api.RegisterClientErrorCallback(&clientError{WrapCB(args[0], "Report")})
 	return nil
 }
