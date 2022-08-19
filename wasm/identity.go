@@ -36,7 +36,7 @@ func StoreReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 		args[0].String(), identity, args[2].Int())
 
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -56,7 +56,7 @@ func StoreReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 func LoadReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 	ri, err := bindings.LoadReceptionIdentity(args[0].String(), args[1].Int())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -72,7 +72,7 @@ func LoadReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 func (c *Cmix) MakeReceptionIdentity(js.Value, []js.Value) interface{} {
 	ri, err := c.api.MakeReceptionIdentity()
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -88,7 +88,7 @@ func (c *Cmix) MakeReceptionIdentity(js.Value, []js.Value) interface{} {
 func (c *Cmix) MakeLegacyReceptionIdentity(js.Value, []js.Value) interface{} {
 	ri, err := c.api.MakeLegacyReceptionIdentity()
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -120,7 +120,7 @@ func (c *Cmix) GetReceptionRegistrationValidationSignature(
 func GetIDFromContact(_ js.Value, args []js.Value) interface{} {
 	cID, err := bindings.GetIDFromContact([]byte(args[0].String()))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -139,7 +139,7 @@ func GetIDFromContact(_ js.Value, args []js.Value) interface{} {
 func GetPubkeyFromContact(_ js.Value, args []js.Value) interface{} {
 	key, err := bindings.GetPubkeyFromContact([]byte(args[0].String()))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -165,7 +165,7 @@ func SetFactsOnContact(_ js.Value, args []js.Value) interface{} {
 	factListJSON := CopyBytesToGo(args[1])
 	c, err := bindings.SetFactsOnContact(marshaledContact, factListJSON)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -183,7 +183,7 @@ func SetFactsOnContact(_ js.Value, args []js.Value) interface{} {
 func GetFactsFromContact(_ js.Value, args []js.Value) interface{} {
 	fl, err := bindings.GetFactsFromContact(CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

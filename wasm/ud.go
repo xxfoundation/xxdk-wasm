@@ -107,7 +107,7 @@ func NewOrLoadUd(_ js.Value, args []js.Value) interface{} {
 	api, err := bindings.NewOrLoadUd(e2eID, follower, username,
 		registrationValidationSignature, cert, contactFile, address)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -157,7 +157,7 @@ func NewUdManagerFromBackup(_ js.Value, args []js.Value) interface{} {
 	api, err := bindings.NewUdManagerFromBackup(e2eID, follower, emailFactJson,
 		phoneFactJson, cert, contactFile, address)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -182,7 +182,7 @@ func (ud *UserDiscovery) GetFacts(js.Value, []js.Value) interface{} {
 func (ud *UserDiscovery) GetContact(js.Value, []js.Value) interface{} {
 	c, err := ud.api.GetContact()
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -202,7 +202,7 @@ func (ud *UserDiscovery) GetContact(js.Value, []js.Value) interface{} {
 func (ud *UserDiscovery) ConfirmFact(_ js.Value, args []js.Value) interface{} {
 	err := ud.api.ConfirmFact(args[0].String(), args[1].String())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -227,7 +227,7 @@ func (ud *UserDiscovery) ConfirmFact(_ js.Value, args []js.Value) interface{} {
 func (ud *UserDiscovery) SendRegisterFact(_ js.Value, args []js.Value) interface{} {
 	confirmationID, err := ud.api.SendRegisterFact(CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -246,7 +246,7 @@ func (ud *UserDiscovery) SendRegisterFact(_ js.Value, args []js.Value) interface
 func (ud *UserDiscovery) PermanentDeleteAccount(_ js.Value, args []js.Value) interface{} {
 	err := ud.api.PermanentDeleteAccount(CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -264,7 +264,7 @@ func (ud *UserDiscovery) PermanentDeleteAccount(_ js.Value, args []js.Value) int
 func (ud *UserDiscovery) RemoveFact(_ js.Value, args []js.Value) interface{} {
 	err := ud.api.RemoveFact(CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -310,7 +310,7 @@ func LookupUD(_ js.Value, args []js.Value) interface{} {
 	report, err := bindings.LookupUD(
 		e2eID, udContact, cb, lookupId, singleRequestParamsJSON)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -357,7 +357,7 @@ func SearchUD(_ js.Value, args []js.Value) interface{} {
 	report, err := bindings.SearchUD(
 		e2eID, udContact, cb, factListJSON, singleRequestParamsJSON)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

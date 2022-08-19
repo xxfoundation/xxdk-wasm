@@ -52,7 +52,7 @@ func NewBroadcastChannel(_ js.Value, args []js.Value) interface{} {
 
 	api, err := bindings.NewBroadcastChannel(args[0].Int(), channelDefinition)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -84,7 +84,7 @@ func (c *Channel) Listen(_ js.Value, args []js.Value) interface{} {
 	err := c.api.Listen(
 		&broadcastListener{WrapCB(args[0], "Callback")}, args[1].Int())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -104,7 +104,7 @@ func (c *Channel) Listen(_ js.Value, args []js.Value) interface{} {
 func (c *Channel) Broadcast(_ js.Value, args []js.Value) interface{} {
 	report, err := c.api.Broadcast(CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -126,7 +126,7 @@ func (c *Channel) BroadcastAsymmetric(_ js.Value, args []js.Value) interface{} {
 	report, err := c.api.BroadcastAsymmetric(
 		CopyBytesToGo(args[0]), CopyBytesToGo(args[1]))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -159,7 +159,7 @@ func (c *Channel) MaxAsymmetricPayloadSize(js.Value, []js.Value) interface{} {
 func (c *Channel) Get(js.Value, []js.Value) interface{} {
 	def, err := c.api.Get()
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

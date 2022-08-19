@@ -51,7 +51,7 @@ func CreateUserFriendlyErrorMessage(_ js.Value, args []js.Value) interface{} {
 func UpdateCommonErrors(_ js.Value, args []js.Value) interface{} {
 	err := bindings.UpdateCommonErrors(args[0].String())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

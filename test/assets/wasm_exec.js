@@ -503,7 +503,7 @@
 					},
 
 					// func Throw(exception string, message string)
-					'gitlab.com/elixxir/xxdk-wasm/wasm.Throw': (sp) => {
+					'gitlab.com/elixxir/xxdk-wasm/wasm.throw': (sp) => {
 						const exception = loadString(sp + 8)
 						const message = loadString(sp + 24)
 						throw globalThis[exception](message)

@@ -28,7 +28,7 @@ func DownloadAndVerifySignedNdfWithUrl(_ js.Value, args []js.Value) interface{} 
 	ndf, err := bindings.DownloadAndVerifySignedNdfWithUrl(
 		args[0].String(), args[1].String())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

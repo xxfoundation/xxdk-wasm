@@ -55,7 +55,7 @@ import (
 func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) interface{} {
 	err := c.api.StartNetworkFollower(args[0].Int())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -73,7 +73,7 @@ func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) interface{} {
 func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) interface{} {
 	err := c.api.StopNetworkFollower()
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -115,7 +115,7 @@ func (c *Cmix) NetworkFollowerStatus(js.Value, []js.Value) interface{} {
 func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) interface{} {
 	b, err := c.api.GetNodeRegistrationStatus()
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

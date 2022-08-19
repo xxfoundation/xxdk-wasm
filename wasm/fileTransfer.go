@@ -104,7 +104,7 @@ func InitFileTransfer(_ js.Value, args []js.Value) interface{} {
 	api, err := bindings.InitFileTransfer(
 		args[0].Int(), rfc, e2eFileTransferParamsJson, fileTransferParamsJson)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -133,7 +133,7 @@ func (f *FileTransfer) Send(_ js.Value, args []js.Value) interface{} {
 
 	ftID, err := f.api.Send(payload, recipientID, retry, spc, args[4].String())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -158,7 +158,7 @@ func (f *FileTransfer) Send(_ js.Value, args []js.Value) interface{} {
 func (f *FileTransfer) Receive(_ js.Value, args []js.Value) interface{} {
 	file, err := f.api.Receive(CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -180,7 +180,7 @@ func (f *FileTransfer) Receive(_ js.Value, args []js.Value) interface{} {
 func (f *FileTransfer) CloseSend(_ js.Value, args []js.Value) interface{} {
 	err := f.api.CloseSend(CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -213,7 +213,7 @@ func (f *FileTransfer) RegisterSentProgressCallback(
 
 	err := f.api.RegisterSentProgressCallback(tidBytes, spc, args[2].String())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -242,7 +242,7 @@ func (f *FileTransfer) RegisterReceivedProgressCallback(
 	err := f.api.RegisterReceivedProgressCallback(
 		tidBytes, rpc, args[2].String())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

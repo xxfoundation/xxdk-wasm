@@ -34,7 +34,7 @@ func RestlikeRequest(_ js.Value, args []js.Value) interface{} {
 	msg, err := bindings.RestlikeRequest(
 		cmixId, connectionID, request, e2eParamsJSON)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -61,7 +61,7 @@ func RestlikeRequestAuth(_ js.Value, args []js.Value) interface{} {
 	msg, err := bindings.RestlikeRequestAuth(
 		cmixId, authConnectionID, request, e2eParamsJSON)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

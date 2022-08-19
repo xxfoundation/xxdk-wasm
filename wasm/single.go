@@ -45,7 +45,7 @@ func TransmitSingleUse(_ js.Value, args []js.Value) interface{} {
 	report, err := bindings.TransmitSingleUse(
 		e2eID, recipient, tag, payload, paramsJSON, responseCB)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -70,7 +70,7 @@ func Listen(_ js.Value, args []js.Value) interface{} {
 	cb := &singleUseCallback{WrapCB(args[2], "Callback")}
 	api, err := bindings.Listen(args[0].Int(), args[1].String(), cb)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

@@ -55,7 +55,7 @@ func (c *Cmix) ConnectWithAuthentication(_ js.Value, args []js.Value) interface{
 	ac, err := c.api.ConnectWithAuthentication(
 		args[0].Int(), recipientContact, e2eParamsJSON)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

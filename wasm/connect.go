@@ -63,7 +63,7 @@ func (c *Cmix) Connect(_ js.Value, args []js.Value) interface{} {
 	e2eParamsJSON := CopyBytesToGo(args[2])
 	api, err := c.api.Connect(args[0].Int(), recipientContact, e2eParamsJSON)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -88,7 +88,7 @@ func (c *Cmix) Connect(_ js.Value, args []js.Value) interface{} {
 func (c *Connection) SendE2E(_ js.Value, args []js.Value) interface{} {
 	sendReport, err := c.api.SendE2E(args[0].Int(), CopyBytesToGo(args[1]))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 	return CopyBytesToJS(sendReport)
@@ -101,7 +101,7 @@ func (c *Connection) SendE2E(_ js.Value, args []js.Value) interface{} {
 func (c *Connection) Close(js.Value, []js.Value) interface{} {
 	err := c.api.Close()
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -139,7 +139,7 @@ func (c *Connection) RegisterListener(_ js.Value, args []js.Value) interface{} {
 	err := c.api.RegisterListener(args[0].Int(),
 		&listener{WrapCB(args[1], "Hear"), WrapCB(args[1], "Name")})
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

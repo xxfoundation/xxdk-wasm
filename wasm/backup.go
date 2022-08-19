@@ -75,7 +75,7 @@ func NewCmixFromBackup(_ js.Value, args []js.Value) interface{} {
 	report, err := bindings.NewCmixFromBackup(ndfJSON, storageDir,
 		backupPassphrase, sessionPassword, backupFileContents)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -105,7 +105,7 @@ func InitializeBackup(_ js.Value, args []js.Value) interface{} {
 	api, err := bindings.InitializeBackup(
 		args[0].Int(), args[1].Int(), args[2].String(), cb)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -133,7 +133,7 @@ func ResumeBackup(_ js.Value, args []js.Value) interface{} {
 	cb := &updateBackupFunc{WrapCB(args[2], "UpdateBackup")}
 	api, err := bindings.ResumeBackup(args[0].Int(), args[1].Int(), cb)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -148,7 +148,7 @@ func ResumeBackup(_ js.Value, args []js.Value) interface{} {
 func (b *Backup) StopBackup(js.Value, []js.Value) interface{} {
 	err := b.api.StopBackup()
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

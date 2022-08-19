@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"encoding/json"
+	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"syscall/js"
 )
@@ -50,7 +51,7 @@ func JsonToJS(src []byte) js.Value {
 	var inInterface map[string]interface{}
 	err := json.Unmarshal(src, &inInterface)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return js.ValueOf(nil)
 	}
 
@@ -60,7 +61,11 @@ func JsonToJS(src []byte) js.Value {
 // Throw function stub to throws Javascript exceptions. The exception must be
 // one of the defined Exception below. Any other error types will result in an
 // error.
-func Throw(exception Exception, message string)
+func Throw(exception Exception, err error) {
+	throw(exception, fmt.Sprintf("%+v", err))
+}
+
+func throw(exception Exception, message string)
 
 // Exception are the possible Javascript error types that can be thrown.
 type Exception string

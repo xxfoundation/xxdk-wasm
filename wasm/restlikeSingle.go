@@ -43,7 +43,7 @@ func RequestRestLike(_ js.Value, args []js.Value) interface{} {
 
 	msg, err := bindings.RequestRestLike(e2eID, recipient, request, paramsJSON)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -76,7 +76,7 @@ func AsyncRequestRestLike(_ js.Value, args []js.Value) interface{} {
 	err := bindings.AsyncRequestRestLike(
 		e2eID, recipient, request, paramsJSON, cb)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

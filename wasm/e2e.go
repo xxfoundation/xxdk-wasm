@@ -97,7 +97,7 @@ func Login(_ js.Value, args []js.Value) interface{} {
 	newE2E, err := bindings.Login(
 		args[0].Int(), callbacks, identity, e2eParamsJSON)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -127,7 +127,7 @@ func LoginEphemeral(_ js.Value, args []js.Value) interface{} {
 	newE2E, err := bindings.LoginEphemeral(
 		args[0].Int(), callbacks, identity, e2eParamsJSON)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -168,7 +168,7 @@ func (e *E2e) GetUdCertFromNdf(js.Value, []js.Value) interface{} {
 func (e *E2e) GetUdContactFromNdf(js.Value, []js.Value) interface{} {
 	b, err := e.api.GetUdContactFromNdf()
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

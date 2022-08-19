@@ -56,7 +56,7 @@ func NewDummyTrafficManager(_ js.Value, args []js.Value) interface{} {
 	dt, err := bindings.NewDummyTrafficManager(
 		args[0].Int(), args[1].Int(), args[2].Int(), args[3].Int())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -80,7 +80,7 @@ func NewDummyTrafficManager(_ js.Value, args []js.Value) interface{} {
 func (dt *DummyTraffic) SetStatus(_ js.Value, args []js.Value) interface{} {
 	err := dt.api.SetStatus(args[0].Bool())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

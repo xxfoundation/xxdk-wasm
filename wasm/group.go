@@ -61,7 +61,7 @@ func NewGroupChat(_ js.Value, args []js.Value) interface{} {
 
 	api, err := bindings.NewGroupChat(args[0].Int(), requestFunc, p)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -93,7 +93,7 @@ func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) interface{} {
 
 	report, err := g.api.MakeGroup(membershipBytes, message, name)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -114,7 +114,7 @@ func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) interface{} {
 func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) interface{} {
 	report, err := g.api.ResendRequest(CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -134,7 +134,7 @@ func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) interface{} {
 func (g *GroupChat) JoinGroup(_ js.Value, args []js.Value) interface{} {
 	err := g.api.JoinGroup(args[0].Int())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -152,7 +152,7 @@ func (g *GroupChat) JoinGroup(_ js.Value, args []js.Value) interface{} {
 func (g *GroupChat) LeaveGroup(_ js.Value, args []js.Value) interface{} {
 	err := g.api.LeaveGroup(CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -178,7 +178,7 @@ func (g *GroupChat) Send(_ js.Value, args []js.Value) interface{} {
 
 	report, err := g.api.Send(groupId, message, args[2].String())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -194,7 +194,7 @@ func (g *GroupChat) GetGroups(js.Value, []js.Value) interface{} {
 	// () ([]byte, error)
 	groups, err := g.api.GetGroups()
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -214,7 +214,7 @@ func (g *GroupChat) GetGroups(js.Value, []js.Value) interface{} {
 func (g *GroupChat) GetGroup(_ js.Value, args []js.Value) interface{} {
 	grp, err := g.api.GetGroup(CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -318,7 +318,7 @@ func (g *Group) GetCreatedMS(js.Value, []js.Value) interface{} {
 func (g *Group) GetMembership(js.Value, []js.Value) interface{} {
 	membership, err := g.api.GetMembership()
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

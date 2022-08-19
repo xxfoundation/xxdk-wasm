@@ -79,7 +79,7 @@ func NewCmix(_ js.Value, args []js.Value) interface{} {
 	err := bindings.NewCmix(
 		args[0].String(), args[1].String(), password, args[3].String())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
@@ -110,7 +110,7 @@ func LoadCmix(_ js.Value, args []js.Value) interface{} {
 
 	net, err := bindings.LoadCmix(args[0].String(), password, cmixParamsJSON)
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 

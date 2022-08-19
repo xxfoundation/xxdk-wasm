@@ -37,7 +37,7 @@ import (
 func LogLevel(_ js.Value, args []js.Value) interface{} {
 	err := bindings.LogLevel(args[0].Int())
 	if err != nil {
-		Throw(TypeError, err.Error())
+		Throw(TypeError, err)
 		return nil
 	}
 
