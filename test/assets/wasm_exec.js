@@ -502,7 +502,7 @@
 						console.log(value);
 					},
 
-					// func Throw(exception string, message string)
+					// func throw(exception string, message string)
 					'gitlab.com/elixxir/xxdk-wasm/wasm.throw': (sp) => {
 						const exception = loadString(sp + 8)
 						const message = loadString(sp + 24)

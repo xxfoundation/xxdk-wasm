@@ -10,7 +10,11 @@
 package wasm
 
 import (
+	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/bindings"
+	"io"
+	"log"
 	"syscall/js"
 )
 
@@ -35,13 +39,82 @@ import (
 // Returns:
 //  - Throws TypeError if the log level is invalid.
 func LogLevel(_ js.Value, args []js.Value) interface{} {
-	err := bindings.LogLevel(args[0].Int())
-	if err != nil {
+	level := args[0].Int()
+	if level < 0 || level > 6 {
+		err := errors.Errorf("log level is not valid: log level: %d", level)
 		Throw(TypeError, err)
 		return nil
 	}
 
+	threshold := jww.Threshold(level)
+	jww.SetLogThreshold(threshold)
+	jww.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
+	ll := &LogListener{threshold, js.Global().Get("console")}
+	jww.SetLogListeners(ll.Listen)
+	jww.SetStdoutThreshold(jww.LevelFatal + 1)
+
+	switch threshold {
+	case jww.LevelTrace:
+		fallthrough
+	case jww.LevelDebug:
+		fallthrough
+	case jww.LevelInfo:
+		jww.INFO.Printf("Log level set to: %s", threshold)
+	case jww.LevelWarn:
+		jww.WARN.Printf("Log level set to: %s", threshold)
+	case jww.LevelError:
+		jww.ERROR.Printf("Log level set to: %s", threshold)
+	case jww.LevelCritical:
+		jww.CRITICAL.Printf("Log level set to: %s", threshold)
+	case jww.LevelFatal:
+		jww.FATAL.Printf("Log level set to: %s", threshold)
+	}
+
 	return nil
+}
+
+// console contains the Javascript console object, which provides access to the
+// browser's debugging console. This structure detects logging types and prints
+// it using the correct logging method.
+type console struct {
+	call string
+	js.Value
+}
+
+func (c *console) Write(p []byte) (n int, err error) {
+	c.Call(c.call, string(p))
+	return len(p), nil
+}
+
+type LogListener struct {
+	jww.Threshold
+	js.Value
+}
+
+func (ll *LogListener) Listen(t jww.Threshold) io.Writer {
+	if t < ll.Threshold {
+		return nil
+	}
+
+	switch t {
+	case jww.LevelTrace:
+		return &console{"debug", ll.Value}
+	case jww.LevelDebug:
+		return &console{"log", ll.Value}
+	case jww.LevelInfo:
+		return &console{"info", ll.Value}
+	case jww.LevelWarn:
+		return &console{"warn", ll.Value}
+	case jww.LevelError:
+		return &console{"error", ll.Value}
+	case jww.LevelCritical:
+		return &console{"error", ll.Value}
+	case jww.LevelFatal:
+		return &console{"error", ll.Value}
+	default:
+		return &console{"log", ll.Value}
+	}
 }
 
 // logWriter wraps Javascript callbacks to adhere to the [bindings.LogWriter]
