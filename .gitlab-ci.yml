@@ -5,10 +5,10 @@ build:
     script:
         - GOOS=js GOARCH=wasm go build -o xxdk.wasm
 
-native-test:
-    stage: test
-    script:
-        - go test ./...
+#native-test:
+#    stage: test
+#    script:
+#        - go test ./...
 
 wasm-test:
     stage: test
