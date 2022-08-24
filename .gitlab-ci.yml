@@ -1,0 +1,17 @@
+image: docker-registry.xx.network/elixxir/sysadmin/backend-ci:go1.17-wasm
+
+build:
+    stage: build
+    script:
+        - GOOS=js GOARCH=wasm go build -o xxdk.wasm
+
+#native-test:
+#    stage: test
+#    script:
+#        - go test ./...
+
+wasm-test:
+    stage: test
+    script:
+        - export PATH=/root/go/bin:$PATH
+        - GOOS=js GOARCH=wasm go test ./...
