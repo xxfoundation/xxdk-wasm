@@ -9,3 +9,9 @@ native-test:
     stage: test
     script:
         - go test ./...
+
+wasm-test:
+    stage: test
+    script:
+        - export PATH=/root/go/bin:$PATH
+        - GOOS=js GOARCH=wasm go test ./...
