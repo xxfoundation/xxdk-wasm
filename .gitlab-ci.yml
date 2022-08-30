@@ -4,6 +4,9 @@ build:
     stage: build
     script:
         - GOOS=js GOARCH=wasm go build -o xxdk.wasm
+    artifacts:
+        paths:
+            - xxdk.wasm
 
 #native-test:
 #    stage: test
