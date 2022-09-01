@@ -58,6 +58,8 @@ func main() {
 		js.FuncOf(wasm.StoreReceptionIdentity))
 	js.Global().Set("LoadReceptionIdentity",
 		js.FuncOf(wasm.LoadReceptionIdentity))
+	js.Global().Set("GetContactFromReceptionIdentity",
+		js.FuncOf(wasm.GetContactFromReceptionIdentity))
 	js.Global().Set("GetIDFromContact",
 		js.FuncOf(wasm.GetIDFromContact))
 	js.Global().Set("GetPubkeyFromContact",

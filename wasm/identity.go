@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/client/xxdk"
 	"syscall/js"
 )
 
@@ -108,6 +109,27 @@ func (c *Cmix) GetReceptionRegistrationValidationSignature(
 ////////////////////////////////////////////////////////////////////////////////
 // Contact Functions                                                          //
 ////////////////////////////////////////////////////////////////////////////////
+
+// GetContactFromReceptionIdentity returns the [contact.Contact] object from the
+// [xxdk.ReceptionIdentity].
+//
+// Parameters:
+//  - args[0] - JSON of [xxdk.ReceptionIdentity] (Uint8Array)
+//
+// Returns:
+//  - Marshalled bytes of [contact.Contact] (string)
+//  - Throws a TypeError if unmarshalling the identity fails
+func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) interface{} {
+	// Note that this function does not appear in normal bindings
+	identityJSON := CopyBytesToGo(args[0])
+	identity, err := xxdk.UnmarshalReceptionIdentity(identityJSON)
+	if err != nil {
+		Throw(TypeError, err)
+		return nil
+	}
+
+	return CopyBytesToJS(identity.GetContact().Marshal())
+}
 
 // GetIDFromContact returns the ID in the [contact.Contact] object.
 //
