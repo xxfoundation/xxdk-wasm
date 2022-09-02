@@ -127,17 +127,19 @@ func NewOrLoadUd(_ js.Value, args []js.Value) interface{} {
 //  - args[1] - Javascript object that has functions that implement the
 //    [bindings.UdNetworkStatus] interface. This is the network follower
 //    function wrapped in [bindings.UdNetworkStatus].
-//  - args[2] - JSON of [fact.Fact] email address that is registered with UD
+//  - args[2] - JSON of [fact.Fact] username that is registered with UD
 //    (Uint8Array).
-//  - args[3] - JSON of [fact.Fact] phone number that is registered with UD
+//  - args[3] - JSON of [fact.Fact] email address that is registered with UD
 //    (Uint8Array).
-//  - args[4] - the TLS certificate for the UD server this call will connect
+//  - args[4] - JSON of [fact.Fact] phone number that is registered with UD
+//    (Uint8Array).
+//  - args[5] - the TLS certificate for the UD server this call will connect
 //    with. You may use the UD server run by the xx network team by using
 //    E2e.GetUdCertFromNdf (Uint8Array).
-//  - args[5] - marshalled [contact.Contact]. This represents the contact file
+//  - args[6] - marshalled [contact.Contact]. This represents the contact file
 //    of the server this call will connect with. You may use the UD server run
 //    by the xx network team by using E2e.GetUdContactFromNdf (Uint8Array).
-//  - args[6] - the IP address of the UD server this call will connect with. You
+//  - args[7] - the IP address of the UD server this call will connect with. You
 //    may use the UD server run by the xx network team by using
 //    E2e.GetUdAddressFromNdf (string).
 //
@@ -148,13 +150,14 @@ func NewOrLoadUd(_ js.Value, args []js.Value) interface{} {
 func NewUdManagerFromBackup(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
 	follower := &udNetworkStatus{WrapCB(args[1], "UdNetworkStatus")}
-	emailFactJson := CopyBytesToGo(args[2])
-	phoneFactJson := CopyBytesToGo(args[3])
-	cert := CopyBytesToGo(args[4])
-	contactFile := CopyBytesToGo(args[5])
-	address := args[6].String()
+	usernameFactJson := CopyBytesToGo(args[2])
+	emailFactJson := CopyBytesToGo(args[3])
+	phoneFactJson := CopyBytesToGo(args[4])
+	cert := CopyBytesToGo(args[5])
+	contactFile := CopyBytesToGo(args[6])
+	address := args[7].String()
 
-	api, err := bindings.NewUdManagerFromBackup(e2eID, follower, emailFactJson,
+	api, err := bindings.NewUdManagerFromBackup(e2eID, follower, usernameFactJson, emailFactJson,
 		phoneFactJson, cert, contactFile, address)
 	if err != nil {
 		Throw(TypeError, err)
