@@ -226,7 +226,7 @@ func (e *E2e) AddService(_ js.Value, args []js.Value) interface{} {
 //  - Throws TypeError if registering the service fails
 func (e *E2e) RegisterListener(_ js.Value, args []js.Value) interface{} {
 	recipientId := CopyBytesToGo(args[0])
-	l := &listener{WrapCB(args[1], "Hear"), WrapCB(args[1], "Name")}
+	l := &listener{WrapCB(args[2], "Hear"), WrapCB(args[2], "Name")}
 
 	err := e.api.RegisterListener(recipientId, args[1].Int(), l)
 	if err != nil {

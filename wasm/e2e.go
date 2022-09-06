@@ -192,15 +192,15 @@ type authCallbacks struct {
 func newAuthCallbacks(value js.Value) *authCallbacks {
 	a := &authCallbacks{}
 
-	if value.Get("Request").Type() != js.TypeFunction {
+	if value.Get("Request").Type() == js.TypeFunction {
 		a.request = WrapCB(value, "Request")
 	}
 
-	if value.Get("Confirm").Type() != js.TypeFunction {
+	if value.Get("Confirm").Type() == js.TypeFunction {
 		a.confirm = WrapCB(value, "Confirm")
 	}
 
-	if value.Get("Reset").Type() != js.TypeFunction {
+	if value.Get("Reset").Type() == js.TypeFunction {
 		a.reset = WrapCB(value, "Reset")
 	}
 

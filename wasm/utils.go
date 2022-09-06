@@ -12,6 +12,7 @@ package wasm
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"syscall/js"
 )
@@ -37,8 +38,10 @@ func CopyBytesToJS(src []byte) js.Value {
 //
 // Panics if m is not a function.
 func WrapCB(parent js.Value, m string) func(args ...interface{}) js.Value {
-	if parent.Get("m").Type() != js.TypeFunction {
-		jww.FATAL.Panicf("Function %q is not of type %s", m, js.TypeFunction)
+	if parent.Get(m).Type() != js.TypeFunction {
+		// Create the error separate from the print so stack trace is printed
+		err := errors.Errorf("Function %q is not of type %s", m, js.TypeFunction)
+		jww.FATAL.Panicf("%+v", err)
 	}
 
 	return func(args ...interface{}) js.Value {
