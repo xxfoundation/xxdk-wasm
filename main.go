@@ -11,6 +11,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
 	"os"
@@ -32,6 +34,7 @@ func main() {
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
 	js.Global().Set("LoadCmix", js.FuncOf(wasm.LoadCmix))
+	js.Global().Set("GetLoadCmix", js.FuncOf(wasm.GetLoadCmix))
 
 	// wasm/dummy.go
 	js.Global().Set("NewDummyTrafficManager",
@@ -118,6 +121,14 @@ func main() {
 	js.Global().Set("GetVersion", js.FuncOf(wasm.GetVersion))
 	js.Global().Set("GetGitVersion", js.FuncOf(wasm.GetGitVersion))
 	js.Global().Set("GetDependencies", js.FuncOf(wasm.GetDependencies))
+
+	defer func() {
+		jww.CRITICAL.Printf("Before recover\n")
+		if rec := recover(); rec != nil {
+			wasm.Throw(wasm.TypeError, errors.Errorf(fmt.Sprintf("%+v", rec)))
+		}
+		jww.CRITICAL.Printf("After recover\n")
+	}()
 
 	<-make(chan bool)
 	os.Exit(0)

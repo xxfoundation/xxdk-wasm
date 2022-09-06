@@ -108,13 +108,25 @@ func LoadCmix(_ js.Value, args []js.Value) interface{} {
 	password := CopyBytesToGo(args[1])
 	cmixParamsJSON := CopyBytesToGo(args[2])
 
-	net, err := bindings.LoadCmix(args[0].String(), password, cmixParamsJSON)
-	if err != nil {
-		Throw(TypeError, err)
-		return nil
-	}
+	go func() {
+		_, err := bindings.LoadCmix(args[0].String(), password, cmixParamsJSON)
+		if err != nil {
+			Throw(TypeError, err)
+		}
+	}()
 
-	return newCmixJS(net)
+	return bindings.GetCurrentID()
+}
+
+// GetLoadCmix returns the cmix object for the ID.
+//
+// Parameters:
+//  - args[0] - ID of Cmix object in tracker (int).
+//
+// Returns:
+//  - Javascript representation of the Cmix object
+func GetLoadCmix(_ js.Value, args []js.Value) interface{} {
+	return newCmixJS(bindings.GetCmix(args[0].Int()))
 }
 
 // GetID returns the ID for this [bindings.Cmix] in the cmixTracker.

@@ -10,6 +10,7 @@
 package wasm
 
 import (
+	jww "github.com/spf13/jwalterweatherman"
 	"syscall/js"
 )
 
@@ -157,14 +158,18 @@ func (e *E2e) SendE2E(_ js.Value, args []js.Value) interface{} {
 	payload := CopyBytesToGo(args[2])
 	e2eParams := CopyBytesToGo(args[3])
 
-	sendReport, err := e.api.SendE2E(
-		args[0].Int(), recipientId, payload, e2eParams)
-	if err != nil {
-		Throw(TypeError, err)
-		return nil
-	}
+	go func() {
+		sendReport, err := e.api.SendE2E(
+			args[0].Int(), recipientId, payload, e2eParams)
+		if err != nil {
+			Throw(TypeError, err)
+		}
 
-	return CopyBytesToJS(sendReport)
+		jww.INFO.Printf("Send report: %+v", sendReport)
+	}()
+
+	// return CopyBytesToJS(sendReport)
+	return nil
 }
 
 // processor wraps Javascript callbacks to adhere to the [bindings.Processor]

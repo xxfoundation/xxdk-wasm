@@ -1,0 +1,59 @@
+<!--
+  ~ Copyright © 2020 xx network SEZC                                           ///
+  ~                                                                            ///
+  ~ Use of this source code is governed by a license that can be found in the  ///
+  ~ LICENSE file                                                               ///
+  -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>xxDk WebAssembly Test</title>
+
+	<link rel="stylesheet" type="text/css" href="../styles.css">
+	<script type="text/javascript" src="xxdk.js"></script>
+	<script type="text/javascript" src="../wasm_exec.js"></script>
+	<script>
+        // Use the encoder to convert a string to Uint8Array using enc.encode()
+
+        const go = new Go();
+        WebAssembly.instantiateStreaming(fetch("../xxdk.wasm"), go.importObject).then((result) => {
+            go.run(result.instance);
+
+            LogLevel(0);
+
+            const recipientContactFile = '<xxc(2)qM22QBlbReXsTQ+zqDWr0ZSh7sFkDRjxqprUHyWe3aUDrgZ7Ugdw/BAr6cY/smgr1a48u+tl0EStWz84jY/oP+2BuftqQ5sW4gRxRsIHR+SG2lQb/NWIZt763UWGFTQAgCMCuSlhX3hVec972BhVY4igzVIazFbaDRZFONT8aeOSHIJFOgSQsFcfLX7s+ZZDSXVyx+4kZduyMRB1EhwtF4z4a5zebmoA9DB9H4B/jXB1H0pvkLXVS8QtWqtSP/9BHvSipXDXtnxlKxTwBaw6xNTWZnCY71nznRe2BElQrkLR7SyLWl3cMXeby2axbLO8nxsx5L9NKwvZOGlhDSlmpSfGaSoU8ETQ9F3LFj+wQ/xMrTR1bb0hUwkRkrLL4gmH9n0dNtZ/EblonRd7+v/lJnYHPCZCAPBMZQ9upqwJ7ZafgJkoP1dX/LT/mHoLB3Z8zeKvIXFC2IpT2notYxfMv1PRpqMna+FEK71dj/UVPxKS9eIOv7KnmUmOEWRQ66OB9MdKiINKMqik0zsTn3jSMj6OyePo2wshWcozHE/VXkvrHHhYVxFMjaN0Ysr2YYHQ/JGCNFkHsfHWQAAAAgA7j/wRIx1q2PjH8zBC6s8kmw==xxc>';
+            const myContactFileName = 'theirE2eContact.xxc';
+            const statePath = 'statePathSender';
+            const statePass = 'password';
+
+            document.getElementById('ndf-input')
+                .addEventListener('change', function (e) {
+                    let reader = new FileReader();
+                    reader.onload = function (e) {
+                        SendE2e(e.target.result, recipientContactFile, myContactFileName, statePath, statePass);
+                    };
+                    reader.readAsText(e.target.files[0]);
+                }, false);
+        });
+	</script>
+</head>
+<body>
+<form id="start-cmix">
+	<div>
+		<label for="ndf-input">Select NDF file to use <code>ndf</code> variable in JS:</label><br/>
+		<input type="file" id="ndf-input" required/>
+	</div>
+<!--	<div>
+		<label for="ndf-input">Recipient contact path:</label><br/>
+		<input type="file" id="recipient-contact-input" required/>
+	</div>
+	<input type="submit" value="Start">-->
+</form>
+<div id="output" style="padding:10px;border:1px solid red"></div>
+</body>
+
+<script>
+</script>
+</html>
