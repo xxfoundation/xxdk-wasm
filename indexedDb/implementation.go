@@ -10,8 +10,13 @@
 package indexedDb
 
 import (
+	"context"
+	"encoding/json"
 	"github.com/hack-pad/go-indexeddb/idb"
+	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/channels"
+	"syscall/js"
 	"time"
 
 	"gitlab.com/elixxir/client/cmix/rounds"
@@ -19,6 +24,9 @@ import (
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/xx_network/primitives/id"
 )
+
+// jsObject is the Golang type translation for a JavaScript object
+type jsObject map[string]interface{}
 
 // wasmModel implements [channels.EventModel] interface which uses the channels
 // system passed an object which adheres to in order to get events on the channel.
@@ -28,12 +36,96 @@ type wasmModel struct {
 
 // JoinChannel is called whenever a channel is joined locally.
 func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
+	parentErr := errors.New("failed to JoinChannel")
 
+	// Build Channel object
+	newChannel := Channel{
+		Id:          channel.ReceptionID.Marshal(),
+		Name:        channel.Name,
+		Description: channel.Description,
+	}
+
+	// Convert Channel to jsObject
+	newChannelJson, err := json.Marshal(&newChannel)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+			"Unable to marshal Channel: %+v", err))
+		return
+	}
+	var channelObj *jsObject
+	err = json.Unmarshal(newChannelJson, channelObj)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+			"Unable to unmarshal Channel: %+v", err))
+		return
+	}
+
+	// Prepare the Transaction
+	ctx := context.Background()
+	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+			"Unable to create Transaction: %+v", err))
+		return
+	}
+	store, err := txn.ObjectStore(messageStoreName)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+			"Unable to get ObjectStore: %+v", err))
+		return
+	}
+
+	// Perform the operation
+	_, err = store.Add(js.ValueOf(*channelObj))
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+			"Unable to Add Channel: %+v", err))
+		return
+	}
+
+	// Wait for the operation to return
+	err = txn.Await(ctx)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+			"Adding Channel failed: %+v", err))
+		return
+	}
 }
 
 // LeaveChannel is called whenever a channel is left locally.
 func (w *wasmModel) LeaveChannel(channelID *id.ID) {
+	parentErr := errors.New("failed to LeaveChannel")
 
+	// Prepare the Transaction
+	ctx := context.Background()
+	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+			"Unable to create Transaction: %+v", err))
+		return
+	}
+	store, err := txn.ObjectStore(messageStoreName)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+			"Unable to get ObjectStore: %+v", err))
+		return
+	}
+
+	// Perform the operation
+	_, err = store.Delete(js.ValueOf(channelID.String()))
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+			"Unable to Delete Channel: %+v", err))
+		return
+	}
+
+	// Wait for the operation to return
+	err = txn.Await(ctx)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+			"Deleting Channel failed: %+v", err))
+		return
+	}
 }
 
 // ReceiveMessage is called whenever a message is received on a given channel
