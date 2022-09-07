@@ -1,0 +1,65 @@
+////////////////////////////////////////////////////////////////////////////////
+// Copyright © 2022 Privategrity Corporation                                   /
+//                                                                             /
+// All rights reserved.                                                        /
+////////////////////////////////////////////////////////////////////////////////
+
+//go:build js && wasm
+// +build js,wasm
+
+package indexedDb
+
+import (
+	"time"
+)
+
+const (
+	// Text representation of primary key value (keyPath).
+	pkeyName = "id"
+
+	// Text representation of the names of the various [idb.ObjectStore].
+	messageStoreName  = "messages"
+	userStoreName     = "users"
+	channelsStoreName = "channels"
+
+	// Message index names.
+	messageStoreChannelIndex   = "channel_id_index"
+	messageStoreParentIndex    = "parent_message_id_index"
+	messageStoreTimestampIndex = "timestamp_index"
+	messageStorePinnedIndex    = "pinned_index"
+
+	// Message keyPath names (must match json struct tags).
+	messageStoreChannel   = "channel_id"
+	messageStoreParent    = "parent_message_id"
+	messageStoreTimestamp = "timestamp"
+	messageStorePinned    = "pinned"
+)
+
+// Message defines the IndexedDb representation of a single Message.
+// A Message belongs to one User (Sender).
+// A Message belongs to one Channel.
+// A Message may belong to one Message (Parent).
+type Message struct {
+	Id              []byte    `json:"id"` // Matches pkeyName
+	SenderId        []byte    `json:"sender_id"`
+	ChannelId       []byte    `json:"channel_id"`        // Index
+	ParentMessageId []byte    `json:"parent_message_id"` // Index
+	Timestamp       time.Time `json:"timestamp"`         // Index
+	Hidden          bool      `json:"hidden"`
+	Pinned          bool      `json:"pinned"` // Index
+}
+
+// User defines the IndexedDb representation of a single User.
+// A User sends many Message.
+type User struct {
+	Id       []byte `json:"id"` // Matches pkeyName
+	Username string `json:"username"`
+}
+
+// Channel defines the IndexedDb representation of a single Channel
+// A Channel has many Message.
+type Channel struct {
+	Id          []byte `json:"id"` // Matches pkeyName
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}

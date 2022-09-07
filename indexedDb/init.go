@@ -17,16 +17,19 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/channels"
-	"gitlab.com/xx_network/primitives/id"
 )
 
-// currentVersion of the IndexDb runtime. Used for migration purposes.
-const currentVersion uint = 1
+const (
+	// databaseSuffix to be appended to the name of the database
+	databaseSuffix = "_messenger"
+	// currentVersion of the IndexDb runtime. Used for migration purposes.
+	currentVersion uint = 1
+)
 
 // NewWasmEventModel returns a [channels.EventModel] backed by a wasmModel
-func NewWasmEventModel(receptionId *id.ID) (channels.EventModel, error) {
+func NewWasmEventModel(username string) (channels.EventModel, error) {
 	ctx := context.Background()
-	databaseName := receptionId.String()
+	databaseName := username + databaseSuffix
 
 	// Attempt to open database object
 	openRequest, _ := idb.Global().Open(ctx, databaseName, currentVersion,
@@ -47,6 +50,7 @@ func NewWasmEventModel(receptionId *id.ID) (channels.EventModel, error) {
 			return errors.Errorf("Invalid version upgrade path: v%d -> v%d",
 				oldVersion, newVersion)
 		})
+
 	// Wait for database open to finish
 	db, err := openRequest.Await(ctx)
 
