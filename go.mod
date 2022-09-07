@@ -6,7 +6,8 @@ require (
 	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client v1.5.1-0.20220907184817-0409e48f068a
+	gitlab.com/elixxir/client v1.5.1-0.20220907213656-d2cb1308c363
+	gitlab.com/elixxir/crypto v0.0.7-0.20220902165412-5c5e3e990e84
 	gitlab.com/xx_network/primitives v0.0.4-0.20220809193445-9fc0a5209548
 )
 
@@ -38,7 +39,6 @@ require (
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	gitlab.com/elixxir/bloomfilter v0.0.0-20211222005329-7d931ceead6f // indirect
 	gitlab.com/elixxir/comms v0.0.4-0.20220907184530-d8eec143a1e8 // indirect
-	gitlab.com/elixxir/crypto v0.0.7-0.20220902165412-5c5e3e990e84 // indirect
 	gitlab.com/elixxir/ekv v0.2.1-0.20220901224437-ab4cbf94bf8b // indirect
 	gitlab.com/elixxir/primitives v0.0.3-0.20220901220638-1acc75fabdc6 // indirect
 	gitlab.com/xx_network/comms v0.0.4-0.20220902164216-e3272eb0efac // indirect

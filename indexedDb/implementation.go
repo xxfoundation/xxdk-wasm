@@ -4,10 +4,14 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
+//go:build js && wasm
+// +build js,wasm
+
 package indexedDb
 
 import (
 	"github.com/hack-pad/go-indexeddb/idb"
+	"gitlab.com/elixxir/client/channels"
 	"time"
 
 	"gitlab.com/elixxir/client/cmix/rounds"
@@ -46,9 +50,9 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID cryptoChannel.Mes
 // Messages may arrive our of order, so a reply in theory can arrive before
 // the initial message, as a result it may be important to buffer replies.
 func (w *wasmModel) ReceiveReply(ChannelID *id.ID, messageID cryptoChannel.MessageID,
-	replyTo cryptoChannel.MessageID, SenderUsername string,
-	text string, timestamp time.Time, lease time.Duration,
-	round rounds.Round) {
+	SenderUsername string, text string, timestamp time.Time,
+	lease time.Duration, round rounds.Round) {
+
 }
 
 // ReceiveReaction is called whenever a reaction to a message is received
@@ -60,4 +64,36 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID cryptoChannel.Me
 	reactionTo cryptoChannel.MessageID, senderUsername string,
 	reaction string, timestamp time.Time, lease time.Duration,
 	round rounds.Round) {
+}
+
+// MessageSent is called whenever the user sends a message. It should be
+//designated as "sent" and that delivery is unknown.
+func (w *wasmModel) MessageSent(channelID *id.ID, messageID cryptoChannel.MessageID,
+	myUsername string, text string, timestamp time.Time,
+	lease time.Duration, round rounds.Round) {
+
+}
+
+// ReplySent is called whenever the user sends a reply. It should be
+// designated as "sent" and that delivery is unknown.
+func (w *wasmModel) ReplySent(channelID *id.ID, messageID cryptoChannel.MessageID,
+	replyTo cryptoChannel.MessageID, myUsername string, text string,
+	timestamp time.Time, lease time.Duration, round rounds.Round) {
+
+}
+
+// ReactionSent is called whenever the user sends a reply. It should be
+// designated as "sent" and that delivery is unknown.
+func (w *wasmModel) ReactionSent(channelID *id.ID, messageID cryptoChannel.MessageID,
+	reactionTo cryptoChannel.MessageID, senderUsername string,
+	reaction string, timestamp time.Time, lease time.Duration,
+	round rounds.Round) {
+
+}
+
+// UpdateSentStatus is called whenever the sent status of a message
+// has changed
+func (w *wasmModel) UpdateSentStatus(messageID cryptoChannel.MessageID,
+	status channels.SentStatus) {
+
 }

@@ -45,12 +45,13 @@ type Message struct {
 	ChannelId       []byte    `json:"channel_id"`        // Index
 	ParentMessageId []byte    `json:"parent_message_id"` // Index
 	Timestamp       time.Time `json:"timestamp"`         // Index
+	Status          uint8     `json:"status"`
 	Hidden          bool      `json:"hidden"`
 	Pinned          bool      `json:"pinned"` // Index
 }
 
 // User defines the IndexedDb representation of a single User.
-// A User sends many Message.
+// A User has many Message.
 type User struct {
 	Id       []byte `json:"id"` // Matches pkeyName
 	Username string `json:"username"`
