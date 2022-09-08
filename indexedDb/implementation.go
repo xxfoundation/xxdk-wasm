@@ -16,10 +16,10 @@ import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/client/channels"
 	"syscall/js"
 	"time"
 
+	"gitlab.com/elixxir/client/channels"
 	"gitlab.com/elixxir/client/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
@@ -145,11 +145,11 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 // the user of the API to filter such called by message ID.
 func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID cryptoChannel.MessageID,
 	senderUsername string, text string, timestamp time.Time, lease time.Duration,
-	_ rounds.Round) {
+	_ rounds.Round, status channels.SentStatus) {
 	parentErr := errors.New("failed to ReceiveMessage")
 
-	err := w.receiveHelper(buildMessage(channelID.Marshal(), messageID.Bytes(), nil,
-		senderUsername, channels.Delivered, text, timestamp, lease))
+	err := w.receiveHelper(buildMessage(channelID.Marshal(), messageID.Bytes(),
+		nil, senderUsername, text, timestamp, lease, status))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
 	}
@@ -161,12 +161,12 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID cryptoChannel.Mes
 // Messages may arrive our of order, so a reply in theory can arrive before
 // the initial message, as a result it may be important to buffer replies.
 func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID cryptoChannel.MessageID,
-	replyTo cryptoChannel.MessageID, senderUsername string,
-	text string, timestamp time.Time, lease time.Duration, _ rounds.Round) {
+	replyTo cryptoChannel.MessageID, senderUsername string, text string,
+	timestamp time.Time, lease time.Duration, _ rounds.Round, status channels.SentStatus) {
 	parentErr := errors.New("failed to ReceiveReply")
 
 	err := w.receiveHelper(buildMessage(channelID.Marshal(), messageID.Bytes(),
-		replyTo.Bytes(), senderUsername, channels.Delivered, text, timestamp, lease))
+		replyTo.Bytes(), senderUsername, text, timestamp, lease, status))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
 	}
@@ -178,54 +178,12 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID cryptoChannel.Messa
 // Messages may arrive our of order, so a reply in theory can arrive before
 // the initial message, as a result it may be important to buffer reactions.
 func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID cryptoChannel.MessageID,
-	reactionTo cryptoChannel.MessageID, senderUsername string,
-	reaction string, timestamp time.Time, lease time.Duration, _ rounds.Round) {
+	reactionTo cryptoChannel.MessageID, senderUsername string, reaction string,
+	timestamp time.Time, lease time.Duration, _ rounds.Round, status channels.SentStatus) {
 	parentErr := errors.New("failed to ReceiveReaction")
 
 	err := w.receiveHelper(buildMessage(channelID.Marshal(), messageID.Bytes(),
-		reactionTo.Bytes(), senderUsername, channels.Delivered, reaction, timestamp, lease))
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
-	}
-}
-
-// MessageSent is called whenever the user sends a message. It should be
-//designated as "sent" and that delivery is unknown.
-func (w *wasmModel) MessageSent(channelID *id.ID, messageID cryptoChannel.MessageID,
-	myUsername string, text string, timestamp time.Time,
-	lease time.Duration, _ rounds.Round) {
-	parentErr := errors.New("failed to MessageSent")
-
-	err := w.receiveHelper(buildMessage(channelID.Marshal(), messageID.Bytes(),
-		nil, myUsername, channels.Sent, text, timestamp, lease))
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
-	}
-}
-
-// ReplySent is called whenever the user sends a reply. It should be
-// designated as "sent" and that delivery is unknown.
-func (w *wasmModel) ReplySent(channelID *id.ID, messageID cryptoChannel.MessageID,
-	replyTo cryptoChannel.MessageID, myUsername string, text string,
-	timestamp time.Time, lease time.Duration, _ rounds.Round) {
-	parentErr := errors.New("failed to ReplySent")
-
-	err := w.receiveHelper(buildMessage(channelID.Marshal(), messageID.Bytes(),
-		replyTo.Bytes(), myUsername, channels.Sent, text, timestamp, lease))
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
-	}
-}
-
-// ReactionSent is called whenever the user sends a reply. It should be
-// designated as "sent" and that delivery is unknown.
-func (w *wasmModel) ReactionSent(channelID *id.ID, messageID cryptoChannel.MessageID,
-	reactionTo cryptoChannel.MessageID, myUsername string,
-	reaction string, timestamp time.Time, lease time.Duration, _ rounds.Round) {
-	parentErr := errors.New("failed to ReactionSent")
-
-	err := w.receiveHelper(buildMessage(channelID.Marshal(), messageID.Bytes(),
-		reactionTo.Bytes(), myUsername, channels.Sent, reaction, timestamp, lease))
+		reactionTo.Bytes(), senderUsername, reaction, timestamp, lease, status))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
 	}
@@ -250,8 +208,8 @@ func (w *wasmModel) UpdateSentStatus(messageID cryptoChannel.MessageID,
 // buildMessage is a private helper that converts typical [channels.EventModel]
 // inputs into a basic Message structure for insertion into storage
 func buildMessage(channelID []byte, messageID []byte,
-	parentId []byte, senderUsername string, status channels.SentStatus,
-	text string, timestamp time.Time, lease time.Duration) *Message {
+	parentId []byte, senderUsername string, text string,
+	timestamp time.Time, lease time.Duration, status channels.SentStatus) *Message {
 	return &Message{
 		Id:              messageID,
 		SenderUsername:  senderUsername,
@@ -268,7 +226,6 @@ func buildMessage(channelID []byte, messageID []byte,
 
 // receiveHelper is a private helper for receiving any sort of message
 func (w *wasmModel) receiveHelper(newMessage *Message) error {
-
 	// Convert to jsObject
 	newMessageJson, err := json.Marshal(newMessage)
 	if err != nil {
