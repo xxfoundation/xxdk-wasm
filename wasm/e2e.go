@@ -210,20 +210,23 @@ func newAuthCallbacks(value js.Value) *authCallbacks {
 func (a *authCallbacks) Request(
 	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.request != nil {
-		a.request(contact, receptionId, ephemeralId, roundId)
+		a.request(CopyBytesToJS(contact), CopyBytesToJS(receptionId),
+			ephemeralId, roundId)
 	}
 }
 
 func (a *authCallbacks) Confirm(
 	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.confirm != nil {
-		a.confirm(contact, receptionId, ephemeralId, roundId)
+		a.confirm(CopyBytesToJS(contact), CopyBytesToJS(receptionId),
+			ephemeralId, roundId)
 	}
 
 }
 func (a *authCallbacks) Reset(
 	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.reset != nil {
-		a.reset(contact, receptionId, ephemeralId, roundId)
+		a.reset(CopyBytesToJS(contact), CopyBytesToJS(receptionId),
+			ephemeralId, roundId)
 	}
 }

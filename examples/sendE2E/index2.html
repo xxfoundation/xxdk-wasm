@@ -9,9 +9,10 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>xxDk WebAssembly Test</title>
+	<title>Sender</title>
 
 	<link rel="stylesheet" type="text/css" href="../styles.css">
+	<link rel="shortcut icon" type="image/x-icon" href="sender-favicon.ico" />
 	<script type="text/javascript" src="xxdk.js"></script>
 	<script type="text/javascript" src="../wasm_exec.js"></script>
 	<script>
@@ -23,7 +24,7 @@
 
             LogLevel(0);
 
-            const recipientContactFile = '<xxc(2)qM22QBlbReXsTQ+zqDWr0ZSh7sFkDRjxqprUHyWe3aUDrgZ7Ugdw/BAr6cY/smgr1a48u+tl0EStWz84jY/oP+2BuftqQ5sW4gRxRsIHR+SG2lQb/NWIZt763UWGFTQAgCMCuSlhX3hVec972BhVY4igzVIazFbaDRZFONT8aeOSHIJFOgSQsFcfLX7s+ZZDSXVyx+4kZduyMRB1EhwtF4z4a5zebmoA9DB9H4B/jXB1H0pvkLXVS8QtWqtSP/9BHvSipXDXtnxlKxTwBaw6xNTWZnCY71nznRe2BElQrkLR7SyLWl3cMXeby2axbLO8nxsx5L9NKwvZOGlhDSlmpSfGaSoU8ETQ9F3LFj+wQ/xMrTR1bb0hUwkRkrLL4gmH9n0dNtZ/EblonRd7+v/lJnYHPCZCAPBMZQ9upqwJ7ZafgJkoP1dX/LT/mHoLB3Z8zeKvIXFC2IpT2notYxfMv1PRpqMna+FEK71dj/UVPxKS9eIOv7KnmUmOEWRQ66OB9MdKiINKMqik0zsTn3jSMj6OyePo2wshWcozHE/VXkvrHHhYVxFMjaN0Ysr2YYHQ/JGCNFkHsfHWQAAAAgA7j/wRIx1q2PjH8zBC6s8kmw==xxc>';
+            const recipientContactFile = '<xxc(2)Q2uq69ry88AeNFKcnpOkCjuCtkYIdv/fgC3F4z6eNUMDrgZ7Ugdw/BAr6bG0KyMpEOL6fulH331JBFOD69e7iZLxkBr3BvZyfyTXL9QtQwpzaDnmPXjyRR5cjAQ6gfk5XQzsrw45Q8qsrKewwZsqGhac0NKJYPiXGa9DTQR6f1VMOY7cco4uquNN5BRo4ucz1gu9w2Ff3N+1Hdz9V1r7xulkkd/78IyoJqHQDgp1eO3q6NZJT55DNsSuS2ZuYQc3yQUyTHH/G7gIF7EwRTU6dhRTGMYpfOQhRT67EVidHOT4e7GSpkWoGzi5XUBA+9N1llRCAwzRJ65lQqJZIC/vNgxJhHR5Cd4AOfHc+KuGlXMpCQkeYjd7a+ggh4RUuPsMW59QlKaBbZ1mbGHPzphFUrJIS63TMcJRrWbGwXHJrvZnD1NYNOM/x/qSR4pTkv8soIHFzgvFbRME5VTfxWfWKSCG/qu3TaWfetnYXmsqhdmnURekF4iSMtyDpVch+86zK5YmuO9Ap18MvdwmnfX5r9xhyPRga/QqmkdEI6ZebuXVYJQGr6Lzsz4z+4AGI0v87j//APsGxvi8fwAAAgA7w6N/pgZWFlB+p/Muirk+VQ==xxc>';
             const myContactFileName = 'theirE2eContact.xxc';
             const statePath = 'statePathSender';
             const statePass = 'password';
@@ -40,6 +41,7 @@
 	</script>
 </head>
 <body>
+<h1>Sender</h1>
 <form id="start-cmix">
 	<div>
 		<label for="ndf-input">Select NDF file to use <code>ndf</code> variable in JS:</label><br/>

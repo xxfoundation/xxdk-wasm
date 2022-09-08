@@ -45,7 +45,7 @@ func WrapCB(parent js.Value, m string) func(args ...interface{}) js.Value {
 	}
 
 	return func(args ...interface{}) js.Value {
-		return parent.Call(m, args)
+		return parent.Call(m, args...)
 	}
 }
 

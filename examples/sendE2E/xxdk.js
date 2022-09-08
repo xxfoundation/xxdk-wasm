@@ -59,6 +59,7 @@ async function SendE2e(ndf, recipientContactFile, myContactFileName, statePath, 
 
     let confirm = false;
     let confirmContact;
+    let e2eClient;
     let authCallbacks = {
         Confirm: function (contact, receptionId, ephemeralId, roundId) {
             confirm = true;
@@ -69,6 +70,15 @@ async function SendE2e(ndf, recipientContactFile, myContactFileName, statePath, 
             console.log("ephemeralId: " + roundId.toString());
 
             output.innerHTML += "Received confirmation from " + ephemeralId.toString() + "<br />"
+        },
+        Request: function (contact, receptionId, ephemeralId, roundId) {
+            console.log("Request:");
+            console.log("contact: " + dec.decode(contact));
+            console.log("receptionId: " + ephemeralId.toString());
+            console.log("ephemeralId: " + roundId.toString());
+
+            e2eClient.Confirm(contact)
+            output.innerHTML += "Received Request from " + ephemeralId.toString() + "<br />"
         }
     }
 
@@ -76,7 +86,9 @@ async function SendE2e(ndf, recipientContactFile, myContactFileName, statePath, 
     // Pass in auth object which controls auth callbacks for this client
     const params = GetDefaultE2EParams();
     console.log("Using E2E parameters: " + dec.decode(params));
-    let e2eClient = Login(net.GetID(), authCallbacks, identity, params);
+    e2eClient = Login(net.GetID(), authCallbacks, identity, params);
+
+    e2eClient.DeleteAllRequests()
 
 
     ////////////////////////////////////////////////////////////////////////////
@@ -88,21 +100,8 @@ async function SendE2e(ndf, recipientContactFile, myContactFileName, statePath, 
 
     output.innerHTML += "Starting network follower<br />"
 
-    // Set up a wait for the network to be connected
-    let health = false
-    const n = 100
-    let myPromise = new Promise(async function (myResolve, myReject) {
-        for (let i = 0; (health === false) && (i < n); i++) {
-            await sleep(100)
-        }
-        if (health === true) {
-            myResolve("OK");
-        } else {
-            myReject("timed out waiting for healthy network");
-        }
-    });
-
     // Provide a callback that will be signalled when network health status changes
+    let health = false
     net.AddHealthCallback({
         Callback: function (healthy) {
             health = healthy;
@@ -110,17 +109,18 @@ async function SendE2e(ndf, recipientContactFile, myContactFileName, statePath, 
     });
     await sleep(3000)
 
-    // Wait until connected or crash on timeout
-    myPromise.then(
-        function (value) {
-            output.innerHTML += "Network is healthy<br />"
-            console.log("network is healthy")
-        },
-        function (error) {
-            output.innerHTML += "Network is not healthy<br />"
-            // throw error;
-        }
-    );
+
+    const n = 100
+    for (let i = 0; (health === false) && (i < n); i++) {
+        await sleep(100)
+    }
+
+    if (health === false) {
+        console.error("Continuing with unhealthy network")
+        output.innerHTML += "Network NOT healthy<br />"
+    } else {
+        output.innerHTML += "Network healthy<br />"
+    }
 
 
     ////////////////////////////////////////////////////////////////////////////
@@ -154,13 +154,22 @@ async function SendE2e(ndf, recipientContactFile, myContactFileName, statePath, 
         let exists = false;
         output.innerHTML += "getting ID from contact<br />"
         const recipientContactID = GetIDFromContact(recipientContactFile);
-        output.innerHTML += "Checking for " + btoa(recipientContactID) + "<br />"
-        let partners = e2eClient.GetAllPartnerIDs();
+        console.log(typeof recipientContactID)
+        console.log("recipientContactID: " + recipientContactID)
+
+        output.innerHTML += "Checking for " + recipientContactID + "<br />"
+
+
+        const partnerIDS = dec.decode(e2eClient.GetAllPartnerIDs())
+        console.log("partnerIDS: " + partnerIDS)
+        let partners = JSON.parse(partnerIDS);
 
         for (let i = 0; i < partners.length; i++) {
+            const partnerBytes = base64ToArrayBuffer(partners[i])
+            console.log("partner " + recipientContactID + " == " + i + " " + partnerBytes)
 
-            if (partners[i] === recipientContactID) {
-                console.log("partner " + btoa(recipientContactID) + " matches partner " + i + " " + btoa(partners[i]))
+            if (partnerBytes.toString() === recipientContactID.toString()) {
+                console.log("MATCH! partner " + recipientContactID + " matches partner " + i + " " + partnerBytes)
                 exists = true;
                 break
             }
@@ -168,7 +177,7 @@ async function SendE2e(ndf, recipientContactFile, myContactFileName, statePath, 
 
         // If the partner does not exist, send a request
         if (exists === false) {
-            output.innerHTML += "Request sent to " + btoa(recipientContactID) + "<br />"
+            output.innerHTML += "Partner does not exist, Request sent to " + recipientContactID + "<br />"
             const factList = enc.encode('[]')
             e2eClient.Request(enc.encode(recipientContactFile), factList)
 
@@ -176,17 +185,19 @@ async function SendE2e(ndf, recipientContactFile, myContactFileName, statePath, 
                 await sleep(50)
             }
             if (confirm === false) {
-                output.innerHTML += "Checking for " + recipientContactID + "<br />"
-                throw new Error("timed out waiting for confirmation")
+                output.innerHTML += "Checking for " + recipientContactIDBase64 + "<br />"
+                console.error(new Error("timed out waiting for confirmation"))
             }
 
             const confirmContactID = GetIDFromContact(confirmContact)
-            if (recipientContactID !== confirmContactID) {
+            if (recipientContactID.toString() !== confirmContactID.toString()) {
                 throw new Error("contact ID from confirmation " +
                     btoa(dec.decode(confirmContactID)) +
                     " does not match recipient ID " +
-                    btoa(dec.decode(recipientContactID)))
+                    recipientContactIDBase64)
             }
+        } else {
+            output.innerHTML += "Partner exists<br />"
         }
 
         ////////////////////////////////////////////////////////////////////////////
@@ -197,8 +208,10 @@ async function SendE2e(ndf, recipientContactFile, myContactFileName, statePath, 
         const msgBody = "If this message is sent successfully, we'll have established contact with the recipient."
 
         output.innerHTML += "Sending E2E message<br />"
-        const paramsObj = JSON.parse(dec.decode(params))
-        const e2eSendReport = e2eClient.SendE2E(2, recipientContactID, enc.encode(msgBody), enc.encode(JSON.stringify(paramsObj.Base)))
+        // const paramsObj = JSON.parse(dec.decode(params))
+        // const e2eParams = JSON.stringify(paramsObj.Base)
+        // console.log("e2eParams: " + e2eParams)
+        const e2eSendReport = e2eClient.SendE2E(2, recipientContactID, enc.encode(msgBody), params)
 
         console.log("e2e send report: " + dec.decode(e2eSendReport))
         output.innerHTML += "Send e2e: " + dec.decode(e2eSendReport) + "<br />"
@@ -222,4 +235,14 @@ function download(filename, text) {
     element.click();
 
     document.body.removeChild(element);
+}
+
+function base64ToArrayBuffer(base64) {
+    const binary_string = window.atob(base64);
+    const len = binary_string.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binary_string.charCodeAt(i);
+    }
+    return bytes;
 }
