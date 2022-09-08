@@ -29,9 +29,6 @@ import (
 // dbTimeout is the global timeout for operations with the storage context.Contact
 const dbTimeout = time.Second
 
-// jsObject is the Golang type translation for a JavaScript object
-type jsObject map[string]interface{}
-
 // wasmModel implements [channels.EventModel] interface which uses the channels
 // system passed an object which adheres to in order to get events on the channel.
 type wasmModel struct {
@@ -40,8 +37,7 @@ type wasmModel struct {
 
 // newContext builds a context for database operations
 func newContext() (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
-	return ctx, cancel
+	return context.WithTimeout(context.Background(), dbTimeout)
 }
 
 // JoinChannel is called whenever a channel is joined locally.
@@ -58,46 +54,46 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 	// Convert to jsObject
 	newChannelJson, err := json.Marshal(&newChannel)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to marshal Channel: %+v", err))
 		return
 	}
-	var channelObj *jsObject
-	err = json.Unmarshal(newChannelJson, channelObj)
+	channelObj := make(map[string]interface{})
+	err = json.Unmarshal(newChannelJson, &channelObj)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to unmarshal Channel: %+v", err))
 		return
 	}
 
 	// Prepare the Transaction
-	ctx, cancel := newContext()
-	defer cancel()
 	txn, err := w.db.Transaction(idb.TransactionReadWrite, channelsStoreName)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to create Transaction: %+v", err))
 		return
 	}
 	store, err := txn.ObjectStore(channelsStoreName)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to get ObjectStore: %+v", err))
 		return
 	}
 
 	// Perform the operation
-	_, err = store.Add(js.ValueOf(*channelObj))
+	_, err = store.Add(js.ValueOf(channelObj))
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to Add Channel: %+v", err))
 		return
 	}
 
 	// Wait for the operation to return
+	ctx, cancel := newContext()
 	err = txn.Await(ctx)
+	cancel()
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Adding Channel failed: %+v", err))
 		return
 	}
@@ -108,17 +104,15 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 	parentErr := errors.New("failed to LeaveChannel")
 
 	// Prepare the Transaction
-	ctx, cancel := newContext()
-	defer cancel()
 	txn, err := w.db.Transaction(idb.TransactionReadWrite, channelsStoreName)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to create Transaction: %+v", err))
 		return
 	}
 	store, err := txn.ObjectStore(channelsStoreName)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to get ObjectStore: %+v", err))
 		return
 	}
@@ -126,15 +120,17 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 	// Perform the operation
 	_, err = store.Delete(js.ValueOf(channelID.String()))
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to Delete Channel: %+v", err))
 		return
 	}
 
 	// Wait for the operation to return
+	ctx, cancel := newContext()
 	err = txn.Await(ctx)
+	cancel()
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Deleting Channel failed: %+v", err))
 		return
 	}
@@ -231,15 +227,13 @@ func (w *wasmModel) receiveHelper(newMessage *Message) error {
 	if err != nil {
 		return errors.Errorf("Unable to marshal Message: %+v", err)
 	}
-	var messageObj *jsObject
-	err = json.Unmarshal(newMessageJson, messageObj)
+	messageObj := make(map[string]interface{})
+	err = json.Unmarshal(newMessageJson, &messageObj)
 	if err != nil {
 		return errors.Errorf("Unable to unmarshal Message: %+v", err)
 	}
 
 	// Prepare the Transaction
-	ctx, cancel := newContext()
-	defer cancel()
 	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
 	if err != nil {
 		return errors.Errorf("Unable to create Transaction: %+v", err)
@@ -250,13 +244,15 @@ func (w *wasmModel) receiveHelper(newMessage *Message) error {
 	}
 
 	// Perform the upsert (put) operation
-	_, err = store.Put(js.ValueOf(*messageObj))
+	_, err = store.Put(js.ValueOf(messageObj))
 	if err != nil {
 		return errors.Errorf("Unable to upsert Message: %+v", err)
 	}
 
 	// Wait for the operation to return
+	ctx, cancel := newContext()
 	err = txn.Await(ctx)
+	cancel()
 	if err != nil {
 		return errors.Errorf("Upserting Message failed: %+v", err)
 	}
