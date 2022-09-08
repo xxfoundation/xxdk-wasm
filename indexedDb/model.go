@@ -18,8 +18,8 @@ const (
 	pkeyName = "id"
 
 	// Text representation of the names of the various [idb.ObjectStore].
-	messageStoreName  = "messages"
-	userStoreName     = "users"
+	messageStoreName = "messages"
+	//userStoreName     = "users"
 	channelsStoreName = "channels"
 
 	// Message index names.
@@ -54,10 +54,10 @@ type Message struct {
 
 // User defines the IndexedDb representation of a single User.
 // A User has many Message.
-type User struct {
-	Id       []byte `json:"id"` // Matches pkeyName
-	Username string `json:"username"`
-}
+//type User struct {
+//	Id       []byte `json:"id"` // Matches pkeyName
+//	Username string `json:"username"`
+//}
 
 // Channel defines the IndexedDb representation of a single Channel
 // A Channel has many Message.

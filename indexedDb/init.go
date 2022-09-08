@@ -96,10 +96,10 @@ func v1Upgrade(db *idb.Database) error {
 	}
 
 	// Build User ObjectStore
-	_, err = db.CreateObjectStore(userStoreName, storeOpts)
-	if err != nil {
-		return err
-	}
+	//_, err = db.CreateObjectStore(userStoreName, storeOpts)
+	//if err != nil {
+	//	return err
+	//}
 
 	// Build Channel ObjectStore
 	_, err = db.CreateObjectStore(channelsStoreName, storeOpts)
