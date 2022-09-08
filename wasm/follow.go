@@ -10,6 +10,7 @@
 package wasm
 
 import (
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -55,7 +56,7 @@ import (
 func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) interface{} {
 	err := c.api.StartNetworkFollower(args[0].Int())
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -73,7 +74,7 @@ func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) interface{} {
 func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) interface{} {
 	err := c.api.StopNetworkFollower()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -115,11 +116,11 @@ func (c *Cmix) NetworkFollowerStatus(js.Value, []js.Value) interface{} {
 func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) interface{} {
 	b, err := c.api.GetNodeRegistrationStatus()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(b)
+	return utils.CopyBytesToJS(b)
 }
 
 // HasRunningProcessies checks if any background threads are running and returns
@@ -163,7 +164,7 @@ func (nhc *networkHealthCallback) Callback(health bool) { nhc.callback(health) }
 //  - Returns a registration ID that can be used to unregister (int)
 func (c *Cmix) AddHealthCallback(_ js.Value, args []js.Value) interface{} {
 	return c.api.AddHealthCallback(
-		&networkHealthCallback{WrapCB(args[0], "Callback")})
+		&networkHealthCallback{utils.WrapCB(args[0], "Callback")})
 }
 
 // RemoveHealthCallback removes a health callback using its registration ID.
@@ -192,6 +193,6 @@ func (ce *clientError) Report(source, message, trace string) {
 //  - args[0] - Javascript object that has functions that implement the
 //    [bindings.ClientError] interface
 func (c *Cmix) RegisterClientErrorCallback(_ js.Value, args []js.Value) interface{} {
-	c.api.RegisterClientErrorCallback(&clientError{WrapCB(args[0], "Report")})
+	c.api.RegisterClientErrorCallback(&clientError{utils.WrapCB(args[0], "Report")})
 	return nil
 }

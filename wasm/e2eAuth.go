@@ -10,6 +10,7 @@
 package wasm
 
 import (
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -36,18 +37,22 @@ import (
 //  - args[1] - JSON of [fact.FactList] (Uint8Array).
 //
 // Returns:
-//  - ID of the round (int).
-//  - Throws TypeError if the request fails.
+//  - A promise that returns the ID of the round (int).
+//  - Throws error if the request fails.
 func (e *E2e) Request(_ js.Value, args []js.Value) interface{} {
-	partnerContact := CopyBytesToGo(args[0])
-	factsListJson := CopyBytesToGo(args[1])
-	rid, err := e.api.Request(partnerContact, factsListJson)
-	if err != nil {
-		Throw(TypeError, err)
-		return nil
+	partnerContact := utils.CopyBytesToGo(args[0])
+	factsListJson := utils.CopyBytesToGo(args[1])
+
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		rid, err := e.api.Request(partnerContact, factsListJson)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(rid)
+		}
 	}
 
-	return rid
+	return utils.CreatePromise(promiseFn)
 }
 
 // Confirm sends a confirmation for a received request. It can only be called
@@ -73,10 +78,10 @@ func (e *E2e) Request(_ js.Value, args []js.Value) interface{} {
 //  - ID of the round (int).
 //  - Throws TypeError if the confirmation fails.
 func (e *E2e) Confirm(_ js.Value, args []js.Value) interface{} {
-	partnerContact := CopyBytesToGo(args[0])
+	partnerContact := utils.CopyBytesToGo(args[0])
 	rid, err := e.api.Confirm(partnerContact)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -104,10 +109,10 @@ func (e *E2e) Confirm(_ js.Value, args []js.Value) interface{} {
 //  - ID of the round (int).
 //  - Throws TypeError if the reset fails.
 func (e *E2e) Reset(_ js.Value, args []js.Value) interface{} {
-	partnerContact := CopyBytesToGo(args[0])
+	partnerContact := utils.CopyBytesToGo(args[0])
 	rid, err := e.api.Reset(partnerContact)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -129,10 +134,10 @@ func (e *E2e) Reset(_ js.Value, args []js.Value) interface{} {
 //  - ID of the round (int).
 //  - Throws TypeError if the confirmation fails.
 func (e *E2e) ReplayConfirm(_ js.Value, args []js.Value) interface{} {
-	partnerContact := CopyBytesToGo(args[0])
+	partnerContact := utils.CopyBytesToGo(args[0])
 	rid, err := e.api.ReplayConfirm(partnerContact)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -154,10 +159,10 @@ func (e *E2e) CallAllReceivedRequests(js.Value, []js.Value) interface{} {
 // Returns:
 //  - Throws TypeError if the deletion fails.
 func (e *E2e) DeleteRequest(_ js.Value, args []js.Value) interface{} {
-	partnerContact := CopyBytesToGo(args[0])
+	partnerContact := utils.CopyBytesToGo(args[0])
 	err := e.api.DeleteRequest(partnerContact)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -171,7 +176,7 @@ func (e *E2e) DeleteRequest(_ js.Value, args []js.Value) interface{} {
 func (e *E2e) DeleteAllRequests(js.Value, []js.Value) interface{} {
 	err := e.api.DeleteAllRequests()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -185,7 +190,7 @@ func (e *E2e) DeleteAllRequests(js.Value, []js.Value) interface{} {
 func (e *E2e) DeleteSentRequests(js.Value, []js.Value) interface{} {
 	err := e.api.DeleteSentRequests()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -199,7 +204,7 @@ func (e *E2e) DeleteSentRequests(js.Value, []js.Value) interface{} {
 func (e *E2e) DeleteReceiveRequests(js.Value, []js.Value) interface{} {
 	err := e.api.DeleteReceiveRequests()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -215,14 +220,14 @@ func (e *E2e) DeleteReceiveRequests(js.Value, []js.Value) interface{} {
 //  - The marshalled bytes of [contact.Contact] (Uint8Array).
 //  - Throws TypeError if getting the received request fails.
 func (e *E2e) GetReceivedRequest(_ js.Value, args []js.Value) interface{} {
-	partnerContact := CopyBytesToGo(args[0])
+	partnerContact := utils.CopyBytesToGo(args[0])
 	c, err := e.api.GetReceivedRequest(partnerContact)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(c)
+	return utils.CopyBytesToJS(c)
 }
 
 // VerifyOwnership checks if the received ownership proof is valid.
@@ -236,12 +241,12 @@ func (e *E2e) GetReceivedRequest(_ js.Value, args []js.Value) interface{} {
 //  - Returns true if the ownership is valid (boolean)
 //  - Throws TypeError if loading the parameters fails.
 func (e *E2e) VerifyOwnership(_ js.Value, args []js.Value) interface{} {
-	receivedContact := CopyBytesToGo(args[0])
-	verifiedContact := CopyBytesToGo(args[1])
+	receivedContact := utils.CopyBytesToGo(args[0])
+	verifiedContact := utils.CopyBytesToGo(args[1])
 	isValid, err := e.api.VerifyOwnership(
 		receivedContact, verifiedContact, args[2].Int())
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -259,11 +264,11 @@ func (e *E2e) VerifyOwnership(_ js.Value, args []js.Value) interface{} {
 // Returns:
 //  - Throws TypeError if the [id.ID] cannot be unmarshalled.
 func (e *E2e) AddPartnerCallback(_ js.Value, args []js.Value) interface{} {
-	partnerID := CopyBytesToGo(args[0])
+	partnerID := utils.CopyBytesToGo(args[0])
 	callbacks := newAuthCallbacks(args[1])
 	err := e.api.AddPartnerCallback(partnerID, callbacks)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -279,10 +284,10 @@ func (e *E2e) AddPartnerCallback(_ js.Value, args []js.Value) interface{} {
 // Returns:
 //  - Throws TypeError if the [id.ID] cannot be unmarshalled.
 func (e *E2e) DeletePartnerCallback(_ js.Value, args []js.Value) interface{} {
-	partnerID := CopyBytesToGo(args[0])
+	partnerID := utils.CopyBytesToGo(args[0])
 	err := e.api.DeletePartnerCallback(partnerID)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 

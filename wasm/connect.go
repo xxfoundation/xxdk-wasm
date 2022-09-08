@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -59,11 +60,11 @@ func (c *Connection) GetID(js.Value, []js.Value) interface{} {
 //  - Javascript representation of the Connection object
 //  - throws a TypeError if creating loading the parameters or connecting fails
 func (c *Cmix) Connect(_ js.Value, args []js.Value) interface{} {
-	recipientContact := CopyBytesToGo(args[1])
-	e2eParamsJSON := CopyBytesToGo(args[2])
+	recipientContact := utils.CopyBytesToGo(args[1])
+	e2eParamsJSON := utils.CopyBytesToGo(args[2])
 	api, err := c.api.Connect(args[0].Int(), recipientContact, e2eParamsJSON)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -86,12 +87,12 @@ func (c *Cmix) Connect(_ js.Value, args []js.Value) interface{} {
 //    cmix.WaitForRoundResult to see if the send succeeded (Uint8Array)
 //  - throws a TypeError if sending fails
 func (c *Connection) SendE2E(_ js.Value, args []js.Value) interface{} {
-	sendReport, err := c.api.SendE2E(args[0].Int(), CopyBytesToGo(args[1]))
+	sendReport, err := c.api.SendE2E(args[0].Int(), utils.CopyBytesToGo(args[1]))
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
-	return CopyBytesToJS(sendReport)
+	return utils.CopyBytesToJS(sendReport)
 }
 
 // Close deletes this Connection's partner.Manager and releases resources.
@@ -101,7 +102,7 @@ func (c *Connection) SendE2E(_ js.Value, args []js.Value) interface{} {
 func (c *Connection) Close(js.Value, []js.Value) interface{} {
 	err := c.api.Close()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -113,7 +114,7 @@ func (c *Connection) Close(js.Value, []js.Value) interface{} {
 // Returns:
 //  - bytes of the partner's [id.ID] (Uint8Array)
 func (c *Connection) GetPartner(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(c.api.GetPartner())
+	return utils.CopyBytesToJS(c.api.GetPartner())
 }
 
 // listener adheres to the [bindings.Listener] interface.
@@ -122,7 +123,7 @@ type listener struct {
 	name func(args ...interface{}) js.Value
 }
 
-func (l *listener) Hear(item []byte) { l.hear(CopyBytesToJS(item)) }
+func (l *listener) Hear(item []byte) { l.hear(utils.CopyBytesToJS(item)) }
 func (l *listener) Name() string     { return l.name().String() }
 
 // RegisterListener is used for E2E reception and allows for reading data sent
@@ -137,9 +138,9 @@ func (l *listener) Name() string     { return l.name().String() }
 //  - throws a TypeError is registering the listener fails
 func (c *Connection) RegisterListener(_ js.Value, args []js.Value) interface{} {
 	err := c.api.RegisterListener(args[0].Int(),
-		&listener{WrapCB(args[1], "Hear"), WrapCB(args[1], "Name")})
+		&listener{utils.WrapCB(args[1], "Hear"), utils.WrapCB(args[1], "Name")})
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 

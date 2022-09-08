@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -97,17 +98,17 @@ func (uns *udNetworkStatus) UdNetworkStatus() int {
 //  - Throws a TypeError if creating or loading fails.
 func NewOrLoadUd(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
-	follower := &udNetworkStatus{WrapCB(args[1], "UdNetworkStatus")}
+	follower := &udNetworkStatus{utils.WrapCB(args[1], "UdNetworkStatus")}
 	username := args[2].String()
-	registrationValidationSignature := CopyBytesToGo(args[3])
-	cert := CopyBytesToGo(args[4])
-	contactFile := CopyBytesToGo(args[5])
+	registrationValidationSignature := utils.CopyBytesToGo(args[3])
+	cert := utils.CopyBytesToGo(args[4])
+	contactFile := utils.CopyBytesToGo(args[5])
 	address := args[6].String()
 
 	api, err := bindings.NewOrLoadUd(e2eID, follower, username,
 		registrationValidationSignature, cert, contactFile, address)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -149,18 +150,18 @@ func NewOrLoadUd(_ js.Value, args []js.Value) interface{} {
 //  - Throws a TypeError if getting UD from backup fails.
 func NewUdManagerFromBackup(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
-	follower := &udNetworkStatus{WrapCB(args[1], "UdNetworkStatus")}
-	usernameFactJson := CopyBytesToGo(args[2])
-	emailFactJson := CopyBytesToGo(args[3])
-	phoneFactJson := CopyBytesToGo(args[4])
-	cert := CopyBytesToGo(args[5])
-	contactFile := CopyBytesToGo(args[6])
+	follower := &udNetworkStatus{utils.WrapCB(args[1], "UdNetworkStatus")}
+	usernameFactJson := utils.CopyBytesToGo(args[2])
+	emailFactJson := utils.CopyBytesToGo(args[3])
+	phoneFactJson := utils.CopyBytesToGo(args[4])
+	cert := utils.CopyBytesToGo(args[5])
+	contactFile := utils.CopyBytesToGo(args[6])
 	address := args[7].String()
 
 	api, err := bindings.NewUdManagerFromBackup(e2eID, follower, usernameFactJson, emailFactJson,
 		phoneFactJson, cert, contactFile, address)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -173,7 +174,7 @@ func NewUdManagerFromBackup(_ js.Value, args []js.Value) interface{} {
 // Returns:
 //  - JSON of [fact.FactList] (Uint8Array).
 func (ud *UserDiscovery) GetFacts(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(ud.api.GetFacts())
+	return utils.CopyBytesToJS(ud.api.GetFacts())
 }
 
 // GetContact returns the marshalled bytes of the [contact.Contact] for UD as
@@ -185,11 +186,11 @@ func (ud *UserDiscovery) GetFacts(js.Value, []js.Value) interface{} {
 func (ud *UserDiscovery) GetContact(js.Value, []js.Value) interface{} {
 	c, err := ud.api.GetContact()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(c)
+	return utils.CopyBytesToJS(c)
 }
 
 // ConfirmFact confirms a fact first registered via SendRegisterFact. The
@@ -205,7 +206,7 @@ func (ud *UserDiscovery) GetContact(js.Value, []js.Value) interface{} {
 func (ud *UserDiscovery) ConfirmFact(_ js.Value, args []js.Value) interface{} {
 	err := ud.api.ConfirmFact(args[0].String(), args[1].String())
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -228,9 +229,9 @@ func (ud *UserDiscovery) ConfirmFact(_ js.Value, args []js.Value) interface{} {
 //  - The confirmation ID (string).
 //  - Throws TypeError if sending the fact fails.
 func (ud *UserDiscovery) SendRegisterFact(_ js.Value, args []js.Value) interface{} {
-	confirmationID, err := ud.api.SendRegisterFact(CopyBytesToGo(args[0]))
+	confirmationID, err := ud.api.SendRegisterFact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -247,9 +248,9 @@ func (ud *UserDiscovery) SendRegisterFact(_ js.Value, args []js.Value) interface
 // Returns:
 //  - Throws TypeError if deletion fails.
 func (ud *UserDiscovery) PermanentDeleteAccount(_ js.Value, args []js.Value) interface{} {
-	err := ud.api.PermanentDeleteAccount(CopyBytesToGo(args[0]))
+	err := ud.api.PermanentDeleteAccount(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -265,9 +266,9 @@ func (ud *UserDiscovery) PermanentDeleteAccount(_ js.Value, args []js.Value) int
 // Returns:
 //  - Throws TypeError if removing the fact fails.
 func (ud *UserDiscovery) RemoveFact(_ js.Value, args []js.Value) interface{} {
-	err := ud.api.RemoveFact(CopyBytesToGo(args[0]))
+	err := ud.api.RemoveFact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -285,7 +286,7 @@ type udLookupCallback struct {
 }
 
 func (ulc *udLookupCallback) Callback(contactBytes []byte, err error) {
-	ulc.callback(CopyBytesToJS(contactBytes), err.Error())
+	ulc.callback(utils.CopyBytesToJS(contactBytes), err.Error())
 }
 
 // LookupUD returns the public key of the passed ID as known by the user
@@ -305,19 +306,19 @@ func (ulc *udLookupCallback) Callback(contactBytes []byte, err error) {
 //  - Throws a TypeError if the lookup fails.
 func LookupUD(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
-	udContact := CopyBytesToGo(args[1])
-	cb := &udLookupCallback{WrapCB(args[2], "Callback")}
-	lookupId := CopyBytesToGo(args[3])
-	singleRequestParamsJSON := CopyBytesToGo(args[4])
+	udContact := utils.CopyBytesToGo(args[1])
+	cb := &udLookupCallback{utils.WrapCB(args[2], "Callback")}
+	lookupId := utils.CopyBytesToGo(args[3])
+	singleRequestParamsJSON := utils.CopyBytesToGo(args[4])
 
 	report, err := bindings.LookupUD(
 		e2eID, udContact, cb, lookupId, singleRequestParamsJSON)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(report)
+	return utils.CopyBytesToJS(report)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -331,7 +332,7 @@ type udSearchCallback struct {
 }
 
 func (usc *udSearchCallback) Callback(contactListJSON []byte, err error) {
-	usc.callback(CopyBytesToJS(contactListJSON), err.Error())
+	usc.callback(utils.CopyBytesToJS(contactListJSON), err.Error())
 }
 
 // SearchUD searches user discovery for the passed Facts. The searchCallback
@@ -352,17 +353,17 @@ func (usc *udSearchCallback) Callback(contactListJSON []byte, err error) {
 //  - Throws a TypeError if the search fails.
 func SearchUD(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
-	udContact := CopyBytesToGo(args[1])
-	cb := &udSearchCallback{WrapCB(args[2], "Callback")}
-	factListJSON := CopyBytesToGo(args[3])
-	singleRequestParamsJSON := CopyBytesToGo(args[4])
+	udContact := utils.CopyBytesToGo(args[1])
+	cb := &udSearchCallback{utils.WrapCB(args[2], "Callback")}
+	factListJSON := utils.CopyBytesToGo(args[3])
+	singleRequestParamsJSON := utils.CopyBytesToGo(args[4])
 
 	report, err := bindings.SearchUD(
 		e2eID, udContact, cb, factListJSON, singleRequestParamsJSON)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(report)
+	return utils.CopyBytesToJS(report)
 }

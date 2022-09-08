@@ -10,7 +10,7 @@
 package wasm
 
 import (
-	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -19,7 +19,7 @@ import (
 // Returns:
 //  - The marshalled bytes of the [id.ID] object (Uint8Array)
 func (e *E2e) GetReceptionID(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(e.api.GetReceptionID())
+	return utils.CopyBytesToJS(e.api.GetReceptionID())
 }
 
 // GetAllPartnerIDs returns a list of all partner IDs that the user has an E2E
@@ -31,10 +31,10 @@ func (e *E2e) GetReceptionID(js.Value, []js.Value) interface{} {
 func (e *E2e) GetAllPartnerIDs(js.Value, []js.Value) interface{} {
 	partnerIDs, err := e.api.GetAllPartnerIDs()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
-	return CopyBytesToJS(partnerIDs)
+	return utils.CopyBytesToJS(partnerIDs)
 }
 
 // PayloadSize returns the max payload size for a partitionable E2E message.
@@ -84,10 +84,10 @@ func (e *E2e) FirstPartitionSize(js.Value, []js.Value) interface{} {
 func (e *E2e) GetHistoricalDHPrivkey(js.Value, []js.Value) interface{} {
 	privKey, err := e.api.GetHistoricalDHPrivkey()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
-	return CopyBytesToJS(privKey)
+	return utils.CopyBytesToJS(privKey)
 }
 
 // GetHistoricalDHPubkey returns the user's marshalled historical DH public key.
@@ -99,10 +99,10 @@ func (e *E2e) GetHistoricalDHPrivkey(js.Value, []js.Value) interface{} {
 func (e *E2e) GetHistoricalDHPubkey(js.Value, []js.Value) interface{} {
 	pubKey, err := e.api.GetHistoricalDHPubkey()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
-	return CopyBytesToJS(pubKey)
+	return utils.CopyBytesToJS(pubKey)
 }
 
 // HasAuthenticatedChannel returns true if an authenticated channel with the
@@ -115,9 +115,9 @@ func (e *E2e) GetHistoricalDHPubkey(js.Value, []js.Value) interface{} {
 //  - Existence of authenticated channel (boolean)
 //  - Throws TypeError if unmarshalling the ID or getting the channel fails
 func (e *E2e) HasAuthenticatedChannel(_ js.Value, args []js.Value) interface{} {
-	exists, err := e.api.HasAuthenticatedChannel(CopyBytesToGo(args[0]))
+	exists, err := e.api.HasAuthenticatedChannel(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 	return exists
@@ -133,7 +133,7 @@ func (e *E2e) HasAuthenticatedChannel(_ js.Value, args []js.Value) interface{} {
 func (e *E2e) RemoveService(_ js.Value, args []js.Value) interface{} {
 	err := e.api.RemoveService(args[0].String())
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -150,26 +150,26 @@ func (e *E2e) RemoveService(_ js.Value, args []js.Value) interface{} {
 //  - args[3] - JSON [e2e.Params] (Uint8Array)
 //
 // Returns:
-//  - JSON of the [bindings.E2ESendReport], which can be passed into
-//    Cmix.WaitForRoundResult to see if the send succeeded (Uint8Array)
-//  - Throws TypeError if sending fails
+//  - A promise that returns the JSON of the [bindings.E2ESendReport], which can
+//    be passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    (Uint8Array).
+//  - Throws error if sending fails.
 func (e *E2e) SendE2E(_ js.Value, args []js.Value) interface{} {
-	recipientId := CopyBytesToGo(args[1])
-	payload := CopyBytesToGo(args[2])
-	e2eParams := CopyBytesToGo(args[3])
+	recipientId := utils.CopyBytesToGo(args[1])
+	payload := utils.CopyBytesToGo(args[2])
+	e2eParams := utils.CopyBytesToGo(args[3])
 
-	go func() {
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
 		sendReport, err := e.api.SendE2E(
 			args[0].Int(), recipientId, payload, e2eParams)
 		if err != nil {
-			Throw(TypeError, err)
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
 		}
+	}
 
-		jww.INFO.Printf("Send report: %+v", sendReport)
-	}()
-
-	// return CopyBytesToJS(sendReport)
-	return nil
+	return utils.CreatePromise(promiseFn)
 }
 
 // processor wraps Javascript callbacks to adhere to the [bindings.Processor]
@@ -181,7 +181,7 @@ type processor struct {
 
 func (p *processor) Process(
 	message, receptionId []byte, ephemeralId, roundId int64) {
-	p.process(CopyBytesToJS(message), CopyBytesToJS(receptionId), ephemeralId,
+	p.process(utils.CopyBytesToJS(message), utils.CopyBytesToJS(receptionId), ephemeralId,
 		roundId)
 }
 
@@ -206,11 +206,11 @@ func (p *processor) String() string {
 // Returns:
 //  - Throws TypeError if registering the service fails
 func (e *E2e) AddService(_ js.Value, args []js.Value) interface{} {
-	p := &processor{WrapCB(args[1], "Process"), WrapCB(args[1], "String")}
+	p := &processor{utils.WrapCB(args[1], "Process"), utils.WrapCB(args[1], "String")}
 
 	err := e.api.AddService(args[0].String(), p)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -230,12 +230,12 @@ func (e *E2e) AddService(_ js.Value, args []js.Value) interface{} {
 // Returns:
 //  - Throws TypeError if registering the service fails
 func (e *E2e) RegisterListener(_ js.Value, args []js.Value) interface{} {
-	recipientId := CopyBytesToGo(args[0])
-	l := &listener{WrapCB(args[2], "Hear"), WrapCB(args[2], "Name")}
+	recipientId := utils.CopyBytesToGo(args[0])
+	l := &listener{utils.WrapCB(args[2], "Hear"), utils.WrapCB(args[2], "Name")}
 
 	err := e.api.RegisterListener(recipientId, args[1].Int(), l)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 

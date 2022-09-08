@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -21,7 +22,7 @@ type restlikeCallback struct {
 }
 
 func (rlc *restlikeCallback) Callback(payload []byte, err error) {
-	rlc.callback(CopyBytesToJS(payload), err.Error())
+	rlc.callback(utils.CopyBytesToJS(payload), err.Error())
 }
 
 // RequestRestLike sends a restlike request to a given contact.
@@ -37,17 +38,17 @@ func (rlc *restlikeCallback) Callback(payload []byte, err error) {
 //  - Throws a TypeError if parsing the parameters or making the request fails.
 func RequestRestLike(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
-	recipient := CopyBytesToGo(args[1])
-	request := CopyBytesToGo(args[2])
-	paramsJSON := CopyBytesToGo(args[3])
+	recipient := utils.CopyBytesToGo(args[1])
+	request := utils.CopyBytesToGo(args[2])
+	paramsJSON := utils.CopyBytesToGo(args[3])
 
 	msg, err := bindings.RequestRestLike(e2eID, recipient, request, paramsJSON)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(msg)
+	return utils.CopyBytesToJS(msg)
 }
 
 // AsyncRequestRestLike sends an asynchronous restlike request to a given
@@ -68,15 +69,15 @@ func RequestRestLike(_ js.Value, args []js.Value) interface{} {
 //  - Throws a TypeError if parsing the parameters or making the request fails.
 func AsyncRequestRestLike(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
-	recipient := CopyBytesToGo(args[1])
-	request := CopyBytesToGo(args[2])
-	paramsJSON := CopyBytesToGo(args[3])
-	cb := &restlikeCallback{WrapCB(args[4], "Callback")}
+	recipient := utils.CopyBytesToGo(args[1])
+	request := utils.CopyBytesToGo(args[2])
+	paramsJSON := utils.CopyBytesToGo(args[3])
+	cb := &restlikeCallback{utils.WrapCB(args[4], "Callback")}
 
 	err := bindings.AsyncRequestRestLike(
 		e2eID, recipient, request, paramsJSON, cb)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 

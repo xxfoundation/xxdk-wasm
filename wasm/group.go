@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -55,13 +56,13 @@ func newGroupChatJS(api *bindings.GroupChat) map[string]interface{} {
 //  - Javascript representation of the GroupChat object.
 //  - Throws a TypeError if creating the GroupChat fails.
 func NewGroupChat(_ js.Value, args []js.Value) interface{} {
-	requestFunc := &groupRequest{WrapCB(args[1], "Callback")}
+	requestFunc := &groupRequest{utils.WrapCB(args[1], "Callback")}
 	p := &groupChatProcessor{
-		WrapCB(args[2], "Process"), WrapCB(args[2], "String")}
+		utils.WrapCB(args[2], "Process"), utils.WrapCB(args[2], "String")}
 
 	api, err := bindings.NewGroupChat(args[0].Int(), requestFunc, p)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -87,17 +88,17 @@ func NewGroupChat(_ js.Value, args []js.Value) interface{} {
 //  - Throws a TypeError if making the group fails.
 func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) interface{} {
 	// (membershipBytes, message, name []byte) ([]byte, error)
-	membershipBytes := CopyBytesToGo(args[0])
-	message := CopyBytesToGo(args[1])
-	name := CopyBytesToGo(args[2])
+	membershipBytes := utils.CopyBytesToGo(args[0])
+	message := utils.CopyBytesToGo(args[1])
+	name := utils.CopyBytesToGo(args[2])
 
 	report, err := g.api.MakeGroup(membershipBytes, message, name)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(report)
+	return utils.CopyBytesToJS(report)
 }
 
 // ResendRequest resends a group request to all members in the group.
@@ -112,13 +113,13 @@ func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) interface{} {
 //    succeeded.
 //  - Throws a TypeError if resending the request fails.
 func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) interface{} {
-	report, err := g.api.ResendRequest(CopyBytesToGo(args[0]))
+	report, err := g.api.ResendRequest(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(report)
+	return utils.CopyBytesToJS(report)
 }
 
 // JoinGroup allows a user to join a group when a request is received.
@@ -134,7 +135,7 @@ func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) interface{} {
 func (g *GroupChat) JoinGroup(_ js.Value, args []js.Value) interface{} {
 	err := g.api.JoinGroup(args[0].Int())
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -150,9 +151,9 @@ func (g *GroupChat) JoinGroup(_ js.Value, args []js.Value) interface{} {
 // Returns:
 //  - Throws a TypeError if leaving the group fails.
 func (g *GroupChat) LeaveGroup(_ js.Value, args []js.Value) interface{} {
-	err := g.api.LeaveGroup(CopyBytesToGo(args[0]))
+	err := g.api.LeaveGroup(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -173,16 +174,16 @@ func (g *GroupChat) LeaveGroup(_ js.Value, args []js.Value) interface{} {
 //  - JSON of [bindings.GroupSendReport] (Uint8Array), which can be passed into
 //    Cmix.WaitForRoundResult to see if the group message send succeeded.
 func (g *GroupChat) Send(_ js.Value, args []js.Value) interface{} {
-	groupId := CopyBytesToGo(args[0])
-	message := CopyBytesToGo(args[1])
+	groupId := utils.CopyBytesToGo(args[0])
+	message := utils.CopyBytesToGo(args[1])
 
 	report, err := g.api.Send(groupId, message, args[2].String())
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(report)
+	return utils.CopyBytesToJS(report)
 }
 
 // GetGroups returns a list of group IDs that the user is a member of.
@@ -194,11 +195,11 @@ func (g *GroupChat) GetGroups(js.Value, []js.Value) interface{} {
 	// () ([]byte, error)
 	groups, err := g.api.GetGroups()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(groups)
+	return utils.CopyBytesToJS(groups)
 }
 
 // GetGroup returns the group with the group ID. If no group exists, then the
@@ -212,9 +213,9 @@ func (g *GroupChat) GetGroups(js.Value, []js.Value) interface{} {
 //  - Javascript representation of the Group object.
 //  - Throws a TypeError if getting the group fails
 func (g *GroupChat) GetGroup(_ js.Value, args []js.Value) interface{} {
-	grp, err := g.api.GetGroup(CopyBytesToGo(args[0]))
+	grp, err := g.api.GetGroup(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -262,7 +263,7 @@ func newGroupJS(api *bindings.Group) map[string]interface{} {
 // Returns:
 //  - Uint8Array
 func (g *Group) GetName(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(g.api.GetName())
+	return utils.CopyBytesToJS(g.api.GetName())
 }
 
 // GetID return the 33-byte unique group ID. This represents the id.ID object.
@@ -270,7 +271,7 @@ func (g *Group) GetName(js.Value, []js.Value) interface{} {
 // Returns:
 //  - Uint8Array
 func (g *Group) GetID(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(g.api.GetID())
+	return utils.CopyBytesToJS(g.api.GetID())
 }
 
 // GetTrackedID returns the tracked ID of the Group object. This is used by the
@@ -287,7 +288,7 @@ func (g *Group) GetTrackedID(js.Value, []js.Value) interface{} {
 // Returns:
 //  - Uint8Array
 func (g *Group) GetInitMessage(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(g.api.GetInitMessage())
+	return utils.CopyBytesToJS(g.api.GetInitMessage())
 }
 
 // GetCreatedNano returns the time the group was created in nanoseconds. This is
@@ -318,11 +319,11 @@ func (g *Group) GetCreatedMS(js.Value, []js.Value) interface{} {
 func (g *Group) GetMembership(js.Value, []js.Value) interface{} {
 	membership, err := g.api.GetMembership()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(membership)
+	return utils.CopyBytesToJS(membership)
 }
 
 // Serialize serializes the Group.
@@ -330,7 +331,7 @@ func (g *Group) GetMembership(js.Value, []js.Value) interface{} {
 // Returns:
 //  - Byte representation of the Group (Uint8Array).
 func (g *Group) Serialize(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(g.api.Serialize())
+	return utils.CopyBytesToJS(g.api.Serialize())
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,8 +357,8 @@ type groupChatProcessor struct {
 
 func (gcp *groupChatProcessor) Process(decryptedMessage, msg,
 	receptionId []byte, ephemeralId, roundId int64, err error) {
-	gcp.callback(CopyBytesToJS(decryptedMessage), CopyBytesToJS(msg),
-		CopyBytesToJS(receptionId), ephemeralId, roundId, err.Error())
+	gcp.callback(utils.CopyBytesToJS(decryptedMessage), utils.CopyBytesToJS(msg),
+		utils.CopyBytesToJS(receptionId), ephemeralId, roundId, err.Error())
 }
 
 func (gcp *groupChatProcessor) String() string {

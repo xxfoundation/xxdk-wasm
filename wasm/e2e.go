@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -91,13 +92,13 @@ func (e *E2e) GetID(js.Value, []js.Value) interface{} {
 //  - Throws a TypeError if logging in fails.
 func Login(_ js.Value, args []js.Value) interface{} {
 	callbacks := newAuthCallbacks(args[1])
-	identity := CopyBytesToGo(args[2])
-	e2eParamsJSON := CopyBytesToGo(args[3])
+	identity := utils.CopyBytesToGo(args[2])
+	e2eParamsJSON := utils.CopyBytesToGo(args[3])
 
 	newE2E, err := bindings.Login(
 		args[0].Int(), callbacks, identity, e2eParamsJSON)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -121,13 +122,13 @@ func Login(_ js.Value, args []js.Value) interface{} {
 //  - Throws a TypeError if logging in fails.
 func LoginEphemeral(_ js.Value, args []js.Value) interface{} {
 	callbacks := newAuthCallbacks(args[1])
-	identity := CopyBytesToGo(args[2])
-	e2eParamsJSON := CopyBytesToGo(args[3])
+	identity := utils.CopyBytesToGo(args[2])
+	e2eParamsJSON := utils.CopyBytesToGo(args[3])
 
 	newE2E, err := bindings.LoginEphemeral(
 		args[0].Int(), callbacks, identity, e2eParamsJSON)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -139,7 +140,7 @@ func LoginEphemeral(_ js.Value, args []js.Value) interface{} {
 // Returns:
 //  - Marshalled [contact.Contact] (Uint8Array)
 func (e *E2e) GetContact(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(e.api.GetContact())
+	return utils.CopyBytesToJS(e.api.GetContact())
 }
 
 // GetUdAddressFromNdf retrieve the User Discovery's network address fom the
@@ -156,7 +157,7 @@ func (e *E2e) GetUdAddressFromNdf(js.Value, []js.Value) interface{} {
 // Returns:
 //  - Public certificate in PEM format (Uint8Array)
 func (e *E2e) GetUdCertFromNdf(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(e.api.GetUdCertFromNdf())
+	return utils.CopyBytesToJS(e.api.GetUdCertFromNdf())
 }
 
 // GetUdContactFromNdf assembles the User Discovery's contact file from the data
@@ -168,11 +169,11 @@ func (e *E2e) GetUdCertFromNdf(js.Value, []js.Value) interface{} {
 func (e *E2e) GetUdContactFromNdf(js.Value, []js.Value) interface{} {
 	b, err := e.api.GetUdContactFromNdf()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(b)
+	return utils.CopyBytesToJS(b)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,15 +194,15 @@ func newAuthCallbacks(value js.Value) *authCallbacks {
 	a := &authCallbacks{}
 
 	if value.Get("Request").Type() == js.TypeFunction {
-		a.request = WrapCB(value, "Request")
+		a.request = utils.WrapCB(value, "Request")
 	}
 
 	if value.Get("Confirm").Type() == js.TypeFunction {
-		a.confirm = WrapCB(value, "Confirm")
+		a.confirm = utils.WrapCB(value, "Confirm")
 	}
 
 	if value.Get("Reset").Type() == js.TypeFunction {
-		a.reset = WrapCB(value, "Reset")
+		a.reset = utils.WrapCB(value, "Reset")
 	}
 
 	return a
@@ -210,7 +211,7 @@ func newAuthCallbacks(value js.Value) *authCallbacks {
 func (a *authCallbacks) Request(
 	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.request != nil {
-		a.request(CopyBytesToJS(contact), CopyBytesToJS(receptionId),
+		a.request(utils.CopyBytesToJS(contact), utils.CopyBytesToJS(receptionId),
 			ephemeralId, roundId)
 	}
 }
@@ -218,7 +219,7 @@ func (a *authCallbacks) Request(
 func (a *authCallbacks) Confirm(
 	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.confirm != nil {
-		a.confirm(CopyBytesToJS(contact), CopyBytesToJS(receptionId),
+		a.confirm(utils.CopyBytesToJS(contact), utils.CopyBytesToJS(receptionId),
 			ephemeralId, roundId)
 	}
 
@@ -226,7 +227,7 @@ func (a *authCallbacks) Confirm(
 func (a *authCallbacks) Reset(
 	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.reset != nil {
-		a.reset(CopyBytesToJS(contact), CopyBytesToJS(receptionId),
+		a.reset(utils.CopyBytesToJS(contact), utils.CopyBytesToJS(receptionId),
 			ephemeralId, roundId)
 	}
 }

@@ -23,9 +23,9 @@ be run using the following command.
 $ GOOS=js GOARCH=wasm go test ./...
 ```
 
-Note, this will fail because `wasm/wasm_js.s` contains commands only recognized
+Note, this will fail because `utils/utils_js.s` contains commands only recognized
 by the Go WebAssembly compiler and for some reason not recognized by the test
-runner. To get tests to run, temporarily delete the body of `wasm/wasm_js.s`
+runner. To get tests to run, temporarily delete the body of `utils/utils_js.s`
 during testing.
 
 ## Testing
@@ -65,7 +65,7 @@ global.Go = class {
             go: {
                 // ...
                 // func Throw(exception string, message string)
-                'gitlab.com/elixxir/xxdk-wasm/wasm.throw': (sp) => {
+                'gitlab.com/elixxir/xxdk-wasm/utils.throw': (sp) => {
                     const exception = loadString(sp + 8)
                     const message = loadString(sp + 24)
                     throw globalThis[exception](message)

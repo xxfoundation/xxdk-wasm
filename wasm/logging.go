@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"io"
 	"log"
 	"syscall/js"
@@ -42,7 +43,7 @@ func LogLevel(_ js.Value, args []js.Value) interface{} {
 	level := args[0].Int()
 	if level < 0 || level > 6 {
 		err := errors.Errorf("log level is not valid: log level: %d", level)
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 

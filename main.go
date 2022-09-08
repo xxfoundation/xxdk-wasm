@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
 	"os"
 	"syscall/js"
@@ -22,6 +23,10 @@ import (
 func main() {
 	fmt.Println("Starting xxDK WebAssembly bindings.")
 	fmt.Printf("Client version %s\n", bindings.GetVersion())
+
+	// utils/array.go
+	js.Global().Set("Uint8ArrayToBase64", js.FuncOf(utils.Uint8ArrayToBase64))
+	js.Global().Set("Base64ToUint8Array", js.FuncOf(utils.Base64ToUint8Array))
 
 	// wasm/backup.go
 	js.Global().Set("NewCmixFromBackup", js.FuncOf(wasm.NewCmixFromBackup))
@@ -34,7 +39,6 @@ func main() {
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
 	js.Global().Set("LoadCmix", js.FuncOf(wasm.LoadCmix))
-	js.Global().Set("GetLoadCmix", js.FuncOf(wasm.GetLoadCmix))
 
 	// wasm/dummy.go
 	js.Global().Set("NewDummyTrafficManager",
@@ -125,7 +129,7 @@ func main() {
 	defer func() {
 		jww.CRITICAL.Printf("Before recover\n")
 		if rec := recover(); rec != nil {
-			wasm.Throw(wasm.TypeError, errors.Errorf(fmt.Sprintf("%+v", rec)))
+			utils.Throw(utils.TypeError, errors.Errorf(fmt.Sprintf("%+v", rec)))
 		}
 		jww.CRITICAL.Printf("After recover\n")
 	}()

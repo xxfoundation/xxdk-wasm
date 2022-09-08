@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -36,20 +37,20 @@ import (
 //  - Throws a TypeError if transmission fails.
 func TransmitSingleUse(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
-	recipient := CopyBytesToGo(args[1])
+	recipient := utils.CopyBytesToGo(args[1])
 	tag := args[2].String()
-	payload := CopyBytesToGo(args[3])
-	paramsJSON := CopyBytesToGo(args[4])
-	responseCB := &singleUseResponse{WrapCB(args[5], "Callback")}
+	payload := utils.CopyBytesToGo(args[3])
+	paramsJSON := utils.CopyBytesToGo(args[4])
+	responseCB := &singleUseResponse{utils.WrapCB(args[5], "Callback")}
 
 	report, err := bindings.TransmitSingleUse(
 		e2eID, recipient, tag, payload, paramsJSON, responseCB)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(report)
+	return utils.CopyBytesToJS(report)
 }
 
 // Listen starts a single-use listener on a given tag using the passed in E2e
@@ -67,10 +68,10 @@ func TransmitSingleUse(_ js.Value, args []js.Value) interface{} {
 //    function used to stop the listener.
 //  - Throws a TypeError if listening fails.
 func Listen(_ js.Value, args []js.Value) interface{} {
-	cb := &singleUseCallback{WrapCB(args[2], "Callback")}
+	cb := &singleUseCallback{utils.WrapCB(args[2], "Callback")}
 	api, err := bindings.Listen(args[0].Int(), args[1].String(), cb)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -114,7 +115,7 @@ type singleUseCallback struct {
 }
 
 func (suc *singleUseCallback) Callback(callbackReport []byte, err error) {
-	suc.callback(CopyBytesToJS(callbackReport), err.Error())
+	suc.callback(utils.CopyBytesToJS(callbackReport), err.Error())
 }
 
 // singleUseResponse wraps Javascript callbacks to adhere to the
@@ -124,5 +125,5 @@ type singleUseResponse struct {
 }
 
 func (sur *singleUseResponse) Callback(responseReport []byte, err error) {
-	sur.callback(CopyBytesToJS(responseReport), err.Error())
+	sur.callback(utils.CopyBytesToJS(responseReport), err.Error())
 }

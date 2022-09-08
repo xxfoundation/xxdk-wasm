@@ -1,4 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
+// Copyright © 2020 xx network SEZC                                           //
+//                                                                            //
+// Use of this source code is governed by a license that can be found in the  //
+// LICENSE file                                                               //
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 // Copyright © 2022 xx foundation                                             //
 //                                                                            //
 // Use of this source code is governed by a license that can be found in the  //
@@ -7,7 +14,7 @@
 
 //go:build js && wasm
 
-package wasm
+package utils
 
 import (
 	"encoding/json"
@@ -61,11 +68,48 @@ func JsonToJS(src []byte) js.Value {
 	return js.ValueOf(inInterface)
 }
 
+// JsError converts the error to a Javascript Error.
+func JsError(err error) js.Value {
+	errorConstructor := js.Global().Get("Error")
+	return errorConstructor.New(err.Error())
+}
+
+// JsTrace converts the error to a Javascript Error that includes the error's
+// stack trace.
+func JsTrace(err error) js.Value {
+	errorConstructor := js.Global().Get("Error")
+	return errorConstructor.New(fmt.Sprintf("%+v", err))
+}
+
 // Throw function stub to throws Javascript exceptions. The exception must be
 // one of the defined Exception below. Any other error types will result in an
 // error.
 func Throw(exception Exception, err error) {
 	throw(exception, fmt.Sprintf("%+v", err))
+}
+
+type PromiseFn func(resolve, reject func(args ...interface{}) js.Value)
+
+// CreatePromise creates a Javascript promise to return the value of a blocking
+// Go function to Javascript.
+func CreatePromise(f PromiseFn) interface{} {
+	// Create handler for promise (this will be a Javascript function)
+	handler := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		// It receives two arguments, which are JS functions: resolve and reject
+		resolve := args[0]
+		reject := args[1]
+
+		// Spawn a new go routine to perform the blocking function
+		go func() {
+			f(resolve.Invoke, reject.Invoke)
+		}()
+
+		return nil
+	})
+
+	// Create and return the Promise object
+	promiseConstructor := js.Global().Get("Promise")
+	return promiseConstructor.New(handler)
 }
 
 func throw(exception Exception, message string)

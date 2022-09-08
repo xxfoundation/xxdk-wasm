@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -74,12 +75,12 @@ func newCmixJS(api *bindings.Cmix) map[string]interface{} {
 // Returns:
 //  - throws a TypeError if creating new Cmix fails.
 func NewCmix(_ js.Value, args []js.Value) interface{} {
-	password := CopyBytesToGo(args[2])
+	password := utils.CopyBytesToGo(args[2])
 
 	err := bindings.NewCmix(
 		args[0].String(), args[1].String(), password, args[3].String())
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -102,31 +103,23 @@ func NewCmix(_ js.Value, args []js.Value) interface{} {
 //  - args[2] - JSON of [xxdk.CMIXParams] (Uint8Array)
 //
 // Returns:
-//  - Javascript representation of the Cmix object
-//  - throws a TypeError if creating loading Cmix fails
+//  - A promise that returns a Javascript representation of the Cmix object.
+//  - Throws a error if loading Cmix fails.
 func LoadCmix(_ js.Value, args []js.Value) interface{} {
-	password := CopyBytesToGo(args[1])
-	cmixParamsJSON := CopyBytesToGo(args[2])
+	storageDir := args[0].String()
+	password := utils.CopyBytesToGo(args[1])
+	cmixParamsJSON := utils.CopyBytesToGo(args[2])
 
-	go func() {
-		_, err := bindings.LoadCmix(args[0].String(), password, cmixParamsJSON)
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		net, err := bindings.LoadCmix(storageDir, password, cmixParamsJSON)
 		if err != nil {
-			Throw(TypeError, err)
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(newCmixJS(net))
 		}
-	}()
+	}
 
-	return bindings.GetCurrentID()
-}
-
-// GetLoadCmix returns the cmix object for the ID.
-//
-// Parameters:
-//  - args[0] - ID of Cmix object in tracker (int).
-//
-// Returns:
-//  - Javascript representation of the Cmix object
-func GetLoadCmix(_ js.Value, args []js.Value) interface{} {
-	return newCmixJS(bindings.GetCmix(args[0].Int()))
+	return utils.CreatePromise(promiseFn)
 }
 
 // GetID returns the ID for this [bindings.Cmix] in the cmixTracker.
