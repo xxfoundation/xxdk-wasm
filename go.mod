@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client v1.5.1-0.20220902170056-d62bc2d4f9c6
+	gitlab.com/elixxir/client v1.5.1-0.20220907184817-0409e48f068a
 )
 
 require (
@@ -30,18 +30,17 @@ require (
 	github.com/rs/cors v1.8.2 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
-	github.com/stretchr/testify v1.7.2 // indirect
 	github.com/ttacon/builder v0.0.0-20170518171403-c099f663e1c2 // indirect
 	github.com/ttacon/libphonenumber v1.2.1 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	gitlab.com/elixxir/bloomfilter v0.0.0-20211222005329-7d931ceead6f // indirect
-	gitlab.com/elixxir/comms v0.0.4-0.20220902165744-4fedc48e463e // indirect
+	gitlab.com/elixxir/comms v0.0.4-0.20220907184530-d8eec143a1e8 // indirect
 	gitlab.com/elixxir/crypto v0.0.7-0.20220902165412-5c5e3e990e84 // indirect
-	gitlab.com/elixxir/ekv v0.1.8-0.20220822181335-d72271c9780d // indirect
-	gitlab.com/elixxir/primitives v0.0.3-0.20220810173935-592f34a88326 // indirect
+	gitlab.com/elixxir/ekv v0.2.1-0.20220901224437-ab4cbf94bf8b // indirect
+	gitlab.com/elixxir/primitives v0.0.3-0.20220901220638-1acc75fabdc6 // indirect
 	gitlab.com/xx_network/comms v0.0.4-0.20220902164216-e3272eb0efac // indirect
-	gitlab.com/xx_network/crypto v0.0.5-0.20220729193517-1e5e96f39f6e // indirect
+	gitlab.com/xx_network/crypto v0.0.5-0.20220902182733-69aad094b487 // indirect
 	gitlab.com/xx_network/primitives v0.0.4-0.20220809193445-9fc0a5209548 // indirect
 	gitlab.com/xx_network/ring v0.0.3-0.20220222211904-da613960ad93 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
