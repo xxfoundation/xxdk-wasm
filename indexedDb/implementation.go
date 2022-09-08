@@ -38,14 +38,14 @@ type wasmModel struct {
 func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 	parentErr := errors.New("failed to JoinChannel")
 
-	// Build Channel object
+	// Build object
 	newChannel := Channel{
 		Id:          channel.ReceptionID.Marshal(),
 		Name:        channel.Name,
 		Description: channel.Description,
 	}
 
-	// Convert Channel to jsObject
+	// Convert to jsObject
 	newChannelJson, err := json.Marshal(&newChannel)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
@@ -62,13 +62,13 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 
 	// Prepare the Transaction
 	ctx := context.Background()
-	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
+	txn, err := w.db.Transaction(idb.TransactionReadWrite, channelsStoreName)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
 			"Unable to create Transaction: %+v", err))
 		return
 	}
-	store, err := txn.ObjectStore(messageStoreName)
+	store, err := txn.ObjectStore(channelsStoreName)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
 			"Unable to get ObjectStore: %+v", err))
@@ -98,13 +98,13 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 
 	// Prepare the Transaction
 	ctx := context.Background()
-	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
+	txn, err := w.db.Transaction(idb.TransactionReadWrite, channelsStoreName)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
 			"Unable to create Transaction: %+v", err))
 		return
 	}
-	store, err := txn.ObjectStore(messageStoreName)
+	store, err := txn.ObjectStore(channelsStoreName)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrapf(parentErr,
 			"Unable to get ObjectStore: %+v", err))
@@ -128,12 +128,73 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 	}
 }
 
+// receiveHelper is a private helper for receiving any sort of message
+func (w *wasmModel) receiveHelper(channelID []byte, messageID []byte,
+	parentId []byte, senderUsername string,
+	text string, timestamp time.Time, lease time.Duration) error {
+	// Build object
+	newMessage := Message{
+		Id:              messageID,
+		SenderUsername:  senderUsername,
+		ChannelId:       channelID,
+		ParentMessageId: parentId,
+		Timestamp:       timestamp,
+		Lease:           lease,
+		Status:          uint8(channels.Delivered),
+		Hidden:          false,
+		Pinned:          false,
+		Text:            text,
+	}
+
+	// Convert to jsObject
+	newMessageJson, err := json.Marshal(&newMessage)
+	if err != nil {
+		return errors.Errorf("Unable to marshal Message: %+v", err)
+	}
+	var messageObj *jsObject
+	err = json.Unmarshal(newMessageJson, messageObj)
+	if err != nil {
+		return errors.Errorf("Unable to unmarshal Message: %+v", err)
+	}
+
+	// Prepare the Transaction
+	ctx := context.Background()
+	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
+	if err != nil {
+		return errors.Errorf("Unable to create Transaction: %+v", err)
+	}
+	store, err := txn.ObjectStore(messageStoreName)
+	if err != nil {
+		return errors.Errorf("Unable to get ObjectStore: %+v", err)
+	}
+
+	// Perform the operation
+	_, err = store.Add(js.ValueOf(*messageObj))
+	if err != nil {
+		return errors.Errorf("Unable to Add Message: %+v", err)
+	}
+
+	// Wait for the operation to return
+	err = txn.Await(ctx)
+	if err != nil {
+		return errors.Errorf("Adding Message failed: %+v", err)
+	}
+	return nil
+}
+
 // ReceiveMessage is called whenever a message is received on a given channel
 // It may be called multiple times on the same message, it is incumbent on
 // the user of the API to filter such called by message ID.
 func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID cryptoChannel.MessageID,
-	senderUsername string, text string,
-	timestamp time.Time, lease time.Duration, round rounds.Round) {
+	senderUsername string, text string, timestamp time.Time, lease time.Duration,
+	round rounds.Round) {
+	parentErr := errors.New("failed to ReceiveMessage")
+
+	err := w.receiveHelper(channelID.Marshal(), messageID.Bytes(), nil,
+		senderUsername, text, timestamp, lease)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
+	}
 }
 
 // ReceiveReply is called whenever a message is received which is a reply
@@ -141,10 +202,17 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID cryptoChannel.Mes
 // it is incumbent on the user of the API to filter such called by message ID
 // Messages may arrive our of order, so a reply in theory can arrive before
 // the initial message, as a result it may be important to buffer replies.
-func (w *wasmModel) ReceiveReply(ChannelID *id.ID, messageID cryptoChannel.MessageID,
-	SenderUsername string, text string, timestamp time.Time,
-	lease time.Duration, round rounds.Round) {
+func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID cryptoChannel.MessageID,
+	replyTo cryptoChannel.MessageID, senderUsername string,
+	text string, timestamp time.Time, lease time.Duration,
+	round rounds.Round) {
+	parentErr := errors.New("failed to ReceiveReply")
 
+	err := w.receiveHelper(channelID.Marshal(), messageID.Bytes(),
+		replyTo.Bytes(), senderUsername, text, timestamp, lease)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
+	}
 }
 
 // ReceiveReaction is called whenever a reaction to a message is received
@@ -156,6 +224,13 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID cryptoChannel.Me
 	reactionTo cryptoChannel.MessageID, senderUsername string,
 	reaction string, timestamp time.Time, lease time.Duration,
 	round rounds.Round) {
+	parentErr := errors.New("failed to ReceiveReaction")
+
+	err := w.receiveHelper(channelID.Marshal(), messageID.Bytes(),
+		reactionTo.Bytes(), senderUsername, reaction, timestamp, lease)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
+	}
 }
 
 // MessageSent is called whenever the user sends a message. It should be

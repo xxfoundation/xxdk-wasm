@@ -40,14 +40,16 @@ const (
 // A Message belongs to one Channel.
 // A Message may belong to one Message (Parent).
 type Message struct {
-	Id              []byte    `json:"id"` // Matches pkeyName
-	SenderId        []byte    `json:"sender_id"`
-	ChannelId       []byte    `json:"channel_id"`        // Index
-	ParentMessageId []byte    `json:"parent_message_id"` // Index
-	Timestamp       time.Time `json:"timestamp"`         // Index
-	Status          uint8     `json:"status"`
-	Hidden          bool      `json:"hidden"`
-	Pinned          bool      `json:"pinned"` // Index
+	Id              []byte        `json:"id"` // Matches pkeyName
+	SenderUsername  string        `json:"sender_username"`
+	ChannelId       []byte        `json:"channel_id"`        // Index
+	ParentMessageId []byte        `json:"parent_message_id"` // Index
+	Timestamp       time.Time     `json:"timestamp"`         // Index
+	Lease           time.Duration `json:"lease"`
+	Status          uint8         `json:"status"`
+	Hidden          bool          `json:"hidden"`
+	Pinned          bool          `json:"pinned"` // Index
+	Text            string        `json:"text"`
 }
 
 // User defines the IndexedDb representation of a single User.
