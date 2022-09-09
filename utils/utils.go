@@ -25,6 +25,7 @@ import (
 
 var (
 	Error      = js.Global().Get("Error")
+	JSON       = js.Global().Get("JSON")
 	Promise    = js.Global().Get("Promise")
 	Uint8Array = js.Global().Get("Uint8Array")
 )
@@ -62,15 +63,20 @@ func WrapCB(parent js.Value, m string) func(args ...interface{}) js.Value {
 }
 
 // JsonToJS converts a marshalled JSON bytes to a Javascript object.
-func JsonToJS(src []byte) js.Value {
+func JsonToJS(src []byte) (js.Value, error) {
 	var inInterface map[string]interface{}
 	err := json.Unmarshal(src, &inInterface)
 	if err != nil {
 		Throw(TypeError, err)
-		return js.ValueOf(nil)
+		return js.ValueOf(nil), err
 	}
 
-	return js.ValueOf(inInterface)
+	return js.ValueOf(inInterface), nil
+}
+
+// JsToJson converts the Javascript value to JSON.
+func JsToJson(value js.Value) string {
+	return JSON.Call("stringify", value).String()
 }
 
 type PromiseFn func(resolve, reject func(args ...interface{}) js.Value)
