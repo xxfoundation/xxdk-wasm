@@ -16,6 +16,7 @@ import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 	"time"
 
@@ -40,17 +41,6 @@ func newContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), dbTimeout)
 }
 
-// convertJsonToJs is a helper that converts JSON bytes input
-// to a [js.Value] of the object subtype.
-func convertJsonToJs(inputJson []byte) (js.Value, error) {
-	jsObj := make(map[string]interface{})
-	err := json.Unmarshal(inputJson, &jsObj)
-	if err != nil {
-		return js.Value{}, err
-	}
-	return js.ValueOf(jsObj), nil
-}
-
 // JoinChannel is called whenever a channel is joined locally.
 func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 	parentErr := errors.New("failed to JoinChannel")
@@ -69,7 +59,7 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 			"Unable to marshal Channel: %+v", err))
 		return
 	}
-	channelObj, err := convertJsonToJs(newChannelJson)
+	channelObj, err := utils.JsonToJS(newChannelJson)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to marshal Channel: %+v", err))
@@ -240,7 +230,7 @@ func (w *wasmModel) receiveHelper(newMessage *Message) error {
 	if err != nil {
 		return errors.Errorf("Unable to marshal Message: %+v", err)
 	}
-	messageObj, err := convertJsonToJs(newMessageJson)
+	messageObj, err := utils.JsonToJS(newMessageJson)
 	if err != nil {
 		return errors.Errorf("Unable to marshal Message: %+v", err)
 	}
@@ -273,33 +263,43 @@ func (w *wasmModel) receiveHelper(newMessage *Message) error {
 }
 
 // dump is used to output given ObjectStore contents to log for debugging
-func (w *wasmModel) dump(objectStoreName string) {
+func (w *wasmModel) dump(objectStoreName string) ([]string, error) {
+	parentErr := errors.Errorf("failed to dump %s", objectStoreName)
+
 	txn, err := w.db.Transaction(idb.TransactionReadOnly, objectStoreName)
 	if err != nil {
-		jww.ERROR.Printf("Failed to create Transaction: %+v", err)
+		return nil, errors.WithMessagef(parentErr,
+			"Unable to create Transaction: %+v", err)
 	}
 	store, err := txn.ObjectStore(objectStoreName)
 	if err != nil {
-		jww.ERROR.Printf("Failed to get ObjectStore: %+v", err)
+		return nil, errors.WithMessagef(parentErr,
+			"Unable to get ObjectStore: %+v", err)
 	}
 	cursorRequest, err := store.OpenCursor(idb.CursorNext)
 	if err != nil {
-		jww.ERROR.Printf("Failed to open Cursor: %+v", err)
+		return nil, errors.WithMessagef(parentErr,
+			"Unable to open Cursor: %+v", err)
 	}
 
 	// Run the query
-	jww.INFO.Printf("%s values:", objectStoreName)
+	jww.DEBUG.Printf("%s values:", objectStoreName)
+	results := make([]string, 0)
 	ctx, cancel := newContext()
 	err = cursorRequest.Iter(ctx, func(cursor *idb.CursorWithValue) error {
 		value, err := cursor.Value()
 		if err != nil {
 			return err
 		}
-		jww.INFO.Printf("- %v", js.Global().Get("JSON").Call("stringify", value))
+		valueStr := utils.JsToJson(value)
+		results = append(results, valueStr)
+		jww.DEBUG.Printf("- %v", valueStr)
 		return nil
 	})
 	cancel()
 	if err != nil {
-		jww.ERROR.Printf("Failed to dump ObjectStore: %+v", err)
+		return nil, errors.WithMessagef(parentErr,
+			"Unable to dump ObjectStore: %+v", err)
 	}
+	return results, nil
 }
