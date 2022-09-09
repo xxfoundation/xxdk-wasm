@@ -10,6 +10,7 @@
 package wasm
 
 import (
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -21,7 +22,7 @@ type messageDeliveryCallback struct {
 
 func (mdc *messageDeliveryCallback) EventCallback(
 	delivered, timedOut bool, roundResults []byte) {
-	mdc.eventCallback(delivered, timedOut, CopyBytesToJS(roundResults))
+	mdc.eventCallback(delivered, timedOut, utils.CopyBytesToJS(roundResults))
 }
 
 // WaitForRoundResult allows the caller to get notified if the rounds a message
@@ -48,12 +49,12 @@ func (mdc *messageDeliveryCallback) EventCallback(
 //  - throws a TypeError if the parameters are invalid or getting round results
 //    fails
 func (c *Cmix) WaitForRoundResult(_ js.Value, args []js.Value) interface{} {
-	roundList := CopyBytesToGo(args[0])
-	mdc := &messageDeliveryCallback{WrapCB(args[1], "EventCallback")}
+	roundList := utils.CopyBytesToGo(args[0])
+	mdc := &messageDeliveryCallback{utils.WrapCB(args[1], "EventCallback")}
 
 	err := c.api.WaitForRoundResult(roundList, mdc, args[2].Int())
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 

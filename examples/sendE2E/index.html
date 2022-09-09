@@ -1,0 +1,70 @@
+<!--
+  ~ Copyright © 2020 xx network SEZC                                           ///
+  ~                                                                            ///
+  ~ Use of this source code is governed by a license that can be found in the  ///
+  ~ LICENSE file                                                               ///
+  -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Receiver</title>
+
+	<link rel="stylesheet" type="text/css" href="../styles.css">
+	<link rel="shortcut icon" type="image/x-icon" href="receiver-favicon.ico" />
+
+	<script type="text/javascript" src="xxdk.js"></script>
+	<script type="text/javascript" src="../wasm_exec.js"></script>
+	<script>
+        // Use the encoder to convert a string to Uint8Array using enc.encode()
+
+        const go = new Go();
+        WebAssembly.instantiateStreaming(fetch("../xxdk.wasm"), go.importObject).then((result) => {
+            go.run(result.instance);
+
+            LogLevel(0);
+
+            const recipientContactFile = '';
+            const myContactFileName = 'myE2eContact.xxc';
+            const statePath = 'statePathRecipient';
+            const statePass = 'password';
+
+            document.getElementById('ndf-input')
+                .addEventListener('change', function (e) {
+                    let reader = new FileReader();
+                    reader.onload = function (e) {
+                        SendE2e(e.target.result, recipientContactFile, myContactFileName, statePath, statePass);
+                    };
+                    reader.readAsText(e.target.files[0]);
+                }, false);
+        });
+	</script>
+</head>
+<body>
+<h1>Receiver</h1>
+<form id="start-cmix">
+	<div>
+		<label for="ndf-input">Select NDF file to use <code>ndf</code> variable in JS (required):</label><br/>
+		<input type="file" id="ndf-input" required/>
+	</div>
+	<!--	<div>
+			<label for="recipient-contact-input">Recipient contact path (optional):</label><br/>
+			<input type="file" id="recipient-contact-input"/>
+		</div>
+		<div>
+			<label for="session-path">Session path (required):</label><br/>
+			<input type="text" id="session-path" required/>
+		</div>
+		<div>
+			<label for="session-password">Storage password (required):</label><br/>
+			<input type="text" id="session-password" required/>
+		</div>
+		<input type="submit" value="Start">-->
+</form>
+<div id="output" style="padding:10px;border:1px solid red"></div>
+</body>
+
+<script>
+</script>
+</html>

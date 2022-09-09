@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -44,7 +45,7 @@ type updateBackupFunc struct {
 }
 
 func (ubf *updateBackupFunc) UpdateBackup(encryptedBackup []byte) {
-	ubf.updateBackup(CopyBytesToJS(encryptedBackup))
+	ubf.updateBackup(utils.CopyBytesToJS(encryptedBackup))
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,17 +70,17 @@ func NewCmixFromBackup(_ js.Value, args []js.Value) interface{} {
 	ndfJSON := args[0].String()
 	storageDir := args[1].String()
 	backupPassphrase := args[2].String()
-	sessionPassword := CopyBytesToGo(args[3])
-	backupFileContents := CopyBytesToGo(args[4])
+	sessionPassword := utils.CopyBytesToGo(args[3])
+	backupFileContents := utils.CopyBytesToGo(args[4])
 
 	report, err := bindings.NewCmixFromBackup(ndfJSON, storageDir,
 		backupPassphrase, sessionPassword, backupFileContents)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(report)
+	return utils.CopyBytesToJS(report)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,11 +102,11 @@ func NewCmixFromBackup(_ js.Value, args []js.Value) interface{} {
 //  - Javascript representation of the Backup object
 //  - Throws a TypeError if initializing the Backup fails.
 func InitializeBackup(_ js.Value, args []js.Value) interface{} {
-	cb := &updateBackupFunc{WrapCB(args[3], "UpdateBackup")}
+	cb := &updateBackupFunc{utils.WrapCB(args[3], "UpdateBackup")}
 	api, err := bindings.InitializeBackup(
 		args[0].Int(), args[1].Int(), args[2].String(), cb)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -130,10 +131,10 @@ func InitializeBackup(_ js.Value, args []js.Value) interface{} {
 //  - Javascript representation of the Backup object
 //  - Throws a TypeError if initializing the Backup fails.
 func ResumeBackup(_ js.Value, args []js.Value) interface{} {
-	cb := &updateBackupFunc{WrapCB(args[2], "UpdateBackup")}
+	cb := &updateBackupFunc{utils.WrapCB(args[2], "UpdateBackup")}
 	api, err := bindings.ResumeBackup(args[0].Int(), args[1].Int(), cb)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -148,7 +149,7 @@ func ResumeBackup(_ js.Value, args []js.Value) interface{} {
 func (b *Backup) StopBackup(js.Value, []js.Value) interface{} {
 	err := b.api.StopBackup()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 

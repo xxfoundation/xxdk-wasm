@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -28,9 +29,9 @@ func DownloadAndVerifySignedNdfWithUrl(_ js.Value, args []js.Value) interface{} 
 	ndf, err := bindings.DownloadAndVerifySignedNdfWithUrl(
 		args[0].String(), args[1].String())
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(ndf)
+	return utils.CopyBytesToJS(ndf)
 }

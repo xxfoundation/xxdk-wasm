@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -51,7 +52,7 @@ func CreateUserFriendlyErrorMessage(_ js.Value, args []js.Value) interface{} {
 func UpdateCommonErrors(_ js.Value, args []js.Value) interface{} {
 	err := bindings.UpdateCommonErrors(args[0].String())
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 

@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -49,13 +50,13 @@ func (ac *AuthenticatedConnection) IsAuthenticated(js.Value, []js.Value) interfa
 //  - Javascript representation of the Connection object
 //  - throws a TypeError if creating loading the parameters or connecting fails
 func (c *Cmix) ConnectWithAuthentication(_ js.Value, args []js.Value) interface{} {
-	recipientContact := CopyBytesToGo(args[1])
-	e2eParamsJSON := CopyBytesToGo(args[2])
+	recipientContact := utils.CopyBytesToGo(args[1])
+	e2eParamsJSON := utils.CopyBytesToGo(args[2])
 
 	ac, err := c.api.ConnectWithAuthentication(
 		args[0].Int(), recipientContact, e2eParamsJSON)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 

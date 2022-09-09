@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -21,7 +22,7 @@ import (
 // Returns:
 //  - JSON of [xxdk.CMIXParams] (Uint8Array)
 func GetDefaultCMixParams(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(bindings.GetDefaultCMixParams())
+	return utils.CopyBytesToJS(bindings.GetDefaultCMixParams())
 }
 
 // GetDefaultE2EParams returns a JSON serialized object with all of the E2E
@@ -31,7 +32,7 @@ func GetDefaultCMixParams(js.Value, []js.Value) interface{} {
 // Returns:
 //  - JSON of [xxdk.E2EParams] (Uint8Array)
 func GetDefaultE2EParams(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(bindings.GetDefaultE2EParams())
+	return utils.CopyBytesToJS(bindings.GetDefaultE2EParams())
 }
 
 // GetDefaultFileTransferParams returns a JSON serialized object with all the
@@ -41,7 +42,7 @@ func GetDefaultE2EParams(js.Value, []js.Value) interface{} {
 // Returns:
 //  - JSON of [fileTransfer.Params] (Uint8Array)
 func GetDefaultFileTransferParams(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(bindings.GetDefaultFileTransferParams())
+	return utils.CopyBytesToJS(bindings.GetDefaultFileTransferParams())
 }
 
 // GetDefaultSingleUseParams returns a JSON serialized object with all the
@@ -51,7 +52,7 @@ func GetDefaultFileTransferParams(js.Value, []js.Value) interface{} {
 // Returns:
 //  - JSON of [single.RequestParams] (Uint8Array)
 func GetDefaultSingleUseParams(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(bindings.GetDefaultSingleUseParams())
+	return utils.CopyBytesToJS(bindings.GetDefaultSingleUseParams())
 }
 
 // GetDefaultE2eFileTransferParams returns a JSON serialized object with all the
@@ -61,5 +62,5 @@ func GetDefaultSingleUseParams(js.Value, []js.Value) interface{} {
 // Returns:
 //  - JSON of [fileTransfer.e2e.Params] (Uint8Array)
 func GetDefaultE2eFileTransferParams(js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(bindings.GetDefaultSingleUseParams())
+	return utils.CopyBytesToJS(bindings.GetDefaultSingleUseParams())
 }

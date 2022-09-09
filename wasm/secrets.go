@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -25,5 +26,5 @@ import (
 //  - secret password (Uint8Array).
 func GenerateSecret(_ js.Value, args []js.Value) interface{} {
 	secret := bindings.GenerateSecret(args[0].Int())
-	return CopyBytesToJS(secret)
+	return utils.CopyBytesToJS(secret)
 }

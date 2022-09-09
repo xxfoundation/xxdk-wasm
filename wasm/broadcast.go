@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -48,11 +49,11 @@ func newChannelJS(api *bindings.Channel) map[string]interface{} {
 //  - Javascript representation of the Channel object.
 //  - Throws a TypeError if creation fails.
 func NewBroadcastChannel(_ js.Value, args []js.Value) interface{} {
-	channelDefinition := CopyBytesToGo(args[1])
+	channelDefinition := utils.CopyBytesToGo(args[1])
 
 	api, err := bindings.NewBroadcastChannel(args[0].Int(), channelDefinition)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -66,7 +67,7 @@ type broadcastListener struct {
 }
 
 func (bl *broadcastListener) Callback(payload []byte, err error) {
-	bl.callback(CopyBytesToJS(payload), err.Error())
+	bl.callback(utils.CopyBytesToJS(payload), err.Error())
 }
 
 // Listen registers a BroadcastListener for a given method. This allows users to
@@ -82,9 +83,9 @@ func (bl *broadcastListener) Callback(payload []byte, err error) {
 //  - Throws a TypeError if registering the listener fails.
 func (c *Channel) Listen(_ js.Value, args []js.Value) interface{} {
 	err := c.api.Listen(
-		&broadcastListener{WrapCB(args[0], "Callback")}, args[1].Int())
+		&broadcastListener{utils.WrapCB(args[0], "Callback")}, args[1].Int())
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -102,13 +103,13 @@ func (c *Channel) Listen(_ js.Value, args []js.Value) interface{} {
 //    Cmix.WaitForRoundResult to see if the broadcast succeeded (Uint8Array).
 //  - Throws a TypeError if broadcasting fails.
 func (c *Channel) Broadcast(_ js.Value, args []js.Value) interface{} {
-	report, err := c.api.Broadcast(CopyBytesToGo(args[0]))
+	report, err := c.api.Broadcast(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(report)
+	return utils.CopyBytesToJS(report)
 }
 
 // BroadcastAsymmetric sends a given payload over the broadcast channel using
@@ -124,13 +125,13 @@ func (c *Channel) Broadcast(_ js.Value, args []js.Value) interface{} {
 //  - Throws a TypeError if broadcasting fails.
 func (c *Channel) BroadcastAsymmetric(_ js.Value, args []js.Value) interface{} {
 	report, err := c.api.BroadcastAsymmetric(
-		CopyBytesToGo(args[0]), CopyBytesToGo(args[1]))
+		utils.CopyBytesToGo(args[0]), utils.CopyBytesToGo(args[1]))
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(report)
+	return utils.CopyBytesToJS(report)
 }
 
 // MaxPayloadSize returns the maximum possible payload size which can be
@@ -159,11 +160,11 @@ func (c *Channel) MaxAsymmetricPayloadSize(js.Value, []js.Value) interface{} {
 func (c *Channel) Get(js.Value, []js.Value) interface{} {
 	def, err := c.api.Get()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(def)
+	return utils.CopyBytesToJS(def)
 }
 
 // Stop stops the channel from listening for more messages.

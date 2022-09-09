@@ -12,6 +12,7 @@ package wasm
 import (
 	"gitlab.com/elixxir/client/bindings"
 	"gitlab.com/elixxir/client/xxdk"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -32,12 +33,12 @@ import (
 // Returns:
 //  - throws a TypeError if the identity cannot be stored in storage
 func StoreReceptionIdentity(_ js.Value, args []js.Value) interface{} {
-	identity := CopyBytesToGo(args[1])
+	identity := utils.CopyBytesToGo(args[1])
 	err := bindings.StoreReceptionIdentity(
 		args[0].String(), identity, args[2].Int())
 
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -57,11 +58,11 @@ func StoreReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 func LoadReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 	ri, err := bindings.LoadReceptionIdentity(args[0].String(), args[1].Int())
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(ri)
+	return utils.CopyBytesToJS(ri)
 }
 
 // MakeReceptionIdentity generates a new cryptographic identity for receiving
@@ -73,11 +74,11 @@ func LoadReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 func (c *Cmix) MakeReceptionIdentity(js.Value, []js.Value) interface{} {
 	ri, err := c.api.MakeReceptionIdentity()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(ri)
+	return utils.CopyBytesToJS(ri)
 }
 
 // MakeLegacyReceptionIdentity generates the legacy identity for receiving
@@ -89,11 +90,11 @@ func (c *Cmix) MakeReceptionIdentity(js.Value, []js.Value) interface{} {
 func (c *Cmix) MakeLegacyReceptionIdentity(js.Value, []js.Value) interface{} {
 	ri, err := c.api.MakeLegacyReceptionIdentity()
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(ri)
+	return utils.CopyBytesToJS(ri)
 }
 
 // GetReceptionRegistrationValidationSignature returns the signature provided by
@@ -103,7 +104,7 @@ func (c *Cmix) MakeLegacyReceptionIdentity(js.Value, []js.Value) interface{} {
 //  - signature (Uint8Array)
 func (c *Cmix) GetReceptionRegistrationValidationSignature(
 	js.Value, []js.Value) interface{} {
-	return CopyBytesToJS(c.api.GetReceptionRegistrationValidationSignature())
+	return utils.CopyBytesToJS(c.api.GetReceptionRegistrationValidationSignature())
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,14 +122,14 @@ func (c *Cmix) GetReceptionRegistrationValidationSignature(
 //  - Throws a TypeError if unmarshalling the identity fails
 func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 	// Note that this function does not appear in normal bindings
-	identityJSON := CopyBytesToGo(args[0])
+	identityJSON := utils.CopyBytesToGo(args[0])
 	identity, err := xxdk.UnmarshalReceptionIdentity(identityJSON)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(identity.GetContact().Marshal())
+	return utils.CopyBytesToJS(identity.GetContact().Marshal())
 }
 
 // GetIDFromContact returns the ID in the [contact.Contact] object.
@@ -142,11 +143,11 @@ func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 func GetIDFromContact(_ js.Value, args []js.Value) interface{} {
 	cID, err := bindings.GetIDFromContact([]byte(args[0].String()))
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(cID)
+	return utils.CopyBytesToJS(cID)
 }
 
 // GetPubkeyFromContact returns the DH public key in the [contact.Contact]
@@ -161,11 +162,11 @@ func GetIDFromContact(_ js.Value, args []js.Value) interface{} {
 func GetPubkeyFromContact(_ js.Value, args []js.Value) interface{} {
 	key, err := bindings.GetPubkeyFromContact([]byte(args[0].String()))
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(key)
+	return utils.CopyBytesToJS(key)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,11 +184,11 @@ func GetPubkeyFromContact(_ js.Value, args []js.Value) interface{} {
 //  - marshalled bytes of the modified [contact.Contact] (string)
 //  - throws a TypeError if loading or modifying the contact fails
 func SetFactsOnContact(_ js.Value, args []js.Value) interface{} {
-	marshaledContact := CopyBytesToGo(args[0])
-	factListJSON := CopyBytesToGo(args[1])
+	marshaledContact := utils.CopyBytesToGo(args[0])
+	factListJSON := utils.CopyBytesToGo(args[1])
 	c, err := bindings.SetFactsOnContact(marshaledContact, factListJSON)
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
@@ -203,11 +204,11 @@ func SetFactsOnContact(_ js.Value, args []js.Value) interface{} {
 //  - JSON of [fact.FactList] (Uint8Array)
 //  - throws a TypeError if loading the contact fails
 func GetFactsFromContact(_ js.Value, args []js.Value) interface{} {
-	fl, err := bindings.GetFactsFromContact(CopyBytesToGo(args[0]))
+	fl, err := bindings.GetFactsFromContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		Throw(TypeError, err)
+		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return CopyBytesToJS(fl)
+	return utils.CopyBytesToJS(fl)
 }
