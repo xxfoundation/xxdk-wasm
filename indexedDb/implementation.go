@@ -40,6 +40,17 @@ func newContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), dbTimeout)
 }
 
+// convertJsonToJs is a helper that converts JSON bytes input
+// to a [js.Value] of the object subtype.
+func convertJsonToJs(inputJson []byte) (js.Value, error) {
+	jsObj := make(map[string]interface{})
+	err := json.Unmarshal(inputJson, &jsObj)
+	if err != nil {
+		return js.Value{}, err
+	}
+	return js.ValueOf(jsObj), nil
+}
+
 // JoinChannel is called whenever a channel is joined locally.
 func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 	parentErr := errors.New("failed to JoinChannel")
@@ -58,11 +69,10 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 			"Unable to marshal Channel: %+v", err))
 		return
 	}
-	channelObj := make(map[string]interface{})
-	err = json.Unmarshal(newChannelJson, &channelObj)
+	channelObj, err := convertJsonToJs(newChannelJson)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to unmarshal Channel: %+v", err))
+			"Unable to marshal Channel: %+v", err))
 		return
 	}
 
@@ -81,7 +91,7 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 	}
 
 	// Perform the operation
-	_, err = store.Add(js.ValueOf(channelObj))
+	_, err = store.Add(channelObj)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to Add Channel: %+v", err))
@@ -97,6 +107,8 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 			"Adding Channel failed: %+v", err))
 		return
 	}
+	jww.DEBUG.Printf("Successfully added channel: %s",
+		channel.ReceptionID.String())
 }
 
 // LeaveChannel is called whenever a channel is left locally.
@@ -134,6 +146,7 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 			"Deleting Channel failed: %+v", err))
 		return
 	}
+	jww.DEBUG.Printf("Successfully deleted channel: %s", channelID.String())
 }
 
 // ReceiveMessage is called whenever a message is received on a given channel
@@ -227,10 +240,9 @@ func (w *wasmModel) receiveHelper(newMessage *Message) error {
 	if err != nil {
 		return errors.Errorf("Unable to marshal Message: %+v", err)
 	}
-	messageObj := make(map[string]interface{})
-	err = json.Unmarshal(newMessageJson, &messageObj)
+	messageObj, err := convertJsonToJs(newMessageJson)
 	if err != nil {
-		return errors.Errorf("Unable to unmarshal Message: %+v", err)
+		return errors.Errorf("Unable to marshal Message: %+v", err)
 	}
 
 	// Prepare the Transaction
@@ -244,7 +256,7 @@ func (w *wasmModel) receiveHelper(newMessage *Message) error {
 	}
 
 	// Perform the upsert (put) operation
-	_, err = store.Put(js.ValueOf(messageObj))
+	_, err = store.Put(messageObj)
 	if err != nil {
 		return errors.Errorf("Unable to upsert Message: %+v", err)
 	}
@@ -256,5 +268,38 @@ func (w *wasmModel) receiveHelper(newMessage *Message) error {
 	if err != nil {
 		return errors.Errorf("Upserting Message failed: %+v", err)
 	}
+	jww.DEBUG.Printf("Successfully received message: %s", newMessage.Id)
 	return nil
+}
+
+// dump is used to output given ObjectStore contents to log for debugging
+func (w *wasmModel) dump(objectStoreName string) {
+	txn, err := w.db.Transaction(idb.TransactionReadOnly, objectStoreName)
+	if err != nil {
+		jww.ERROR.Printf("Failed to create Transaction: %+v", err)
+	}
+	store, err := txn.ObjectStore(objectStoreName)
+	if err != nil {
+		jww.ERROR.Printf("Failed to get ObjectStore: %+v", err)
+	}
+	cursorRequest, err := store.OpenCursor(idb.CursorNext)
+	if err != nil {
+		jww.ERROR.Printf("Failed to open Cursor: %+v", err)
+	}
+
+	// Run the query
+	jww.INFO.Printf("%s values:", objectStoreName)
+	ctx, cancel := newContext()
+	err = cursorRequest.Iter(ctx, func(cursor *idb.CursorWithValue) error {
+		value, err := cursor.Value()
+		if err != nil {
+			return err
+		}
+		jww.INFO.Printf("- %v", js.Global().Get("JSON").Call("stringify", value))
+		return nil
+	})
+	cancel()
+	if err != nil {
+		jww.ERROR.Printf("Failed to dump ObjectStore: %+v", err)
+	}
 }

@@ -11,7 +11,6 @@
 package indexedDb
 
 import (
-	"context"
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -29,10 +28,15 @@ const (
 
 // NewWasmEventModel returns a [channels.EventModel] backed by a wasmModel
 func NewWasmEventModel(username string) (channels.EventModel, error) {
-	ctx := context.Background()
 	databaseName := username + databaseSuffix
+	return newWasmModel(databaseName)
+}
 
+// newWasmModel creates the given [idb.Database] and returns a wasmModel
+func newWasmModel(databaseName string) (*wasmModel, error) {
 	// Attempt to open database object
+	ctx, cancel := newContext()
+	defer cancel()
 	openRequest, _ := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			if oldVersion == newVersion {
