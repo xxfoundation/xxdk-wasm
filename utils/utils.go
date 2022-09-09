@@ -24,6 +24,11 @@ import (
 	"syscall/js"
 )
 
+var (
+	promiseConstructor = js.Global().Get("Promise")
+	Uint8Array         = js.Global().Get("Uint8Array")
+)
+
 // CopyBytesToGo copies the Uint8Array stored in the js.Value to []byte. This is
 // a wrapper for js.CopyBytesToGo to make it more convenient.
 func CopyBytesToGo(src js.Value) []byte {
@@ -35,7 +40,7 @@ func CopyBytesToGo(src js.Value) []byte {
 // CopyBytesToJS copies the []byte to a Uint8Array stored in a js.Value. This is
 // a wrapper for js.CopyBytesToJS to make it more convenient.
 func CopyBytesToJS(src []byte) js.Value {
-	dst := js.Global().Get("Uint8Array").New(len(src))
+	dst := Uint8Array.New(len(src))
 	js.CopyBytesToJS(dst, src)
 	return dst
 }
@@ -95,20 +100,15 @@ type PromiseFn func(resolve, reject func(args ...interface{}) js.Value)
 func CreatePromise(f PromiseFn) interface{} {
 	// Create handler for promise (this will be a Javascript function)
 	handler := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		// It receives two arguments, which are JS functions: resolve and reject
-		resolve := args[0]
-		reject := args[1]
-
 		// Spawn a new go routine to perform the blocking function
-		go func() {
+		go func(resolve, reject js.Value) {
 			f(resolve.Invoke, reject.Invoke)
-		}()
+		}(args[0], args[1])
 
 		return nil
 	})
 
 	// Create and return the Promise object
-	promiseConstructor := js.Global().Get("Promise")
 	return promiseConstructor.New(handler)
 }
 

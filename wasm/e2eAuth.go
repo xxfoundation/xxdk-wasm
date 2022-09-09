@@ -38,7 +38,7 @@ import (
 //
 // Returns:
 //  - A promise that returns the ID of the round (int).
-//  - Throws error if the request fails.
+//  - Throws an error if the request fails.
 func (e *E2e) Request(_ js.Value, args []js.Value) interface{} {
 	partnerContact := utils.CopyBytesToGo(args[0])
 	factsListJson := utils.CopyBytesToGo(args[1])
@@ -75,17 +75,21 @@ func (e *E2e) Request(_ js.Value, args []js.Value) interface{} {
 //  - args[0] - marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
 // Returns:
-//  - ID of the round (int).
-//  - Throws TypeError if the confirmation fails.
+//  - A promise that returns the ID of the round (int).
+//  - Throws an error if the confirmation fails.
 func (e *E2e) Confirm(_ js.Value, args []js.Value) interface{} {
 	partnerContact := utils.CopyBytesToGo(args[0])
-	rid, err := e.api.Confirm(partnerContact)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		rid, err := e.api.Confirm(partnerContact)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(rid)
+		}
 	}
 
-	return rid
+	return utils.CreatePromise(promiseFn)
 }
 
 // Reset sends a contact reset request from the user identity in the imported
@@ -106,17 +110,21 @@ func (e *E2e) Confirm(_ js.Value, args []js.Value) interface{} {
 //  - args[0] - marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
 // Returns:
-//  - ID of the round (int).
-//  - Throws TypeError if the reset fails.
+//  - A promise that returns the ID of the round (int).
+//  - Throws an error if the reset fails.
 func (e *E2e) Reset(_ js.Value, args []js.Value) interface{} {
 	partnerContact := utils.CopyBytesToGo(args[0])
-	rid, err := e.api.Reset(partnerContact)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		rid, err := e.api.Reset(partnerContact)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(rid)
+		}
 	}
 
-	return rid
+	return utils.CreatePromise(promiseFn)
 }
 
 // ReplayConfirm resends a confirmation to the partner. It will fail to send if
@@ -131,17 +139,21 @@ func (e *E2e) Reset(_ js.Value, args []js.Value) interface{} {
 //  - args[0] - marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
 // Returns:
-//  - ID of the round (int).
-//  - Throws TypeError if the confirmation fails.
+//  - A promise that returns the ID of the round (int).
+//  - Throws an error if the confirmation fails.
 func (e *E2e) ReplayConfirm(_ js.Value, args []js.Value) interface{} {
 	partnerContact := utils.CopyBytesToGo(args[0])
-	rid, err := e.api.ReplayConfirm(partnerContact)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		rid, err := e.api.ReplayConfirm(partnerContact)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(rid)
+		}
 	}
 
-	return rid
+	return utils.CreatePromise(promiseFn)
 }
 
 // CallAllReceivedRequests will iterate through all pending contact requests and

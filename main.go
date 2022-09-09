@@ -11,8 +11,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
-	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
@@ -27,6 +25,7 @@ func main() {
 	// utils/array.go
 	js.Global().Set("Uint8ArrayToBase64", js.FuncOf(utils.Uint8ArrayToBase64))
 	js.Global().Set("Base64ToUint8Array", js.FuncOf(utils.Base64ToUint8Array))
+	js.Global().Set("Uint8ArrayEquals", js.FuncOf(utils.Uint8ArrayEquals))
 
 	// wasm/backup.go
 	js.Global().Set("NewCmixFromBackup", js.FuncOf(wasm.NewCmixFromBackup))
@@ -125,14 +124,6 @@ func main() {
 	js.Global().Set("GetVersion", js.FuncOf(wasm.GetVersion))
 	js.Global().Set("GetGitVersion", js.FuncOf(wasm.GetGitVersion))
 	js.Global().Set("GetDependencies", js.FuncOf(wasm.GetDependencies))
-
-	defer func() {
-		jww.CRITICAL.Printf("Before recover\n")
-		if rec := recover(); rec != nil {
-			utils.Throw(utils.TypeError, errors.Errorf(fmt.Sprintf("%+v", rec)))
-		}
-		jww.CRITICAL.Printf("After recover\n")
-	}()
 
 	<-make(chan bool)
 	os.Exit(0)

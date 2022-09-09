@@ -8,6 +8,7 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/base64"
 	"syscall/js"
 )
@@ -38,4 +39,20 @@ func Base64ToUint8Array(_ js.Value, args []js.Value) interface{} {
 	}
 
 	return CopyBytesToJS(b)
+}
+
+// Uint8ArrayEquals returns true if the two Uint8Array are equal and false
+// otherwise.
+//
+// Parameters:
+//  - args[0] - array A (Uint8Array)
+//  - args[1] - array B (Uint8Array)
+//
+// Returns:
+//  - If the two arrays are equal (boolean).
+func Uint8ArrayEquals(_ js.Value, args []js.Value) interface{} {
+	a := CopyBytesToGo(args[0])
+	b := CopyBytesToGo(args[1])
+
+	return bytes.Equal(a, b)
 }

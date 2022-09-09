@@ -222,8 +222,8 @@ func (a *authCallbacks) Confirm(
 		a.confirm(utils.CopyBytesToJS(contact), utils.CopyBytesToJS(receptionId),
 			ephemeralId, roundId)
 	}
-
 }
+
 func (a *authCallbacks) Reset(
 	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.reset != nil {
