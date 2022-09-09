@@ -258,11 +258,12 @@ func (w *wasmModel) receiveHelper(newMessage *Message) error {
 	if err != nil {
 		return errors.Errorf("Upserting Message failed: %+v", err)
 	}
-	jww.DEBUG.Printf("Successfully received message: %s", newMessage.Id)
+	jww.DEBUG.Printf("Successfully stored message from %s",
+		newMessage.SenderUsername)
 	return nil
 }
 
-// dump is used to output given ObjectStore contents to log for debugging
+// dump given [idb.ObjectStore] contents to string slice for debugging purposes
 func (w *wasmModel) dump(objectStoreName string) ([]string, error) {
 	parentErr := errors.Errorf("failed to dump %s", objectStoreName)
 

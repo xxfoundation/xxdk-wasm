@@ -8,17 +8,78 @@
 package indexedDb
 
 import (
+	"encoding/json"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/client/channels"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
+	"gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/xx_network/primitives/id"
+	"os"
 	"testing"
+	"time"
 )
 
-func TestWasmModel_JoinChannel_LeaveChannel(t *testing.T) {
-	testDbName := "test"
-	jww.SetStdoutThreshold(jww.LevelTrace)
+func TestMain(m *testing.M) {
+	jww.SetStdoutThreshold(jww.LevelDebug)
+	os.Exit(m.Run())
+}
 
-	eventModel, err := newWasmModel(testDbName)
+// Test UpdateSentStatus happy path and ensure fields don't change
+func TestWasmModel_UpdateSentStatus(t *testing.T) {
+	testString := "test"
+	testMsgId := channel.MakeMessageID([]byte(testString))
+	eventModel, err := newWasmModel(testString)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Store a test message
+	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(),
+		nil, testString, testString, time.Now(), time.Second, channels.Sent)
+	err = eventModel.receiveHelper(testMsg)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Ensure one message is stored
+	results, err := eventModel.dump(messageStoreName)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Expected 1 message to exist")
+	}
+
+	// Update the sentStatus
+	expectedStatus := channels.Failed
+	eventModel.UpdateSentStatus(testMsgId, expectedStatus)
+
+	// Check the resulting status
+	results, err = eventModel.dump(messageStoreName)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Expected 1 message to exist")
+	}
+	resultMsg := &Message{}
+	err = json.Unmarshal([]byte(results[0]), resultMsg)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if resultMsg.Status != uint8(expectedStatus) {
+		t.Fatalf("Unexpected Status: %v", resultMsg.Status)
+	}
+
+	// Make sure other fields didn't change
+	if resultMsg.SenderUsername != testString {
+		t.Fatalf("Unexpected SenderUsername: %v", resultMsg.SenderUsername)
+	}
+}
+
+// Smoke test JoinChannel/LeaveChannel happy paths
+func TestWasmModel_JoinChannel_LeaveChannel(t *testing.T) {
+	eventModel, err := newWasmModel("test")
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
