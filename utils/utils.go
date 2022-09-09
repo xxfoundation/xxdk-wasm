@@ -38,22 +38,6 @@ func WrapCB(parent js.Value, m string) func(args ...interface{}) js.Value {
 	}
 }
 
-// JsonToJS is a helper that converts JSON bytes input
-// to a [js.Value] of the object subtype.
-func JsonToJS(inputJson []byte) (js.Value, error) {
-	jsObj := make(map[string]interface{})
-	err := json.Unmarshal(inputJson, &jsObj)
-	if err != nil {
-		return js.Value{}, err
-	}
-	return js.ValueOf(jsObj), nil
-}
-
-// JsToJson converts the Javascript value to JSON.
-func JsToJson(value js.Value) string {
-	return JSON.Call("stringify", value).String()
-}
-
 type PromiseFn func(resolve, reject func(args ...interface{}) js.Value)
 
 // CreatePromise creates a Javascript promise to return the value of a blocking
