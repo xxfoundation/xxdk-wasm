@@ -8,26 +8,33 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
-	"syscall/js"
 	"testing"
 )
 
+// Tests that TestJsError returns a Javascript Error object with the expected
+// message.
 func TestJsError(t *testing.T) {
-	err := errors.Errorf("test error")
+	err := errors.New("test error")
+	expectedErr := err.Error()
+	jsError := JsError(err).Get("message").String()
 
-	jsError := JsError(err)
-
-	t.Logf("%+v", jsError)
-	t.Logf("%+v", jsError.String())
-	t.Logf("%+v", js.Error{Value: jsError})
+	if jsError != expectedErr {
+		t.Errorf("Failed to get expected error message."+
+			"\nexpected: %s\nreceived: %s", expectedErr, jsError)
+	}
 }
 
+// Tests that TestJsTrace returns a Javascript Error object with the expected
+// message and stack trace.
 func TestJsTrace(t *testing.T) {
-}
+	err := errors.New("test error")
+	expectedErr := fmt.Sprintf("%+v", err)
+	jsError := JsTrace(err).Get("message").String()
 
-func TestThrow(t *testing.T) {
-}
-
-func Test_throw(t *testing.T) {
+	if jsError != expectedErr {
+		t.Errorf("Failed to get expected error message."+
+			"\nexpected: %s\nreceived: %s", expectedErr, jsError)
+	}
 }
