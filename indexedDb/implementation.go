@@ -191,6 +191,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID cryptoChannel.Me
 
 // UpdateSentStatus is called whenever the SentStatus of a message
 // has changed
+// TODO: Potential race condition due to separate get/update operations
 func (w *wasmModel) UpdateSentStatus(messageID cryptoChannel.MessageID,
 	status channels.SentStatus) {
 	parentErr := errors.New("failed to UpdateSentStatus")
