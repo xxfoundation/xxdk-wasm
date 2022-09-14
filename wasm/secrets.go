@@ -20,7 +20,7 @@ import (
 //
 // Parameters:
 //  - args[0] - The size of secret. It should be set to 32, but can be set
-//   higher in certain cases, but not lower (int).
+//    higher in certain cases, but not lower (int).
 //
 // Returns:
 //  - secret password (Uint8Array).

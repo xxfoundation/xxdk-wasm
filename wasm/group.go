@@ -81,24 +81,26 @@ func NewGroupChat(_ js.Value, args []js.Value) interface{} {
 //    optional  parameter and may be nil. If nil the group will be assigned the
 //    default name (Uint8Array).
 //
-// Returns:
-//  - JSON of [bindings.GroupReport], which can be passed into
-//    Cmix.WaitForRoundResult to see if the group request message send
-//    succeeded.
-//  - Throws a TypeError if making the group fails.
+// Returns a promise:
+//  - Resolves to the JSON of the [bindings.GroupReport], which can be passed
+//    into Cmix.WaitForRoundResult to see if the send succeeded (Uint8Array).
+//  - Rejected with an error if making the group fails.
 func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) interface{} {
 	// (membershipBytes, message, name []byte) ([]byte, error)
 	membershipBytes := utils.CopyBytesToGo(args[0])
 	message := utils.CopyBytesToGo(args[1])
 	name := utils.CopyBytesToGo(args[2])
 
-	report, err := g.api.MakeGroup(membershipBytes, message, name)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		sendReport, err := g.api.MakeGroup(membershipBytes, message, name)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
 	}
 
-	return utils.CopyBytesToJS(report)
+	return utils.CreatePromise(promiseFn)
 }
 
 // ResendRequest resends a group request to all members in the group.
@@ -107,19 +109,21 @@ func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) interface{} {
 //  - args[0] - group's ID (Uint8Array). This can be found in the report
 //  returned by GroupChat.MakeGroup.
 //
-// Returns:
-//  - JSON of [bindings.GroupReport] (Uint8Array), which can be passed into
-//    Cmix.WaitForRoundResult to see if the group request message send
-//    succeeded.
-//  - Throws a TypeError if resending the request fails.
+// Returns a promise:
+//  - Resolves to the JSON of the [bindings.GroupReport], which can be passed
+//    into Cmix.WaitForRoundResult to see if the send succeeded (Uint8Array).
+//  - Rejected with an error if resending the request fails.
 func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) interface{} {
-	report, err := g.api.ResendRequest(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		sendReport, err := g.api.ResendRequest(utils.CopyBytesToGo(args[0]))
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
 	}
 
-	return utils.CopyBytesToJS(report)
+	return utils.CreatePromise(promiseFn)
 }
 
 // JoinGroup allows a user to join a group when a request is received.
@@ -170,20 +174,25 @@ func (g *GroupChat) LeaveGroup(_ js.Value, args []js.Value) interface{} {
 //  - args[2] - the tag associated with the message (string). This tag may be
 //    empty.
 //
-// Returns:
-//  - JSON of [bindings.GroupSendReport] (Uint8Array), which can be passed into
-//    Cmix.WaitForRoundResult to see if the group message send succeeded.
+// Returns a promise:
+//  - Resolves to the JSON of the [bindings.GroupSendReport], which can be
+//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    (Uint8Array).
+//  - Rejected with an error if sending the message to the group fails.
 func (g *GroupChat) Send(_ js.Value, args []js.Value) interface{} {
 	groupId := utils.CopyBytesToGo(args[0])
 	message := utils.CopyBytesToGo(args[1])
 
-	report, err := g.api.Send(groupId, message, args[2].String())
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		sendReport, err := g.api.Send(groupId, message, args[2].String())
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
 	}
 
-	return utils.CopyBytesToJS(report)
+	return utils.CreatePromise(promiseFn)
 }
 
 // GetGroups returns a list of group IDs that the user is a member of.
@@ -357,8 +366,9 @@ type groupChatProcessor struct {
 
 func (gcp *groupChatProcessor) Process(decryptedMessage, msg,
 	receptionId []byte, ephemeralId, roundId int64, err error) {
-	gcp.callback(utils.CopyBytesToJS(decryptedMessage), utils.CopyBytesToJS(msg),
-		utils.CopyBytesToJS(receptionId), ephemeralId, roundId, err.Error())
+	gcp.callback(utils.CopyBytesToJS(decryptedMessage),
+		utils.CopyBytesToJS(msg), utils.CopyBytesToJS(receptionId), ephemeralId,
+		roundId, utils.JsTrace(err))
 }
 
 func (gcp *groupChatProcessor) String() string {

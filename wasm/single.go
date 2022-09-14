@@ -31,10 +31,11 @@ import (
 //    is a Javascript object that has functions that implement the
 //    [bindings.SingleUseResponse] interface.
 //
-// Returns:
-//  - JSON [bindings.SingleUseSendReport], which can be passed into
-//    Cmix.WaitForRoundResult to see if the send succeeded (Uint8Array).
-//  - Throws a TypeError if transmission fails.
+// Returns a promise:
+//  - Resolves to the JSON of the [bindings.SingleUseSendReport], which can be
+//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    (Uint8Array).
+//  - Rejected with an error if transmission fails.
 func TransmitSingleUse(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
 	recipient := utils.CopyBytesToGo(args[1])
@@ -43,14 +44,17 @@ func TransmitSingleUse(_ js.Value, args []js.Value) interface{} {
 	paramsJSON := utils.CopyBytesToGo(args[4])
 	responseCB := &singleUseResponse{utils.WrapCB(args[5], "Callback")}
 
-	report, err := bindings.TransmitSingleUse(
-		e2eID, recipient, tag, payload, paramsJSON, responseCB)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		sendReport, err := bindings.TransmitSingleUse(
+			e2eID, recipient, tag, payload, paramsJSON, responseCB)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
 	}
 
-	return utils.CopyBytesToJS(report)
+	return utils.CreatePromise(promiseFn)
 }
 
 // Listen starts a single-use listener on a given tag using the passed in E2e
@@ -115,7 +119,7 @@ type singleUseCallback struct {
 }
 
 func (suc *singleUseCallback) Callback(callbackReport []byte, err error) {
-	suc.callback(utils.CopyBytesToJS(callbackReport), err.Error())
+	suc.callback(utils.CopyBytesToJS(callbackReport), utils.JsTrace(err))
 }
 
 // singleUseResponse wraps Javascript callbacks to adhere to the
@@ -125,5 +129,5 @@ type singleUseResponse struct {
 }
 
 func (sur *singleUseResponse) Callback(responseReport []byte, err error) {
-	sur.callback(utils.CopyBytesToJS(responseReport), err.Error())
+	sur.callback(utils.CopyBytesToJS(responseReport), utils.JsTrace(err))
 }

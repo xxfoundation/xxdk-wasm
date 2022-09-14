@@ -1,0 +1,23 @@
+<!--////////////////////////////////////////////////////////////////////////////
+// Copyright © 2022 xx foundation                                             //
+//                                                                            //
+// Use of this source code is governed by a license that can be found in the  //
+// LICENSE file.                                                              //
+/////////////////////////////////////////////////////////////////////////////-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>xxDk WebAssembly Test</title>
+
+	<script src="../wasm_exec.js"></script>
+	<script>
+        const go = new Go();
+        WebAssembly.instantiateStreaming(fetch("xxdk.wasm"), go.importObject).then((result) => {
+            go.run(result.instance);
+        });
+	</script>
+</head>
+<body></body>
+</html>

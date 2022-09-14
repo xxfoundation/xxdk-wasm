@@ -67,7 +67,7 @@ type broadcastListener struct {
 }
 
 func (bl *broadcastListener) Callback(payload []byte, err error) {
-	bl.callback(utils.CopyBytesToJS(payload), err.Error())
+	bl.callback(utils.CopyBytesToJS(payload), utils.JsTrace(err))
 }
 
 // Listen registers a BroadcastListener for a given method. This allows users to
@@ -98,18 +98,24 @@ func (c *Channel) Listen(_ js.Value, args []js.Value) interface{} {
 // Parameters:
 //  - args[0] - payload (Uint8Array).
 //
-// Returns:
-//  - JSON of [bindings.BroadcastReport], which can be passed into
-//    Cmix.WaitForRoundResult to see if the broadcast succeeded (Uint8Array).
-//  - Throws a TypeError if broadcasting fails.
+// Returns a promise:
+//  - Resolves to the JSON of the [bindings.BroadcastReport], which can be
+//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    (Uint8Array).
+//  - Rejected with an error if broadcasting fails.
 func (c *Channel) Broadcast(_ js.Value, args []js.Value) interface{} {
-	report, err := c.api.Broadcast(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	payload := utils.CopyBytesToGo(args[0])
+
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		sendReport, err := c.api.Broadcast(payload)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
 	}
 
-	return utils.CopyBytesToJS(report)
+	return utils.CreatePromise(promiseFn)
 }
 
 // BroadcastAsymmetric sends a given payload over the broadcast channel using
@@ -119,19 +125,25 @@ func (c *Channel) Broadcast(_ js.Value, args []js.Value) interface{} {
 //  - args[0] - payload (Uint8Array).
 //  - args[1] - private key (Uint8Array).
 //
-// Returns:
-//  - JSON of [bindings.BroadcastReport], which can be passed into
-//    Cmix.WaitForRoundResult to see if the broadcast succeeded (Uint8Array).
-//  - Throws a TypeError if broadcasting fails.
+// Returns a promise:
+//  - Resolves to the JSON of the [bindings.BroadcastReport], which can be
+//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    (Uint8Array).
+//  - Rejected with an error if broadcasting fails.
 func (c *Channel) BroadcastAsymmetric(_ js.Value, args []js.Value) interface{} {
-	report, err := c.api.BroadcastAsymmetric(
-		utils.CopyBytesToGo(args[0]), utils.CopyBytesToGo(args[1]))
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	payload := utils.CopyBytesToGo(args[0])
+	privateKey := utils.CopyBytesToGo(args[1])
+
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		sendReport, err := c.api.BroadcastAsymmetric(payload, privateKey)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
 	}
 
-	return utils.CopyBytesToJS(report)
+	return utils.CreatePromise(promiseFn)
 }
 
 // MaxPayloadSize returns the maximum possible payload size which can be

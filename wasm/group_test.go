@@ -35,21 +35,61 @@ func Test_newGroupChatJS(t *testing.T) {
 	}
 }
 
+// Tests that GroupChat has all the methods that [bindings.GroupChat] has.
+func Test_GroupChatMethods(t *testing.T) {
+	gcType := reflect.TypeOf(&GroupChat{})
+	binGcType := reflect.TypeOf(&bindings.GroupChat{})
+
+	if binGcType.NumMethod() != gcType.NumMethod() {
+		t.Errorf("WASM GroupChat object does not have all methods from "+
+			"bindings.\nexpected: %d\nreceived: %d",
+			binGcType.NumMethod(), gcType.NumMethod())
+	}
+
+	for i := 0; i < binGcType.NumMethod(); i++ {
+		method := binGcType.Method(i)
+
+		if _, exists := gcType.MethodByName(method.Name); !exists {
+			t.Errorf("Method %s does not exist.", method.Name)
+		}
+	}
+}
+
 // Tests that the map representing Group returned by newGroupJS contains all of
 // the methods on Group.
 func Test_newGroupJS(t *testing.T) {
-	gType := reflect.TypeOf(&Group{})
+	grpType := reflect.TypeOf(&Group{})
 
 	g := newGroupJS(&bindings.Group{})
-	if len(g) != gType.NumMethod() {
+	if len(g) != grpType.NumMethod() {
 		t.Errorf("Group JS object does not have all methods."+
-			"\nexpected: %d\nreceived: %d", gType.NumMethod(), len(g))
+			"\nexpected: %d\nreceived: %d", grpType.NumMethod(), len(g))
 	}
 
-	for i := 0; i < gType.NumMethod(); i++ {
-		method := gType.Method(i)
+	for i := 0; i < grpType.NumMethod(); i++ {
+		method := grpType.Method(i)
 
 		if _, exists := g[method.Name]; !exists {
+			t.Errorf("Method %s does not exist.", method.Name)
+		}
+	}
+}
+
+// Tests that Group has all the methods that [bindings.Group] has.
+func Test_GroupMethods(t *testing.T) {
+	grpType := reflect.TypeOf(&Group{})
+	binGrpType := reflect.TypeOf(&bindings.Group{})
+
+	if binGrpType.NumMethod() != grpType.NumMethod() {
+		t.Errorf("WASM Group object does not have all methods from bindings."+
+			"\nexpected: %d\nreceived: %d",
+			binGrpType.NumMethod(), grpType.NumMethod())
+	}
+
+	for i := 0; i < binGrpType.NumMethod(); i++ {
+		method := binGrpType.Method(i)
+
+		if _, exists := grpType.MethodByName(method.Name); !exists {
 			t.Errorf("Method %s does not exist.", method.Name)
 		}
 	}

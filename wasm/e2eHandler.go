@@ -22,6 +22,22 @@ func (e *E2e) GetReceptionID(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(e.api.GetReceptionID())
 }
 
+// DeleteContact removes a partner from E2e's storage.
+//
+// Parameters:
+//  - args[0] - marshalled bytes of the partner [id.ID] (Uint8Array).
+//
+// Returns:
+//  - Throws utils.TypeError if deleting the partner fails.
+func (e *E2e) DeleteContact(_ js.Value, args []js.Value) interface{} {
+	err := e.api.DeleteContact(utils.CopyBytesToGo(args[0]))
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+	return nil
+}
+
 // GetAllPartnerIDs returns a list of all partner IDs that the user has an E2E
 // relationship with.
 //
@@ -144,16 +160,15 @@ func (e *E2e) RemoveService(_ js.Value, args []js.Value) interface{} {
 // message type, per the given parameters--encrypted with end-to-end encryption.
 //
 // Parameters:
-//  - args[0] - message type from [catalog.MessageType] (int)
-//  - args[1] - JSON of [id.ID] (Uint8Array)
-//  - args[2] - message payload (Uint8Array)
-//  - args[3] - JSON [e2e.Params] (Uint8Array)
+//  - args[0] - message type from [catalog.MessageType] (int).
+//  - args[1] - JSON of [id.ID] (Uint8Array).
+//  - args[2] - message payload (Uint8Array).
+//  - args[3] - JSON [e2e.Params] (Uint8Array).
 //
-// Returns:
-//  - A promise that returns the JSON of the [bindings.E2ESendReport], which can
-//    be passed into Cmix.WaitForRoundResult to see if the send succeeded
-//    (Uint8Array).
-//  - Throws error if sending fails.
+// Returns a promise:
+//  - Resolves to the JSON of the [bindings.E2ESendReport], which can be passed
+//    into Cmix.WaitForRoundResult to see if the send succeeded (Uint8Array).
+//  - Rejected with an error if sending fails.
 func (e *E2e) SendE2E(_ js.Value, args []js.Value) interface{} {
 	recipientId := utils.CopyBytesToGo(args[1])
 	payload := utils.CopyBytesToGo(args[2])
@@ -181,8 +196,8 @@ type processor struct {
 
 func (p *processor) Process(
 	message, receptionId []byte, ephemeralId, roundId int64) {
-	p.process(utils.CopyBytesToJS(message), utils.CopyBytesToJS(receptionId), ephemeralId,
-		roundId)
+	p.process(utils.CopyBytesToJS(message), utils.CopyBytesToJS(receptionId),
+		ephemeralId, roundId)
 }
 
 func (p *processor) String() string {

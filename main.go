@@ -11,12 +11,21 @@ package main
 
 import (
 	"fmt"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
 	"os"
 	"syscall/js"
 )
+
+func init() {
+	// Overwrites setting the log level to INFO done in bindings so that the
+	// Javascript console can be used
+	ll := wasm.NewJsConsoleLogListener(jww.LevelInfo)
+	jww.SetLogListeners(ll.Listen)
+	jww.SetStdoutThreshold(jww.LevelFatal + 1)
+}
 
 func main() {
 	fmt.Println("Starting xxDK WebAssembly bindings.")
@@ -34,6 +43,9 @@ func main() {
 
 	// wasm/broadcast.go
 	js.Global().Set("NewBroadcastChannel", js.FuncOf(wasm.NewBroadcastChannel))
+
+	// wasm/channels.go
+	js.Global().Set("NewChannelsManager", js.FuncOf(wasm.NewChannelsManager))
 
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
@@ -77,6 +89,7 @@ func main() {
 
 	// wasm/logging.go
 	js.Global().Set("LogLevel", js.FuncOf(wasm.LogLevel))
+	js.Global().Set("LogToFile", js.FuncOf(wasm.LogToFile))
 	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
 	js.Global().Set("EnableGrpcLogs", js.FuncOf(wasm.EnableGrpcLogs))
 

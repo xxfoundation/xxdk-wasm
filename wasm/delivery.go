@@ -34,20 +34,20 @@ func (mdc *messageDeliveryCallback) EventCallback(
 // not occur as a result of both sides of the bindings holding a reference to
 // the same pointer.
 //
-// roundList is a JSON marshalled RoundsList or any JSON marshalled send report
-// that inherits a RoundsList object.
+// roundList is a JSON marshalled [bindings.RoundsList] or any JSON marshalled
+// send report that inherits a [bindings.RoundsList] object.
 //
 // Parameters:
 //  - args[0] - JSON of [bindings.RoundsList] or JSON of any send report that
-//    inherits a [bindings.RoundsList] object (Uint8Array)
+//    inherits a [bindings.RoundsList] object (Uint8Array).
 //  - args[1] - Javascript object that has functions that implement the
-//    [bindings.MessageDeliveryCallback] interface
+//    [bindings.MessageDeliveryCallback] interface.
 //  - args[2] - timeout when the callback will return if no state update occurs,
-//    in milliseconds (int)
+//    in milliseconds (int).
 //
 // Returns:
-//  - throws a TypeError if the parameters are invalid or getting round results
-//    fails
+//  - Throws a TypeError if the parameters are invalid or getting round results
+//    fails.
 func (c *Cmix) WaitForRoundResult(_ js.Value, args []js.Value) interface{} {
 	roundList := utils.CopyBytesToGo(args[0])
 	mdc := &messageDeliveryCallback{utils.WrapCB(args[1], "EventCallback")}

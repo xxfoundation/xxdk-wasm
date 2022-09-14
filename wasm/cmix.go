@@ -45,6 +45,7 @@ func newCmixJS(api *bindings.Cmix) map[string]interface{} {
 		"AddHealthCallback":           js.FuncOf(c.AddHealthCallback),
 		"RemoveHealthCallback":        js.FuncOf(c.RemoveHealthCallback),
 		"RegisterClientErrorCallback": js.FuncOf(c.RegisterClientErrorCallback),
+		"TrackServices":               js.FuncOf(c.TrackServices),
 
 		// connect.go
 		"Connect": js.FuncOf(c.Connect),
@@ -102,9 +103,9 @@ func NewCmix(_ js.Value, args []js.Value) interface{} {
 //  - args[1] - password used for storage (Uint8Array)
 //  - args[2] - JSON of [xxdk.CMIXParams] (Uint8Array)
 //
-// Returns:
-//  - A promise that returns a Javascript representation of the Cmix object.
-//  - Throws a error if loading Cmix fails.
+// Returns a promise:
+//  - Resolves to a Javascript representation of the Cmix object.
+//  - Rejected with an error if loading Cmix fails.
 func LoadCmix(_ js.Value, args []js.Value) interface{} {
 	storageDir := args[0].String()
 	password := utils.CopyBytesToGo(args[1])

@@ -68,33 +68,39 @@ func LoadReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 // MakeReceptionIdentity generates a new cryptographic identity for receiving
 // messages.
 //
-// Returns:
-//  - JSON of the [xxdk.ReceptionIdentity] object (Uint8Array)
-//  - throws a TypeError if creating a new identity fails
+// Returns a promise:
+//  - Resolves to the JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
+//  - Rejected with an error if creating a new identity fails.
 func (c *Cmix) MakeReceptionIdentity(js.Value, []js.Value) interface{} {
-	ri, err := c.api.MakeReceptionIdentity()
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		ri, err := c.api.MakeReceptionIdentity()
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(ri))
+		}
 	}
 
-	return utils.CopyBytesToJS(ri)
+	return utils.CreatePromise(promiseFn)
 }
 
 // MakeLegacyReceptionIdentity generates the legacy identity for receiving
 // messages.
 //
-// Returns:
-//  - JSON of the [xxdk.ReceptionIdentity] object (Uint8Array)
-//  - throws a TypeError if creating a new legacy identity fails
+// Returns a promise:
+//  - Resolves to the JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
+//  - Rejected with an error if creating a new legacy identity fails.
 func (c *Cmix) MakeLegacyReceptionIdentity(js.Value, []js.Value) interface{} {
-	ri, err := c.api.MakeLegacyReceptionIdentity()
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		ri, err := c.api.MakeLegacyReceptionIdentity()
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(ri))
+		}
 	}
 
-	return utils.CopyBytesToJS(ri)
+	return utils.CreatePromise(promiseFn)
 }
 
 // GetReceptionRegistrationValidationSignature returns the signature provided by
@@ -104,7 +110,8 @@ func (c *Cmix) MakeLegacyReceptionIdentity(js.Value, []js.Value) interface{} {
 //  - signature (Uint8Array)
 func (c *Cmix) GetReceptionRegistrationValidationSignature(
 	js.Value, []js.Value) interface{} {
-	return utils.CopyBytesToJS(c.api.GetReceptionRegistrationValidationSignature())
+	return utils.CopyBytesToJS(
+		c.api.GetReceptionRegistrationValidationSignature())
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,13 +142,13 @@ func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 // GetIDFromContact returns the ID in the [contact.Contact] object.
 //
 // Parameters:
-//  - args[0] - marshalled bytes of [contact.Contact] (string)
+//  - args[0] - marshalled bytes of [contact.Contact] (Uint8Array)
 //
 // Returns:
 //  - marshalled [id.ID] object (Uint8Array)
 //  - throws a TypeError if loading the ID from the contact file fails
 func GetIDFromContact(_ js.Value, args []js.Value) interface{} {
-	cID, err := bindings.GetIDFromContact([]byte(args[0].String()))
+	cID, err := bindings.GetIDFromContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil

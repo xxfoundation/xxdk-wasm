@@ -35,3 +35,23 @@ func Test_newCmixJS(t *testing.T) {
 		}
 	}
 }
+
+// Tests that Cmix has all the methods that [bindings.Cmix] has.
+func Test_CmixMethods(t *testing.T) {
+	cmixType := reflect.TypeOf(&Cmix{})
+	binCmixType := reflect.TypeOf(&bindings.Cmix{})
+
+	if binCmixType.NumMethod() != cmixType.NumMethod() {
+		t.Errorf("WASM Cmix object does not have all methods from bindings."+
+			"\nexpected: %d\nreceived: %d",
+			binCmixType.NumMethod(), cmixType.NumMethod())
+	}
+
+	for i := 0; i < binCmixType.NumMethod(); i++ {
+		method := binCmixType.Method(i)
+
+		if _, exists := cmixType.MethodByName(method.Name); !exists {
+			t.Errorf("Method %s does not exist.", method.Name)
+		}
+	}
+}

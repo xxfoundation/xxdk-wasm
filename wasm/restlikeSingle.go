@@ -22,7 +22,7 @@ type restlikeCallback struct {
 }
 
 func (rlc *restlikeCallback) Callback(payload []byte, err error) {
-	rlc.callback(utils.CopyBytesToJS(payload), err.Error())
+	rlc.callback(utils.CopyBytesToJS(payload), utils.JsTrace(err))
 }
 
 // RequestRestLike sends a restlike request to a given contact.
@@ -33,22 +33,28 @@ func (rlc *restlikeCallback) Callback(payload []byte, err error) {
 //  - args[2] - JSON of [bindings.RestlikeMessage] (Uint8Array).
 //  - args[3] - JSON of [single.RequestParams] (Uint8Array).
 //
-// Returns:
-//  - JSON of [restlike.Message] (Uint8Array).
-//  - Throws a TypeError if parsing the parameters or making the request fails.
+// Returns a promise:
+//  - Resolves to the JSON of the [bindings.Message], which can be passed into
+//    Cmix.WaitForRoundResult to see if the send succeeded (Uint8Array).
+//  - Rejected with an error if parsing the parameters or making the request
+//    fails.
 func RequestRestLike(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
 	recipient := utils.CopyBytesToGo(args[1])
 	request := utils.CopyBytesToGo(args[2])
 	paramsJSON := utils.CopyBytesToGo(args[3])
 
-	msg, err := bindings.RequestRestLike(e2eID, recipient, request, paramsJSON)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		msg, err := bindings.RequestRestLike(
+			e2eID, recipient, request, paramsJSON)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(msg))
+		}
 	}
 
-	return utils.CopyBytesToJS(msg)
+	return utils.CreatePromise(promiseFn)
 }
 
 // AsyncRequestRestLike sends an asynchronous restlike request to a given
@@ -74,12 +80,13 @@ func AsyncRequestRestLike(_ js.Value, args []js.Value) interface{} {
 	paramsJSON := utils.CopyBytesToGo(args[3])
 	cb := &restlikeCallback{utils.WrapCB(args[4], "Callback")}
 
-	err := bindings.AsyncRequestRestLike(
-		e2eID, recipient, request, paramsJSON, cb)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
-	}
+	go func() {
+		err := bindings.AsyncRequestRestLike(
+			e2eID, recipient, request, paramsJSON, cb)
+		if err != nil {
+			utils.Throw(utils.TypeError, err)
+		}
+	}()
 
 	return nil
 }

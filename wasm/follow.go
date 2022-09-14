@@ -87,10 +87,19 @@ func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) interface{} {
 // Parameters:
 //  - args[0] - timeout when stopping threads in milliseconds (int)
 //
-// Returns:
-//  - returns true if the network is healthy (boolean)
+// Returns a promise:
+//  - A promise that resolves if the network is healthy and rejects if the
+//    network is not healthy.
 func (c *Cmix) WaitForNetwork(_ js.Value, args []js.Value) interface{} {
-	return c.api.WaitForNetwork(args[0].Int())
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		if c.api.WaitForNetwork(args[0].Int()) {
+			resolve()
+		} else {
+			reject()
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
 }
 
 // NetworkFollowerStatus gets the state of the network follower. It returns a
@@ -191,8 +200,32 @@ func (ce *clientError) Report(source, message, trace string) {
 //
 // Parameters:
 //  - args[0] - Javascript object that has functions that implement the
-//    [bindings.ClientError] interface
+//    [bindings.ClientError] interface.
 func (c *Cmix) RegisterClientErrorCallback(_ js.Value, args []js.Value) interface{} {
 	c.api.RegisterClientErrorCallback(&clientError{utils.WrapCB(args[0], "Report")})
+	return nil
+}
+
+// trackServicesCallback adheres to the [bindings.TrackServicesCallback]
+// interface.
+type trackServicesCallback struct {
+	callback func(args ...interface{}) js.Value
+}
+
+func (tsc *trackServicesCallback) Callback(marshalData []byte, err error) {
+	tsc.callback(utils.CopyBytesToJS(marshalData), utils.JsTrace(err))
+}
+
+// TrackServices will return, via a callback, the list of services that the
+// backend keeps track of, which is formally referred to as a
+// [message.ServiceList]. This may be passed into other bindings call that may
+// need context on the available services for this client.
+//
+// Parameters:
+//  - args[0] - Javascript object that has functions that implement the
+//    [bindings.TrackServicesCallback] interface.
+func (c *Cmix) TrackServices(_ js.Value, args []js.Value) interface{} {
+	c.api.TrackServices(
+		&trackServicesCallback{utils.WrapCB(args[0], "Callback")})
 	return nil
 }

@@ -56,7 +56,7 @@ type receiveFileCallback struct {
 }
 
 func (rfc *receiveFileCallback) Callback(payload []byte, err error) {
-	rfc.callback(utils.CopyBytesToJS(payload), err.Error())
+	rfc.callback(utils.CopyBytesToJS(payload), utils.JsTrace(err))
 }
 
 // fileTransferSentProgressCallback wraps Javascript callbacks to adhere to the
@@ -67,7 +67,8 @@ type fileTransferSentProgressCallback struct {
 
 func (spc *fileTransferSentProgressCallback) Callback(
 	payload []byte, t *bindings.FilePartTracker, err error) {
-	spc.callback(utils.CopyBytesToJS(payload), newFilePartTrackerJS(t), err.Error())
+	spc.callback(utils.CopyBytesToJS(payload), newFilePartTrackerJS(t),
+		utils.JsTrace(err))
 }
 
 // fileTransferReceiveProgressCallback wraps Javascript callbacks to adhere to
@@ -78,7 +79,8 @@ type fileTransferReceiveProgressCallback struct {
 
 func (rpc *fileTransferReceiveProgressCallback) Callback(
 	payload []byte, t *bindings.FilePartTracker, err error) {
-	rpc.callback(utils.CopyBytesToJS(payload), newFilePartTrackerJS(t), err.Error())
+	rpc.callback(utils.CopyBytesToJS(payload), newFilePartTrackerJS(t),
+		utils.JsTrace(err))
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,22 +125,25 @@ func InitFileTransfer(_ js.Value, args []js.Value) interface{} {
 //  - args[4] - duration to wait between progress callbacks triggering (string).
 //    Reference [time.ParseDuration] for info on valid duration strings.
 //
-// Returns:
-//  - A unique ID for this file transfer (Uint8Array).
-//  - Throws a TypeError if sending fails.
+// Returns a promise:
+//  - Resolves to a unique ID for this file transfer (Uint8Array).
+//  - Rejected with an error if sending fails.
 func (f *FileTransfer) Send(_ js.Value, args []js.Value) interface{} {
 	payload := utils.CopyBytesToGo(args[0])
 	recipientID := utils.CopyBytesToGo(args[1])
 	retry := float32(args[2].Float())
 	spc := &fileTransferSentProgressCallback{utils.WrapCB(args[3], "Callback")}
 
-	ftID, err := f.api.Send(payload, recipientID, retry, spc, args[4].String())
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		ftID, err := f.api.Send(payload, recipientID, retry, spc, args[4].String())
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(ftID))
+		}
 	}
 
-	return utils.CopyBytesToJS(ftID)
+	return utils.CreatePromise(promiseFn)
 }
 
 // Receive returns the full file on the completion of the transfer. It deletes

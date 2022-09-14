@@ -34,3 +34,23 @@ func Test_newE2eJS(t *testing.T) {
 		}
 	}
 }
+
+// Tests that E2e has all the methods that [bindings.E2e] has.
+func Test_E2eMethods(t *testing.T) {
+	e2eType := reflect.TypeOf(&E2e{})
+	binE2eType := reflect.TypeOf(&bindings.E2e{})
+
+	if binE2eType.NumMethod() != e2eType.NumMethod() {
+		t.Errorf("WASM E2e object does not have all methods from bindings."+
+			"\nexpected: %d\nreceived: %d",
+			binE2eType.NumMethod(), e2eType.NumMethod())
+	}
+
+	for i := 0; i < binE2eType.NumMethod(); i++ {
+		method := binE2eType.Method(i)
+
+		if _, exists := e2eType.MethodByName(method.Name); !exists {
+			t.Errorf("Method %s does not exist.", method.Name)
+		}
+	}
+}
