@@ -138,6 +138,10 @@ type logWriter struct {
 	log func(args ...interface{}) js.Value
 }
 
+// Log returns a log message to pass to the log writer.
+//
+// Parameters:
+//  - s - log message (string).
 func (lw *logWriter) Log(s string) { lw.log(s) }
 
 // RegisterLogWriter registers a callback on which logs are written.
@@ -251,7 +255,9 @@ type LogFile struct {
 	b         *circbuf.Buffer
 }
 
-func NewLogFile(name string, threshold jww.Threshold, maxSize int) (*LogFile, error) {
+// NewLogFile initialises a new LogFile for log writing.
+func NewLogFile(
+	name string, threshold jww.Threshold, maxSize int) (*LogFile, error) {
 	// Create new buffer of the specified size
 	b, err := circbuf.NewBuffer(int64(maxSize))
 	if err != nil {

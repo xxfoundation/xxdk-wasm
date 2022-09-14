@@ -30,9 +30,12 @@ func newCmixJS(api *bindings.Cmix) map[string]interface{} {
 		"GetID": js.FuncOf(c.GetID),
 
 		// identity.go
-		"MakeReceptionIdentity":                       js.FuncOf(c.MakeReceptionIdentity),
-		"MakeLegacyReceptionIdentity":                 js.FuncOf(c.MakeLegacyReceptionIdentity),
-		"GetReceptionRegistrationValidationSignature": js.FuncOf(c.GetReceptionRegistrationValidationSignature),
+		"MakeReceptionIdentity": js.FuncOf(
+			c.MakeReceptionIdentity),
+		"MakeLegacyReceptionIdentity": js.FuncOf(
+			c.MakeLegacyReceptionIdentity),
+		"GetReceptionRegistrationValidationSignature": js.FuncOf(
+			c.GetReceptionRegistrationValidationSignature),
 
 		// follow.go
 		"StartNetworkFollower":        js.FuncOf(c.StartNetworkFollower),

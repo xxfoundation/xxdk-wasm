@@ -3,6 +3,10 @@
 This repository contains the WebAssembly bindings for xxDK. It also includes
 examples and a test server to serve the compiled WebAssembly module.
 
+**Note:** If you are updating the version of Go that this repository uses, you
+need to ensure that you update the wasm_exec.js file as described
+[below](#wasm_execjs).
+
 ## Building
 
 The repository can only be compiled to a WebAssembly binary using `GOOS=js` and
@@ -51,7 +55,7 @@ Navigate to http://localhost:9090 to see the webpage.
 the browser. It can be retrieved from Go using the following command.
 
 ```shell
-$ cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" test/assets/
+$ cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" .
 ```
 
 Note that this repository makes edits to `wasm_exec.js` and you must either use

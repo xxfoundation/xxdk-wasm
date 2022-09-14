@@ -160,6 +160,11 @@ type networkHealthCallback struct {
 	callback func(args ...interface{}) js.Value
 }
 
+// Callback receives notification if network health changes.
+//
+// Parameters:
+//  - health - returns true if the network is healthy and false otherwise
+//    (boolean).
 func (nhc *networkHealthCallback) Callback(health bool) { nhc.callback(health) }
 
 // AddHealthCallback adds a callback that gets called whenever the network
@@ -190,6 +195,7 @@ type clientError struct {
 	report func(args ...interface{}) js.Value
 }
 
+// Report handles errors from the network follower threads.
 func (ce *clientError) Report(source, message, trace string) {
 	ce.report(source, message, trace)
 }
@@ -202,7 +208,8 @@ func (ce *clientError) Report(source, message, trace string) {
 //  - args[0] - Javascript object that has functions that implement the
 //    [bindings.ClientError] interface.
 func (c *Cmix) RegisterClientErrorCallback(_ js.Value, args []js.Value) interface{} {
-	c.api.RegisterClientErrorCallback(&clientError{utils.WrapCB(args[0], "Report")})
+	c.api.RegisterClientErrorCallback(
+		&clientError{utils.WrapCB(args[0], "Report")})
 	return nil
 }
 
@@ -212,6 +219,38 @@ type trackServicesCallback struct {
 	callback func(args ...interface{}) js.Value
 }
 
+// Callback is the callback for [Cmix.TrackServices]. This will pass to the user
+// a JSON-marshalled list of backend services. If there was an error retrieving
+// or marshalling the service list, there is an error for the second parameter,
+// which will be non-null.
+//
+// Parameters:
+//  - marshalData - returns the JSON of [message.ServiceList] (Uint8Array).
+//  - err - returns an error on failure (Error).
+//
+// Example JSON:
+//  [
+//    {
+//      "Id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD", // bytes of id.ID encoded as base64 string
+//      "Services": [
+//        {
+//          "Identifier": "AQID",                             // bytes encoded as base64 string
+//          "Tag": "TestTag 1",                               // string
+//          "Metadata": "BAUG"                                // bytes encoded as base64 string
+//        }
+//      ]
+//    },
+//    {
+//      "Id": "AAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD",
+//      "Services": [
+//        {
+//          "Identifier": "AQID",
+//          "Tag": "TestTag 2",
+//          "Metadata": "BAUG"
+//        }
+//      ]
+//    },
+//  ]
 func (tsc *trackServicesCallback) Callback(marshalData []byte, err error) {
 	tsc.callback(utils.CopyBytesToJS(marshalData), utils.JsTrace(err))
 }

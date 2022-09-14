@@ -2,7 +2,7 @@
 // Copyright © 2022 xx foundation                                             //
 //                                                                            //
 // Use of this source code is governed by a license that can be found in the  //
-// LICENSE file                                                               //
+// LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
 //go:build js && wasm
@@ -20,19 +20,21 @@ import (
 )
 
 const (
-	// databaseSuffix to be appended to the name of the database
+	// databaseSuffix is the suffix to be appended to the name of the database.
 	databaseSuffix = "_messenger"
-	// currentVersion of the IndexDb runtime. Used for migration purposes.
+
+	// currentVersion is the current version of the IndexDb runtime. Used for
+	// migration purposes.
 	currentVersion uint = 1
 )
 
-// NewWasmEventModel returns a [channels.EventModel] backed by a wasmModel
+// NewWasmEventModel returns a [channels.EventModel] backed by a wasmModel.
 func NewWasmEventModel(username string) (channels.EventModel, error) {
 	databaseName := username + databaseSuffix
 	return newWasmModel(databaseName)
 }
 
-// newWasmModel creates the given [idb.Database] and returns a wasmModel
+// newWasmModel creates the given [idb.Database] and returns a wasmModel.
 func newWasmModel(databaseName string) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := newContext()
@@ -40,13 +42,12 @@ func newWasmModel(databaseName string) (*wasmModel, error) {
 	openRequest, _ := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			if oldVersion == newVersion {
-				jww.INFO.Printf("IndexDb version is current: v%d",
-					newVersion)
+				jww.INFO.Printf("IndexDb version is current: v%d", newVersion)
 				return nil
 			}
 
-			jww.INFO.Printf("IndexDb upgrade required: v%d -> v%d",
-				oldVersion, newVersion)
+			jww.INFO.Printf(
+				"IndexDb upgrade required: v%d -> v%d", oldVersion, newVersion)
 
 			if oldVersion == 0 && newVersion == 1 {
 				return v1Upgrade(db)
@@ -63,7 +64,9 @@ func newWasmModel(databaseName string) (*wasmModel, error) {
 }
 
 // v1Upgrade performs the v0 -> v1 database upgrade.
-// This can never be changed without permanently breaking backwards compatibility.
+//
+// This can never be changed without permanently breaking backwards
+// compatibility.
 func v1Upgrade(db *idb.Database) error {
 	storeOpts := idb.ObjectStoreOptions{
 		KeyPath:       js.ValueOf(pkeyName),

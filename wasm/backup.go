@@ -44,6 +44,10 @@ type updateBackupFunc struct {
 	updateBackup func(args ...interface{}) js.Value
 }
 
+// UpdateBackup is a function callback that returns new backups.
+//
+// Parameters:
+//  - encryptedBackup - returns the bytes of the encrypted backup (Uint8Array).
 func (ubf *updateBackupFunc) UpdateBackup(encryptedBackup []byte) {
 	ubf.updateBackup(utils.CopyBytesToJS(encryptedBackup))
 }

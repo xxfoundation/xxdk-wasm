@@ -2,7 +2,7 @@
 // Copyright © 2022 xx foundation                                             //
 //                                                                            //
 // Use of this source code is governed by a license that can be found in the  //
-// LICENSE file                                                               //
+// LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
 //go:build js && wasm
@@ -28,16 +28,18 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 )
 
-// dbTimeout is the global timeout for operations with the storage context.Contact
+// dbTimeout is the global timeout for operations with the storage
+// context.Contact.
 const dbTimeout = time.Second
 
-// wasmModel implements [channels.EventModel] interface which uses the channels
-// system passed an object which adheres to in order to get events on the channel.
+// wasmModel implements [channels.EventModel] interface, which uses the channels
+// system passed an object that adheres to in order to get events on the
+// channel.
 type wasmModel struct {
 	db *idb.Database
 }
 
-// newContext builds a context for database operations
+// newContext builds a context for database operations.
 func newContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), dbTimeout)
 }
@@ -98,8 +100,7 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 			"Adding Channel failed: %+v", err))
 		return
 	}
-	jww.DEBUG.Printf("Successfully added channel: %s",
-		channel.ReceptionID.String())
+	jww.DEBUG.Printf("Successfully added channel: %s", channel.ReceptionID)
 }
 
 // LeaveChannel is called whenever a channel is left locally.
@@ -137,15 +138,17 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 			"Deleting Channel failed: %+v", err))
 		return
 	}
-	jww.DEBUG.Printf("Successfully deleted channel: %s", channelID.String())
+	jww.DEBUG.Printf("Successfully deleted channel: %s", channelID)
 }
 
-// ReceiveMessage is called whenever a message is received on a given channel
-// It may be called multiple times on the same message, it is incumbent on
-// the user of the API to filter such called by message ID.
-func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID cryptoChannel.MessageID,
-	senderUsername string, text string, timestamp time.Time, lease time.Duration,
-	_ rounds.Round, status channels.SentStatus) {
+// ReceiveMessage is called whenever a message is received on a given channel.
+//
+// It may be called multiple times on the same message; it is incumbent on the
+// user of the API to filter such called by message ID.
+func (w *wasmModel) ReceiveMessage(channelID *id.ID,
+	messageID cryptoChannel.MessageID, senderUsername string, text string,
+	timestamp time.Time, lease time.Duration, _ rounds.Round,
+	status channels.SentStatus) {
 	parentErr := errors.New("failed to ReceiveMessage")
 
 	err := w.receiveHelper(buildMessage(channelID.Marshal(), messageID.Bytes(),
@@ -155,14 +158,16 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID cryptoChannel.Mes
 	}
 }
 
-// ReceiveReply is called whenever a message is received which is a reply
-// on a given channel. It may be called multiple times on the same message,
-// it is incumbent on the user of the API to filter such called by message ID
-// Messages may arrive our of order, so a reply in theory can arrive before
-// the initial message, as a result it may be important to buffer replies.
-func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID cryptoChannel.MessageID,
-	replyTo cryptoChannel.MessageID, senderUsername string, text string,
-	timestamp time.Time, lease time.Duration, _ rounds.Round, status channels.SentStatus) {
+// ReceiveReply is called whenever a message is received that is a reply on a
+// given channel. It may be called multiple times on the same message; it is
+// incumbent on the user of the API to filter such called by message ID.
+//
+// Messages may arrive our of order, so a reply, in theory, can arrive before
+// the initial message. As a result, it may be important to buffer replies.
+func (w *wasmModel) ReceiveReply(channelID *id.ID,
+	messageID cryptoChannel.MessageID, replyTo cryptoChannel.MessageID,
+	senderUsername string, text string, timestamp time.Time,
+	lease time.Duration, _ rounds.Round, status channels.SentStatus) {
 	parentErr := errors.New("failed to ReceiveReply")
 
 	err := w.receiveHelper(buildMessage(channelID.Marshal(), messageID.Bytes(),
@@ -172,14 +177,16 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID cryptoChannel.Messa
 	}
 }
 
-// ReceiveReaction is called whenever a reaction to a message is received
-// on a given channel. It may be called multiple times on the same reaction,
-// it is incumbent on the user of the API to filter such called by message ID
-// Messages may arrive our of order, so a reply in theory can arrive before
-// the initial message, as a result it may be important to buffer reactions.
-func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID cryptoChannel.MessageID,
-	reactionTo cryptoChannel.MessageID, senderUsername string, reaction string,
-	timestamp time.Time, lease time.Duration, _ rounds.Round, status channels.SentStatus) {
+// ReceiveReaction is called whenever a reaction to a message is received on a
+// given channel. It may be called multiple times on the same reaction; it is
+// incumbent on the user of the API to filter such called by message ID.
+//
+// Messages may arrive our of order, so a reply, in theory, can arrive before
+// the initial message. As a result, it may be important to buffer reactions.
+func (w *wasmModel) ReceiveReaction(channelID *id.ID,
+	messageID cryptoChannel.MessageID, reactionTo cryptoChannel.MessageID,
+	senderUsername string, reaction string, timestamp time.Time,
+	lease time.Duration, _ rounds.Round, status channels.SentStatus) {
 	parentErr := errors.New("failed to ReceiveReaction")
 
 	err := w.receiveHelper(buildMessage(channelID.Marshal(), messageID.Bytes(),
@@ -189,9 +196,9 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID cryptoChannel.Me
 	}
 }
 
-// UpdateSentStatus is called whenever the SentStatus of a message
-// has changed
-// TODO: Potential race condition due to separate get/update operations
+// UpdateSentStatus is called whenever the [channels.SentStatus] of a message
+// has changed.
+// TODO: Potential race condition due to separate get/update operations.
 func (w *wasmModel) UpdateSentStatus(messageID cryptoChannel.MessageID,
 	status channels.SentStatus) {
 	parentErr := errors.New("failed to UpdateSentStatus")
@@ -221,10 +228,10 @@ func (w *wasmModel) UpdateSentStatus(messageID cryptoChannel.MessageID,
 }
 
 // buildMessage is a private helper that converts typical [channels.EventModel]
-// inputs into a basic Message structure for insertion into storage
-func buildMessage(channelID []byte, messageID []byte,
-	parentId []byte, senderUsername string, text string,
-	timestamp time.Time, lease time.Duration, status channels.SentStatus) *Message {
+// inputs into a basic Message structure for insertion into storage.
+func buildMessage(channelID, messageID, parentId []byte, senderUsername,
+	text string, timestamp time.Time, lease time.Duration,
+	status channels.SentStatus) *Message {
 	return &Message{
 		Id:              messageID,
 		SenderUsername:  senderUsername,
@@ -239,7 +246,7 @@ func buildMessage(channelID []byte, messageID []byte,
 	}
 }
 
-// receiveHelper is a private helper for receiving any sort of message
+// receiveHelper is a private helper for receiving any sort of message.
 func (w *wasmModel) receiveHelper(newMessage *Message) error {
 	// Convert to jsObject
 	newMessageJson, err := json.Marshal(newMessage)
@@ -274,12 +281,13 @@ func (w *wasmModel) receiveHelper(newMessage *Message) error {
 	if err != nil {
 		return errors.Errorf("Upserting Message failed: %+v", err)
 	}
-	jww.DEBUG.Printf("Successfully stored message from %s",
-		newMessage.SenderUsername)
+	jww.DEBUG.Printf(
+		"Successfully stored message from %s", newMessage.SenderUsername)
 	return nil
 }
 
-// get is a generic private helper for getting values from the given [idb.ObjectStore].
+// get is a generic private helper for getting values from the given
+// [idb.ObjectStore].
 func (w *wasmModel) get(objectStoreName string, key js.Value) (string, error) {
 	parentErr := errors.Errorf("failed to get %s/%s", objectStoreName, key)
 
@@ -317,7 +325,8 @@ func (w *wasmModel) get(objectStoreName string, key js.Value) (string, error) {
 	return resultStr, nil
 }
 
-// dump given [idb.ObjectStore] contents to string slice for debugging purposes
+// dump returns the given [idb.ObjectStore] contents to string slice for
+// debugging purposes.
 func (w *wasmModel) dump(objectStoreName string) ([]string, error) {
 	parentErr := errors.Errorf("failed to dump %s", objectStoreName)
 

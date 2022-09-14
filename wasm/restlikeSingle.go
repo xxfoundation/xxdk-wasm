@@ -21,6 +21,11 @@ type restlikeCallback struct {
 	callback func(args ...interface{}) js.Value
 }
 
+// Callback returns the response from an asynchronous restlike request.
+//
+// Parameters:
+//  - payload - JSON of [restlike.Message] (Uint8Array).
+//  - err - returns an error on failure (Error).
 func (rlc *restlikeCallback) Callback(payload []byte, err error) {
 	rlc.callback(utils.CopyBytesToJS(payload), utils.JsTrace(err))
 }

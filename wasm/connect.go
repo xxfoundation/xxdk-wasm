@@ -133,8 +133,17 @@ type listener struct {
 	name func(args ...interface{}) js.Value
 }
 
+// Hear is called to receive a message in the UI.
+//
+// Parameters:
+//  - item - returns the JSON of [bindings.Message] (Uint8Array).
 func (l *listener) Hear(item []byte) { l.hear(utils.CopyBytesToJS(item)) }
-func (l *listener) Name() string     { return l.name().String() }
+
+// Name returns a name; used for debugging.
+//
+// Returns:
+//  - string
+func (l *listener) Name() string { return l.name().String() }
 
 // RegisterListener is used for E2E reception and allows for reading data sent
 // from the partner.Manager.

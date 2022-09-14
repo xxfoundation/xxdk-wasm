@@ -20,6 +20,23 @@ type messageDeliveryCallback struct {
 	eventCallback func(args ...interface{}) js.Value
 }
 
+// EventCallback gets called on the determination if all events related to a
+// message send were successful.
+//
+// If delivered == true, timedOut == false && roundResults != nil
+//
+// If delivered == false, roundResults == nil
+//
+// If timedOut == true, delivered == false && roundResults == nil
+//
+// Parameters:
+//  - delivered - Returns false if any rounds in the round map were
+//    unsuccessful. Returns true if ALL rounds were successful (boolean).
+//  - timedOut - Returns true if any of the rounds timed out while being
+//    monitored. Returns false if all rounds statuses were returned (boolean).
+//  - roundResults - rounds contains a mapping of all previously requested
+//    rounds to their respective round results. Marshalled bytes of
+//    map[id.Round]cmix.RoundResult (Uint8Array).
 func (mdc *messageDeliveryCallback) EventCallback(
 	delivered, timedOut bool, roundResults []byte) {
 	mdc.eventCallback(delivered, timedOut, utils.CopyBytesToJS(roundResults))

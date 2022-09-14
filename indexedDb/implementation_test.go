@@ -2,7 +2,7 @@
 // Copyright © 2022 xx foundation                                             //
 //                                                                            //
 // Use of this source code is governed by a license that can be found in the  //
-// LICENSE file                                                               //
+// LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
 package indexedDb
@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// Test UpdateSentStatus happy path and ensure fields don't change
+// Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
 func TestWasmModel_UpdateSentStatus(t *testing.T) {
 	testString := "test"
 	testMsgId := channel.MakeMessageID([]byte(testString))
@@ -77,7 +77,7 @@ func TestWasmModel_UpdateSentStatus(t *testing.T) {
 	}
 }
 
-// Smoke test JoinChannel/LeaveChannel happy paths
+// Smoke test wasmModel.JoinChannel/wasmModel.LeaveChannel happy paths.
 func TestWasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 	eventModel, err := newWasmModel("test")
 	if err != nil {

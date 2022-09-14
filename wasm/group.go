@@ -353,6 +353,10 @@ type groupRequest struct {
 	callback func(args ...interface{}) js.Value
 }
 
+// Callback is called when a group request is received.
+//
+// Parameters:
+//  - g - returns the JSON of [bindings.Group] (Uint8Array)
 func (gr *groupRequest) Callback(g *bindings.Group) {
 	gr.callback(newGroupJS(g))
 }
@@ -360,17 +364,29 @@ func (gr *groupRequest) Callback(g *bindings.Group) {
 // groupChatProcessor wraps Javascript callbacks to adhere to the
 // [bindings.GroupChatProcessor] interface.
 type groupChatProcessor struct {
-	callback func(args ...interface{}) js.Value
-	string   func(args ...interface{}) js.Value
+	process func(args ...interface{}) js.Value
+	string  func(args ...interface{}) js.Value
 }
 
+// Process decrypts and hands off the message to its internal down stream
+// message processing system.
+//
+// Parameters:
+//  - decryptedMessage - returns the JSON of [bindings.GroupChatMessage]
+//    (Uint8Array).
+//  - msg - returns the marshalled bytes of [format.Message] (Uint8Array).
+//  - receptionId - returns the ID of the sender. JSON of [id.ID] (Uint8Array).
+//  - ephemeralId - returns the ephemeral ID of the sender (int).
+//  - roundId - returns the ID of the round sent on (int).
+//  - err - returns an error on failure (Error).
 func (gcp *groupChatProcessor) Process(decryptedMessage, msg,
 	receptionId []byte, ephemeralId, roundId int64, err error) {
-	gcp.callback(utils.CopyBytesToJS(decryptedMessage),
+	gcp.process(utils.CopyBytesToJS(decryptedMessage),
 		utils.CopyBytesToJS(msg), utils.CopyBytesToJS(receptionId), ephemeralId,
 		roundId, utils.JsTrace(err))
 }
 
+// String returns a name identifying this processor. Used for debugging.
 func (gcp *groupChatProcessor) String() string {
 	return gcp.string().String()
 }

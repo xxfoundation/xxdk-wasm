@@ -16,9 +16,20 @@ import (
 )
 
 var (
-	Error      = js.Global().Get("Error")
-	JSON       = js.Global().Get("JSON")
-	Promise    = js.Global().Get("Promise")
+	// Error is the Javascript Error object. It used to create new Javascript
+	// errors.
+	Error = js.Global().Get("Error")
+
+	// JSON is the Javascript JSON object. It is used to perform JSON operations
+	// on the Javascript layer.
+	JSON = js.Global().Get("JSON")
+
+	// Promise is the Javascript Promise object. It is used to generate new
+	// promises.
+	Promise = js.Global().Get("Promise")
+
+	// Uint8Array is the Javascript Uint8Array object. It is used to create new
+	// Uint8Array.
 	Uint8Array = js.Global().Get("Uint8Array")
 )
 
@@ -38,6 +49,10 @@ func WrapCB(parent js.Value, m string) func(args ...interface{}) js.Value {
 	}
 }
 
+// PromiseFn converts the Javascript Promise construct into Go.
+//
+// Call resolve with the return of the function on success. Call reject with an
+// error on failure.
 type PromiseFn func(resolve, reject func(args ...interface{}) js.Value)
 
 // CreatePromise creates a Javascript promise to return the value of a blocking

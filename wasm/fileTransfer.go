@@ -36,8 +36,10 @@ func newFileTransferJS(api *bindings.FileTransfer) map[string]interface{} {
 		"CloseSend": js.FuncOf(ft.CloseSend),
 
 		// Callback registration functions
-		"RegisterSentProgressCallback":     js.FuncOf(ft.RegisterSentProgressCallback),
-		"RegisterReceivedProgressCallback": js.FuncOf(ft.RegisterReceivedProgressCallback),
+		"RegisterSentProgressCallback": js.FuncOf(
+			ft.RegisterSentProgressCallback),
+		"RegisterReceivedProgressCallback": js.FuncOf(
+			ft.RegisterReceivedProgressCallback),
 
 		// Utility functions
 		"MaxFileNameLen": js.FuncOf(ft.MaxFileNameLen),
@@ -55,6 +57,12 @@ type receiveFileCallback struct {
 	callback func(args ...interface{}) js.Value
 }
 
+// Callback is called when a new file transfer is received.
+//
+// Parameters:
+//  - payload - returns the contents of the message. JSON of
+//    [bindings.ReceivedFile] (Uint8Array).
+//  - err - returns an error on failure (Error).
 func (rfc *receiveFileCallback) Callback(payload []byte, err error) {
 	rfc.callback(utils.CopyBytesToJS(payload), utils.JsTrace(err))
 }
@@ -65,6 +73,15 @@ type fileTransferSentProgressCallback struct {
 	callback func(args ...interface{}) js.Value
 }
 
+// Callback is called when a new file transfer is received.
+//
+// Parameters:
+//  - payload - returns the contents of the message. JSON of [bindings.Progress]
+//    (Uint8Array).
+//  - t - returns a tracker that allows the lookup of the status of any file
+//    part. It is a Javascript object that matches the functions on
+//    FilePartTracker.
+//  - err - returns an error on failure (Error).
 func (spc *fileTransferSentProgressCallback) Callback(
 	payload []byte, t *bindings.FilePartTracker, err error) {
 	spc.callback(utils.CopyBytesToJS(payload), newFilePartTrackerJS(t),
@@ -77,6 +94,15 @@ type fileTransferReceiveProgressCallback struct {
 	callback func(args ...interface{}) js.Value
 }
 
+// Callback is called when a file part is sent or an error occurs.
+//
+// Parameters:
+//  - payload - returns the contents of the message. JSON of [bindings.Progress]
+//    (Uint8Array).
+//  - t - returns a tracker that allows the lookup of the status of any file
+//    part. It is a Javascript object that matches the functions on
+//    FilePartTracker.
+//  - err - returns an error on failure (Error).
 func (rpc *fileTransferReceiveProgressCallback) Callback(
 	payload []byte, t *bindings.FilePartTracker, err error) {
 	rpc.callback(utils.CopyBytesToJS(payload), newFilePartTrackerJS(t),

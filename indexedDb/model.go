@@ -2,7 +2,7 @@
 // Copyright © 2022 xx foundation                                             //
 //                                                                            //
 // Use of this source code is governed by a license that can be found in the  //
-// LICENSE file                                                               //
+// LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
 //go:build js && wasm
@@ -36,7 +36,9 @@ const (
 )
 
 // Message defines the IndexedDb representation of a single Message.
+//
 // A Message belongs to one Channel.
+//
 // A Message may belong to one Message (Parent).
 type Message struct {
 	Id              []byte        `json:"id"` // Matches pkeyName
@@ -51,7 +53,8 @@ type Message struct {
 	Text            string        `json:"text"`
 }
 
-// Channel defines the IndexedDb representation of a single Channel
+// Channel defines the IndexedDb representation of a single Channel.
+//
 // A Channel has many Message.
 type Channel struct {
 	Id          []byte `json:"id"` // Matches pkeyName

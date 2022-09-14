@@ -103,6 +103,7 @@ func newStopperJS(api bindings.Stopper) map[string]interface{} {
 	return stopperMap
 }
 
+// Stop stops the registered listener.
 func (s *Stopper) Stop(js.Value, []js.Value) interface{} {
 	s.api.Stop()
 	return nil
@@ -118,6 +119,13 @@ type singleUseCallback struct {
 	callback func(args ...interface{}) js.Value
 }
 
+// Callback is called when single-use messages are received.
+//
+// Parameters:
+//  - callbackReport - JSON of [bindings.SingleUseCallbackReport], which can be
+//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    (Uint8Array).
+//  - err - returns an error on failure (Error).
 func (suc *singleUseCallback) Callback(callbackReport []byte, err error) {
 	suc.callback(utils.CopyBytesToJS(callbackReport), utils.JsTrace(err))
 }
@@ -128,6 +136,13 @@ type singleUseResponse struct {
 	callback func(args ...interface{}) js.Value
 }
 
+// Callback returns the response to a single-use message.
+//
+// Parameters:
+//  - callbackReport - JSON of [bindings.SingleUseCallbackReport], which can be
+//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    (Uint8Array).
+//  - err - returns an error on failure (Error).
 func (sur *singleUseResponse) Callback(responseReport []byte, err error) {
 	sur.callback(utils.CopyBytesToJS(responseReport), utils.JsTrace(err))
 }

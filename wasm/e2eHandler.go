@@ -194,12 +194,21 @@ type processor struct {
 	string  func(args ...interface{}) js.Value
 }
 
+// Process decrypts and hands off the message to its internal down stream
+// message processing system.
+//
+// Parameters:
+//  - message - returns the message contents (Uint8Array).
+//  - receptionId - returns the ID of the sender. JSON of [id.ID] (Uint8Array).
+//  - ephemeralId - returns the ephemeral ID of the sender (int).
+//  - roundId - returns the ID of the round sent on (int).
 func (p *processor) Process(
 	message, receptionId []byte, ephemeralId, roundId int64) {
 	p.process(utils.CopyBytesToJS(message), utils.CopyBytesToJS(receptionId),
 		ephemeralId, roundId)
 }
 
+// String identifies this processor and is used for debugging.
 func (p *processor) String() string {
 	return p.string().String()
 }
@@ -221,7 +230,8 @@ func (p *processor) String() string {
 // Returns:
 //  - Throws TypeError if registering the service fails
 func (e *E2e) AddService(_ js.Value, args []js.Value) interface{} {
-	p := &processor{utils.WrapCB(args[1], "Process"), utils.WrapCB(args[1], "String")}
+	p := &processor{
+		utils.WrapCB(args[1], "Process"), utils.WrapCB(args[1], "String")}
 
 	err := e.api.AddService(args[0].String(), p)
 	if err != nil {

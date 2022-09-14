@@ -56,6 +56,10 @@ type udNetworkStatus struct {
 	udNetworkStatus func(args ...interface{}) js.Value
 }
 
+// UdNetworkStatus returns the status of UD.
+//
+// Returns:
+//  - UD status (int).
 func (uns *udNetworkStatus) UdNetworkStatus() int {
 	return uns.udNetworkStatus().Int()
 }
@@ -158,8 +162,9 @@ func NewUdManagerFromBackup(_ js.Value, args []js.Value) interface{} {
 	contactFile := utils.CopyBytesToGo(args[6])
 	address := args[7].String()
 
-	api, err := bindings.NewUdManagerFromBackup(e2eID, follower, usernameFactJson, emailFactJson,
-		phoneFactJson, cert, contactFile, address)
+	api, err := bindings.NewUdManagerFromBackup(
+		e2eID, follower, usernameFactJson, emailFactJson, phoneFactJson, cert,
+		contactFile, address)
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
@@ -285,6 +290,13 @@ type udLookupCallback struct {
 	callback func(args ...interface{}) js.Value
 }
 
+// Callback is called by LookupUD to return the contact that matches the passed
+// in ID.
+//
+// Parameters:
+//  - contactBytes - JSON of [contact.Contact] returned from the lookup, or nil
+//    if an error occurs (Uint8Array).
+//  - err - returns an error on failure (Error).
 func (ulc *udLookupCallback) Callback(contactBytes []byte, err error) {
 	ulc.callback(utils.CopyBytesToJS(contactBytes), utils.JsTrace(err))
 }
@@ -335,6 +347,20 @@ type udSearchCallback struct {
 	callback func(args ...interface{}) js.Value
 }
 
+// Callback is called by SearchUD to return a list of [contact.Contact] objects
+// that match the list of facts passed into SearchUD.
+//
+// Parameters:
+//  - contactListJSON - JSON of an array of [contact.Contact], or nil if an
+//    error occurs (Uint8Array).
+//  - err - returns any error that occurred in the search (Error).
+//
+// JSON Example:
+//  {
+//    "<xxc(2)F8dL9EC6gy+RMJuk3R+Au6eGExo02Wfio5cacjBcJRwDEgB7Ugdw/BAr6RkCABkWAFV1c2VybmFtZTA7c4LzV05sG+DMt+rFB0NIJg==xxc>",
+//    "<xxc(2)eMhAi/pYkW5jCmvKE5ZaTglQb+fTo1D8NxVitr5CCFADEgB7Ugdw/BAr6RoCABkWAFV1c2VybmFtZTE7fElAa7z3IcrYrrkwNjMS2w==xxc>",
+//    "<xxc(2)d7RJTu61Vy1lDThDMn8rYIiKSe1uXA/RCvvcIhq5Yg4DEgB7Ugdw/BAr6RsCABkWAFV1c2VybmFtZTI7N3XWrxIUpR29atpFMkcR6A==xxc>"
+//  }
 func (usc *udSearchCallback) Callback(contactListJSON []byte, err error) {
 	usc.callback(utils.CopyBytesToJS(contactListJSON), utils.JsTrace(err))
 }

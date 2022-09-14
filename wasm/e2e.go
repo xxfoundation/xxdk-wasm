@@ -189,26 +189,23 @@ type authCallbacks struct {
 	reset   func(args ...interface{}) js.Value
 }
 
-// newAuthCallbacks adds all the callbacks from the Javascript object. If a
-// callback is not defined, it is skipped.
+// newAuthCallbacks adds all the callbacks from the Javascript object.
 func newAuthCallbacks(value js.Value) *authCallbacks {
-	a := &authCallbacks{}
-
-	if value.Get("Request").Type() == js.TypeFunction {
-		a.request = utils.WrapCB(value, "Request")
+	return &authCallbacks{
+		request: utils.WrapCB(value, "Request"),
+		confirm: utils.WrapCB(value, "Confirm"),
+		reset:   utils.WrapCB(value, "Reset"),
 	}
-
-	if value.Get("Confirm").Type() == js.TypeFunction {
-		a.confirm = utils.WrapCB(value, "Confirm")
-	}
-
-	if value.Get("Reset").Type() == js.TypeFunction {
-		a.reset = utils.WrapCB(value, "Reset")
-	}
-
-	return a
 }
 
+// Request will be called when an auth Request message is processed.
+//
+// Parameters:
+//  - contact - returns the contact file of the sender. JSON of
+//    [contact.Contact] (Uint8Array).
+//  - receptionId - returns the ID of the sender. JSON of [id.ID] (Uint8Array).
+//  - ephemeralId - returns the ephemeral ID of the sender (int).
+//  - roundId - returns the ID of the round the request was sent on (int).
 func (a *authCallbacks) Request(
 	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.request != nil {
@@ -217,6 +214,14 @@ func (a *authCallbacks) Request(
 	}
 }
 
+// Confirm will be called when an auth Confirm message is processed.
+//
+// Parameters:
+//  - contact - returns the contact file of the sender. JSON of
+//    [contact.Contact] (Uint8Array).
+//  - receptionId - returns the ID of the sender. JSON of [id.ID] (Uint8Array).
+//  - ephemeralId - returns the ephemeral ID of the sender (int).
+//  - roundId - returns the ID of the round the confirmation was sent on (int).
 func (a *authCallbacks) Confirm(
 	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.confirm != nil {
@@ -225,6 +230,14 @@ func (a *authCallbacks) Confirm(
 	}
 }
 
+// Reset will be called when an auth Reset operation occurs.
+//
+// Parameters:
+//  - contact - returns the contact file of the sender. JSON of
+//    [contact.Contact] (Uint8Array).
+//  - receptionId - returns the ID of the sender. JSON of [id.ID] (Uint8Array).
+//  - ephemeralId - returns the ephemeral ID of the sender (int).
+//  - roundId - returns the ID of the round the reset was sent on (int).
 func (a *authCallbacks) Reset(
 	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.reset != nil {

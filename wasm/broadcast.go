@@ -66,6 +66,13 @@ type broadcastListener struct {
 	callback func(args ...interface{}) js.Value
 }
 
+// Callback is used to listen for broadcast messages.
+//
+// Parameters:
+//  - payload - returns the JSON of [bindings.E2ESendReport], which can be
+//    passed into cmix.WaitForRoundResult to see if the send succeeded
+//    (Uint8Array).
+//  - err - returns an error on failure (Error).
 func (bl *broadcastListener) Callback(payload []byte, err error) {
 	bl.callback(utils.CopyBytesToJS(payload), utils.JsTrace(err))
 }

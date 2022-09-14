@@ -60,9 +60,6 @@ func (ch *ChannelsManager) GetID(js.Value, []js.Value) interface{} {
 }
 
 // NewChannelsManager constructs a ChannelsManager.
-// FIXME: This is a work in progress and should not be used an event model is
-//  implemented in the style of the bindings layer's AuthCallbacks. Remove this
-//  note when that has been done.
 //
 // Parameters:
 //  - args[0] - ID of ChannelsManager object in tracker (int). This can be
@@ -438,6 +435,12 @@ type channelMessageReceptionCallback struct {
 	callback func(args ...interface{}) js.Value
 }
 
+// Callback returns the context for a channel message.
+//
+// Parameters:
+//  - receivedChannelMessageReport - returns the JSON of
+//   [bindings.ReceivedChannelMessageReport] (Uint8Array).
+//  - err - returns an error on failure (Error).
 func (cmrCB *channelMessageReceptionCallback) Callback(
 	receivedChannelMessageReport []byte, err error) {
 	cmrCB.callback(utils.CopyBytesToJS(receivedChannelMessageReport),
