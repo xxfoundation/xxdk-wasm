@@ -36,9 +36,9 @@ import (
 //  - args[0] - marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //  - args[1] - JSON of [fact.FactList] (Uint8Array).
 //
-// Returns:
-//  - A promise that returns the ID of the round (int).
-//  - Throws an error if the request fails.
+// Returns a promise:
+//  - Resolves to the ID of the round (int).
+//  - Rejected with an error if sending the request fails.
 func (e *E2e) Request(_ js.Value, args []js.Value) interface{} {
 	partnerContact := utils.CopyBytesToGo(args[0])
 	factsListJson := utils.CopyBytesToGo(args[1])
@@ -74,9 +74,9 @@ func (e *E2e) Request(_ js.Value, args []js.Value) interface{} {
 // Parameters:
 //  - args[0] - marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
-// Returns:
-//  - A promise that returns the ID of the round (int).
-//  - Throws an error if the confirmation fails.
+// Returns a promise:
+//  - Resolves to the ID of the round (int).
+//  - Rejected with an error if sending the confirmation fails.
 func (e *E2e) Confirm(_ js.Value, args []js.Value) interface{} {
 	partnerContact := utils.CopyBytesToGo(args[0])
 
@@ -109,9 +109,9 @@ func (e *E2e) Confirm(_ js.Value, args []js.Value) interface{} {
 // Parameters:
 //  - args[0] - marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
-// Returns:
-//  - A promise that returns the ID of the round (int).
-//  - Throws an error if the reset fails.
+// Returns a promise:
+//  - Resolves to the ID of the round (int).
+//  - Rejected with an error if sending the reset fails.
 func (e *E2e) Reset(_ js.Value, args []js.Value) interface{} {
 	partnerContact := utils.CopyBytesToGo(args[0])
 
@@ -138,9 +138,9 @@ func (e *E2e) Reset(_ js.Value, args []js.Value) interface{} {
 // Parameters:
 //  - args[0] - marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
-// Returns:
-//  - A promise that returns the ID of the round (int).
-//  - Throws an error if the confirmation fails.
+// Returns a promise:
+//  - Resolves to the ID of the round (int).
+//  - Rejected with an error if resending the confirmation fails.
 func (e *E2e) ReplayConfirm(_ js.Value, args []js.Value) interface{} {
 	partnerContact := utils.CopyBytesToGo(args[0])
 

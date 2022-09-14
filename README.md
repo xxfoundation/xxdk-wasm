@@ -1,7 +1,7 @@
 # xxdk-WASM
 
-This repository contains the WebAssembly bindings for xxDK. It also includes a
-test server to serve the compiled WebAssembly module.
+This repository contains the WebAssembly bindings for xxDK. It also includes
+examples and a test server to serve the compiled WebAssembly module.
 
 ## Building
 
@@ -15,34 +15,35 @@ $ GOOS=js GOARCH=wasm go build -o xxdk.wasm
 ### Running Unit Tests
 
 Because the bindings use `syscall/js`, tests cannot only be run in a browser. To
-automate this process first install
-[wasmbrowsertest](https://github.com/agnivade/wasmbrowsertest). Then, tests can
-be run using the following command.
+automate this process first get
+[wasmbrowsertest](https://github.com/agnivade/wasmbrowsertest) and follow their
+[installation instructions](https://github.com/agnivade/wasmbrowsertest#quickstart).
+Then, tests can be run using the following command.
 
 ```shell
 $ GOOS=js GOARCH=wasm go test ./...
 ```
 
-Note, this will fail because `utils/utils_js.s` contains commands only recognized
-by the Go WebAssembly compiler and for some reason not recognized by the test
-runner. To get tests to run, temporarily delete the body of `utils/utils_js.s`
-during testing.
+Note, this will fail because `utils/utils_js.s` contains commands only
+recognized by the Go WebAssembly compiler and for some reason are not recognized
+by the test runner. To get tests to run, temporarily delete the body of
+`utils/utils_js.s` during testing.
 
-## Testing
+## Testing and Examples
 
-The `test` directory contains `assets`, a simple web page to run the Javascript,
-and `server`, which runs a simple Go HTTP server to deliver the webpage.
+The `test` directory contains a basic HTTP server that serves an HTML file
+running the WebAssembly binary. This is used for basic testing of the binary.
 
-To run the server, first compile the bindings and save them to the `assets`
+To run the server, first compile the bindings and save them to the `test`
 directory. Then run the server
 
 ```shell
-$ GOOS=js GOARCH=wasm go build -o test/assets/xxdk.wasm
-$ cd test/server/
+$ GOOS=js GOARCH=wasm go build -o test/xxdk.wasm
+$ cd test/
 $ go run main.go
 ```
 
-Navigate to http://localhost:9090 to see the web page.
+Navigate to http://localhost:9090 to see the webpage.
 
 ## `wasm_exec.js`
 

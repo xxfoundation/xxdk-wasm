@@ -14,7 +14,7 @@ import (
 	"syscall/js"
 )
 
-// GetVersion returns the xxdk.SEMVER.
+// GetVersion returns the [xxdk.SEMVER].
 //
 // Returns:
 //  - string
@@ -22,7 +22,7 @@ func GetVersion(js.Value, []js.Value) interface{} {
 	return bindings.GetVersion()
 }
 
-// GetGitVersion returns the xxdk.GITVERSION.
+// GetGitVersion returns the [xxdk.GITVERSION].
 //
 // Returns:
 //  - string
@@ -30,7 +30,7 @@ func GetGitVersion(js.Value, []js.Value) interface{} {
 	return bindings.GetGitVersion()
 }
 
-// GetDependencies returns the xxdk.DEPENDENCIES.
+// GetDependencies returns the [xxdk.DEPENDENCIES].
 //
 // Returns:
 //  - string

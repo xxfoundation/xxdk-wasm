@@ -27,7 +27,7 @@ func newConnectJS(api *bindings.Connection) map[string]interface{} {
 	c := Connection{api}
 	connectionMap := map[string]interface{}{
 		// connect.go
-		"GetID":            js.FuncOf(c.GetID),
+		"GetId":            js.FuncOf(c.GetId),
 		"SendE2E":          js.FuncOf(c.SendE2E),
 		"Close":            js.FuncOf(c.Close),
 		"GetPartner":       js.FuncOf(c.GetPartner),
@@ -37,11 +37,11 @@ func newConnectJS(api *bindings.Connection) map[string]interface{} {
 	return connectionMap
 }
 
-// GetID returns the ID for this [bindings.Connection] in the connectionTracker.
+// GetId returns the ID for this [bindings.Connection] in the connectionTracker.
 //
 // Returns:
 //  - int of the ID
-func (c *Connection) GetID(js.Value, []js.Value) interface{} {
+func (c *Connection) GetId(js.Value, []js.Value) interface{} {
 	return c.api.GetId()
 }
 
@@ -56,19 +56,23 @@ func (c *Connection) GetID(js.Value, []js.Value) interface{} {
 //  - args[1] - marshalled recipient [contact.Contact] (Uint8Array).
 //  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array).
 //
-// Returns:
-//  - Javascript representation of the Connection object
-//  - throws a TypeError if creating loading the parameters or connecting fails
+// Returns a promise:
+//  - Resolves to a Javascript representation of the Connection object.
+//  - Rejected with an error if loading the parameters or connecting fails.
 func (c *Cmix) Connect(_ js.Value, args []js.Value) interface{} {
 	recipientContact := utils.CopyBytesToGo(args[1])
 	e2eParamsJSON := utils.CopyBytesToGo(args[2])
-	api, err := c.api.Connect(args[0].Int(), recipientContact, e2eParamsJSON)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		api, err := c.api.Connect(args[0].Int(), recipientContact, e2eParamsJSON)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(newConnectJS(api))
+		}
 	}
 
-	return newConnectJS(api)
+	return utils.CreatePromise(promiseFn)
 }
 
 // SendE2E is a wrapper for sending specifically to the Connection's
@@ -82,17 +86,23 @@ func (c *Cmix) Connect(_ js.Value, args []js.Value) interface{} {
 //  - args[0] - message type from [catalog.MessageType] (int)
 //  - args[1] - message payload (Uint8Array)
 //
-// Returns:
-//  - JSON of [bindings.E2ESendReport], which can be passed into
-//    cmix.WaitForRoundResult to see if the send succeeded (Uint8Array)
-//  - throws a TypeError if sending fails
+// Returns a promise:
+//  - Resolves to the JSON of the [bindings.E2ESendReport], which can be passed
+//    into Cmix.WaitForRoundResult to see if the send succeeded (Uint8Array).
+//  - Rejected with an error if sending fails.
 func (c *Connection) SendE2E(_ js.Value, args []js.Value) interface{} {
-	sendReport, err := c.api.SendE2E(args[0].Int(), utils.CopyBytesToGo(args[1]))
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	payload := utils.CopyBytesToGo(args[1])
+
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		sendReport, err := c.api.SendE2E(args[0].Int(), payload)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
 	}
-	return utils.CopyBytesToJS(sendReport)
+
+	return utils.CreatePromise(promiseFn)
 }
 
 // Close deletes this Connection's partner.Manager and releases resources.

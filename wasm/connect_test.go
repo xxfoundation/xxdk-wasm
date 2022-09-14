@@ -32,3 +32,23 @@ func Test_newConnectJS(t *testing.T) {
 		}
 	}
 }
+
+// Tests that Connection has all the methods that [bindings.Connection] has.
+func Test_ConnectionMethods(t *testing.T) {
+	connType := reflect.TypeOf(&Connection{})
+	binConnType := reflect.TypeOf(&bindings.Connection{})
+
+	if binConnType.NumMethod() != connType.NumMethod() {
+		t.Errorf("WASM Connection object does not have all methods from "+
+			"bindings.\nexpected: %d\nreceived: %d",
+			binConnType.NumMethod(), connType.NumMethod())
+	}
+
+	for i := 0; i < binConnType.NumMethod(); i++ {
+		method := binConnType.Method(i)
+
+		if _, exists := connType.MethodByName(method.Name); !exists {
+			t.Errorf("Method %s does not exist.", method.Name)
+		}
+	}
+}

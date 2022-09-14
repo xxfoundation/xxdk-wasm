@@ -3,6 +3,7 @@ module gitlab.com/elixxir/xxdk-wasm
 go 1.17
 
 require (
+	github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e
 	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/jwalterweatherman v1.1.0

@@ -286,7 +286,7 @@ type udLookupCallback struct {
 }
 
 func (ulc *udLookupCallback) Callback(contactBytes []byte, err error) {
-	ulc.callback(utils.CopyBytesToJS(contactBytes), err.Error())
+	ulc.callback(utils.CopyBytesToJS(contactBytes), utils.JsTrace(err))
 }
 
 // LookupUD returns the public key of the passed ID as known by the user
@@ -300,10 +300,11 @@ func (ulc *udLookupCallback) Callback(contactBytes []byte, err error) {
 //  - args[3] - JSON of [id.ID] for the user to look up (Uint8Array).
 //  - args[4] - JSON of [single.RequestParams] (Uint8Array).
 //
-// Returns:
-//  - JSON of [bindings.SingleUseSendReport], which can be passed into
-//    Cmix.WaitForRoundResult to see if the send succeeded.
-//  - Throws a TypeError if the lookup fails.
+// Returns a promise:
+//  - Resolves to the JSON of the [bindings.SingleUseSendReport], which can be
+//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    (Uint8Array).
+//  - Rejected with an error if the lookup fails.
 func LookupUD(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
 	udContact := utils.CopyBytesToGo(args[1])
@@ -311,14 +312,17 @@ func LookupUD(_ js.Value, args []js.Value) interface{} {
 	lookupId := utils.CopyBytesToGo(args[3])
 	singleRequestParamsJSON := utils.CopyBytesToGo(args[4])
 
-	report, err := bindings.LookupUD(
-		e2eID, udContact, cb, lookupId, singleRequestParamsJSON)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		sendReport, err := bindings.LookupUD(
+			e2eID, udContact, cb, lookupId, singleRequestParamsJSON)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
 	}
 
-	return utils.CopyBytesToJS(report)
+	return utils.CreatePromise(promiseFn)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -332,7 +336,7 @@ type udSearchCallback struct {
 }
 
 func (usc *udSearchCallback) Callback(contactListJSON []byte, err error) {
-	usc.callback(utils.CopyBytesToJS(contactListJSON), err.Error())
+	usc.callback(utils.CopyBytesToJS(contactListJSON), utils.JsTrace(err))
 }
 
 // SearchUD searches user discovery for the passed Facts. The searchCallback
@@ -347,10 +351,11 @@ func (usc *udSearchCallback) Callback(contactListJSON []byte, err error) {
 //  - args[2] - JSON of [fact.FactList] (Uint8Array).
 //  - args[4] - JSON of [single.RequestParams] (Uint8Array).
 //
-// Returns:
-//  - JSON of [bindings.SingleUseSendReport], which can be passed into
-//    Cmix.WaitForRoundResult to see if the send succeeded.
-//  - Throws a TypeError if the search fails.
+// Returns a promise:
+//  - Resolves to the JSON of the [bindings.SingleUseSendReport], which can be
+//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    (Uint8Array).
+//  - Rejected with an error if the search fails.
 func SearchUD(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
 	udContact := utils.CopyBytesToGo(args[1])
@@ -358,12 +363,15 @@ func SearchUD(_ js.Value, args []js.Value) interface{} {
 	factListJSON := utils.CopyBytesToGo(args[3])
 	singleRequestParamsJSON := utils.CopyBytesToGo(args[4])
 
-	report, err := bindings.SearchUD(
-		e2eID, udContact, cb, factListJSON, singleRequestParamsJSON)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		sendReport, err := bindings.SearchUD(
+			e2eID, udContact, cb, factListJSON, singleRequestParamsJSON)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
 	}
 
-	return utils.CopyBytesToJS(report)
+	return utils.CreatePromise(promiseFn)
 }

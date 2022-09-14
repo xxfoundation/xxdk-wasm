@@ -28,18 +28,18 @@ func CopyBytesToJS(src []byte) js.Value {
 	return dst
 }
 
-// JsonToJS is a helper that converts JSON bytes input
-// to a [js.Value] of the object subtype.
-func JsonToJS(inputJson []byte) (js.Value, error) {
-	jsObj := make(map[string]interface{})
-	err := json.Unmarshal(inputJson, &jsObj)
-	if err != nil {
-		return js.Value{}, err
-	}
-	return js.ValueOf(jsObj), nil
-}
-
 // JsToJson converts the Javascript value to JSON.
 func JsToJson(value js.Value) string {
 	return JSON.Call("stringify", value).String()
+}
+
+// JsonToJS converts a JSON bytes input to a [js.Value] of the object subtype.
+func JsonToJS(inputJson []byte) (js.Value, error) {
+	var jsObj map[string]interface{}
+	err := json.Unmarshal(inputJson, &jsObj)
+	if err != nil {
+		return js.ValueOf(nil), err
+	}
+
+	return js.ValueOf(jsObj), nil
 }

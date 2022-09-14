@@ -32,3 +32,23 @@ func Test_newBackupJS(t *testing.T) {
 		}
 	}
 }
+
+// Tests that Backup has all the methods that [bindings.Backup] has.
+func Test_BackupMethods(t *testing.T) {
+	backupType := reflect.TypeOf(&Backup{})
+	binBackupType := reflect.TypeOf(&bindings.Backup{})
+
+	if binBackupType.NumMethod() != backupType.NumMethod() {
+		t.Errorf("WASM Backup object does not have all methods from bindings."+
+			"\nexpected: %d\nreceived: %d",
+			binBackupType.NumMethod(), backupType.NumMethod())
+	}
+
+	for i := 0; i < binBackupType.NumMethod(); i++ {
+		method := binBackupType.Method(i)
+
+		if _, exists := backupType.MethodByName(method.Name); !exists {
+			t.Errorf("Method %s does not exist.", method.Name)
+		}
+	}
+}

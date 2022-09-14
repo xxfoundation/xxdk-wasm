@@ -33,6 +33,26 @@ func Test_newFileTransferJS(t *testing.T) {
 	}
 }
 
+// Tests that FileTransfer has all the methods that [bindings.FileTransfer] has.
+func Test_FileTransferMethods(t *testing.T) {
+	ftType := reflect.TypeOf(&FileTransfer{})
+	binFtType := reflect.TypeOf(&bindings.FileTransfer{})
+
+	if binFtType.NumMethod() != ftType.NumMethod() {
+		t.Errorf("WASM FileTransfer object does not have all methods from "+
+			"bindings.\nexpected: %d\nreceived: %d",
+			binFtType.NumMethod(), ftType.NumMethod())
+	}
+
+	for i := 0; i < binFtType.NumMethod(); i++ {
+		method := binFtType.Method(i)
+
+		if _, exists := ftType.MethodByName(method.Name); !exists {
+			t.Errorf("Method %s does not exist.", method.Name)
+		}
+	}
+}
+
 // Tests that the map representing FilePartTracker returned by
 // newFilePartTrackerJS contains all of the methods on FilePartTracker.
 func Test_newFilePartTrackerJS(t *testing.T) {
@@ -48,6 +68,27 @@ func Test_newFilePartTrackerJS(t *testing.T) {
 		method := fptType.Method(i)
 
 		if _, exists := fpt[method.Name]; !exists {
+			t.Errorf("Method %s does not exist.", method.Name)
+		}
+	}
+}
+
+// Tests that FilePartTracker has all the methods that
+// [bindings.FilePartTracker] has.
+func Test_FilePartTrackerMethods(t *testing.T) {
+	fptType := reflect.TypeOf(&FilePartTracker{})
+	binFptType := reflect.TypeOf(&bindings.FilePartTracker{})
+
+	if binFptType.NumMethod() != fptType.NumMethod() {
+		t.Errorf("WASM FilePartTracker object does not have all methods from "+
+			"bindings.\nexpected: %d\nreceived: %d",
+			binFptType.NumMethod(), fptType.NumMethod())
+	}
+
+	for i := 0; i < binFptType.NumMethod(); i++ {
+		method := binFptType.Method(i)
+
+		if _, exists := fptType.MethodByName(method.Name); !exists {
 			t.Errorf("Method %s does not exist.", method.Name)
 		}
 	}

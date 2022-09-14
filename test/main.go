@@ -14,12 +14,12 @@ import (
 
 func main() {
 	port := "9090"
-	root := "../assets"
+	root := ""
 	fmt.Printf("Starting server on port %s from %s\n", port, root)
+	fmt.Printf("\thttp://localhost:%s\n", port)
 
 	err := http.ListenAndServe(":"+port, http.FileServer(http.Dir(root)))
 	if err != nil {
-		fmt.Println("Failed to start server", err)
-		return
+		panic(fmt.Sprintf("Failed to start server: %+v", err))
 	}
 }

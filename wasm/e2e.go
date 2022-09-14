@@ -35,6 +35,7 @@ func newE2eJS(api *bindings.E2e) map[string]interface{} {
 
 		// e2eHandler.go
 		"GetReceptionID":          js.FuncOf(e.GetReceptionID),
+		"DeleteContact":           js.FuncOf(e.DeleteContact),
 		"GetAllPartnerIDs":        js.FuncOf(e.GetAllPartnerIDs),
 		"PayloadSize":             js.FuncOf(e.PayloadSize),
 		"SecondPartitionSize":     js.FuncOf(e.SecondPartitionSize),

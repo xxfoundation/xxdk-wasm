@@ -10,6 +10,7 @@
 package wasm
 
 import (
+	"gitlab.com/elixxir/client/bindings"
 	"reflect"
 	"testing"
 )
@@ -29,6 +30,26 @@ func Test_newStopperJS(t *testing.T) {
 		method := stopperType.Method(i)
 
 		if _, exists := s[method.Name]; !exists {
+			t.Errorf("Method %s does not exist.", method.Name)
+		}
+	}
+}
+
+// Tests that Stopper has all the methods that [bindings.Stopper] has.
+func Test_StopperMethods(t *testing.T) {
+	stopperType := reflect.TypeOf(&Stopper{})
+	binStopperType := reflect.TypeOf(bindings.Stopper(&stopper{}))
+
+	if binStopperType.NumMethod() != stopperType.NumMethod() {
+		t.Errorf("WASM Stopper object does not have all methods from bindings."+
+			"\nexpected: %d\nreceived: %d",
+			binStopperType.NumMethod(), stopperType.NumMethod())
+	}
+
+	for i := 0; i < binStopperType.NumMethod(); i++ {
+		method := binStopperType.Method(i)
+
+		if _, exists := stopperType.MethodByName(method.Name); !exists {
 			t.Errorf("Method %s does not exist.", method.Name)
 		}
 	}

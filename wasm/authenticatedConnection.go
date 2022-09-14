@@ -27,14 +27,101 @@ func newAuthenticatedConnectionJS(
 	api *bindings.AuthenticatedConnection) map[string]interface{} {
 	ac := AuthenticatedConnection{api}
 	acMap := map[string]interface{}{
-		"IsAuthenticated": js.FuncOf(ac.IsAuthenticated),
+		"IsAuthenticated":  js.FuncOf(ac.IsAuthenticated),
+		"GetId":            js.FuncOf(ac.GetId),
+		"SendE2E":          js.FuncOf(ac.SendE2E),
+		"Close":            js.FuncOf(ac.Close),
+		"GetPartner":       js.FuncOf(ac.GetPartner),
+		"RegisterListener": js.FuncOf(ac.RegisterListener),
 	}
 
 	return acMap
 }
 
+// IsAuthenticated returns true.
+//
+// Returns:
+//  - true (boolean).
 func (ac *AuthenticatedConnection) IsAuthenticated(js.Value, []js.Value) interface{} {
 	return ac.api.IsAuthenticated()
+}
+
+// GetId returns the ID for this [bindings.AuthenticatedConnection] in the
+// authenticatedConnectionTracker.
+//
+// Returns:
+//  - int of the ID
+func (ac *AuthenticatedConnection) GetId(js.Value, []js.Value) interface{} {
+	return ac.api.GetId()
+}
+
+// SendE2E is a wrapper for sending specifically to the
+// AuthenticatedConnection's [partner.Manager].
+//
+// Returns:
+//  - []byte - the JSON marshalled bytes of the E2ESendReport object, which can
+//    be passed into WaitForRoundResult to see if the send succeeded.
+//
+// Parameters:
+//  - args[0] - message type from [catalog.MessageType] (int)
+//  - args[1] - message payload (Uint8Array)
+//
+// Returns a promise:
+//  - Resolves to the JSON of [bindings.E2ESendReport], which can be passed into
+//    cmix.WaitForRoundResult to see if the send succeeded (Uint8Array).
+//  - Rejected with an error if sending fails.
+func (ac *AuthenticatedConnection) SendE2E(_ js.Value, args []js.Value) interface{} {
+	payload := utils.CopyBytesToGo(args[2])
+
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		sendReport, err := ac.api.SendE2E(args[0].Int(), payload)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// Close deletes this AuthenticatedConnection's partner.Manager and releases
+// resources.
+//
+// Returns:
+//  - throws a TypeError if closing fails
+func (ac *AuthenticatedConnection) Close(js.Value, []js.Value) interface{} {
+	return ac.api.Close()
+}
+
+// GetPartner returns the partner.Manager for this AuthenticatedConnection.
+//
+// Returns:
+//  - bytes of the partner's [id.ID] (Uint8Array)
+func (ac *AuthenticatedConnection) GetPartner(js.Value, []js.Value) interface{} {
+	return utils.CopyBytesToJS(ac.api.GetPartner())
+}
+
+// RegisterListener is used for E2E reception and allows for reading data sent
+// from the partner.Manager.
+//
+// Parameters:
+//  - args[0] - message type from [catalog.MessageType] (int)
+//  - args[1] - Javascript object that has functions that implement the
+//    [bindings.Listener] interface
+//
+// Returns:
+//  - throws a TypeError is registering the listener fails
+func (ac *AuthenticatedConnection) RegisterListener(
+	_ js.Value, args []js.Value) interface{} {
+	err := ac.api.RegisterListener(args[0].Int(),
+		&listener{utils.WrapCB(args[1], "Hear"), utils.WrapCB(args[1], "Name")})
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return nil
 }
 
 // ConnectWithAuthentication is called by the client (i.e., the one establishing
@@ -46,19 +133,22 @@ func (ac *AuthenticatedConnection) IsAuthenticated(js.Value, []js.Value) interfa
 //  - args[1] - marshalled recipient [contact.Contact] (Uint8Array).
 //  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array).
 //
-// Returns:
-//  - Javascript representation of the Connection object
-//  - throws a TypeError if creating loading the parameters or connecting fails
+// Returns a promise:
+//  - Resolves to a Javascript representation of the Connection object.
+//  - Rejected with an error if loading the parameters or connecting fails.
 func (c *Cmix) ConnectWithAuthentication(_ js.Value, args []js.Value) interface{} {
 	recipientContact := utils.CopyBytesToGo(args[1])
 	e2eParamsJSON := utils.CopyBytesToGo(args[2])
 
-	ac, err := c.api.ConnectWithAuthentication(
-		args[0].Int(), recipientContact, e2eParamsJSON)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		ac, err := c.api.ConnectWithAuthentication(
+			args[0].Int(), recipientContact, e2eParamsJSON)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(newAuthenticatedConnectionJS(ac))
+		}
 	}
 
-	return newAuthenticatedConnectionJS(ac)
+	return utils.CreatePromise(promiseFn)
 }

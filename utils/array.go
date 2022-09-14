@@ -33,12 +33,23 @@ func Uint8ArrayToBase64(_ js.Value, args []js.Value) interface{} {
 //  - Decoded uint8 array (Uint8Array).
 //  - Throws TypeError if decoding the string fails.
 func Base64ToUint8Array(_ js.Value, args []js.Value) interface{} {
-	b, err := base64.StdEncoding.DecodeString(args[0].String())
+	b, err := base64ToUint8Array(args[0])
 	if err != nil {
 		Throw(TypeError, err)
 	}
 
-	return CopyBytesToJS(b)
+	return b
+}
+
+// base64ToUint8Array is a helper function that returns an error instead of
+// throwing it.
+func base64ToUint8Array(base64String js.Value) (js.Value, error) {
+	b, err := base64.StdEncoding.DecodeString(base64String.String())
+	if err != nil {
+		return js.Value{}, err
+	}
+
+	return CopyBytesToJS(b), nil
 }
 
 // Uint8ArrayEquals returns true if the two Uint8Array are equal and false

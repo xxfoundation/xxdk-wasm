@@ -34,3 +34,23 @@ func Test_newChannelJS(t *testing.T) {
 		}
 	}
 }
+
+// Tests that Channel has all the methods that [bindings.Channel] has.
+func Test_ChannelMethods(t *testing.T) {
+	chanType := reflect.TypeOf(&Channel{})
+	binChanType := reflect.TypeOf(&bindings.Channel{})
+
+	if binChanType.NumMethod() != chanType.NumMethod() {
+		t.Errorf("WASM Channel object does not have all methods from bindings."+
+			"\nexpected: %d\nreceived: %d",
+			binChanType.NumMethod(), chanType.NumMethod())
+	}
+
+	for i := 0; i < binChanType.NumMethod(); i++ {
+		method := binChanType.Method(i)
+
+		if _, exists := chanType.MethodByName(method.Name); !exists {
+			t.Errorf("Method %s does not exist.", method.Name)
+		}
+	}
+}
