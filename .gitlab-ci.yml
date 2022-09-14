@@ -5,7 +5,7 @@ build:
   script:
     - go mod vendor -v
     - mkdir -p release
-    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -o release/xxdk.wasm ./...
+    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -o release/xxdk.wasm main.go
   artifacts:
     paths:
       - release/
