@@ -1,9 +1,4 @@
-.PHONY: update master release update_master update_release build clean version
-
-version:
-	go run main.go generate
-	sed -i.bak 's/package\ cmd/package\ xxdk/g' version_vars.go
-	mv version_vars.go xxdk/version_vars.go
+.PHONY: update master release update_master update_release build clean binary
 
 clean:
 	rm -rf vendor/
@@ -13,19 +8,22 @@ update:
 	-GOFLAGS="" go get all
 
 build:
-	go build ./...
+	GOOS=js GOARCH=wasm go build ./...
 	go mod tidy
 
 update_release:
-	GOFLAGS="" go get gitlab.com/elixxir/client@release
+	GOFLAGS="" go get -d gitlab.com/elixxir/client@release
+	GOFLAGS="" go get gitlab.com/elixxir/crypto@release
+	GOFLAGS="" go get gitlab.com/xx_network/primitives@release
 
 update_master:
-	GOFLAGS="" go get gitlab.com/elixxir/client@master
+	GOFLAGS="" go get -d gitlab.com/elixxir/client@master
+	GOFLAGS="" go get gitlab.com/elixxir/crypto@master
+	GOFLAGS="" go get gitlab.com/xx_network/primitives@master
 
 binary:
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -o xxdk.wasm main.go
 
-
-master: update_master clean build version
+master: update_master clean build
 
 release: update_release clean build
