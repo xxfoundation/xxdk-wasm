@@ -148,8 +148,8 @@ func InitFileTransfer(_ js.Value, args []js.Value) interface{} {
 //  - args[2] - number of retries allowed (float)
 //  - args[3] - Javascript object that has functions that implement the
 //    [bindings.FileTransferSentProgressCallback] interface.
-//  - args[4] - duration to wait between progress callbacks triggering (string).
-//    Reference [time.ParseDuration] for info on valid duration strings.
+//  - args[4] - Duration, in milliseconds, to wait between progress callbacks
+//    triggering (int).
 //
 // Returns a promise:
 //  - Resolves to a unique ID for this file transfer (Uint8Array).
@@ -161,7 +161,7 @@ func (f *FileTransfer) Send(_ js.Value, args []js.Value) interface{} {
 	spc := &fileTransferSentProgressCallback{utils.WrapCB(args[3], "Callback")}
 
 	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
-		ftID, err := f.api.Send(payload, recipientID, retry, spc, args[4].String())
+		ftID, err := f.api.Send(payload, recipientID, retry, spc, args[4].Int())
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -233,8 +233,8 @@ func (f *FileTransfer) CloseSend(_ js.Value, args []js.Value) interface{} {
 //  - args[0] - file transfer ID (Uint8Array).
 //  - args[1] - Javascript object that has functions that implement the
 //    [bindings.FileTransferSentProgressCallback] interface.
-//  - args[2] - duration to wait between progress callbacks triggering (string).
-//    Reference [time.ParseDuration] for info on valid duration strings.
+//  - args[2] - Duration, in milliseconds, to wait between progress callbacks
+//    triggering (int).
 //
 // Returns:
 //  - Throws a TypeError if registering the callback fails.
@@ -243,7 +243,7 @@ func (f *FileTransfer) RegisterSentProgressCallback(
 	tidBytes := utils.CopyBytesToGo(args[0])
 	spc := &fileTransferSentProgressCallback{utils.WrapCB(args[1], "Callback")}
 
-	err := f.api.RegisterSentProgressCallback(tidBytes, spc, args[2].String())
+	err := f.api.RegisterSentProgressCallback(tidBytes, spc, args[2].Int())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
@@ -261,8 +261,8 @@ func (f *FileTransfer) RegisterSentProgressCallback(
 //  - args[0] - file transfer ID (Uint8Array).
 //  - args[1] - Javascript object that has functions that implement the
 //    [bindings.FileTransferReceiveProgressCallback] interface.
-//  - args[2] - duration to wait between progress callbacks triggering (string).
-//    Reference [time.ParseDuration] for info on valid duration strings.
+//  - args[2] - Duration, in milliseconds, to wait between progress callbacks
+//    triggering (int).
 //
 // Returns:
 //  - Throws a TypeError if registering the callback fails.
@@ -272,7 +272,7 @@ func (f *FileTransfer) RegisterReceivedProgressCallback(
 	rpc := &fileTransferReceiveProgressCallback{utils.WrapCB(args[1], "Callback")}
 
 	err := f.api.RegisterReceivedProgressCallback(
-		tidBytes, rpc, args[2].String())
+		tidBytes, rpc, args[2].Int())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil

@@ -89,14 +89,12 @@ func TestWasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 		Name:        "test",
 		Description: "test",
 		Salt:        nil,
-		RsaPubKey:   nil,
 	}
 	testChannel2 := &cryptoBroadcast.Channel{
 		ReceptionID: id.NewIdFromString("test2", id.Generic, t),
 		Name:        "test2",
 		Description: "test2",
 		Salt:        nil,
-		RsaPubKey:   nil,
 	}
 	eventModel.JoinChannel(testChannel)
 	eventModel.JoinChannel(testChannel2)

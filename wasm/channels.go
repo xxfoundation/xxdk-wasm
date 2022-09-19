@@ -9,6 +9,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
@@ -32,8 +33,6 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]interface{} 
 		"GetID":         js.FuncOf(cm.GetID),
 		"JoinChannel":   js.FuncOf(cm.JoinChannel),
 		"GetChannels":   js.FuncOf(cm.GetChannels),
-		"GetChannelId":  js.FuncOf(cm.GetChannelId),
-		"GetChannel":    js.FuncOf(cm.GetChannel),
 		"LeaveChannel":  js.FuncOf(cm.LeaveChannel),
 		"ReplayChannel": js.FuncOf(cm.ReplayChannel),
 
@@ -62,13 +61,13 @@ func (ch *ChannelsManager) GetID(js.Value, []js.Value) interface{} {
 // NewChannelsManager constructs a ChannelsManager.
 //
 // Parameters:
-//  - args[0] - ID of ChannelsManager object in tracker (int). This can be
-//    retrieved using [E2e.GetID].
+//  - args[0] - ID of E2e object in tracker (int). This can be retrieved using
+//    [E2e.GetID].
 //  - args[1] - ID of UserDiscovery object in tracker (int). This can be
 //    retrieved using [UserDiscovery.GetID].
 //
 // Returns:
-//  - Javascript representation of the ChannelsManager object.
+//  - Javascript representation of the [bindings.ChannelsManager] object.
 //  - Throws a TypeError if logging in fails.
 func NewChannelsManager(_ js.Value, args []js.Value) interface{} {
 	cm, err := bindings.NewChannelsManager(args[0].Int(), args[1].Int())
@@ -80,24 +79,116 @@ func NewChannelsManager(_ js.Value, args []js.Value) interface{} {
 	return newChannelsManagerJS(cm)
 }
 
-// JoinChannel joins the given channel. It will fail if the channel has already
-// been joined.
+// NewChannelsManagerWithIndexedDb constructs a ChannelsManager using an
+// indexedDb backend.
 //
 // Parameters:
-//  - args[0] - JSON of [bindings.ChannelDef] (Uint8Array).
+//  - args[0] - ID of E2e object in tracker (int). This can be retrieved using
+//    [E2e.GetID].
+//  - args[1] - ID of UserDiscovery object in tracker (int). This can be
+//    retrieved using [UserDiscovery.GetID].
+//  - args[2] - username (string).
 //
 // Returns:
-//  - Throws a TypeError if joining the channel fails.
-func (ch *ChannelsManager) JoinChannel(_ js.Value, args []js.Value) interface{} {
-	channelJson := utils.CopyBytesToGo(args[0])
-
-	err := ch.api.JoinChannel(channelJson)
+//  - Javascript representation of the [bindings.ChannelsManager] object.
+//  - Throws a TypeError if initialising indexedDb or created the new channel
+//    manager fails.
+func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
+	em, err := indexedDb.NewWasmEventModel(args[2].String())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
 	}
 
-	return nil
+	cm, err := bindings.NewChannelsManagerGoEventModel(
+		args[0].Int(), args[1].Int(), em)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return newChannelsManagerJS(cm)
+}
+
+// GenerateChannel is used to create a channel. This makes a new channel of
+// which you are the admin. It is only for making new channels, not joining
+// existing ones.
+//
+// It returns a pretty print of the channel and the private key.
+//
+// The name cannot be longer that ____ characters.
+//
+// The description cannot be longer than ___ and can only use ______ characters.
+//
+// Parameters:
+//  - args[0] - ID of Cmix object in tracker (int).
+//  - args[1] - The name of the new channel. The name cannot be longer than __
+//    characters and must contain only __ characters. It cannot be changed once
+//    a channel is created (string).
+//  - args[2] - The description of a channel. The description cannot be longer
+//    than __ characters and must contain only __ characters. It cannot be
+//    changed once a channel is created (string).
+//
+// Returns:
+//  - JSON of [bindings.ChannelGeneration], which describes a generated channel.
+//    It contains both the public channel info and the private key for the
+//    channel in PEM format (Uint8Array).
+//  - Throws a TypeError if generating the channel fails.
+func GenerateChannel(_ js.Value, args []js.Value) interface{} {
+	gen, err := bindings.GenerateChannel(
+		args[0].Int(), args[1].String(), args[2].String())
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(gen)
+}
+
+// GetChannelInfo returns the info about a channel from its public description.
+//
+// Parameters:
+//  - args[0] - The pretty print of the channel (string).
+//
+// The pretty print will be of the format:
+//  <XXChannel-v1:Test Channel,description:This is a test channel,secrets:pn0kIs6P1pHvAe7u8kUyf33GYVKmkoCX9LhCtvKJZQI=,3A5eB5pzSHyxN09w1kOVrTIEr5UyBbzmmd9Ga5Dx0XA=,0,0,/zChIlLr2p3Vsm2X4+3TiFapoapaTi8EJIisJSqwfGc=>
+//
+// Returns:
+//  - JSON of [bindings.ChannelInfo], which describes all relevant channel info
+//    (Uint8Array).
+//  - Throws a TypeError if getting the channel info fails.
+func GetChannelInfo(_ js.Value, args []js.Value) interface{} {
+	ci, err := bindings.GetChannelInfo(args[1].String())
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(ci)
+}
+
+// JoinChannel joins the given channel. It will fail if the channel has already
+// been joined.
+//
+// Parameters:
+//  - args[0] - A portable channel string. Should be received from another user
+//    or generated via GenerateChannel (string).
+//
+// The pretty print will be of the format:
+//  <XXChannel-v1:Test Channel,description:This is a test channel,secrets:pn0kIs6P1pHvAe7u8kUyf33GYVKmkoCX9LhCtvKJZQI=,3A5eB5pzSHyxN09w1kOVrTIEr5UyBbzmmd9Ga5Dx0XA=,0,0,/zChIlLr2p3Vsm2X4+3TiFapoapaTi8EJIisJSqwfGc=>"
+//
+// Returns:
+//  - JSON of [bindings.ChannelInfo], which describes all relevant channel info
+//    (Uint8Array).
+//  - Throws a TypeError if joining the channel fails.
+func (ch *ChannelsManager) JoinChannel(_ js.Value, args []js.Value) interface{} {
+	ci, err := ch.api.JoinChannel(args[0].String())
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(ci)
 }
 
 // GetChannels returns the IDs of all channels that have been joined.
@@ -105,6 +196,12 @@ func (ch *ChannelsManager) JoinChannel(_ js.Value, args []js.Value) interface{} 
 // Returns:
 //  - JSON of an array of marshalled [id.ID] (Uint8Array).
 //  - Throws a TypeError if getting the channels fails.
+//
+// JSON Example:
+//  {
+//    U4x/lrFkvxuXu59LtHLon1sUhPJSCcnZND6SugndnVID",
+//    "15tNdkKbYXoMn58NO6VbDMDWFEyIhTWEGsvgcJsHWAgD"
+//  }
 func (ch *ChannelsManager) GetChannels(js.Value, []js.Value) interface{} {
 	channelList, err := ch.api.GetChannels()
 	if err != nil {
@@ -115,56 +212,11 @@ func (ch *ChannelsManager) GetChannels(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(channelList)
 }
 
-// GetChannelId returns the ID of the channel given the channel's cryptographic
-// information.
-//
-// Parameters:
-//  - args[0] - JSON of [bindings.ChannelDef] (Uint8Array). This can be
-//    retrieved using [Channel.Get].
-//
-// Returns:
-//  - JSON of the channel [id.ID] (Uint8Array).
-//  - Throws a TypeError if getting the channel's ID fails.
-func (ch *ChannelsManager) GetChannelId(_ js.Value, args []js.Value) interface{} {
-	channelJson := utils.CopyBytesToGo(args[0])
-
-	chanID, err := ch.api.GetChannelId(channelJson)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
-	}
-
-	return utils.CopyBytesToJS(chanID)
-}
-
-// GetChannel returns the underlying cryptographic structure for a given
-// channel.
-//
-// Parameters:
-//  - args[0] - JSON of the channel [id.ID] (Uint8Array). This can be retrieved
-//    using [ChannelsManager.GetChannelId].
-//
-// Returns:
-//  - JSON of [bindings.ChannelDef] (Uint8Array).
-//  - Throws a TypeError if getting the channel fails.
-func (ch *ChannelsManager) GetChannel(_ js.Value, args []js.Value) interface{} {
-	marshalledChanId := utils.CopyBytesToGo(args[0])
-
-	def, err := ch.api.GetChannel(marshalledChanId)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
-	}
-
-	return utils.CopyBytesToJS(def)
-}
-
 // LeaveChannel leaves the given channel. It will return an error if the channel
 // was not previously joined.
 //
 // Parameters:
-//  - args[0] - JSON of the channel [id.ID] (Uint8Array). This can be retrieved
-//    using [ChannelsManager.GetChannelId].
+//  - args[0] - JSON of the channel [id.ID] (Uint8Array).
 //
 // Returns:
 //  - Throws a TypeError if the channel does not exist.
@@ -184,8 +236,7 @@ func (ch *ChannelsManager) LeaveChannel(_ js.Value, args []js.Value) interface{}
 // memory (~3 weeks) over the event model.
 //
 // Parameters:
-//  - args[0] - JSON of the channel [id.ID] (Uint8Array). This can be retrieved
-//    using [ChannelsManager.GetChannelId].
+//  - args[0] - JSON of the channel [id.ID] (Uint8Array).
 //
 // Returns:
 //  - Throws a TypeError if the replay fails.
@@ -214,8 +265,7 @@ func (ch *ChannelsManager) ReplayChannel(_ js.Value, args []js.Value) interface{
 // on the use case.
 //
 // Parameters:
-//  - args[0] - JSON of the channel [id.ID] (Uint8Array). This can be retrieved
-//    using [ChannelsManager.GetChannelId].
+//  - args[0] - JSON of the channel [id.ID] (Uint8Array).
 //  - args[1] - The message type of the message. This will be a valid
 //    [channels.MessageType] (int).
 //  - args[2] - The contents of the message (Uint8Array).
@@ -257,8 +307,7 @@ func (ch *ChannelsManager) SendGeneric(_ js.Value, args []js.Value) interface{} 
 //
 // Parameters:
 //  - args[0] - The PEM-encode admin RSA private key (Uint8Array).
-//  - args[1] - JSON of the channel [id.ID] (Uint8Array). This can be retrieved
-//    using [ChannelsManager.GetChannelId].
+//  - args[1] - JSON of the channel [id.ID] (Uint8Array).
 //  - args[2] - The message type of the message. This will be a valid
 //    [channels.MessageType] (int).
 //  - args[3] - The contents of the message (Uint8Array).
@@ -302,8 +351,7 @@ func (ch *ChannelsManager) SendAdminGeneric(_ js.Value, args []js.Value) interfa
 // lasting forever if [channels.ValidForever] is used.
 //
 // Parameters:
-//  - args[0] - JSON of the channel [id.ID] (Uint8Array). This can be retrieved
-//    using [ChannelsManager.GetChannelId].
+//  - args[0] - JSON of the channel [id.ID] (Uint8Array).
 //  - args[1] - The contents of the message (string).
 //  - args[2] - The lease of the message. This will be how long the message is
 //    valid until, in milliseconds. As per the [channels.Manager] documentation,
@@ -345,8 +393,7 @@ func (ch *ChannelsManager) SendMessage(_ js.Value, args []js.Value) interface{} 
 // lasting forever if ValidForever is used.
 //
 // Parameters:
-//  - args[0] - JSON of the channel [id.ID] (Uint8Array). This can be retrieved
-//    using [ChannelsManager.GetChannelId].
+//  - args[0] - JSON of the channel [id.ID] (Uint8Array).
 //  - args[1] - The contents of the message. The message should be at most 510
 //    bytes. This is expected to be Unicode, and thus a string data type is
 //    expected (string).
@@ -391,8 +438,7 @@ func (ch *ChannelsManager) SendReply(_ js.Value, args []js.Value) interface{} {
 // Users will drop the reaction if they do not recognize the reactTo message.
 //
 // Parameters:
-//  - args[0] - JSON of the channel [id.ID] (Uint8Array). This can be retrieved
-//    using [ChannelsManager.GetChannelId].
+//  - args[0] - JSON of the channel [id.ID] (Uint8Array).
 //  - args[1] - The user's reaction. This should be a single emoji with no
 //    other characters. As such, a Unicode string is expected (string).
 //  - args[2] - JSON of [channel.MessageID] of the message you wish to reply to.

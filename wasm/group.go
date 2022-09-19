@@ -131,13 +131,13 @@ func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) interface{} {
 // with the same trackedGroupId.
 //
 // Parameters:
-//  - args[0] - ID of the Group object in tracker (int). This is received by
-//    [bindings.GroupRequest.Callback].
+//  - args[0] - The result of calling Group.Serialize on any [bindings.Group]
+//    object returned over the bindings (Uint8Array).
 //
 // Returns:
 //  - Throws a TypeError if joining the group fails.
 func (g *GroupChat) JoinGroup(_ js.Value, args []js.Value) interface{} {
-	err := g.api.JoinGroup(args[0].Int())
+	err := g.api.JoinGroup(utils.CopyBytesToGo(args[0]))
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
@@ -256,7 +256,6 @@ func newGroupJS(api *bindings.Group) map[string]interface{} {
 	gMap := map[string]interface{}{
 		"GetName":        js.FuncOf(g.GetName),
 		"GetID":          js.FuncOf(g.GetID),
-		"GetTrackedID":   js.FuncOf(g.GetTrackedID),
 		"GetInitMessage": js.FuncOf(g.GetInitMessage),
 		"GetCreatedNano": js.FuncOf(g.GetCreatedNano),
 		"GetCreatedMS":   js.FuncOf(g.GetCreatedMS),
@@ -281,15 +280,6 @@ func (g *Group) GetName(js.Value, []js.Value) interface{} {
 //  - Uint8Array
 func (g *Group) GetID(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(g.api.GetID())
-}
-
-// GetTrackedID returns the tracked ID of the Group object. This is used by the
-// backend tracker.
-//
-// Returns:
-//  - int
-func (g *Group) GetTrackedID(js.Value, []js.Value) interface{} {
-	return g.api.GetTrackedID()
 }
 
 // GetInitMessage returns initial message sent with the group request.
