@@ -139,6 +139,40 @@ func NewChannelsManagerWithIndexedDbDummyNameService(_ js.Value, args []js.Value
 	return newChannelsManagerJS(cm)
 }
 
+// NewChannelsManagerDummyNameService constructs a ChannelsManager
+// using a Javascript event model backend and a dummy name server instead of UD.
+//
+// Parameters:
+//  - args[0] - ID of E2e object in tracker (int). This can be retrieved using
+//    [E2e.GetID].
+//  - args[1] - Username (string).
+//  - args[2] - Javascript object that matches the [bindings.EventModel]
+//    interface.
+//
+// Returns:
+//  - Javascript representation of the [bindings.ChannelsManager] object.
+//  - Throws a TypeError if initialising indexedDb or created the new channel
+//    manager fails.
+func NewChannelsManagerDummyNameService(_ js.Value, args []js.Value) interface{} {
+	em := &eventModel{
+		joinChannel:      utils.WrapCB(args[2], "JoinChannel"),
+		leaveChannel:     utils.WrapCB(args[2], "LeaveChannel"),
+		receiveMessage:   utils.WrapCB(args[2], "ReceiveMessage"),
+		receiveReply:     utils.WrapCB(args[2], "ReceiveReply"),
+		receiveReaction:  utils.WrapCB(args[2], "ReceiveReaction"),
+		updateSentStatus: utils.WrapCB(args[2], "UpdateSentStatus"),
+	}
+
+	cm, err := bindings.NewChannelsManagerGoEventModelDummyNameService(
+		args[0].Int(), args[1].String(), bindings.NewEventModel(em))
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return newChannelsManagerJS(cm)
+}
+
 // GenerateChannel is used to create a channel. This makes a new channel of
 // which you are the admin. It is only for making new channels, not joining
 // existing ones.
@@ -550,4 +584,50 @@ func (ch *ChannelsManager) RegisterReceiveHandler(_ js.Value, args []js.Value) i
 	}
 
 	return nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Event Model Logic                                                          //
+////////////////////////////////////////////////////////////////////////////////
+
+type eventModel struct {
+	joinChannel      func(args ...interface{}) js.Value
+	leaveChannel     func(args ...interface{}) js.Value
+	receiveMessage   func(args ...interface{}) js.Value
+	receiveReply     func(args ...interface{}) js.Value
+	receiveReaction  func(args ...interface{}) js.Value
+	updateSentStatus func(args ...interface{}) js.Value
+}
+
+func (em *eventModel) JoinChannel(channel string) {
+	em.joinChannel(channel)
+}
+
+func (em *eventModel) LeaveChannel(channelID []byte) {
+	em.leaveChannel(utils.CopyBytesToJS(channelID))
+}
+
+func (em *eventModel) ReceiveMessage(channelID, messageID []byte,
+	senderUsername, text string, timestamp, lease, roundId, status int64) {
+	em.receiveMessage(utils.CopyBytesToJS(channelID),
+		utils.CopyBytesToJS(messageID),
+		senderUsername, text, timestamp, lease, roundId, status)
+}
+
+func (em *eventModel) ReceiveReply(channelID, messageID, reactionTo []byte,
+	senderUsername, text string, timestamp, lease, roundId, status int64) {
+	em.receiveReply(utils.CopyBytesToJS(channelID),
+		utils.CopyBytesToJS(messageID), utils.CopyBytesToJS(reactionTo),
+		senderUsername, text, timestamp, lease, roundId, status)
+}
+
+func (em *eventModel) ReceiveReaction(channelID, messageID, reactionTo []byte,
+	senderUsername, reaction string, timestamp, lease, roundId, status int64) {
+	em.receiveReaction(utils.CopyBytesToJS(channelID),
+		utils.CopyBytesToJS(messageID), utils.CopyBytesToJS(reactionTo),
+		senderUsername, reaction, timestamp, lease, roundId, status)
+}
+
+func (em *eventModel) UpdateSentStatus(messageID []byte, status int64) {
+	em.updateSentStatus(utils.CopyBytesToJS(messageID), status)
 }
