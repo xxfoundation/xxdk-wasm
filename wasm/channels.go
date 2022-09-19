@@ -110,6 +110,35 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
 	return newChannelsManagerJS(cm)
 }
 
+// NewChannelsManagerWithIndexedDbDummyNameService constructs a ChannelsManager
+// using an indexedDb backend and a dummy name server instead of UD.
+//
+// Parameters:
+//  - args[0] - ID of E2e object in tracker (int). This can be retrieved using
+//    [E2e.GetID].
+//  - args[1] - username (string).
+//
+// Returns:
+//  - Javascript representation of the [bindings.ChannelsManager] object.
+//  - Throws a TypeError if initialising indexedDb or created the new channel
+//    manager fails.
+func NewChannelsManagerWithIndexedDbDummyNameService(_ js.Value, args []js.Value) interface{} {
+	em, err := indexedDb.NewWasmEventModel(args[1].String())
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	cm, err := bindings.NewChannelsManagerGoEventModelDummyNameService(
+		args[0].Int(), args[1].String(), em)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return newChannelsManagerJS(cm)
+}
+
 // GenerateChannel is used to create a channel. This makes a new channel of
 // which you are the admin. It is only for making new channels, not joining
 // existing ones.

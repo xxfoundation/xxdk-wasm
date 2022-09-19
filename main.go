@@ -45,8 +45,10 @@ func main() {
 	js.Global().Set("NewChannelsManager", js.FuncOf(wasm.NewChannelsManager))
 	js.Global().Set("NewChannelsManagerWithIndexedDb",
 		js.FuncOf(wasm.NewChannelsManagerWithIndexedDb))
-	js.Global().Set("NewChannelsManagerWithIndexedDb",
+	js.Global().Set("GenerateChannel",
 		js.FuncOf(wasm.GenerateChannel))
+	js.Global().Set("NewChannelsManagerWithIndexedDbDummyNameService",
+		js.FuncOf(wasm.NewChannelsManagerWithIndexedDbDummyNameService))
 	js.Global().Set("GetChannelInfo", js.FuncOf(wasm.GetChannelInfo))
 
 	// wasm/cmix.go
