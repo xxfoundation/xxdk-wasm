@@ -30,7 +30,6 @@ var testBytes = [][]byte{
 // Tests that a series of Uint8Array Javascript objects are correctly converted
 // to base 64 strings with Uint8ArrayToBase64.
 func TestUint8ArrayToBase64(t *testing.T) {
-	t.Errorf("ERROR")
 	for i, val := range testBytes {
 		// Create Uint8Array and set each element individually
 		jsBytes := Uint8Array.New(len(val))

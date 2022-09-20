@@ -10,8 +10,6 @@
 package wasm
 
 import (
-	"encoding/base64"
-	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
@@ -225,7 +223,7 @@ func GenerateChannel(_ js.Value, args []js.Value) interface{} {
 //    (Uint8Array).
 //  - Throws a TypeError if getting the channel info fails.
 func GetChannelInfo(_ js.Value, args []js.Value) interface{} {
-	ci, err := bindings.GetChannelInfo(args[1].String())
+	ci, err := bindings.GetChannelInfo(args[0].String())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
@@ -613,19 +611,8 @@ func (em *eventModel) LeaveChannel(channelID []byte) {
 	em.leaveChannel(utils.CopyBytesToJS(channelID))
 }
 
-var messageMap = make(map[string]struct{})
-
 func (em *eventModel) ReceiveMessage(channelID, messageID []byte,
 	senderUsername, text string, timestamp, lease, roundId, status int64) {
-	key := base64.StdEncoding.EncodeToString(messageID)
-
-	if _, exists := messageMap[key]; exists {
-		jww.DEBUG.Printf("Message with ID %s already exists", key)
-		return
-	} else {
-		messageMap[key] = struct{}{}
-	}
-
 	em.receiveMessage(utils.CopyBytesToJS(channelID),
 		utils.CopyBytesToJS(messageID),
 		senderUsername, text, timestamp, lease, roundId, status)
