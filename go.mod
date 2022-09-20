@@ -7,7 +7,7 @@ require (
 	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client v1.5.1-0.20220920205537-451a2002d952
+	gitlab.com/elixxir/client v1.5.1-0.20220920212200-25ceacdcbd31
 	gitlab.com/elixxir/crypto v0.0.7-0.20220920002307-5541473e9aa7
 	gitlab.com/xx_network/primitives v0.0.4-0.20220809193445-9fc0a5209548
 )
