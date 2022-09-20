@@ -4,7 +4,7 @@ stages:
   - wasm-test
   - go-test
   - build
-  - trigger-doc-update
+  - doc-update
 
 build:
   stage: build
@@ -34,7 +34,8 @@ go-test:
 # Go modules to make docs of. The proxy keeps a list of all known versions of Go modules. The go
 # mod proxy does cache pulls for about 30 minutes, so if quickly successive commits are done in
 # master/release, this will fail to pull the latest client, and the docs will not update.
-trigger-doc-update:
+doc-update:
+  stage: doc-update
   image: $DOCKER_IMAGE
   script:
     # We use GOPRIVATE blank because not want to directly pull client, we want to use the public cache.
