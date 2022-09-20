@@ -54,7 +54,7 @@ doc-update:
   image: $DOCKER_IMAGE
   script:
     # We use GOPRIVATE blank because not want to directly pull client, we want to use the public cache.
-    - GOPRIVATE="" go install gitlab.com/elixxir/xxdk-wasm@$CI_COMMIT_SHA
+    - GOOS=js GOARCH=wasm GOPRIVATE="" go install gitlab.com/elixxir/xxdk-wasm@$CI_COMMIT_SHA
   only:
     - release
     - master

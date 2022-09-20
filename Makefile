@@ -1,4 +1,4 @@
-.PHONY: update master release update_master update_release build clean binary
+.PHONY: update master release update_master update_release build clean binary tests wasm_tests go_tests
 
 clean:
 	rm -rf vendor/
