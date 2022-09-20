@@ -4,6 +4,7 @@ stages:
   - wasm-test
   - go-test
   - build
+  - trigger-doc-update
 
 build:
   stage: build
