@@ -5,6 +5,8 @@
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
+//go:build js && wasm
+
 package wasm
 
 import (
@@ -116,8 +118,8 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
 // using an indexedDb backend and a dummy name server instead of UD.
 //
 // Parameters:
-//  - args[0] - ID of E2e object in tracker (int). This can be retrieved using
-//    [E2e.GetID].
+//  - args[0] - ID of Cmix object in tracker (int). This can be retrieved using
+//    [Cmix.GetID].
 //  - args[1] - username (string).
 //
 // Returns:
@@ -145,8 +147,8 @@ func NewChannelsManagerWithIndexedDbDummyNameService(_ js.Value, args []js.Value
 // using a Javascript event model backend and a dummy name server instead of UD.
 //
 // Parameters:
-//  - args[0] - ID of E2e object in tracker (int). This can be retrieved using
-//    [E2e.GetID].
+//  - args[0] -  ID of Cmix object in tracker (int). This can be retrieved using
+//    [Cmix.GetID].
 //  - args[1] - Username (string).
 //  - args[2] - Javascript object that matches the [bindings.EventModel]
 //    interface.
@@ -591,6 +593,8 @@ func (ch *ChannelsManager) RegisterReceiveHandler(_ js.Value, args []js.Value) i
 ////////////////////////////////////////////////////////////////////////////////
 // Event Model Logic                                                          //
 ////////////////////////////////////////////////////////////////////////////////
+
+// TODO: add comments
 
 type eventModel struct {
 	joinChannel      func(args ...interface{}) js.Value
