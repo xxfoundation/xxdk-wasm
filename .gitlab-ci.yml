@@ -1,5 +1,20 @@
 image: docker-registry.xx.network/elixxir/sysadmin/backend-ci:go1.17-wasm
 
+before_script:
+  - go version || echo "Go executable not found."
+  - echo $CI_BUILD_REF
+  - echo $CI_PROJECT_DIR
+  - echo $PWD
+  - eval $(ssh-agent -s)
+  - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+  - ssh-keyscan -t rsa $GITLAB_SERVER > ~/.ssh/known_hosts
+  - rm -rf ~/.gitconfig
+  - git config --global url."git@$GITLAB_SERVER:".insteadOf "https://gitlab.com/"
+  - git config --global url."git@$GITLAB_SERVER:".insteadOf "https://git.xx.network/" --add
+  - export PATH=$HOME/go/bin:$PATH
+
 stages:
   - wasm-test
   - go-test
