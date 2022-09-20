@@ -45,6 +45,7 @@ func newCmixJS(api *bindings.Cmix) map[string]interface{} {
 		"GetNodeRegistrationStatus":   js.FuncOf(c.GetNodeRegistrationStatus),
 		"HasRunningProcessies":        js.FuncOf(c.HasRunningProcessies),
 		"IsHealthy":                   js.FuncOf(c.IsHealthy),
+		"GetRunningProcesses":         js.FuncOf(c.GetRunningProcesses),
 		"AddHealthCallback":           js.FuncOf(c.AddHealthCallback),
 		"RemoveHealthCallback":        js.FuncOf(c.RemoveHealthCallback),
 		"RegisterClientErrorCallback": js.FuncOf(c.RegisterClientErrorCallback),

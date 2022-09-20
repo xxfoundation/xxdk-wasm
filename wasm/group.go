@@ -219,7 +219,7 @@ func (g *GroupChat) GetGroups(js.Value, []js.Value) interface{} {
 //    returned by GroupChat.MakeGroup.
 //
 // Returns:
-//  - Javascript representation of the Group object.
+//  - Javascript representation of the GroupChat object.
 //  - Throws a TypeError if getting the group fails
 func (g *GroupChat) GetGroup(_ js.Value, args []js.Value) interface{} {
 	grp, err := g.api.GetGroup(utils.CopyBytesToGo(args[0]))
@@ -331,6 +331,25 @@ func (g *Group) GetMembership(js.Value, []js.Value) interface{} {
 //  - Byte representation of the Group (Uint8Array).
 func (g *Group) Serialize(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(g.api.Serialize())
+}
+
+// DeserializeGroup converts the results of Group.Serialize into a
+// [bindings.Group] so that its methods can be called.
+//
+// Parameters:
+//  - args[0] - Byte representation of the Group (Uint8Array).
+//
+// Returns:
+//  - Javascript representation of the GroupChat object.
+//  - Throws a TypeError if getting the group fails
+func DeserializeGroup(_ js.Value, args []js.Value) interface{} {
+	grp, err := bindings.DeserializeGroup(utils.CopyBytesToGo(args[0]))
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return newGroupJS(grp)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

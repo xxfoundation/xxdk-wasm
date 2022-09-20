@@ -57,6 +57,9 @@ func main() {
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
 	js.Global().Set("LoadCmix", js.FuncOf(wasm.LoadCmix))
 
+	// wasm/delivery.go
+	js.Global().Set("SetDashboardURL", js.FuncOf(wasm.SetDashboardURL))
+
 	// wasm/dummy.go
 	js.Global().Set("NewDummyTrafficManager",
 		js.FuncOf(wasm.NewDummyTrafficManager))
@@ -76,6 +79,7 @@ func main() {
 
 	// wasm/group.go
 	js.Global().Set("NewGroupChat", js.FuncOf(wasm.NewGroupChat))
+	js.Global().Set("DeserializeGroup", js.FuncOf(wasm.DeserializeGroup))
 
 	// wasm/identity.go
 	js.Global().Set("StoreReceptionIdentity",

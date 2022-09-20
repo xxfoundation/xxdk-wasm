@@ -154,6 +154,28 @@ func (c *Cmix) IsHealthy(js.Value, []js.Value) interface{} {
 	return c.api.IsHealthy()
 }
 
+// GetRunningProcesses returns the names of all running processes at the time
+// of this call. Note that this list may change and is subject to race
+// conditions if multiple threads are in the process of starting or stopping.
+//
+// Returns:
+//  - JSON of strings (Uint8Array).
+//
+// JSON Example:
+//  {
+//    "FileTransfer{BatchBuilderThread, FilePartSendingThread#0, FilePartSendingThread#1, FilePartSendingThread#2, FilePartSendingThread#3}",
+//    "MessageReception Worker 0"
+//  }
+func (c *Cmix) GetRunningProcesses(js.Value, []js.Value) interface{} {
+	list, err := c.api.GetRunningProcesses()
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(list)
+}
+
 // networkHealthCallback adheres to the [bindings.NetworkHealthCallback]
 // interface.
 type networkHealthCallback struct {

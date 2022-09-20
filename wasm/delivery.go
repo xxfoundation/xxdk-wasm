@@ -10,9 +10,25 @@
 package wasm
 
 import (
+	"gitlab.com/elixxir/client/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
+
+// SetDashboardURL is a function which modifies the base dashboard URL that is
+// returned as part of any send report. Internally, this is defaulted to
+// "https://dashboard.xx.network". This should only be called if the user
+// explicitly wants to modify the dashboard URL. This function is not
+// thread-safe, and as such should only be called on setup.
+//
+// Parameters:
+//  - args[0] - A valid URL that will be used for round look up on any send
+//    report (string).
+func SetDashboardURL(_ js.Value, args []js.Value) interface{} {
+	bindings.SetDashboardURL(args[0].String())
+
+	return nil
+}
 
 // messageDeliveryCallback wraps Javascript callbacks to adhere to the
 // [bindings.MessageDeliveryCallback] interface.
