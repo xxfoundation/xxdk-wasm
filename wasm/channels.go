@@ -592,8 +592,8 @@ func (ch *ChannelsManager) RegisterReceiveHandler(_ js.Value, args []js.Value) i
 // Event Model Logic                                                          //
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO: add comments
-
+// eventModel wraps Javascript callbacks to adhere to the [bindings.EventModel]
+// interface.
 type eventModel struct {
 	joinChannel      func(args ...interface{}) js.Value
 	leaveChannel     func(args ...interface{}) js.Value
@@ -603,14 +603,42 @@ type eventModel struct {
 	updateSentStatus func(args ...interface{}) js.Value
 }
 
+// JoinChannel is called whenever a channel is joined locally.
+//
+// Parameters:
+//  - channel - Returns the pretty print representation of a channel (string).
 func (em *eventModel) JoinChannel(channel string) {
 	em.joinChannel(channel)
 }
 
+// LeaveChannel is called whenever a channel is left locally.
+//
+// Parameters:
+//  - ChannelId - The marshalled channel [id.ID] (Uint8Array).
 func (em *eventModel) LeaveChannel(channelID []byte) {
 	em.leaveChannel(utils.CopyBytesToJS(channelID))
 }
 
+// ReceiveMessage is called whenever a message is received on a given channel.
+// It may be called multiple times on the same message. It is incumbent on the
+// user of the API to filter such called by message ID.
+//
+// Parameters:
+//  - channelID - The marshalled channel [id.ID] (Uint8Array).
+//  - messageID - The bytes of the [channel.MessageID] of the received message
+//    (Uint8Array).
+//  - senderUsername - The username of the sender of the message (string).
+//  - text - The content of the message (string).
+//  - timestamp - Time the message was received; represented as nanoseconds
+//    since unix epoch (int).
+//  - lease - The number of nanoseconds that the message is valid for (int).
+//  - roundId - The ID of the round that the message was received on (int).
+//  - status - the [channels.SentStatus] of the message (int).
+//
+// Statuses will be enumerated as such:
+//  Sent      =  0
+//  Delivered =  1
+//  Failed    =  2
 func (em *eventModel) ReceiveMessage(channelID, messageID []byte,
 	senderUsername, text string, timestamp, lease, roundId, status int64) {
 	em.receiveMessage(utils.CopyBytesToJS(channelID),
@@ -618,6 +646,31 @@ func (em *eventModel) ReceiveMessage(channelID, messageID []byte,
 		senderUsername, text, timestamp, lease, roundId, status)
 }
 
+// ReceiveReply is called whenever a message is received that is a reply on a
+// given channel. It may be called multiple times on the same message. It is
+// incumbent on the user of the API to filter such called by message ID.
+//
+// Messages may arrive our of order, so a reply in theory can arrive before the
+// initial message. As a result, it may be important to buffer replies.
+//
+// Parameters:
+//  - channelID - The marshalled channel [id.ID] (Uint8Array).
+//  - messageID - The bytes of the [channel.MessageID] of the received message
+//    (Uint8Array).
+//  - reactionTo - The [channel.MessageID] for the message that received a reply
+//    (Uint8Array).
+//  - senderUsername - The username of the sender of the message (string).
+//  - text - The content of the message (string).
+//  - timestamp - Time the message was received; represented as nanoseconds
+//    since unix epoch (int).
+//  - lease - The number of nanoseconds that the message is valid for (int).
+//  - roundId - The ID of the round that the message was received on (int).
+//  - status - the [channels.SentStatus] of the message (int).
+//
+// Statuses will be enumerated as such:
+//  Sent      =  0
+//  Delivered =  1
+//  Failed    =  2
 func (em *eventModel) ReceiveReply(channelID, messageID, reactionTo []byte,
 	senderUsername, text string, timestamp, lease, roundId, status int64) {
 	em.receiveReply(utils.CopyBytesToJS(channelID),
@@ -625,6 +678,31 @@ func (em *eventModel) ReceiveReply(channelID, messageID, reactionTo []byte,
 		senderUsername, text, timestamp, lease, roundId, status)
 }
 
+// ReceiveReaction is called whenever a reaction to a message is received on a
+// given channel. It may be called multiple times on the same reaction. It is
+// incumbent on the user of the API to filter such called by message ID.
+//
+// Messages may arrive our of order, so a reply in theory can arrive before the
+// initial message. As a result, it may be important to buffer reactions.
+//
+// Parameters:
+//  - channelID - The marshalled channel [id.ID] (Uint8Array).
+//  - messageID - The bytes of the [channel.MessageID] of the received message
+//    (Uint8Array).
+//  - reactionTo - The [channel.MessageID] for the message that received a reply
+//    (Uint8Array).
+//  - senderUsername - The username of the sender of the message (string).
+//  - reaction - The contents of the reaction message (string).
+//  - timestamp - Time the message was received; represented as nanoseconds
+//    since unix epoch (int).
+//  - lease - The number of nanoseconds that the message is valid for (int).
+//  - roundId - The ID of the round that the message was received on (int).
+//  - status - the [channels.SentStatus] of the message (int).
+//
+// Statuses will be enumerated as such:
+//  Sent      =  0
+//  Delivered =  1
+//  Failed    =  2
 func (em *eventModel) ReceiveReaction(channelID, messageID, reactionTo []byte,
 	senderUsername, reaction string, timestamp, lease, roundId, status int64) {
 	em.receiveReaction(utils.CopyBytesToJS(channelID),
@@ -632,6 +710,18 @@ func (em *eventModel) ReceiveReaction(channelID, messageID, reactionTo []byte,
 		senderUsername, reaction, timestamp, lease, roundId, status)
 }
 
+// UpdateSentStatus is called whenever the sent status of a message has
+// changed.
+//
+// Parameters:
+//  - messageID - The bytes of the [channel.MessageID] of the received message
+//    (Uint8Array).
+//  - status - the [channels.SentStatus] of the message (int).
+//
+// Statuses will be enumerated as such:
+//  Sent      =  0
+//  Delivered =  1
+//  Failed    =  2
 func (em *eventModel) UpdateSentStatus(messageID []byte, status int64) {
 	em.updateSentStatus(utils.CopyBytesToJS(messageID), status)
 }
