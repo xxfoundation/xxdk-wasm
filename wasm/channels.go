@@ -13,9 +13,11 @@ import (
 	"gitlab.com/elixxir/client/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
-	_ "gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/id"
 	"syscall/js"
 )
+
+var _ = &id.ID{}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic Channel API                                                          //
@@ -260,7 +262,7 @@ func (ch *ChannelsManager) JoinChannel(_ js.Value, args []js.Value) interface{} 
 // GetChannels returns the IDs of all channels that have been joined.
 //
 // Returns:
-//  - JSON of an array of marshalled [gitlab.com/xx_network/primitives/id.ID] (Uint8Array).
+//  - JSON of an array of marshalled [id.ID] (Uint8Array).
 //  - Throws a TypeError if getting the channels fails.
 //
 // JSON Example:

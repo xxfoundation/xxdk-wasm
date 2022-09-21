@@ -58,10 +58,6 @@ func (ac *AuthenticatedConnection) GetId(js.Value, []js.Value) interface{} {
 // SendE2E is a wrapper for sending specifically to the
 // AuthenticatedConnection's [partner.Manager].
 //
-// Returns:
-//  - []byte - the JSON marshalled bytes of the E2ESendReport object, which can
-//    be passed into WaitForRoundResult to see if the send succeeded.
-//
 // Parameters:
 //  - args[0] - message type from [catalog.MessageType] (int)
 //  - args[1] - message payload (Uint8Array)
