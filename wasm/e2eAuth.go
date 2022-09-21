@@ -18,8 +18,8 @@ import (
 // structure to the passed contact, as well as the passed facts (it will error
 // if they are too long).
 //
-// The other party must accept the request by calling [Confirm] to be able to
-// send messages using [E2e.SendE2E]. When the other party does so, the
+// The other party must accept the request by calling [E2e.Confirm] to be able
+// to send messages using [E2e.SendE2E]. When the other party does so, the
 // "confirm" callback will get called.
 //
 // The round the request is initially sent on will be returned, but the request
@@ -69,7 +69,7 @@ func (e *E2e) Request(_ js.Value, args []js.Value) interface{} {
 // The confirmation sends as a critical message; if the round it sends on fails,
 // it will be auto resent by the cMix client.
 //
-// If the confirmation must be resent, use [ReplayConfirm].
+// If the confirmation must be resent, use [E2e.ReplayConfirm].
 //
 // Parameters:
 //  - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).

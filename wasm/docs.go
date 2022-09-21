@@ -11,6 +11,7 @@ package wasm
 
 import (
 	"github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/client/auth"
 	"gitlab.com/elixxir/client/catalog"
 	"gitlab.com/elixxir/client/channels"
 	"gitlab.com/elixxir/client/cmix"
@@ -60,4 +61,5 @@ var (
 	_ = jwalterweatherman.LogListener(nil)
 	_ = format.Message{}
 	_ = restlike.Message{}
+	_ = auth.Callbacks(nil)
 )

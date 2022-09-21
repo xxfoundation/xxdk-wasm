@@ -198,9 +198,10 @@ func (ud *UserDiscovery) GetContact(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(c)
 }
 
-// ConfirmFact confirms a fact first registered via [SendRegisterFact]. The
-// confirmation ID comes from [SendRegisterFact] while the code will come over
-// the associated communications system.
+// ConfirmFact confirms a fact first registered via
+// [UserDiscovery.SendRegisterFact]. The confirmation ID comes from
+// [UserDiscovery.SendRegisterFact] while the code will come over the associated
+// communications system.
 //
 // Parameters:
 //  - args[0] - Confirmation ID (string).

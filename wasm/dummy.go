@@ -90,10 +90,10 @@ func (dt *DummyTraffic) SetStatus(_ js.Value, args []js.Value) interface{} {
 
 // GetStatus returns the current state of the [DummyTraffic] manager's sending
 // thread. Note that this function does not return the status set by the most
-// recent call to [SetStatus]. Instead, this call returns the current status of
-// the sending thread. This is due to the small delay that may occur between
-// calling [SetStatus] and the sending thread taking into effect that status
-// change.
+// recent call to [DummyTraffic.SetStatus]. Instead, this call returns the
+// current status of the sending thread. This is due to the small delay that may
+// occur between calling [DummyTraffic.SetStatus] and the sending thread taking
+// into effect that status change.
 //
 // Returns:
 //   - Returns true if sending thread is sending dummy messages and false if

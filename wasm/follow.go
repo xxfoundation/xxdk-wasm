@@ -135,9 +135,9 @@ func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) interface{} {
 // HasRunningProcessies checks if any background threads are running and returns
 // true if one or more are.
 //
-// This is meant to be used when [NetworkFollowerStatus] returns Stopping. Due
-// to the handling of comms on iOS, where the OS can block indefinitely, it may
-// not enter the stopped state appropriately. This can be used instead.
+// This is meant to be used when [Cmix.NetworkFollowerStatus] returns Stopping.
+// Due to the handling of comms on iOS, where the OS can block indefinitely, it
+// may not enter the stopped state appropriately. This can be used instead.
 //
 // Returns:
 //  - True if there are running processes (boolean).
