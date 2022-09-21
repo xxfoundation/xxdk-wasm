@@ -59,7 +59,6 @@ const (
 	// not exclusively) when a value is not of the expected type.
 	//
 	// A TypeError may be thrown when:
-	//
 	//  - an operand or argument passed to a function is incompatible with the
 	//    type expected by that operator or function; or
 	//  - when attempting to modify a value that cannot be changed; or

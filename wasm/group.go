@@ -26,7 +26,7 @@ type GroupChat struct {
 }
 
 // newGroupChatJS creates a new Javascript compatible object
-// (map[string]interface{}) that matches the GroupChat structure.
+// (map[string]interface{}) that matches the [GroupChat] structure.
 func newGroupChatJS(api *bindings.GroupChat) map[string]interface{} {
 	gc := GroupChat{api}
 	gcMap := map[string]interface{}{
@@ -46,15 +46,15 @@ func newGroupChatJS(api *bindings.GroupChat) map[string]interface{} {
 // NewGroupChat creates a bindings-layer group chat manager.
 //
 // Parameters:
-//  - args[0] - ID of E2e object in tracker (int).
+//  - args[0] - ID of [E2e] object in tracker (int).
 //  - args[1] - Javascript object that has functions that implement the
 //    [bindings.GroupRequest] interface.
 //  - args[2] - Javascript object that has functions that implement the
 //    [bindings.GroupChatProcessor] interface.
 //
 // Returns:
-//  - Javascript representation of the GroupChat object.
-//  - Throws a TypeError if creating the GroupChat fails.
+//  - Javascript representation of the [GroupChat] object.
+//  - Throws a TypeError if creating the [GroupChat] fails.
 func NewGroupChat(_ js.Value, args []js.Value) interface{} {
 	requestFunc := &groupRequest{utils.WrapCB(args[1], "Callback")}
 	p := &groupChatProcessor{
@@ -69,24 +69,23 @@ func NewGroupChat(_ js.Value, args []js.Value) interface{} {
 	return newGroupChatJS(api)
 }
 
-// MakeGroup creates a new Group and sends a group request to all members in the
+// MakeGroup creates a new group and sends a group request to all members in the
 // group.
 //
 // Parameters:
 //  - args[0] - JSON of array of [id.ID]; it contains the IDs of members the
 //    user wants to add to the group (Uint8Array).
-//  - args[1] - the initial message sent to all members in the group. This is an
+//  - args[1] - The initial message sent to all members in the group. This is an
 //    optional parameter and may be nil (Uint8Array).
-//  - args[2] - the name of the group decided by the creator. This is an
+//  - args[2] - The name of the group decided by the creator. This is an
 //    optional  parameter and may be nil. If nil the group will be assigned the
 //    default name (Uint8Array).
 //
 // Returns a promise:
 //  - Resolves to the JSON of the [bindings.GroupReport], which can be passed
-//    into Cmix.WaitForRoundResult to see if the send succeeded (Uint8Array).
+//    into [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //  - Rejected with an error if making the group fails.
 func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) interface{} {
-	// (membershipBytes, message, name []byte) ([]byte, error)
 	membershipBytes := utils.CopyBytesToGo(args[0])
 	message := utils.CopyBytesToGo(args[1])
 	name := utils.CopyBytesToGo(args[2])
@@ -106,12 +105,12 @@ func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) interface{} {
 // ResendRequest resends a group request to all members in the group.
 //
 // Parameters:
-//  - args[0] - group's ID (Uint8Array). This can be found in the report
-//  returned by GroupChat.MakeGroup.
+//  - args[0] - The marshalled bytes of the group [id.ID] (Uint8Array). This can
+//    be found in the report returned by [GroupChat.MakeGroup].
 //
 // Returns a promise:
 //  - Resolves to the JSON of the [bindings.GroupReport], which can be passed
-//    into Cmix.WaitForRoundResult to see if the send succeeded (Uint8Array).
+//    into [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //  - Rejected with an error if resending the request fails.
 func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) interface{} {
 	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
@@ -131,7 +130,7 @@ func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) interface{} {
 // with the same trackedGroupId.
 //
 // Parameters:
-//  - args[0] - The result of calling Group.Serialize on any [bindings.Group]
+//  - args[0] - The result of calling [Group.Serialize] on any [bindings.Group]
 //    object returned over the bindings (Uint8Array).
 //
 // Returns:
@@ -149,8 +148,8 @@ func (g *GroupChat) JoinGroup(_ js.Value, args []js.Value) interface{} {
 // LeaveGroup deletes a group so a user no longer has access.
 //
 // Parameters:
-//  - args[0] - group's ID (Uint8Array). This can be found in the report
-//    returned by GroupChat.MakeGroup.
+//  - args[0] - The marshalled bytes of the group [id.ID] (Uint8Array). This can
+//    be found in the report returned by [GroupChat.MakeGroup].
 //
 // Returns:
 //  - Throws a TypeError if leaving the group fails.
@@ -167,16 +166,16 @@ func (g *GroupChat) LeaveGroup(_ js.Value, args []js.Value) interface{} {
 // Send is the bindings-level function for sending to a group.
 //
 // Parameters:
-//  - args[0] - group's ID (Uint8Array). This can be found in the report
-//    returned by GroupChat.MakeGroup.
-//  - args[1] - the message that the user wishes to send to the group
+//  - args[0] - The marshalled bytes of the group [id.ID] (Uint8Array). This can
+//    be found in the report returned by [GroupChat.MakeGroup].
+//  - args[1] - The message that the user wishes to send to the group
 //    (Uint8Array).
-//  - args[2] - the tag associated with the message (string). This tag may be
+//  - args[2] - The tag associated with the message (string). This tag may be
 //    empty.
 //
 // Returns a promise:
 //  - Resolves to the JSON of the [bindings.GroupSendReport], which can be
-//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    passed into [Cmix.WaitForRoundResult] to see if the send succeeded
 //    (Uint8Array).
 //  - Rejected with an error if sending the message to the group fails.
 func (g *GroupChat) Send(_ js.Value, args []js.Value) interface{} {
@@ -201,7 +200,6 @@ func (g *GroupChat) Send(_ js.Value, args []js.Value) interface{} {
 //  - JSON of array of [id.ID] representing all group ID's (Uint8Array).
 //  - Throws a TypeError if getting the groups fails.
 func (g *GroupChat) GetGroups(js.Value, []js.Value) interface{} {
-	// () ([]byte, error)
 	groups, err := g.api.GetGroups()
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -215,12 +213,12 @@ func (g *GroupChat) GetGroups(js.Value, []js.Value) interface{} {
 // error "failed to find group" is returned.
 //
 // Parameters:
-//  - args[0] - group's ID (Uint8Array). This can be found in the report
-//    returned by GroupChat.MakeGroup.
+//  - args[0] - The marshalled bytes of the group [id.ID] (Uint8Array). This can
+//    be found in the report returned by [GroupChat.MakeGroup].
 //
 // Returns:
-//  - Javascript representation of the GroupChat object.
-//  - Throws a TypeError if getting the group fails
+//  - Javascript representation of the [GroupChat] object.
+//  - Throws a TypeError if getting the group fails.
 func (g *GroupChat) GetGroup(_ js.Value, args []js.Value) interface{} {
 	grp, err := g.api.GetGroup(utils.CopyBytesToGo(args[0]))
 	if err != nil {
@@ -234,7 +232,7 @@ func (g *GroupChat) GetGroup(_ js.Value, args []js.Value) interface{} {
 // NumGroups returns the number of groups the user is a part of.
 //
 // Returns:
-//  - int
+//  - Number of groups (int).
 func (g *GroupChat) NumGroups(js.Value, []js.Value) interface{} {
 	return g.api.NumGroups()
 }
@@ -250,7 +248,7 @@ type Group struct {
 }
 
 // newGroupJS creates a new Javascript compatible object
-// (map[string]interface{}) that matches the Group structure.
+// (map[string]interface{}) that matches the [Group] structure.
 func newGroupJS(api *bindings.Group) map[string]interface{} {
 	g := Group{api}
 	gMap := map[string]interface{}{
@@ -269,15 +267,15 @@ func newGroupJS(api *bindings.Group) map[string]interface{} {
 // GetName returns the name set by the user for the group.
 //
 // Returns:
-//  - Uint8Array
+//  - Group name (Uint8Array).
 func (g *Group) GetName(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(g.api.GetName())
 }
 
-// GetID return the 33-byte unique group ID. This represents the id.ID object.
+// GetID return the 33-byte unique group ID. This represents the [id.ID] object.
 //
 // Returns:
-//  - Uint8Array
+//  - Marshalled bytes of the group [id.ID] (Uint8Array).
 func (g *Group) GetID(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(g.api.GetID())
 }
@@ -285,7 +283,7 @@ func (g *Group) GetID(js.Value, []js.Value) interface{} {
 // GetInitMessage returns initial message sent with the group request.
 //
 // Returns:
-//  - Uint8Array
+//  - Initial group message contents (Uint8Array).
 func (g *Group) GetInitMessage(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(g.api.GetInitMessage())
 }
@@ -294,7 +292,7 @@ func (g *Group) GetInitMessage(js.Value, []js.Value) interface{} {
 // also the time the group requests were sent.
 //
 // Returns:
-//  - int
+//  - The time the group was created, in nanoseconds (int).
 func (g *Group) GetCreatedNano(js.Value, []js.Value) interface{} {
 	return g.api.GetCreatedNano()
 }
@@ -303,7 +301,7 @@ func (g *Group) GetCreatedNano(js.Value, []js.Value) interface{} {
 // also the time the group requests were sent.
 //
 // Returns:
-//  - int
+//  - The time the group was created, in milliseconds (int).
 func (g *Group) GetCreatedMS(js.Value, []js.Value) interface{} {
 	return g.api.GetCreatedMS()
 }
@@ -325,23 +323,23 @@ func (g *Group) GetMembership(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(membership)
 }
 
-// Serialize serializes the Group.
+// Serialize serializes the [Group].
 //
 // Returns:
-//  - Byte representation of the Group (Uint8Array).
+//  - Byte representation of the [Group] (Uint8Array).
 func (g *Group) Serialize(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(g.api.Serialize())
 }
 
-// DeserializeGroup converts the results of Group.Serialize into a
+// DeserializeGroup converts the results of [Group.Serialize] into a
 // [bindings.Group] so that its methods can be called.
 //
 // Parameters:
-//  - args[0] - Byte representation of the Group (Uint8Array).
+//  - args[0] - Byte representation of the [bindings.Group] (Uint8Array).
 //
 // Returns:
-//  - Javascript representation of the GroupChat object.
-//  - Throws a TypeError if getting the group fails
+//  - Javascript representation of the [GroupChat] object.
+//  - Throws a TypeError if getting the group fails.
 func DeserializeGroup(_ js.Value, args []js.Value) interface{} {
 	grp, err := bindings.DeserializeGroup(utils.CopyBytesToGo(args[0]))
 	if err != nil {
@@ -365,7 +363,7 @@ type groupRequest struct {
 // Callback is called when a group request is received.
 //
 // Parameters:
-//  - g - returns the JSON of [bindings.Group] (Uint8Array)
+//  - g - Returns the JSON of [bindings.Group] (Uint8Array).
 func (gr *groupRequest) Callback(g *bindings.Group) {
 	gr.callback(newGroupJS(g))
 }
@@ -381,13 +379,14 @@ type groupChatProcessor struct {
 // message processing system.
 //
 // Parameters:
-//  - decryptedMessage - returns the JSON of [bindings.GroupChatMessage]
+//  - decryptedMessage - Returns the JSON of [bindings.GroupChatMessage]
 //    (Uint8Array).
-//  - msg - returns the marshalled bytes of [format.Message] (Uint8Array).
-//  - receptionId - returns the ID of the sender. JSON of [id.ID] (Uint8Array).
-//  - ephemeralId - returns the ephemeral ID of the sender (int).
-//  - roundId - returns the ID of the round sent on (int).
-//  - err - returns an error on failure (Error).
+//  - msg - Returns the marshalled bytes of [format.Message] (Uint8Array).
+//  - receptionId - Returns the marshalled bytes of the sender's [id.ID]
+//    (Uint8Array).
+//  - ephemeralId - Returns the [ephemeral.Id] of the sender (int).
+//  - roundId - Returns the ID of the round sent on (int).
+//  - err - Returns an error on failure (Error).
 func (gcp *groupChatProcessor) Process(decryptedMessage, msg,
 	receptionId []byte, ephemeralId, roundId int64, err error) {
 	gcp.process(utils.CopyBytesToJS(decryptedMessage),

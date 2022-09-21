@@ -49,10 +49,10 @@ import (
 //     handles both auth confirm and requests.
 //
 // Parameters:
-//  - args[0] - timeout when stopping threads in milliseconds (int)
+//  - args[0] - Timeout when stopping threads in milliseconds (int).
 //
 // Returns:
-//  - throws a TypeError if starting the network follower fails
+//  - Throws a TypeError if starting the network follower fails.
 func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) interface{} {
 	err := c.api.StartNetworkFollower(args[0].Int())
 	if err != nil {
@@ -65,12 +65,12 @@ func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) interface{} {
 
 // StopNetworkFollower stops the network follower if it is running.
 //
-// If the network follower is running and this fails, the Cmix object will
+// If the network follower is running and this fails, the [Cmix] object will
 // most likely be in an unrecoverable state and need to be trashed.
 //
 // Returns:
-//  - throws a TypeError if the follower is in the wrong state to stop or if it
-//    fails to stop
+//  - Throws a TypeError if the follower is in the wrong state to stop or if it
+//    fails to stop.
 func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) interface{} {
 	err := c.api.StopNetworkFollower()
 	if err != nil {
@@ -85,7 +85,7 @@ func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) interface{} {
 // timeout is reached. It will return true if the network is healthy.
 //
 // Parameters:
-//  - args[0] - timeout when stopping threads in milliseconds (int)
+//  - args[0] - Timeout when stopping threads in milliseconds (int).
 //
 // Returns a promise:
 //  - A promise that resolves if the network is healthy and rejects if the
@@ -109,7 +109,7 @@ func (c *Cmix) WaitForNetwork(_ js.Value, args []js.Value) interface{} {
 //  Stopping - 3000
 //
 // Returns:
-//  - returns network status code (int)
+//  - Network status code (int).
 func (c *Cmix) NetworkFollowerStatus(js.Value, []js.Value) interface{} {
 	return c.api.NetworkFollowerStatus()
 }
@@ -117,9 +117,9 @@ func (c *Cmix) NetworkFollowerStatus(js.Value, []js.Value) interface{} {
 // GetNodeRegistrationStatus returns the current state of node registration.
 //
 // Returns:
-//  - []byte - JSON of [bindings.NodeRegistrationReport] containing the number
-//    of nodes the user is registered with and the number of nodes present in
-//    the NDF.
+//  - JSON of [bindings.NodeRegistrationReport] containing the number of nodes
+//    that the user is registered with and the number of nodes present in the
+//    NDF.
 //  - An error if it cannot get the node registration status. The most likely
 //    cause is that the network is unhealthy.
 func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) interface{} {
@@ -135,12 +135,12 @@ func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) interface{} {
 // HasRunningProcessies checks if any background threads are running and returns
 // true if one or more are.
 //
-// This is meant to be used when NetworkFollowerStatus returns Stopping. Due to
-// the handling of comms on iOS, where the OS can block indefinitely, it may not
-// enter the stopped state appropriately. This can be used instead.
+// This is meant to be used when [NetworkFollowerStatus] returns Stopping. Due
+// to the handling of comms on iOS, where the OS can block indefinitely, it may
+// not enter the stopped state appropriately. This can be used instead.
 //
 // Returns:
-//  - boolean
+//  - True if there are running processes (boolean).
 func (c *Cmix) HasRunningProcessies(js.Value, []js.Value) interface{} {
 	return c.api.HasRunningProcessies()
 }
@@ -149,7 +149,7 @@ func (c *Cmix) HasRunningProcessies(js.Value, []js.Value) interface{} {
 // messages can be sent.
 //
 // Returns:
-//  - boolean
+//  - True if the network is healthy (boolean).
 func (c *Cmix) IsHealthy(js.Value, []js.Value) interface{} {
 	return c.api.IsHealthy()
 }
@@ -185,7 +185,7 @@ type networkHealthCallback struct {
 // Callback receives notification if network health changes.
 //
 // Parameters:
-//  - health - returns true if the network is healthy and false otherwise
+//  - health - Returns true if the network is healthy and false otherwise
 //    (boolean).
 func (nhc *networkHealthCallback) Callback(health bool) { nhc.callback(health) }
 
@@ -194,10 +194,10 @@ func (nhc *networkHealthCallback) Callback(health bool) { nhc.callback(health) }
 //
 // Parameters:
 //  - args[0] - Javascript object that has functions that implement the
-//    [bindings.NetworkHealthCallback] interface
+//    [bindings.NetworkHealthCallback] interface.
 //
 // Returns:
-//  - Returns a registration ID that can be used to unregister (int)
+//  - A registration ID that can be used to unregister the callback (int).
 func (c *Cmix) AddHealthCallback(_ js.Value, args []js.Value) interface{} {
 	return c.api.AddHealthCallback(
 		&networkHealthCallback{utils.WrapCB(args[0], "Callback")})
@@ -206,7 +206,7 @@ func (c *Cmix) AddHealthCallback(_ js.Value, args []js.Value) interface{} {
 // RemoveHealthCallback removes a health callback using its registration ID.
 //
 // Parameters:
-//  - args[0] - registration ID (int)
+//  - args[0] - Callback registration ID (int).
 func (c *Cmix) RemoveHealthCallback(_ js.Value, args []js.Value) interface{} {
 	c.api.RemoveHealthCallback(int64(args[0].Int()))
 	return nil
@@ -247,8 +247,8 @@ type trackServicesCallback struct {
 // which will be non-null.
 //
 // Parameters:
-//  - marshalData - returns the JSON of [message.ServiceList] (Uint8Array).
-//  - err - returns an error on failure (Error).
+//  - marshalData - Returns the JSON of [message.ServiceList] (Uint8Array).
+//  - err - Returns an error on failure (Error).
 //
 // Example JSON:
 //  [

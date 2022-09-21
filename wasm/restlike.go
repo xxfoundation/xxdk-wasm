@@ -18,14 +18,14 @@ import (
 // RestlikeRequest performs a normal restlike request.
 //
 // Parameters:
-//  - args[0] - ID of Cmix object in tracker (int).
-//  - args[1] - ID of Connection object in tracker (int).
+//  - args[0] - ID of [Cmix] object in tracker (int).
+//  - args[1] - ID of [Connection] object in tracker (int).
 //  - args[2] - JSON of [bindings.RestlikeMessage] (Uint8Array).
 //  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array).
 //
 // Returns a promise:
 //  - Resolves to the JSON of the [bindings.RestlikeMessage], which can be
-//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    passed into [Cmix.WaitForRoundResult] to see if the send succeeded
 //    (Uint8Array).
 //  - Rejected with an error if parsing the parameters or making the request
 //    fails.
@@ -51,14 +51,14 @@ func RestlikeRequest(_ js.Value, args []js.Value) interface{} {
 // RestlikeRequestAuth performs an authenticated restlike request.
 //
 // Parameters:
-//  - args[0] - ID of Cmix object in tracker (int).
-//  - args[1] - ID of AuthenticatedConnection object in tracker (int).
+//  - args[0] - ID of [Cmix] object in tracker (int).
+//  - args[1] - ID of [AuthenticatedConnection] object in tracker (int).
 //  - args[2] - JSON of [bindings.RestlikeMessage] (Uint8Array).
 //  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array).
 //
 // Returns a promise:
 //  - Resolves to the JSON of the [bindings.RestlikeMessage], which can be
-//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    passed into [Cmix.WaitForRoundResult] to see if the send succeeded
 //    (Uint8Array).
 //  - Rejected with an error if parsing the parameters or making the request
 //    fails.

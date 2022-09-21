@@ -22,7 +22,7 @@ type Connection struct {
 }
 
 // newConnectJS creates a new Javascript compatible object
-// (map[string]interface{}) that matches the Connection structure.
+// (map[string]interface{}) that matches the [Connection] structure.
 func newConnectJS(api *bindings.Connection) map[string]interface{} {
 	c := Connection{api}
 	connectionMap := map[string]interface{}{
@@ -40,24 +40,25 @@ func newConnectJS(api *bindings.Connection) map[string]interface{} {
 // GetId returns the ID for this [bindings.Connection] in the connectionTracker.
 //
 // Returns:
-//  - int of the ID
+//  - Tracker ID (int).
 func (c *Connection) GetId(js.Value, []js.Value) interface{} {
 	return c.api.GetId()
 }
 
 // Connect performs auth key negotiation with the given recipient and returns a
-// Connection object for the newly created [partner.Manager].
+// [Connection] object for the newly created [partner.Manager].
 //
 // This function is to be used sender-side and will block until the
 // [partner.Manager] is confirmed.
 //
 // Parameters:
-//  - args[0] - ID of the E2E object in the E2E tracker (int).
-//  - args[1] - marshalled recipient [contact.Contact] (Uint8Array).
+//  - args[0] - ID of [E2e] object in tracker (int).
+//  - args[1] - Marshalled bytes of the recipient [contact.Contact]
+//    (Uint8Array).
 //  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array).
 //
 // Returns a promise:
-//  - Resolves to a Javascript representation of the Connection object.
+//  - Resolves to a Javascript representation of the [Connection] object.
 //  - Rejected with an error if loading the parameters or connecting fails.
 func (c *Cmix) Connect(_ js.Value, args []js.Value) interface{} {
 	recipientContact := utils.CopyBytesToGo(args[1])
@@ -75,20 +76,20 @@ func (c *Cmix) Connect(_ js.Value, args []js.Value) interface{} {
 	return utils.CreatePromise(promiseFn)
 }
 
-// SendE2E is a wrapper for sending specifically to the Connection's
+// SendE2E is a wrapper for sending specifically to the [Connection]'s
 // [partner.Manager].
 //
 // Returns:
 //  - []byte - the JSON marshalled bytes of the E2ESendReport object, which can
-//    be passed into WaitForRoundResult to see if the send succeeded.
+//    be passed into [Cmix.WaitForRoundResult] to see if the send succeeded.
 //
 // Parameters:
-//  - args[0] - message type from [catalog.MessageType] (int)
-//  - args[1] - message payload (Uint8Array)
+//  - args[0] - Message type from [catalog.MessageType] (int).
+//  - args[1] - Message payload (Uint8Array).
 //
 // Returns a promise:
 //  - Resolves to the JSON of the [bindings.E2ESendReport], which can be passed
-//    into Cmix.WaitForRoundResult to see if the send succeeded (Uint8Array).
+//    into [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //  - Rejected with an error if sending fails.
 func (c *Connection) SendE2E(_ js.Value, args []js.Value) interface{} {
 	payload := utils.CopyBytesToGo(args[1])
@@ -105,10 +106,10 @@ func (c *Connection) SendE2E(_ js.Value, args []js.Value) interface{} {
 	return utils.CreatePromise(promiseFn)
 }
 
-// Close deletes this Connection's partner.Manager and releases resources.
+// Close deletes this [Connection]'s [partner.Manager] and releases resources.
 //
 // Returns:
-//  - throws a TypeError if closing fails
+//  - Throws a TypeError if closing fails.
 func (c *Connection) Close(js.Value, []js.Value) interface{} {
 	err := c.api.Close()
 	if err != nil {
@@ -119,10 +120,10 @@ func (c *Connection) Close(js.Value, []js.Value) interface{} {
 	return nil
 }
 
-// GetPartner returns the partner.Manager for this Connection.
+// GetPartner returns the [partner.Manager] for this [Connection].
 //
 // Returns:
-//  - bytes of the partner's [id.ID] (Uint8Array)
+//  - Marshalled bytes of the partner's [id.ID] (Uint8Array).
 func (c *Connection) GetPartner(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(c.api.GetPartner())
 }
@@ -136,25 +137,25 @@ type listener struct {
 // Hear is called to receive a message in the UI.
 //
 // Parameters:
-//  - item - returns the JSON of [bindings.Message] (Uint8Array).
+//  - item - Returns the JSON of [bindings.Message] (Uint8Array).
 func (l *listener) Hear(item []byte) { l.hear(utils.CopyBytesToJS(item)) }
 
 // Name returns a name; used for debugging.
 //
 // Returns:
-//  - string
+//  - Name (string).
 func (l *listener) Name() string { return l.name().String() }
 
 // RegisterListener is used for E2E reception and allows for reading data sent
-// from the partner.Manager.
+// from the [partner.Manager].
 //
 // Parameters:
-//  - args[0] - message type from [catalog.MessageType] (int)
+//  - args[0] - message type from [catalog.MessageType] (int).
 //  - args[1] - Javascript object that has functions that implement the
-//    [bindings.Listener] interface
+//    [bindings.Listener] interface.
 //
 // Returns:
-//  - throws a TypeError is registering the listener fails
+//  - Throws a TypeError is registering the listener fails.
 func (c *Connection) RegisterListener(_ js.Value, args []js.Value) interface{} {
 	err := c.api.RegisterListener(args[0].Int(),
 		&listener{utils.WrapCB(args[1], "Hear"), utils.WrapCB(args[1], "Name")})

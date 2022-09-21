@@ -60,7 +60,7 @@ func GetDefaultSingleUseParams(js.Value, []js.Value) interface{} {
 // modify the JSON to change single use settings.
 //
 // Returns:
-//  - JSON of [fileTransfer.e2e.Params] (Uint8Array).
+//  - JSON of [gitlab.com/elixxir/client/fileTransfer/e2e.Params] (Uint8Array).
 func GetDefaultE2eFileTransferParams(js.Value, []js.Value) interface{} {
-	return utils.CopyBytesToJS(bindings.GetDefaultSingleUseParams())
+	return utils.CopyBytesToJS(bindings.GetDefaultE2eFileTransferParams())
 }

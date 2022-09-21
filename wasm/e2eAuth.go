@@ -14,13 +14,13 @@ import (
 	"syscall/js"
 )
 
-// Request sends a contact request from the user identity in the imported E2e
+// Request sends a contact request from the user identity in the imported [E2e]
 // structure to the passed contact, as well as the passed facts (it will error
 // if they are too long).
 //
-// The other party must accept the request by calling Confirm to be able to send
-// messages using E2e.SendE2E. When the other party does so, the "confirm"
-// callback will get called.
+// The other party must accept the request by calling [Confirm] to be able to
+// send messages using [E2e.SendE2E]. When the other party does so, the
+// "confirm" callback will get called.
 //
 // The round the request is initially sent on will be returned, but the request
 // will be listed as a critical message, so the underlying cMix client will auto
@@ -33,7 +33,7 @@ import (
 // will be auto resent by the cMix client.
 //
 // Parameters:
-//  - args[0] - marshalled bytes of the partner [contact.Contact] (Uint8Array).
+//  - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //  - args[1] - JSON of [fact.FactList] (Uint8Array).
 //
 // Returns a promise:
@@ -58,7 +58,7 @@ func (e *E2e) Request(_ js.Value, args []js.Value) interface{} {
 // Confirm sends a confirmation for a received request. It can only be called
 // once. This both sends keying material to the other party and creates a
 // channel in the e2e handler, after which e2e messages can be sent to the
-// partner using E2e.SendE2E.
+// partner using [E2e.SendE2E].
 //
 // The round the request is initially sent on will be returned, but the request
 // will be listed as a critical message, so the underlying cMix client will auto
@@ -69,10 +69,10 @@ func (e *E2e) Request(_ js.Value, args []js.Value) interface{} {
 // The confirmation sends as a critical message; if the round it sends on fails,
 // it will be auto resent by the cMix client.
 //
-// If the confirmation must be resent, use ReplayConfirm.
+// If the confirmation must be resent, use [ReplayConfirm].
 //
 // Parameters:
-//  - args[0] - marshalled bytes of the partner [contact.Contact] (Uint8Array).
+//  - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
 // Returns a promise:
 //  - Resolves to the ID of the round (int).
@@ -107,7 +107,7 @@ func (e *E2e) Confirm(_ js.Value, args []js.Value) interface{} {
 // who is already a partner.
 //
 // Parameters:
-//  - args[0] - marshalled bytes of the partner [contact.Contact] (Uint8Array).
+//  - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
 // Returns a promise:
 //  - Resolves to the ID of the round (int).
@@ -136,7 +136,7 @@ func (e *E2e) Reset(_ js.Value, args []js.Value) interface{} {
 // This will not be useful if either side has ratcheted.
 //
 // Parameters:
-//  - args[0] - marshalled bytes of the partner [contact.Contact] (Uint8Array).
+//  - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
 // Returns a promise:
 //  - Resolves to the ID of the round (int).
@@ -166,7 +166,7 @@ func (e *E2e) CallAllReceivedRequests(js.Value, []js.Value) interface{} {
 // DeleteRequest deletes sent or received requests for a specific partner ID.
 //
 // Parameters:
-//  - args[0] - marshalled bytes of the partner [contact.Contact] (Uint8Array).
+//  - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
 // Returns:
 //  - Throws TypeError if the deletion fails.
@@ -226,10 +226,10 @@ func (e *E2e) DeleteReceiveRequests(js.Value, []js.Value) interface{} {
 // GetReceivedRequest returns a contact if there is a received request for it.
 //
 // Parameters:
-//  - args[0] - marshalled bytes of the partner [contact.Contact] (Uint8Array).
+//  - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
 // Returns:
-//  - The marshalled bytes of [contact.Contact] (Uint8Array).
+//  - Marshalled bytes of [contact.Contact] (Uint8Array).
 //  - Throws TypeError if getting the received request fails.
 func (e *E2e) GetReceivedRequest(_ js.Value, args []js.Value) interface{} {
 	partnerContact := utils.CopyBytesToGo(args[0])
@@ -245,12 +245,12 @@ func (e *E2e) GetReceivedRequest(_ js.Value, args []js.Value) interface{} {
 // VerifyOwnership checks if the received ownership proof is valid.
 //
 // Parameters:
-//  - args[0] - marshalled bytes of the received [contact.Contact] (Uint8Array).
-//  - args[1] - marshalled bytes of the verified [contact.Contact] (Uint8Array).
-//  - args[2] - ID of E2e object in tracker (int)
+//  - args[0] - Marshalled bytes of the received [contact.Contact] (Uint8Array).
+//  - args[1] - Marshalled bytes of the verified [contact.Contact] (Uint8Array).
+//  - args[2] - ID of [E2e] object in tracker (int).
 //
 // Returns:
-//  - Returns true if the ownership is valid (boolean)
+//  - Returns true if the ownership is valid (boolean).
 //  - Throws TypeError if loading the parameters fails.
 func (e *E2e) VerifyOwnership(_ js.Value, args []js.Value) interface{} {
 	receivedContact := utils.CopyBytesToGo(args[0])
@@ -269,9 +269,9 @@ func (e *E2e) VerifyOwnership(_ js.Value, args []js.Value) interface{} {
 // callback for the given partner ID.
 //
 // Parameters:
-//  - args[0] - marshalled bytes of the partner [id.ID] (Uint8Array).
+//  - args[0] - Marshalled bytes of the partner [id.ID] (Uint8Array).
 //  - args[1] - Javascript object that has functions that implement the
-//    [bindings.AuthCallbacks] interface
+//    [bindings.AuthCallbacks] interface.
 //
 // Returns:
 //  - Throws TypeError if the [id.ID] cannot be unmarshalled.
@@ -291,7 +291,7 @@ func (e *E2e) AddPartnerCallback(_ js.Value, args []js.Value) interface{} {
 // auth callback for the given partner ID.
 //
 // Parameters:
-//  - args[0] - marshalled bytes of the partner [id.ID] (Uint8Array).
+//  - args[0] - Marshalled bytes of the partner [id.ID] (Uint8Array).
 //
 // Returns:
 //  - Throws TypeError if the [id.ID] cannot be unmarshalled.

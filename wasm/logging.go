@@ -41,7 +41,7 @@ var logListeners []jww.LogListener
 // The default log level without updates is INFO.
 //
 // Parameters:
-//  - args[0] - log level (int).
+//  - args[0] - Log level (int).
 //
 // Returns:
 //  - Throws TypeError if the log level is invalid.
@@ -85,13 +85,13 @@ func LogLevel(_ js.Value, args []js.Value) interface{} {
 // LogToFile enables logging to a file that can be downloaded.
 //
 // Parameters:
-//  - args[0] - log level (int).
-//  - args[1] - log file name (string).
-//  - args[2] - max log file size, in bytes (int).
+//  - args[0] - Log level (int).
+//  - args[1] - Log file name (string).
+//  - args[2] - Max log file size, in bytes (int).
 //
 // Returns:
-//  - A Javascript representation of the LogFile object, which allows accessing
-//    the contents of the log file and other metadata.
+//  - A Javascript representation of the [LogFile] object, which allows
+//    accessing the contents of the log file and other metadata.
 func LogToFile(_ js.Value, args []js.Value) interface{} {
 	threshold := jww.Threshold(args[0].Int())
 	if threshold < jww.LevelTrace || threshold > jww.LevelFatal {
@@ -141,7 +141,7 @@ type logWriter struct {
 // Log returns a log message to pass to the log writer.
 //
 // Parameters:
-//  - s - log message (string).
+//  - s - Log message (string).
 func (lw *logWriter) Log(s string) { lw.log(s) }
 
 // RegisterLogWriter registers a callback on which logs are written.
@@ -255,7 +255,7 @@ type LogFile struct {
 	b         *circbuf.Buffer
 }
 
-// NewLogFile initialises a new LogFile for log writing.
+// NewLogFile initialises a new [LogFile] for log writing.
 func NewLogFile(
 	name string, threshold jww.Threshold, maxSize int) (*LogFile, error) {
 	// Create new buffer of the specified size
@@ -272,7 +272,7 @@ func NewLogFile(
 }
 
 // newLogFileJS creates a new Javascript compatible object
-// (map[string]interface{}) that matches the LogFile structure.
+// (map[string]interface{}) that matches the [LogFile] structure.
 func newLogFileJS(lf *LogFile) map[string]interface{} {
 	logFile := map[string]interface{}{
 		"Name":      js.FuncOf(lf.Name),
@@ -303,7 +303,7 @@ func (lf *LogFile) Name(js.Value, []js.Value) interface{} {
 	return lf.name
 }
 
-// Threshold returns the log level threshold used in the file
+// Threshold returns the log level threshold used in the file.
 //
 // Returns:
 //  - Log level (string).

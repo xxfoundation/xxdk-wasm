@@ -23,7 +23,7 @@ import (
 //    higher in certain cases, but not lower (int).
 //
 // Returns:
-//  - secret password (Uint8Array).
+//  - Secret password (Uint8Array).
 func GenerateSecret(_ js.Value, args []js.Value) interface{} {
 	secret := bindings.GenerateSecret(args[0].Int())
 	return utils.CopyBytesToJS(secret)

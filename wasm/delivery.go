@@ -75,7 +75,7 @@ func (mdc *messageDeliveryCallback) EventCallback(
 //    inherits a [bindings.RoundsList] object (Uint8Array).
 //  - args[1] - Javascript object that has functions that implement the
 //    [bindings.MessageDeliveryCallback] interface.
-//  - args[2] - timeout when the callback will return if no state update occurs,
+//  - args[2] - Timeout when the callback will return if no state update occurs,
 //    in milliseconds (int).
 //
 // Returns:

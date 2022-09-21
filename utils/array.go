@@ -18,7 +18,7 @@ import (
 // Uint8ArrayToBase64 encodes an uint8 array to a base 64 string.
 //
 // Parameters:
-//  - args[0] - uint8 array (Uint8Array)
+//  - args[0] - Javascript 8-bit unsigned integer array (Uint8Array).
 //
 // Returns:
 //  - Base 64 encoded string (string).
@@ -29,10 +29,10 @@ func Uint8ArrayToBase64(_ js.Value, args []js.Value) interface{} {
 // Base64ToUint8Array decodes a base 64 encoded string to a Uint8Array.
 //
 // Parameters:
-//  - args[0] - base 64 encoded string (string)
+//  - args[0] - Base 64 encoded string (string).
 //
 // Returns:
-//  - Decoded uint8 array (Uint8Array).
+//  - Javascript 8-bit unsigned integer array (Uint8Array).
 //  - Throws TypeError if decoding the string fails.
 func Base64ToUint8Array(_ js.Value, args []js.Value) interface{} {
 	b, err := base64ToUint8Array(args[0])
@@ -58,8 +58,8 @@ func base64ToUint8Array(base64String js.Value) (js.Value, error) {
 // otherwise.
 //
 // Parameters:
-//  - args[0] - array A (Uint8Array)
-//  - args[1] - array B (Uint8Array)
+//  - args[0] - Array A (Uint8Array).
+//  - args[1] - Array B (Uint8Array).
 //
 // Returns:
 //  - If the two arrays are equal (boolean).

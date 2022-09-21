@@ -22,7 +22,7 @@ type E2e struct {
 }
 
 // newE2eJS creates a new Javascript compatible object (map[string]interface{})
-// that matches the E2e structure.
+// that matches the [E2e] structure.
 func newE2eJS(api *bindings.E2e) map[string]interface{} {
 	e := E2e{api}
 	e2eMap := map[string]interface{}{
@@ -68,28 +68,28 @@ func newE2eJS(api *bindings.E2e) map[string]interface{} {
 	return e2eMap
 }
 
-// GetID returns the ID for this E2e in the E2e tracker.
+// GetID returns the ID for this [E2e] in the [E2e] tracker.
 //
 // Returns:
-//  - int
+//  - Tracker ID (int).
 func (e *E2e) GetID(js.Value, []js.Value) interface{} {
 	return e.api.GetID()
 }
 
-// Login creates and returns a new E2e object and adds it to the
+// Login creates and returns a new [E2e] object and adds it to the
 // e2eTrackerSingleton. Identity should be created via
 // [Cmix.MakeReceptionIdentity] and passed in here. If callbacks is left nil, a
 // default [auth.Callbacks] will be used.
 //
 // Parameters:
-//  - args[0] - ID of Cmix object in tracker (int).
+//  - args[0] - ID of [Cmix] object in tracker (int).
 //  - args[1] - Javascript object that has functions that implement the
 //    [bindings.AuthCallbacks] interface.
 //  - args[2] - JSON of the [xxdk.ReceptionIdentity] (Uint8Array).
 //  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array).
 //
 // Returns:
-//  - Javascript representation of the E2e object.
+//  - Javascript representation of the [E2e] object.
 //  - Throws a TypeError if logging in fails.
 func Login(_ js.Value, args []js.Value) interface{} {
 	callbacks := newAuthCallbacks(args[1])
@@ -106,20 +106,20 @@ func Login(_ js.Value, args []js.Value) interface{} {
 	return newE2eJS(newE2E)
 }
 
-// LoginEphemeral creates and returns a new ephemeral E2e object and adds it to
-// the e2eTrackerSingleton. Identity should be created via
+// LoginEphemeral creates and returns a new ephemeral [E2e] object and adds it
+// to the e2eTrackerSingleton. Identity should be created via
 // [Cmix.MakeReceptionIdentity] or [Cmix.MakeLegacyReceptionIdentity] and passed
 // in here. If callbacks is left nil, a default [auth.Callbacks] will be used.
 //
 // Parameters:
-//  - args[0] - ID of Cmix object in tracker (int).
+//  - args[0] - ID of [Cmix] object in tracker (int).
 //  - args[1] - Javascript object that has functions that implement the
 //    [bindings.AuthCallbacks] interface.
 //  - args[2] - JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
 //  - args[3] - JSON of [xxdk.E2EParams] (Uint8Array).
 //
 // Returns:
-//  - Javascript representation of the E2e object.
+//  - Javascript representation of the [E2e] object.
 //  - Throws a TypeError if logging in fails.
 func LoginEphemeral(_ js.Value, args []js.Value) interface{} {
 	callbacks := newAuthCallbacks(args[1])
@@ -136,10 +136,11 @@ func LoginEphemeral(_ js.Value, args []js.Value) interface{} {
 	return newE2eJS(newE2E)
 }
 
-// GetContact returns a [contact.Contact] object for the E2e ReceptionIdentity.
+// GetContact returns a [contact.Contact] object for the [E2e]
+// [bindings.ReceptionIdentity].
 //
 // Returns:
-//  - Marshalled [contact.Contact] (Uint8Array)
+//  - Marshalled bytes of [contact.Contact] (Uint8Array).
 func (e *E2e) GetContact(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(e.api.GetContact())
 }
@@ -148,7 +149,7 @@ func (e *E2e) GetContact(js.Value, []js.Value) interface{} {
 // NDF.
 //
 // Returns:
-//  - User Discovery's address (string)
+//  - User Discovery's address (string).
 func (e *E2e) GetUdAddressFromNdf(js.Value, []js.Value) interface{} {
 	return e.api.GetUdAddressFromNdf()
 }
@@ -156,7 +157,7 @@ func (e *E2e) GetUdAddressFromNdf(js.Value, []js.Value) interface{} {
 // GetUdCertFromNdf retrieves the User Discovery's TLS certificate from the NDF.
 //
 // Returns:
-//  - Public certificate in PEM format (Uint8Array)
+//  - Public certificate in PEM format (Uint8Array).
 func (e *E2e) GetUdCertFromNdf(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(e.api.GetUdCertFromNdf())
 }
@@ -165,8 +166,8 @@ func (e *E2e) GetUdCertFromNdf(js.Value, []js.Value) interface{} {
 // within the NDF.
 //
 // Returns
-//  - Marshalled [contact.Contact] (Uint8Array)
-//  - Throws a TypeError if the contact file cannot be loaded
+//  - Marshalled bytes of [contact.Contact] (Uint8Array).
+//  - Throws a TypeError if the contact file cannot be loaded.
 func (e *E2e) GetUdContactFromNdf(js.Value, []js.Value) interface{} {
 	b, err := e.api.GetUdContactFromNdf()
 	if err != nil {
@@ -201,11 +202,12 @@ func newAuthCallbacks(value js.Value) *authCallbacks {
 // Request will be called when an auth Request message is processed.
 //
 // Parameters:
-//  - contact - returns the contact file of the sender. JSON of
-//    [contact.Contact] (Uint8Array).
-//  - receptionId - returns the ID of the sender. JSON of [id.ID] (Uint8Array).
-//  - ephemeralId - returns the ephemeral ID of the sender (int).
-//  - roundId - returns the ID of the round the request was sent on (int).
+//  - contact - Returns the marshalled bytes of the [contact.Contact] of the
+//    sender (Uint8Array).
+//  - receptionId - Returns the marshalled bytes of the sender's [id.ID]
+//    (Uint8Array).
+//  - ephemeralId - Returns the ephemeral ID of the sender (int).
+//  - roundId - Returns the ID of the round the request was sent on (int).
 func (a *authCallbacks) Request(
 	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.request != nil {
@@ -217,11 +219,12 @@ func (a *authCallbacks) Request(
 // Confirm will be called when an auth Confirm message is processed.
 //
 // Parameters:
-//  - contact - returns the contact file of the sender. JSON of
-//    [contact.Contact] (Uint8Array).
-//  - receptionId - returns the ID of the sender. JSON of [id.ID] (Uint8Array).
-//  - ephemeralId - returns the ephemeral ID of the sender (int).
-//  - roundId - returns the ID of the round the confirmation was sent on (int).
+//  - contact - Returns the marshalled bytes of the [contact.Contact] of the
+//    sender (Uint8Array).
+//  - receptionId - Returns the marshalled bytes of the sender's [id.ID]
+//    (Uint8Array).
+//  - ephemeralId - Returns the ephemeral ID of the sender (int).
+//  - roundId - Returns the ID of the round the confirmation was sent on (int).
 func (a *authCallbacks) Confirm(
 	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.confirm != nil {
@@ -233,11 +236,12 @@ func (a *authCallbacks) Confirm(
 // Reset will be called when an auth Reset operation occurs.
 //
 // Parameters:
-//  - contact - returns the contact file of the sender. JSON of
-//    [contact.Contact] (Uint8Array).
-//  - receptionId - returns the ID of the sender. JSON of [id.ID] (Uint8Array).
-//  - ephemeralId - returns the ephemeral ID of the sender (int).
-//  - roundId - returns the ID of the round the reset was sent on (int).
+//  - contact - Returns the marshalled bytes of the [contact.Contact] of the
+//    sender (Uint8Array).
+//  - receptionId - Returns the marshalled bytes of the sender's [id.ID]
+//    (Uint8Array).
+//  - ephemeralId - Returns the ephemeral ID of the sender (int).
+//  - roundId - Returns the ID of the round the reset was sent on (int).
 func (a *authCallbacks) Reset(
 	contact, receptionId []byte, ephemeralId, roundId int64) {
 	if a.reset != nil {

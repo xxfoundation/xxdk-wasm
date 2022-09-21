@@ -17,7 +17,7 @@ import (
 // GetVersion returns the [xxdk.SEMVER].
 //
 // Returns:
-//  - string
+//  - Version (string).
 func GetVersion(js.Value, []js.Value) interface{} {
 	return bindings.GetVersion()
 }
@@ -25,7 +25,7 @@ func GetVersion(js.Value, []js.Value) interface{} {
 // GetGitVersion returns the [xxdk.GITVERSION].
 //
 // Returns:
-//  - string
+//  - Git version (string).
 func GetGitVersion(js.Value, []js.Value) interface{} {
 	return bindings.GetGitVersion()
 }
@@ -33,7 +33,7 @@ func GetGitVersion(js.Value, []js.Value) interface{} {
 // GetDependencies returns the [xxdk.DEPENDENCIES].
 //
 // Returns:
-//  - string
+//  - Git dependencies (string).
 func GetDependencies(js.Value, []js.Value) interface{} {
 	return bindings.GetDependencies()
 }

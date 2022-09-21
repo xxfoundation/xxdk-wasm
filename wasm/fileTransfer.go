@@ -26,7 +26,7 @@ type FileTransfer struct {
 }
 
 // newFileTransferJS creates a new Javascript compatible object
-// (map[string]interface{}) that matches the FileTransfer structure.
+// (map[string]interface{}) that matches the [FileTransfer] structure.
 func newFileTransferJS(api *bindings.FileTransfer) map[string]interface{} {
 	ft := FileTransfer{api}
 	ftMap := map[string]interface{}{
@@ -60,9 +60,9 @@ type receiveFileCallback struct {
 // Callback is called when a new file transfer is received.
 //
 // Parameters:
-//  - payload - returns the contents of the message. JSON of
+//  - payload - Returns the contents of the message. JSON of
 //    [bindings.ReceivedFile] (Uint8Array).
-//  - err - returns an error on failure (Error).
+//  - err - Returns an error on failure (Error).
 func (rfc *receiveFileCallback) Callback(payload []byte, err error) {
 	rfc.callback(utils.CopyBytesToJS(payload), utils.JsTrace(err))
 }
@@ -76,12 +76,12 @@ type fileTransferSentProgressCallback struct {
 // Callback is called when a new file transfer is received.
 //
 // Parameters:
-//  - payload - returns the contents of the message. JSON of [bindings.Progress]
+//  - payload - Returns the contents of the message. JSON of [bindings.Progress]
 //    (Uint8Array).
-//  - t - returns a tracker that allows the lookup of the status of any file
+//  - t - Returns a tracker that allows the lookup of the status of any file
 //    part. It is a Javascript object that matches the functions on
-//    FilePartTracker.
-//  - err - returns an error on failure (Error).
+//    [FilePartTracker].
+//  - err - Returns an error on failure (Error).
 func (spc *fileTransferSentProgressCallback) Callback(
 	payload []byte, t *bindings.FilePartTracker, err error) {
 	spc.callback(utils.CopyBytesToJS(payload), newFilePartTrackerJS(t),
@@ -97,12 +97,12 @@ type fileTransferReceiveProgressCallback struct {
 // Callback is called when a file part is sent or an error occurs.
 //
 // Parameters:
-//  - payload - returns the contents of the message. JSON of [bindings.Progress]
+//  - payload - Returns the contents of the message. JSON of [bindings.Progress]
 //    (Uint8Array).
-//  - t - returns a tracker that allows the lookup of the status of any file
+//  - t - Returns a tracker that allows the lookup of the status of any file
 //    part. It is a Javascript object that matches the functions on
-//    FilePartTracker.
-//  - err - returns an error on failure (Error).
+//    [FilePartTracker].
+//  - err - Returns an error on failure (Error).
 func (rpc *fileTransferReceiveProgressCallback) Callback(
 	payload []byte, t *bindings.FilePartTracker, err error) {
 	rpc.callback(utils.CopyBytesToJS(payload), newFilePartTrackerJS(t),
@@ -116,14 +116,15 @@ func (rpc *fileTransferReceiveProgressCallback) Callback(
 // InitFileTransfer creates a bindings-level file transfer manager.
 //
 // Parameters:
-//  - args[0] - ID of E2e object in tracker (int).
+//  - args[0] - ID of [E2e] object in tracker (int).
 //  - args[1] - Javascript object that has functions that implement the
 //    [bindings.ReceiveFileCallback] interface.
-//  - args[2] - JSON of [fileTransfer.e2e.Params] (Uint8Array).
+//  - args[2] - JSON of [gitlab.com/elixxir/client/fileTransfer/e2e.Params]
+//    (Uint8Array).
 //  - args[3] - JSON of [fileTransfer.Params] (Uint8Array).
 //
 // Returns:
-//  - Javascript representation of the FileTransfer object.
+//  - Javascript representation of the [FileTransfer] object.
 //  - Throws a TypeError initialising the file transfer manager fails.
 func InitFileTransfer(_ js.Value, args []js.Value) interface{} {
 	rfc := &receiveFileCallback{utils.WrapCB(args[1], "Callback")}
@@ -144,8 +145,8 @@ func InitFileTransfer(_ js.Value, args []js.Value) interface{} {
 //
 // Parameters:
 //  - args[0] - JSON of [bindings.FileSend] (Uint8Array).
-//  - args[1] - marshalled recipient [id.ID] (Uint8Array).
-//  - args[2] - number of retries allowed (float)
+//  - args[1] - Marshalled bytes of the recipient [id.ID] (Uint8Array).
+//  - args[2] - Number of retries allowed (float).
 //  - args[3] - Javascript object that has functions that implement the
 //    [bindings.FileTransferSentProgressCallback] interface.
 //  - args[4] - Duration, in milliseconds, to wait between progress callbacks
@@ -181,7 +182,7 @@ func (f *FileTransfer) Send(_ js.Value, args []js.Value) interface{} {
 // file transfer is complete.
 //
 // Parameters:
-//  - args[0] - file transfer ID (Uint8Array).
+//  - args[0] - File transfer [fileTransfer.TransferID] (Uint8Array).
 //
 // Returns:
 //  - File contents (Uint8Array).
@@ -205,7 +206,7 @@ func (f *FileTransfer) Receive(_ js.Value, args []js.Value) interface{} {
 // reported by the progress callback).
 //
 // Parameters:
-//  - args[0] - file transfer ID (Uint8Array).
+//  - args[0] - File transfer [fileTransfer.TransferID] (Uint8Array).
 //
 // Returns:
 //  - Throws a TypeError if the file transfer is incomplete.
@@ -230,7 +231,7 @@ func (f *FileTransfer) CloseSend(_ js.Value, args []js.Value) interface{} {
 // called when resuming clients or registering extra callbacks.
 //
 // Parameters:
-//  - args[0] - file transfer ID (Uint8Array).
+//  - args[0] - File transfer [fileTransfer.TransferID] (Uint8Array).
 //  - args[1] - Javascript object that has functions that implement the
 //    [bindings.FileTransferSentProgressCallback] interface.
 //  - args[2] - Duration, in milliseconds, to wait between progress callbacks
@@ -258,7 +259,7 @@ func (f *FileTransfer) RegisterSentProgressCallback(
 // This should be done when a new transfer is received on the ReceiveCallback.
 //
 // Parameters:
-//  - args[0] - file transfer ID (Uint8Array).
+//  - args[0] - File transfer [fileTransfer.TransferID] (Uint8Array).
 //  - args[1] - Javascript object that has functions that implement the
 //    [bindings.FileTransferReceiveProgressCallback] interface.
 //  - args[2] - Duration, in milliseconds, to wait between progress callbacks
@@ -288,7 +289,7 @@ func (f *FileTransfer) RegisterReceivedProgressCallback(
 // MaxFileNameLen returns the max number of bytes allowed for a file name.
 //
 // Returns:
-//  - int
+//  - Max file name length (int).
 func (f *FileTransfer) MaxFileNameLen(js.Value, []js.Value) interface{} {
 	return f.api.MaxFileNameLen()
 }
@@ -296,7 +297,7 @@ func (f *FileTransfer) MaxFileNameLen(js.Value, []js.Value) interface{} {
 // MaxFileTypeLen returns the max number of bytes allowed for a file type.
 //
 // Returns:
-//  - int
+//  - Max file type length (int).
 func (f *FileTransfer) MaxFileTypeLen(js.Value, []js.Value) interface{} {
 	return f.api.MaxFileTypeLen()
 }
@@ -304,7 +305,7 @@ func (f *FileTransfer) MaxFileTypeLen(js.Value, []js.Value) interface{} {
 // MaxFileSize returns the max number of bytes allowed for a file.
 //
 // Returns:
-//  - int
+//  - Max file size (int).
 func (f *FileTransfer) MaxFileSize(js.Value, []js.Value) interface{} {
 	return f.api.MaxFileSize()
 }
@@ -312,7 +313,7 @@ func (f *FileTransfer) MaxFileSize(js.Value, []js.Value) interface{} {
 // MaxPreviewSize returns the max number of bytes allowed for a file preview.
 //
 // Returns:
-//  - int
+//  - Max preview size (int).
 func (f *FileTransfer) MaxPreviewSize(js.Value, []js.Value) interface{} {
 	return f.api.MaxPreviewSize()
 }
@@ -328,7 +329,8 @@ type FilePartTracker struct {
 }
 
 // newFilePartTrackerJS creates a new Javascript compatible object
-// (map[string]interface{}) that matches the filePartTracker structure.
+// (map[string]interface{}) that matches the [FilePartTracker]
+// structure.
 func newFilePartTrackerJS(api *bindings.FilePartTracker) map[string]interface{} {
 	fpt := FilePartTracker{api}
 	ftMap := map[string]interface{}{
@@ -348,7 +350,7 @@ func newFilePartTrackerJS(api *bindings.FilePartTracker) map[string]interface{} 
 //  - 2 = received (receiver has received a part)
 //
 // Parameters:
-//  - args[0] - index of part (int).
+//  - args[0] - Index of part (int).
 //
 // Returns:
 //  - Part status (int).
@@ -359,7 +361,7 @@ func (fpt *FilePartTracker) GetPartStatus(_ js.Value, args []js.Value) interface
 // GetNumParts returns the total number of file parts in the transfer.
 //
 // Returns:
-//  - int
+//  - Number of parts (int).
 func (fpt *FilePartTracker) GetNumParts(js.Value, []js.Value) interface{} {
 	return fpt.api.GetNumParts()
 }

@@ -17,15 +17,15 @@ import (
 // GetReceptionID returns the marshalled default IDs.
 //
 // Returns:
-//  - The marshalled bytes of the [id.ID] object (Uint8Array)
+//  - Marshalled bytes of [id.ID] (Uint8Array).
 func (e *E2e) GetReceptionID(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(e.api.GetReceptionID())
 }
 
-// DeleteContact removes a partner from E2e's storage.
+// DeleteContact removes a partner from [E2e]'s storage.
 //
 // Parameters:
-//  - args[0] - marshalled bytes of the partner [id.ID] (Uint8Array).
+//  - args[0] - Marshalled bytes of the partner [id.ID] (Uint8Array).
 //
 // Returns:
 //  - Throws utils.TypeError if deleting the partner fails.
@@ -42,8 +42,8 @@ func (e *E2e) DeleteContact(_ js.Value, args []js.Value) interface{} {
 // relationship with.
 //
 // Returns:
-//  - JSON of array of [id.ID] (Uint8Array)
-//  - Throws TypeError if getting partner IDs fails
+//  - JSON of array of [id.ID] (Uint8Array).
+//  - Throws TypeError if getting partner IDs fails.
 func (e *E2e) GetAllPartnerIDs(js.Value, []js.Value) interface{} {
 	partnerIDs, err := e.api.GetAllPartnerIDs()
 	if err != nil {
@@ -56,7 +56,7 @@ func (e *E2e) GetAllPartnerIDs(js.Value, []js.Value) interface{} {
 // PayloadSize returns the max payload size for a partitionable E2E message.
 //
 // Returns:
-//  - Max payload size (int)
+//  - Max payload size (int).
 func (e *E2e) PayloadSize(js.Value, []js.Value) interface{} {
 	return e.api.PayloadSize()
 }
@@ -65,7 +65,7 @@ func (e *E2e) PayloadSize(js.Value, []js.Value) interface{} {
 // after the first payload.
 //
 // Returns:
-//  - Max payload size (int)
+//  - Max payload size (int).
 func (e *E2e) SecondPartitionSize(js.Value, []js.Value) interface{} {
 	return e.api.SecondPartitionSize()
 }
@@ -74,10 +74,10 @@ func (e *E2e) SecondPartitionSize(js.Value, []js.Value) interface{} {
 // The first payload is index 0.
 //
 // Parameters:
-//  - args[0] - payload index (int)
+//  - args[0] - Payload index (int).
 //
 // Returns:
-//  - Partition payload size (int)
+//  - Partition payload size (int).
 func (e *E2e) PartitionSize(_ js.Value, args []js.Value) interface{} {
 	return e.api.PartitionSize(args[0].Int())
 }
@@ -86,7 +86,7 @@ func (e *E2e) PartitionSize(_ js.Value, args []js.Value) interface{} {
 // payload.
 //
 // Returns:
-//  - Max partition payload size (int)
+//  - Max partition payload size (int).
 func (e *E2e) FirstPartitionSize(js.Value, []js.Value) interface{} {
 	return e.api.FirstPartitionSize()
 }
@@ -95,8 +95,8 @@ func (e *E2e) FirstPartitionSize(js.Value, []js.Value) interface{} {
 // key.
 //
 // Returns:
-//  - JSON of [cyclic.Int] (Uint8Array)
-//  - Throws TypeError if getting the key fails
+//  - JSON of [cyclic.Int] (Uint8Array).
+//  - Throws TypeError if getting the key fails.
 func (e *E2e) GetHistoricalDHPrivkey(js.Value, []js.Value) interface{} {
 	privKey, err := e.api.GetHistoricalDHPrivkey()
 	if err != nil {
@@ -110,8 +110,8 @@ func (e *E2e) GetHistoricalDHPrivkey(js.Value, []js.Value) interface{} {
 // key.
 //
 // Returns:
-//  - JSON of [cyclic.Int] (Uint8Array)
-//  - Throws TypeError if getting the key fails
+//  - JSON of [cyclic.Int] (Uint8Array).
+//  - Throws TypeError if getting the key fails.
 func (e *E2e) GetHistoricalDHPubkey(js.Value, []js.Value) interface{} {
 	pubKey, err := e.api.GetHistoricalDHPubkey()
 	if err != nil {
@@ -125,11 +125,11 @@ func (e *E2e) GetHistoricalDHPubkey(js.Value, []js.Value) interface{} {
 // partner exists, otherwise returns false.
 //
 // Parameters:
-//  - args[0] - JSON of [id.ID] (Uint8Array)
+//  - args[0] - Marshalled bytes of [id.ID] (Uint8Array).
 //
 // Returns:
-//  - Existence of authenticated channel (boolean)
-//  - Throws TypeError if unmarshalling the ID or getting the channel fails
+//  - Existence of authenticated channel (boolean).
+//  - Throws TypeError if unmarshalling the ID or getting the channel fails.
 func (e *E2e) HasAuthenticatedChannel(_ js.Value, args []js.Value) interface{} {
 	exists, err := e.api.HasAuthenticatedChannel(utils.CopyBytesToGo(args[0]))
 	if err != nil {
@@ -142,10 +142,10 @@ func (e *E2e) HasAuthenticatedChannel(_ js.Value, args []js.Value) interface{} {
 // RemoveService removes all services for the given tag.
 //
 // Parameters:
-//  - args[0] - tag of services to remove (string)
+//  - args[0] - Tag of services to remove (string).
 //
 // Returns:
-//  - Throws TypeError if removing the services fails
+//  - Throws TypeError if removing the services fails.
 func (e *E2e) RemoveService(_ js.Value, args []js.Value) interface{} {
 	err := e.api.RemoveService(args[0].String())
 	if err != nil {
@@ -160,14 +160,14 @@ func (e *E2e) RemoveService(_ js.Value, args []js.Value) interface{} {
 // message type, per the given parameters--encrypted with end-to-end encryption.
 //
 // Parameters:
-//  - args[0] - message type from [catalog.MessageType] (int).
-//  - args[1] - JSON of [id.ID] (Uint8Array).
-//  - args[2] - message payload (Uint8Array).
-//  - args[3] - JSON [e2e.Params] (Uint8Array).
+//  - args[0] - Message type from [catalog.MessageType] (int).
+//  - args[1] - Marshalled bytes of [id.ID] (Uint8Array).
+//  - args[2] - Message payload (Uint8Array).
+//  - args[3] - JSON [xxdk.E2EParams] (Uint8Array).
 //
 // Returns a promise:
 //  - Resolves to the JSON of the [bindings.E2ESendReport], which can be passed
-//    into Cmix.WaitForRoundResult to see if the send succeeded (Uint8Array).
+//    into [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //  - Rejected with an error if sending fails.
 func (e *E2e) SendE2E(_ js.Value, args []js.Value) interface{} {
 	recipientId := utils.CopyBytesToGo(args[1])
@@ -198,10 +198,11 @@ type processor struct {
 // message processing system.
 //
 // Parameters:
-//  - message - returns the message contents (Uint8Array).
-//  - receptionId - returns the ID of the sender. JSON of [id.ID] (Uint8Array).
-//  - ephemeralId - returns the ephemeral ID of the sender (int).
-//  - roundId - returns the ID of the round sent on (int).
+//  - message - Returns the message contents (Uint8Array).
+//  - receptionId - Returns the marshalled bytes of the sender's [id.ID]
+//    (Uint8Array).
+//  - ephemeralId - Returns the ephemeral ID of the sender (int).
+//  - roundId - Returns the ID of the round sent on (int).
 func (p *processor) Process(
 	message, receptionId []byte, ephemeralId, roundId int64) {
 	p.process(utils.CopyBytesToJS(message), utils.CopyBytesToJS(receptionId),
@@ -223,12 +224,12 @@ func (p *processor) String() string {
 // that piggyback on e2e relationships to start communication.
 //
 // Parameters:
-//  - args[0] - tag for the service (string)
+//  - args[0] - tag for the service (string).
 //  - args[1] - Javascript object that has functions that implement the
-//    [bindings.Processor] interface
+//    [bindings.Processor] interface.
 //
 // Returns:
-//  - Throws TypeError if registering the service fails
+//  - Throws TypeError if registering the service fails.
 func (e *E2e) AddService(_ js.Value, args []js.Value) interface{} {
 	p := &processor{
 		utils.WrapCB(args[1], "Process"), utils.WrapCB(args[1], "String")}
@@ -245,15 +246,15 @@ func (e *E2e) AddService(_ js.Value, args []js.Value) interface{} {
 // RegisterListener registers a new listener.
 //
 // Parameters:
-//  - args[0] - JSON of the user ID [id.ID] who sends messages to this user that
-//    this function will register a listener for (Uint8Array)
-//  - args[1] - message type from [catalog.MessageType] you want to listen for
-//    (int)
+//  - args[0] - Marshalled byte of the user [id.ID] who sends messages to this
+//    user that this function will register a listener for (Uint8Array).
+//  - args[1] - Message type from [catalog.MessageType] you want to listen for
+//    (int).
 //  - args[2] - Javascript object that has functions that implement the
-//    [bindings.Listener] interface; do not pass nil as the listener
+//    [bindings.Listener] interface; do not pass nil as the listener.
 //
 // Returns:
-//  - Throws TypeError if registering the service fails
+//  - Throws TypeError if registering the service fails.
 func (e *E2e) RegisterListener(_ js.Value, args []js.Value) interface{} {
 	recipientId := utils.CopyBytesToGo(args[0])
 	l := &listener{utils.WrapCB(args[2], "Hear"), utils.WrapCB(args[2], "Name")}

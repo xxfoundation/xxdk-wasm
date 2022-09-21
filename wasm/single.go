@@ -22,18 +22,19 @@ import (
 // TransmitSingleUse transmits payload to recipient via single-use.
 //
 // Parameters:
-//  - args[0] - ID of E2e object in tracker (int).
-//  - args[1] - JSON of recipient [contact.Contact] (Uint8Array).
-//  - args[2] - tag that identifies the single-use message (string).
-//  - args[3] - message contents (Uint8Array).
+//  - args[0] - ID of [E2e] object in tracker (int).
+//  - args[1] - Marshalled bytes of the recipient [contact.Contact]
+//    (Uint8Array).
+//  - args[2] - Tag that identifies the single-use message (string).
+//  - args[3] - Message contents (Uint8Array).
 //  - args[4] - JSON of [single.RequestParams] (Uint8Array).
-//  - args[5] - the callback that will be called when a response is received. It
+//  - args[5] - The callback that will be called when a response is received. It
 //    is a Javascript object that has functions that implement the
 //    [bindings.SingleUseResponse] interface.
 //
 // Returns a promise:
 //  - Resolves to the JSON of the [bindings.SingleUseSendReport], which can be
-//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    passed into [Cmix.WaitForRoundResult] to see if the send succeeded
 //    (Uint8Array).
 //  - Rejected with an error if transmission fails.
 func TransmitSingleUse(_ js.Value, args []js.Value) interface{} {
@@ -57,19 +58,19 @@ func TransmitSingleUse(_ js.Value, args []js.Value) interface{} {
 	return utils.CreatePromise(promiseFn)
 }
 
-// Listen starts a single-use listener on a given tag using the passed in E2e
+// Listen starts a single-use listener on a given tag using the passed in [E2e]
 // object and SingleUseCallback func.
 //
 // Parameters:
-//  - args[0] - ID of E2e object in tracker (int).
-//  - args[1] - tag that identifies the single-use message (string).
-//  - args[2] - the callback that will be called when a response is received. It
+//  - args[0] - ID of [E2e] object in tracker (int).
+//  - args[1] - Tag that identifies the single-use message (string).
+//  - args[2] - The callback that will be called when a response is received. It
 //    is a Javascript object that has functions that implement the
 //    [bindings.SingleUseCallback] interface.
 //
 // Returns:
-//  - Javascript representation of the Stopper object, an interface containing a
-//    function used to stop the listener.
+//  - Javascript representation of the [Stopper] object, an interface containing
+//    a function used to stop the listener.
 //  - Throws a TypeError if listening fails.
 func Listen(_ js.Value, args []js.Value) interface{} {
 	cb := &singleUseCallback{utils.WrapCB(args[2], "Callback")}
@@ -93,7 +94,7 @@ type Stopper struct {
 }
 
 // newStopperJS creates a new Javascript compatible object
-// (map[string]interface{}) that matches the Stopper structure.
+// (map[string]interface{}) that matches the [Stopper] structure.
 func newStopperJS(api bindings.Stopper) map[string]interface{} {
 	s := Stopper{api}
 	stopperMap := map[string]interface{}{
@@ -123,9 +124,9 @@ type singleUseCallback struct {
 //
 // Parameters:
 //  - callbackReport - JSON of [bindings.SingleUseCallbackReport], which can be
-//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    passed into [Cmix.WaitForRoundResult] to see if the send succeeded
 //    (Uint8Array).
-//  - err - returns an error on failure (Error).
+//  - err - Returns an error on failure (Error).
 func (suc *singleUseCallback) Callback(callbackReport []byte, err error) {
 	suc.callback(utils.CopyBytesToJS(callbackReport), utils.JsTrace(err))
 }
@@ -140,9 +141,9 @@ type singleUseResponse struct {
 //
 // Parameters:
 //  - callbackReport - JSON of [bindings.SingleUseCallbackReport], which can be
-//    passed into Cmix.WaitForRoundResult to see if the send succeeded
+//    passed into [Cmix.WaitForRoundResult] to see if the send succeeded
 //    (Uint8Array).
-//  - err - returns an error on failure (Error).
+//  - err - Returns an error on failure (Error).
 func (sur *singleUseResponse) Callback(responseReport []byte, err error) {
 	sur.callback(utils.CopyBytesToJS(responseReport), utils.JsTrace(err))
 }

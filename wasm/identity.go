@@ -20,18 +20,18 @@ import (
 // ReceptionIdentity                                                          //
 ////////////////////////////////////////////////////////////////////////////////
 
-// StoreReceptionIdentity stores the given identity in Cmix storage with the
+// StoreReceptionIdentity stores the given identity in [Cmix] storage with the
 // given key. This is the ideal way to securely store identities, as the caller
 // of this function is only required to store the given key separately rather
 // than the keying material.
 //
 // Parameters:
-//  - args[0] - storage key (string)
-//  - args[1] - JSON of the [xxdk.ReceptionIdentity] object (Uint8Array)
-//  - args[2] - ID of Cmix object in tracker (int)
+//  - args[0] - Storage key (string).
+//  - args[1] - JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
+//  - args[2] - ID of [Cmix] object in tracker (int).
 //
 // Returns:
-//  - throws a TypeError if the identity cannot be stored in storage
+//  - Throws a TypeError if the identity cannot be stored in storage.
 func StoreReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 	identity := utils.CopyBytesToGo(args[1])
 	err := bindings.StoreReceptionIdentity(
@@ -45,16 +45,16 @@ func StoreReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 	return nil
 }
 
-// LoadReceptionIdentity loads the given identity in Cmix storage with the given
-// key.
+// LoadReceptionIdentity loads the given identity in [Cmix] storage with the
+// given key.
 //
 // Parameters:
-//  - args[0] - storage key (string)
-//  - args[1] - ID of Cmix object in tracker (int)
+//  - args[0] - Storage key (string).
+//  - args[1] - ID of [Cmix] object in tracker (int).
 //
 // Returns:
-//  - JSON of the stored [xxdk.ReceptionIdentity] object (Uint8Array)
-//  - throws a TypeError if the identity cannot be retrieved from storage
+//  - JSON of the stored [xxdk.ReceptionIdentity] object (Uint8Array).
+//  - Throws a TypeError if the identity cannot be retrieved from storage.
 func LoadReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 	ri, err := bindings.LoadReceptionIdentity(args[0].String(), args[1].Int())
 	if err != nil {
@@ -107,7 +107,7 @@ func (c *Cmix) MakeLegacyReceptionIdentity(js.Value, []js.Value) interface{} {
 // the xx network.
 //
 // Returns:
-//  - signature (Uint8Array)
+//  - Reception registration validation signature (Uint8Array).
 func (c *Cmix) GetReceptionRegistrationValidationSignature(
 	js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(
@@ -122,11 +122,11 @@ func (c *Cmix) GetReceptionRegistrationValidationSignature(
 // [xxdk.ReceptionIdentity].
 //
 // Parameters:
-//  - args[0] - JSON of [xxdk.ReceptionIdentity] (Uint8Array)
+//  - args[0] - JSON of [xxdk.ReceptionIdentity] (Uint8Array).
 //
 // Returns:
-//  - Marshalled bytes of [contact.Contact] (string)
-//  - Throws a TypeError if unmarshalling the identity fails
+//  - Marshalled bytes of [contact.Contact] (string).
+//  - Throws a TypeError if unmarshalling the identity fails.
 func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 	// Note that this function does not appear in normal bindings
 	identityJSON := utils.CopyBytesToGo(args[0])
@@ -142,11 +142,11 @@ func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 // GetIDFromContact returns the ID in the [contact.Contact] object.
 //
 // Parameters:
-//  - args[0] - marshalled bytes of [contact.Contact] (Uint8Array)
+//  - args[0] - Marshalled bytes of [contact.Contact] (Uint8Array).
 //
 // Returns:
-//  - marshalled [id.ID] object (Uint8Array)
-//  - throws a TypeError if loading the ID from the contact file fails
+//  - Marshalled bytes of [id.ID] (Uint8Array).
+//  - Throws a TypeError if loading the ID from the contact file fails.
 func GetIDFromContact(_ js.Value, args []js.Value) interface{} {
 	cID, err := bindings.GetIDFromContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
@@ -161,11 +161,11 @@ func GetIDFromContact(_ js.Value, args []js.Value) interface{} {
 // object.
 //
 // Parameters:
-//  - args[0] - JSON of [contact.Contact] (string)
+//  - args[0] - Marshalled [contact.Contact] (string).
 //
 // Returns:
-//  - bytes of the [cyclic.Int] object (Uint8Array)
-//  - throws a TypeError if loading the public key from the contact file fails
+//  - Bytes of the [cyclic.Int] object (Uint8Array).
+//  - Throws a TypeError if loading the public key from the contact file fails.
 func GetPubkeyFromContact(_ js.Value, args []js.Value) interface{} {
 	key, err := bindings.GetPubkeyFromContact([]byte(args[0].String()))
 	if err != nil {
@@ -184,12 +184,12 @@ func GetPubkeyFromContact(_ js.Value, args []js.Value) interface{} {
 // pass in empty facts in order to clear the facts.
 //
 // Parameters:
-//  - args[0] - JSON of [contact.Contact] (Uint8Array)
-//  - args[1] - JSON of [fact.FactList] (Uint8Array)
+//  - args[0] - Marshalled bytes of [contact.Contact] (Uint8Array).
+//  - args[1] - JSON of [fact.FactList] (Uint8Array).
 //
 // Returns:
-//  - marshalled bytes of the modified [contact.Contact] (string)
-//  - throws a TypeError if loading or modifying the contact fails
+//  - Marshalled bytes of the modified [contact.Contact] (string).
+//  - Throws a TypeError if loading or modifying the contact fails.
 func SetFactsOnContact(_ js.Value, args []js.Value) interface{} {
 	marshaledContact := utils.CopyBytesToGo(args[0])
 	factListJSON := utils.CopyBytesToGo(args[1])
@@ -205,11 +205,11 @@ func SetFactsOnContact(_ js.Value, args []js.Value) interface{} {
 // GetFactsFromContact returns the fact list in the [contact.Contact] object.
 //
 // Parameters:
-//  - args[0] - JSON of [contact.Contact] (Uint8Array)
+//  - args[0] - Marshalled bytes of [contact.Contact] (Uint8Array).
 //
 // Returns:
-//  - JSON of [fact.FactList] (Uint8Array)
-//  - throws a TypeError if loading the contact fails
+//  - JSON of [fact.FactList] (Uint8Array).
+//  - Throws a TypeError if loading the contact fails.
 func GetFactsFromContact(_ js.Value, args []js.Value) interface{} {
 	fl, err := bindings.GetFactsFromContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {

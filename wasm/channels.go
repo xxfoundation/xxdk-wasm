@@ -13,11 +13,8 @@ import (
 	"gitlab.com/elixxir/client/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
-	"gitlab.com/xx_network/primitives/id"
 	"syscall/js"
 )
-
-var _ = &id.ID{}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic Channel API                                                          //
@@ -30,7 +27,7 @@ type ChannelsManager struct {
 }
 
 // newChannelsManagerJS creates a new Javascript compatible object
-// (map[string]interface{}) that matches the ChannelsManager structure.
+// (map[string]interface{}) that matches the [ChannelsManager] structure.
 func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]interface{} {
 	cm := ChannelsManager{api}
 	channelsManagerMap := map[string]interface{}{
@@ -55,15 +52,16 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]interface{} 
 	return channelsManagerMap
 }
 
-// GetID returns the ID for this ChannelsManager in the ChannelsManager tracker.
+// GetID returns the ID for this [ChannelsManager] in the [ChannelsManager]
+// tracker.
 //
 // Returns:
-//  - int
+//  - Tracker ID (int).
 func (ch *ChannelsManager) GetID(js.Value, []js.Value) interface{} {
 	return ch.api.GetID()
 }
 
-// NewChannelsManager constructs a ChannelsManager.
+// NewChannelsManager constructs a [ChannelsManager].
 //
 // Parameters:
 //  - args[0] - ID of [E2e] object in tracker (int). This can be retrieved using
@@ -84,13 +82,13 @@ func NewChannelsManager(_ js.Value, args []js.Value) interface{} {
 	return newChannelsManagerJS(cm)
 }
 
-// NewChannelsManagerWithIndexedDb constructs a ChannelsManager using an
+// NewChannelsManagerWithIndexedDb constructs a [ChannelsManager] using an
 // indexedDb backend.
 //
 // Parameters:
-//  - args[0] - ID of E2e object in tracker (int). This can be retrieved using
+//  - args[0] - ID of [E2e] object in tracker (int). This can be retrieved using
 //    [E2e.GetID].
-//  - args[1] - ID of UserDiscovery object in tracker (int). This can be
+//  - args[1] - ID of [UserDiscovery] object in tracker (int). This can be
 //    retrieved using [UserDiscovery.GetID].
 //  - args[2] - username (string).
 //
@@ -115,13 +113,14 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
 	return newChannelsManagerJS(cm)
 }
 
-// NewChannelsManagerWithIndexedDbDummyNameService constructs a ChannelsManager
-// using an indexedDb backend and a dummy name server instead of UD.
+// NewChannelsManagerWithIndexedDbDummyNameService constructs a
+// [ChannelsManager] using an indexedDb backend and a dummy name server instead
+// of UD.
 //
 // Parameters:
-//  - args[0] - ID of Cmix object in tracker (int). This can be retrieved using
-//    [Cmix.GetID].
-//  - args[1] - username (string).
+//  - args[0] - ID of [Cmix] object in tracker (int). This can be retrieved
+//    using [Cmix.GetID].
+//  - args[1] - Username (string).
 //
 // Returns:
 //  - Javascript representation of the [bindings.ChannelsManager] object.
@@ -144,12 +143,12 @@ func NewChannelsManagerWithIndexedDbDummyNameService(_ js.Value, args []js.Value
 	return newChannelsManagerJS(cm)
 }
 
-// NewChannelsManagerDummyNameService constructs a ChannelsManager
+// NewChannelsManagerDummyNameService constructs a [ChannelsManager]
 // using a Javascript event model backend and a dummy name server instead of UD.
 //
 // Parameters:
-//  - args[0] -  ID of Cmix object in tracker (int). This can be retrieved using
-//    [Cmix.GetID].
+//  - args[0] -  ID of [Cmix] object in tracker (int). This can be retrieved
+//    using [Cmix.GetID].
 //  - args[1] - Username (string).
 //  - args[2] - Javascript object that matches the [bindings.EventModel]
 //    interface.
@@ -189,7 +188,7 @@ func NewChannelsManagerDummyNameService(_ js.Value, args []js.Value) interface{}
 // The description cannot be longer than ___ and can only use ______ characters.
 //
 // Parameters:
-//  - args[0] - ID of Cmix object in tracker (int).
+//  - args[0] - ID of [Cmix] object in tracker (int).
 //  - args[1] - The name of the new channel. The name cannot be longer than __
 //    characters and must contain only __ characters. It cannot be changed once
 //    a channel is created (string).
@@ -284,7 +283,7 @@ func (ch *ChannelsManager) GetChannels(js.Value, []js.Value) interface{} {
 // was not previously joined.
 //
 // Parameters:
-//  - args[0] - JSON of the channel [id.ID] (Uint8Array).
+//  - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //
 // Returns:
 //  - Throws a TypeError if the channel does not exist.
@@ -304,7 +303,7 @@ func (ch *ChannelsManager) LeaveChannel(_ js.Value, args []js.Value) interface{}
 // memory (~3 weeks) over the event model.
 //
 // Parameters:
-//  - args[0] - JSON of the channel [id.ID] (Uint8Array).
+//  - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //
 // Returns:
 //  - Throws a TypeError if the replay fails.
@@ -333,7 +332,7 @@ func (ch *ChannelsManager) ReplayChannel(_ js.Value, args []js.Value) interface{
 // on the use case.
 //
 // Parameters:
-//  - args[0] - JSON of the channel [id.ID] (Uint8Array).
+//  - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //  - args[1] - The message type of the message. This will be a valid
 //    [channels.MessageType] (int).
 //  - args[2] - The contents of the message (Uint8Array).
@@ -375,7 +374,7 @@ func (ch *ChannelsManager) SendGeneric(_ js.Value, args []js.Value) interface{} 
 //
 // Parameters:
 //  - args[0] - The PEM-encode admin RSA private key (Uint8Array).
-//  - args[1] - JSON of the channel [id.ID] (Uint8Array).
+//  - args[1] - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //  - args[2] - The message type of the message. This will be a valid
 //    [channels.MessageType] (int).
 //  - args[3] - The contents of the message (Uint8Array).
@@ -419,7 +418,7 @@ func (ch *ChannelsManager) SendAdminGeneric(_ js.Value, args []js.Value) interfa
 // lasting forever if [channels.ValidForever] is used.
 //
 // Parameters:
-//  - args[0] - JSON of the channel [id.ID] (Uint8Array).
+//  - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //  - args[1] - The contents of the message (string).
 //  - args[2] - The lease of the message. This will be how long the message is
 //    valid until, in milliseconds. As per the [channels.Manager] documentation,
@@ -461,7 +460,7 @@ func (ch *ChannelsManager) SendMessage(_ js.Value, args []js.Value) interface{} 
 // lasting forever if ValidForever is used.
 //
 // Parameters:
-//  - args[0] - JSON of the channel [id.ID] (Uint8Array).
+//  - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //  - args[1] - The contents of the message. The message should be at most 510
 //    bytes. This is expected to be Unicode, and thus a string data type is
 //    expected (string).
@@ -506,7 +505,7 @@ func (ch *ChannelsManager) SendReply(_ js.Value, args []js.Value) interface{} {
 // Users will drop the reaction if they do not recognize the reactTo message.
 //
 // Parameters:
-//  - args[0] - JSON of the channel [id.ID] (Uint8Array).
+//  - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //  - args[1] - The user's reaction. This should be a single emoji with no
 //    other characters. As such, a Unicode string is expected (string).
 //  - args[2] - JSON of [channel.MessageID] of the message you wish to reply to.
@@ -552,9 +551,9 @@ type channelMessageReceptionCallback struct {
 // Callback returns the context for a channel message.
 //
 // Parameters:
-//  - receivedChannelMessageReport - returns the JSON of
+//  - receivedChannelMessageReport - Returns the JSON of
 //   [bindings.ReceivedChannelMessageReport] (Uint8Array).
-//  - err - returns an error on failure (Error).
+//  - err - Returns an error on failure (Error).
 func (cmrCB *channelMessageReceptionCallback) Callback(
 	receivedChannelMessageReport []byte, err error) {
 	cmrCB.callback(utils.CopyBytesToJS(receivedChannelMessageReport),
@@ -617,7 +616,7 @@ func (em *eventModel) JoinChannel(channel string) {
 // LeaveChannel is called whenever a channel is left locally.
 //
 // Parameters:
-//  - ChannelId - The marshalled channel [id.ID] (Uint8Array).
+//  - ChannelId - Marshalled bytes of the channel [id.ID] (Uint8Array).
 func (em *eventModel) LeaveChannel(channelID []byte) {
 	em.leaveChannel(utils.CopyBytesToJS(channelID))
 }
@@ -627,7 +626,7 @@ func (em *eventModel) LeaveChannel(channelID []byte) {
 // user of the API to filter such called by message ID.
 //
 // Parameters:
-//  - channelID - The marshalled channel [id.ID] (Uint8Array).
+//  - channelID - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //  - messageID - The bytes of the [channel.MessageID] of the received message
 //    (Uint8Array).
 //  - senderUsername - The username of the sender of the message (string).
@@ -636,7 +635,7 @@ func (em *eventModel) LeaveChannel(channelID []byte) {
 //    since unix epoch (int).
 //  - lease - The number of nanoseconds that the message is valid for (int).
 //  - roundId - The ID of the round that the message was received on (int).
-//  - status - the [channels.SentStatus] of the message (int).
+//  - status - The [channels.SentStatus] of the message (int).
 //
 // Statuses will be enumerated as such:
 //  Sent      =  0
@@ -657,7 +656,7 @@ func (em *eventModel) ReceiveMessage(channelID, messageID []byte,
 // initial message. As a result, it may be important to buffer replies.
 //
 // Parameters:
-//  - channelID - The marshalled channel [id.ID] (Uint8Array).
+//  - channelID - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //  - messageID - The bytes of the [channel.MessageID] of the received message
 //    (Uint8Array).
 //  - reactionTo - The [channel.MessageID] for the message that received a reply
@@ -668,7 +667,7 @@ func (em *eventModel) ReceiveMessage(channelID, messageID []byte,
 //    since unix epoch (int).
 //  - lease - The number of nanoseconds that the message is valid for (int).
 //  - roundId - The ID of the round that the message was received on (int).
-//  - status - the [channels.SentStatus] of the message (int).
+//  - status - The [channels.SentStatus] of the message (int).
 //
 // Statuses will be enumerated as such:
 //  Sent      =  0
@@ -689,7 +688,7 @@ func (em *eventModel) ReceiveReply(channelID, messageID, reactionTo []byte,
 // initial message. As a result, it may be important to buffer reactions.
 //
 // Parameters:
-//  - channelID - The marshalled channel [id.ID] (Uint8Array).
+//  - channelID - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //  - messageID - The bytes of the [channel.MessageID] of the received message
 //    (Uint8Array).
 //  - reactionTo - The [channel.MessageID] for the message that received a reply
@@ -700,7 +699,7 @@ func (em *eventModel) ReceiveReply(channelID, messageID, reactionTo []byte,
 //    since unix epoch (int).
 //  - lease - The number of nanoseconds that the message is valid for (int).
 //  - roundId - The ID of the round that the message was received on (int).
-//  - status - the [channels.SentStatus] of the message (int).
+//  - status - The [channels.SentStatus] of the message (int).
 //
 // Statuses will be enumerated as such:
 //  Sent      =  0
@@ -719,7 +718,7 @@ func (em *eventModel) ReceiveReaction(channelID, messageID, reactionTo []byte,
 // Parameters:
 //  - messageID - The bytes of the [channel.MessageID] of the received message
 //    (Uint8Array).
-//  - status - the [channels.SentStatus] of the message (int).
+//  - status - The [channels.SentStatus] of the message (int).
 //
 // Statuses will be enumerated as such:
 //  Sent      =  0

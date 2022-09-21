@@ -37,7 +37,7 @@ func CreateUserFriendlyErrorMessage(_ js.Value, args []js.Value) interface{} {
 // messages.
 //
 // Parameters:
-//  - args[0] - contents of a JSON file whose format conforms to the example
+//  - args[0] - Contents of a JSON file whose format conforms to the example
 //    below (string).
 //
 // Example Input:
@@ -48,7 +48,7 @@ func CreateUserFriendlyErrorMessage(_ js.Value, args []js.Value) interface{} {
 //  }
 //
 // Returns:
-//  - throws a TypeError if the JSON cannot be unmarshalled.
+//  - Throws a TypeError if the JSON cannot be unmarshalled.
 func UpdateCommonErrors(_ js.Value, args []js.Value) interface{} {
 	err := bindings.UpdateCommonErrors(args[0].String())
 	if err != nil {
