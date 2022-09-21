@@ -28,7 +28,7 @@ func (e *E2e) GetReceptionID(js.Value, []js.Value) interface{} {
 //  - args[0] - Marshalled bytes of the partner [id.ID] (Uint8Array).
 //
 // Returns:
-//  - Throws utils.TypeError if deleting the partner fails.
+//  - Throws TypeError if deleting the partner fails.
 func (e *E2e) DeleteContact(_ js.Value, args []js.Value) interface{} {
 	err := e.api.DeleteContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {

@@ -14,16 +14,16 @@ import (
 	"syscall/js"
 )
 
-// CopyBytesToGo copies the Uint8Array stored in the js.Value to []byte. This is
-// a wrapper for js.CopyBytesToGo to make it more convenient.
+// CopyBytesToGo copies the [Uint8Array] stored in the [js.Value] to []byte.
+// This is a wrapper for [js.CopyBytesToGo] to make it more convenient.
 func CopyBytesToGo(src js.Value) []byte {
 	b := make([]byte, src.Length())
 	js.CopyBytesToGo(b, src)
 	return b
 }
 
-// CopyBytesToJS copies the []byte to a Uint8Array stored in a js.Value. This is
-// a wrapper for js.CopyBytesToJS to make it more convenient.
+// CopyBytesToJS copies the []byte to a [Uint8Array] stored in a [js.Value].
+// This is a wrapper for [js.CopyBytesToJS] to make it more convenient.
 func CopyBytesToJS(src []byte) js.Value {
 	dst := Uint8Array.New(len(src))
 	js.CopyBytesToJS(dst, src)

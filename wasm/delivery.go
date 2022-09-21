@@ -52,7 +52,7 @@ type messageDeliveryCallback struct {
 //    monitored. Returns false if all rounds statuses were returned (boolean).
 //  - roundResults - rounds contains a mapping of all previously requested
 //    rounds to their respective round results. Marshalled bytes of
-//    map[id.Round]cmix.RoundResult (Uint8Array).
+//    map[[id.Round]][cmix.RoundResult] (Uint8Array).
 func (mdc *messageDeliveryCallback) EventCallback(
 	delivered, timedOut bool, roundResults []byte) {
 	mdc.eventCallback(delivered, timedOut, utils.CopyBytesToJS(roundResults))

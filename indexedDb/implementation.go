@@ -28,7 +28,7 @@ import (
 )
 
 // dbTimeout is the global timeout for operations with the storage
-// context.Contact.
+// [context.Context].
 const dbTimeout = time.Second
 
 // wasmModel implements [channels.EventModel] interface, which uses the channels

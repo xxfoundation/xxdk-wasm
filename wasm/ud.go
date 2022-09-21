@@ -198,9 +198,9 @@ func (ud *UserDiscovery) GetContact(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(c)
 }
 
-// ConfirmFact confirms a fact first registered via SendRegisterFact. The
-// confirmation ID comes from SendRegisterFact while the code will come over the
-// associated communications system.
+// ConfirmFact confirms a fact first registered via [SendRegisterFact]. The
+// confirmation ID comes from [SendRegisterFact] while the code will come over
+// the associated communications system.
 //
 // Parameters:
 //  - args[0] - Confirmation ID (string).
@@ -290,8 +290,8 @@ type udLookupCallback struct {
 	callback func(args ...interface{}) js.Value
 }
 
-// Callback is called by LookupUD to return the contact that matches the passed
-// in ID.
+// Callback is called by [LookupUD] to return the contact that matches the
+// passed in ID.
 //
 // Parameters:
 //  - contactBytes - Marshalled bytes of the [contact.Contact] returned from the
@@ -349,8 +349,8 @@ type udSearchCallback struct {
 	callback func(args ...interface{}) js.Value
 }
 
-// Callback is called by SearchUD to return a list of [contact.Contact] objects
-// that match the list of facts passed into SearchUD.
+// Callback is called by [SearchUD] to return a list of [contact.Contact]
+// objects that match the list of facts passed into [SearchUD].
 //
 // Parameters:
 //  - contactListJSON - JSON of an array of [contact.Contact], or nil if an

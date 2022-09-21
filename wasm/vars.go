@@ -11,11 +11,13 @@ import (
 	"github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/catalog"
 	"gitlab.com/elixxir/client/channels"
+	"gitlab.com/elixxir/client/cmix"
 	"gitlab.com/elixxir/client/cmix/message"
 	"gitlab.com/elixxir/client/connect"
 	"gitlab.com/elixxir/client/e2e/ratchet/partner"
 	ftE2e "gitlab.com/elixxir/client/fileTransfer/e2e"
 	"gitlab.com/elixxir/client/groupChat/groupStore"
+	"gitlab.com/elixxir/client/restlike"
 	"gitlab.com/elixxir/client/single"
 	"gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/contact"
@@ -23,6 +25,7 @@ import (
 	"gitlab.com/elixxir/crypto/fileTransfer"
 	"gitlab.com/elixxir/crypto/group"
 	"gitlab.com/elixxir/primitives/fact"
+	"gitlab.com/elixxir/primitives/format"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/id/ephemeral"
 	"gitlab.com/xx_network/primitives/ndf"
@@ -33,7 +36,9 @@ import (
 var (
 	_ = id.ID{}
 	_ = ephemeral.Id{}
+	_ = id.Round(0)
 	_ = contact.Contact{}
+	_ = cmix.RoundResult{}
 	_ = single.RequestParams{}
 	_ = channels.Manager(nil)
 	_ = catalog.MessageType(0)
@@ -51,4 +56,6 @@ var (
 	_ = fact.FactList{}
 	_ = fact.Fact{}
 	_ = jwalterweatherman.LogListener(nil)
+	_ = format.Message{}
+	_ = restlike.Message{}
 )
