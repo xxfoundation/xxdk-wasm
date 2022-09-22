@@ -117,6 +117,8 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
 // [ChannelsManager] using an indexedDb backend and a dummy name server instead
 // of UD.
 //
+// This function initialises an indexedDb database.
+//
 // Parameters:
 //  - args[0] - ID of [Cmix] object in tracker (int). This can be retrieved
 //    using [Cmix.GetID].
