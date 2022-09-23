@@ -37,7 +37,8 @@ func TestWasmModel_UpdateSentStatus(t *testing.T) {
 
 	// Store a test message
 	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(),
-		nil, testString, testString, time.Now(), time.Second, channels.Sent)
+		nil, testString, testString, nil, time.Now(),
+		time.Second, channels.Sent)
 	err = eventModel.receiveHelper(testMsg)
 	if err != nil {
 		t.Fatalf("%+v", err)
