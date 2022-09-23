@@ -24,7 +24,7 @@ const (
 
 	// Message index names.
 	messageStoreChannelIndex   = "channel_id_index"
-	messageStoreUserIndex      = "user_id_index"
+	messageStoreUserIndex      = "user_pubkey_index"
 	messageStoreParentIndex    = "parent_message_id_index"
 	messageStoreTimestampIndex = "timestamp_index"
 	messageStorePinnedIndex    = "pinned_index"
@@ -34,7 +34,7 @@ const (
 
 	// Message keyPath names (must match json struct tags).
 	messageStoreChannel   = "channel_id"
-	messageStoreUser      = "user_id"
+	messageStoreUser      = "user_pubkey"
 	messageStoreParent    = "parent_message_id"
 	messageStoreTimestamp = "timestamp"
 	messageStorePinned    = "pinned"
@@ -52,7 +52,7 @@ type Message struct {
 	Id              []byte        `json:"id"` // Matches pkeyName
 	Nickname        string        `json:"nickname"`
 	ChannelId       []byte        `json:"channel_id"`        // Index
-	UserId          []byte        `json:"user_id"`           // Index
+	UserPubkey      []byte        `json:"user_pubkey"`       // Index
 	ParentMessageId []byte        `json:"parent_message_id"` // Index
 	Timestamp       time.Time     `json:"timestamp"`         // Index
 	Lease           time.Duration `json:"lease"`
@@ -76,8 +76,7 @@ type Channel struct {
 //
 // A User has many Message.
 type User struct {
-	Id             []byte `json:"id"`     // Matches pkeyName
-	Pubkey         []byte `json:"pubkey"` //Index
+	Pubkey         []byte `json:"pubkey"` // Matches pkeyName
 	Honorific      string `json:"honorific"`
 	Adjective      string `json:"adjective"`
 	Noun           string `json:"noun"`
