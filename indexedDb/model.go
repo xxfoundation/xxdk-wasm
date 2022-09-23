@@ -20,21 +20,16 @@ const (
 	// Text representation of the names of the various [idb.ObjectStore].
 	messageStoreName  = "messages"
 	channelsStoreName = "channels"
-	userStoreName     = "users"
 
 	// Message index names.
 	messageStoreChannelIndex   = "channel_id_index"
-	messageStoreUserIndex      = "user_pubkey_index"
 	messageStoreParentIndex    = "parent_message_id_index"
 	messageStoreTimestampIndex = "timestamp_index"
 	messageStorePinnedIndex    = "pinned_index"
-
-	// UserIdentity index names.
-	userStorePubkeyIndex = "pubkey_index"
+	messageStorePubkeyIndex    = "pubkey_index"
 
 	// Message keyPath names (must match json struct tags).
 	messageStoreChannel   = "channel_id"
-	messageStoreUser      = "user_pubkey"
 	messageStoreParent    = "parent_message_id"
 	messageStoreTimestamp = "timestamp"
 	messageStorePinned    = "pinned"
@@ -47,12 +42,12 @@ const (
 // A Message may belong to one Message (Parent).
 //
 // A Message belongs to one User (cryptographic identity).
-// The user's nickname can change each message.
+// The user's nickname can change each message, but the rest does not. We
+// still duplicate all of it for each entry to simplify code for now.
 type Message struct {
 	Id              []byte        `json:"id"` // Matches pkeyName
 	Nickname        string        `json:"nickname"`
 	ChannelId       []byte        `json:"channel_id"`        // Index
-	UserPubkey      []byte        `json:"user_pubkey"`       // Index
 	ParentMessageId []byte        `json:"parent_message_id"` // Index
 	Timestamp       time.Time     `json:"timestamp"`         // Index
 	Lease           time.Duration `json:"lease"`
@@ -60,6 +55,16 @@ type Message struct {
 	Hidden          bool          `json:"hidden"`
 	Pinned          bool          `json:"pinned"` // Index
 	Text            string        `json:"text"`
+
+	// User cryptographic Identity struct -- could be pulled out
+	Pubkey         []byte `json:"pubkey"` // Index
+	Honorific      string `json:"honorific"`
+	Adjective      string `json:"adjective"`
+	Noun           string `json:"noun"`
+	Codename       string `json:"codename"`
+	Color          string `json:"color"`
+	Extension      string `json:"extension"`
+	CodesetVersion uint8  `json:"codeset_version"`
 }
 
 // Channel defines the IndexedDb representation of a single Channel.
@@ -69,19 +74,4 @@ type Channel struct {
 	Id          []byte `json:"id"` // Matches pkeyName
 	Name        string `json:"name"`
 	Description string `json:"description"`
-}
-
-// User defines the IndexedDb representation of a single user's
-// cryptographic identity
-//
-// A User has many Message.
-type User struct {
-	Pubkey         []byte `json:"pubkey"` // Matches pkeyName
-	Honorific      string `json:"honorific"`
-	Adjective      string `json:"adjective"`
-	Noun           string `json:"noun"`
-	Codename       string `json:"codename"`
-	Color          string `json:"color"`
-	Extension      string `json:"extension"`
-	CodesetVersion uint8  `json:"codeset_version"`
 }
