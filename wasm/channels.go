@@ -10,10 +10,11 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
-	"syscall/js"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +91,7 @@ func NewChannelsManager(_ js.Value, args []js.Value) interface{} {
 //    [E2e.GetID].
 //  - args[1] - ID of [UserDiscovery] object in tracker (int). This can be
 //    retrieved using [UserDiscovery.GetID].
-//  - args[2] - username (string).
+//  - args[2] - Codename (string).
 //
 // Returns:
 //  - Javascript representation of the [bindings.ChannelsManager] object.

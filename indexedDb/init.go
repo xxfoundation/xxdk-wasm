@@ -10,10 +10,11 @@
 package indexedDb
 
 import (
+	"syscall/js"
+
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"syscall/js"
 
 	"gitlab.com/elixxir/client/channels"
 )
@@ -28,8 +29,8 @@ const (
 )
 
 // NewWasmEventModel returns a [channels.EventModel] backed by a wasmModel.
-func NewWasmEventModel(username string) (channels.EventModel, error) {
-	databaseName := username + databaseSuffix
+func NewWasmEventModel(codename string) (channels.EventModel, error) {
+	databaseName := codename + databaseSuffix
 	return newWasmModel(databaseName)
 }
 
@@ -69,7 +70,7 @@ func newWasmModel(databaseName string) (*wasmModel, error) {
 func v1Upgrade(db *idb.Database) error {
 	storeOpts := idb.ObjectStoreOptions{
 		KeyPath:       js.ValueOf(pkeyName),
-		AutoIncrement: false,
+		AutoIncrement: true,
 	}
 	indexOpts := idb.IndexOptions{
 		Unique:     false,
