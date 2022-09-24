@@ -11,6 +11,7 @@ package indexedDb
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -125,21 +126,29 @@ func TestWasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 
 // Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
 func TestWasmModel_UUIDTest(t *testing.T) {
-	testString := "test"
+	testString := "testHello"
 	testMsgId := channel.MakeMessageID([]byte(testString))
 	eventModel, err := newWasmModel(testString)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 
-	cid := channel.Identity{}
+	cid := channel.Identity{
+		Codename:       "codename123",
+		PubKey:         []byte{8, 6, 7, 5},
+		Color:          "#FFFFFF",
+		Extension:      "gif",
+		CodesetVersion: 0,
+	}
 
 	uuids := make([]uint64, 10)
 
 	for i := 0; i < 10; i++ {
 		// Store a test message
-		testMsg := buildMessage([]byte(testString), testMsgId.Bytes(),
-			nil, testString, testString, cid, time.Now(),
+		testMsg := buildMessage([]byte(testString),
+			testMsgId.Bytes(),
+			nil, testString, testString+fmt.Sprintf("%d", i), cid,
+			time.Now(),
 			time.Second, channels.Sent)
 		uuid, err := eventModel.receiveHelper(testMsg)
 		if err != nil {
@@ -147,6 +156,8 @@ func TestWasmModel_UUIDTest(t *testing.T) {
 		}
 		uuids[i] = uuid
 	}
+
+	eventModel.dump(messageStoreName)
 
 	for i := 0; i < 10; i++ {
 		for j := i + 1; j < 10; j++ {
