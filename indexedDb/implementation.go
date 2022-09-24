@@ -236,6 +236,10 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.Messag
 
 // buildMessage is a private helper that converts typical [channels.EventModel]
 // inputs into a basic Message structure for insertion into storage.
+// NOTE: ID is not set inside this function because we want to use the
+//       autoincrement key by default. If you are trying to overwrite
+//       an existing message, then you need to set it manually
+//       yourself.
 func buildMessage(channelID, messageID, parentID []byte, nickname,
 	text string, identity cryptoChannel.Identity, timestamp time.Time,
 	lease time.Duration,
