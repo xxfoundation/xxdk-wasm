@@ -11,14 +11,16 @@ package indexedDb
 
 import (
 	"encoding/json"
-	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/client/channels"
-	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
-	"gitlab.com/elixxir/crypto/channel"
-	"gitlab.com/xx_network/primitives/id"
 	"os"
 	"testing"
 	"time"
+
+	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/client/channels"
+	"gitlab.com/elixxir/client/cmix/rounds"
+	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
+	"gitlab.com/elixxir/crypto/channel"
+	"gitlab.com/xx_network/primitives/id"
 )
 
 func TestMain(m *testing.M) {
@@ -35,11 +37,13 @@ func TestWasmModel_UpdateSentStatus(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
+	cid := channel.Identity{}
+
 	// Store a test message
 	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(),
-		nil, testString, testString, nil, time.Now(),
+		nil, testString, testString, cid, time.Now(),
 		time.Second, channels.Sent)
-	err = eventModel.receiveHelper(testMsg)
+	uuid, err := eventModel.receiveHelper(testMsg)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -55,7 +59,8 @@ func TestWasmModel_UpdateSentStatus(t *testing.T) {
 
 	// Update the sentStatus
 	expectedStatus := channels.Failed
-	eventModel.UpdateSentStatus(testMsgId, expectedStatus)
+	eventModel.UpdateSentStatus(uuid, testMsgId, time.Now(),
+		rounds.Round{ID: 8675309}, expectedStatus)
 
 	// Check the resulting status
 	results, err = eventModel.dump(messageStoreName)
@@ -75,8 +80,8 @@ func TestWasmModel_UpdateSentStatus(t *testing.T) {
 	}
 
 	// Make sure other fields didn't change
-	if resultMsg.SenderUsername != testString {
-		t.Fatalf("Unexpected SenderUsername: %v", resultMsg.SenderUsername)
+	if resultMsg.Nickname != testString {
+		t.Fatalf("Unexpected Nickname: %v", resultMsg.Nickname)
 	}
 }
 
