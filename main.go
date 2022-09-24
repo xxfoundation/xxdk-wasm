@@ -42,16 +42,19 @@ func main() {
 	js.Global().Set("ResumeBackup", js.FuncOf(wasm.ResumeBackup))
 
 	// wasm/channels.go
+	js.Global().Set("GenerateChannelIdentity",
+		js.FuncOf(wasm.GenerateChannelIdentity))
+	js.Global().Set("GetPublicChannelIdentity",
+		js.FuncOf(wasm.GetPublicChannelIdentity))
+	js.Global().Set("GetPublicChannelIdentityFromPrivate",
+		js.FuncOf(wasm.GetPublicChannelIdentityFromPrivate))
 	js.Global().Set("NewChannelsManager", js.FuncOf(wasm.NewChannelsManager))
 	js.Global().Set("NewChannelsManagerWithIndexedDb",
 		js.FuncOf(wasm.NewChannelsManagerWithIndexedDb))
-	js.Global().Set("NewChannelsManagerWithIndexedDbDummyNameService",
-		js.FuncOf(wasm.NewChannelsManagerWithIndexedDbDummyNameService))
-	js.Global().Set("NewChannelsManagerDummyNameService",
-		js.FuncOf(wasm.NewChannelsManagerDummyNameService))
-	js.Global().Set("GenerateChannel",
-		js.FuncOf(wasm.GenerateChannel))
+	js.Global().Set("LoadChannelsManager", js.FuncOf(wasm.LoadChannelsManager))
+	js.Global().Set("GenerateChannel", js.FuncOf(wasm.GenerateChannel))
 	js.Global().Set("GetChannelInfo", js.FuncOf(wasm.GetChannelInfo))
+	js.Global().Set("IsNicknameValid", js.FuncOf(wasm.IsNicknameValid))
 
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))

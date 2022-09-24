@@ -45,6 +45,11 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]interface{} 
 		"SendMessage":      js.FuncOf(cm.SendMessage),
 		"SendReply":        js.FuncOf(cm.SendReply),
 		"SendReaction":     js.FuncOf(cm.SendReaction),
+		"GetIdentity":      js.FuncOf(cm.GetIdentity),
+		"GetStorageTag":    js.FuncOf(cm.GetStorageTag),
+		"SetNickname":      js.FuncOf(cm.SetNickname),
+		"DeleteNickname":   js.FuncOf(cm.DeleteNickname),
+		"GetNickname":      js.FuncOf(cm.GetNickname),
 
 		// Channel Receiving Logic and Callback Registration
 		"RegisterReceiveHandler": js.FuncOf(cm.RegisterReceiveHandler),
@@ -62,105 +67,89 @@ func (ch *ChannelsManager) GetID(js.Value, []js.Value) interface{} {
 	return ch.api.GetID()
 }
 
-// NewChannelsManager constructs a [ChannelsManager].
+// GenerateChannelIdentity creates a new private channel identity
+// ([channel.PrivateIdentity]). The public component can be retrieved as JSON
+// via [GetPublicChannelIdentityFromPrivate].
 //
 // Parameters:
-//  - args[0] - ID of [E2e] object in tracker (int). This can be retrieved using
-//    [E2e.GetID].
-//  - args[1] - ID of [UserDiscovery] object in tracker (int). This can be
-//    retrieved using [UserDiscovery.GetID].
+//  - args[0] - ID of [Cmix] object in tracker (int).
 //
 // Returns:
-//  - Javascript representation of the [bindings.ChannelsManager] object.
-//  - Throws a TypeError if logging in fails.
-func NewChannelsManager(_ js.Value, args []js.Value) interface{} {
-	cm, err := bindings.NewChannelsManager(args[0].Int(), args[1].Int())
+//  - JSON of [channel.PrivateIdentity] (Uint8Array).
+//  - Throws a TypeError if generating the identity fails.
+func GenerateChannelIdentity(_ js.Value, args []js.Value) interface{} {
+	pi, err := bindings.GenerateChannelIdentity(args[0].Int())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
-		return nil
 	}
 
-	return newChannelsManagerJS(cm)
+	return utils.CopyBytesToJS(pi)
 }
 
-// NewChannelsManagerWithIndexedDb constructs a [ChannelsManager] using an
-// indexedDb backend.
+// GetPublicChannelIdentity constructs a public identity ([channel.Identity])
+// from a bytes version and returns it JSON marshaled.
 //
 // Parameters:
-//  - args[0] - ID of [E2e] object in tracker (int). This can be retrieved using
-//    [E2e.GetID].
-//  - args[1] - ID of [UserDiscovery] object in tracker (int). This can be
-//    retrieved using [UserDiscovery.GetID].
-//  - args[2] - Codename (string).
+//  - args[0] - Bytes of the public identity ([channel.Identity]) (Uint8Array).
 //
 // Returns:
-//  - Javascript representation of the [bindings.ChannelsManager] object.
-//  - Throws a TypeError if initialising indexedDb or created the new channel
-//    manager fails.
-func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
-	em, err := indexedDb.NewWasmEventModel(args[2].String())
+//  - JSON of the constructed [channel.Identity] (Uint8Array).
+//  - Throws a TypeError if unmarshalling the bytes or marshalling the identity
+//    fails.
+func GetPublicChannelIdentity(_ js.Value, args []js.Value) interface{} {
+	marshaledPublic := utils.CopyBytesToGo(args[0])
+	pi, err := bindings.GetPublicChannelIdentity(marshaledPublic)
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
-		return nil
 	}
 
-	cm, err := bindings.NewChannelsManagerGoEventModel(
-		args[0].Int(), args[1].Int(), em)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
-	}
-
-	return newChannelsManagerJS(cm)
+	return utils.CopyBytesToJS(pi)
 }
 
-// NewChannelsManagerWithIndexedDbDummyNameService constructs a
-// [ChannelsManager] using an indexedDb backend and a dummy name server instead
-// of UD.
+// GetPublicChannelIdentityFromPrivate returns the public identity
+// ([channel.Identity]) contained in the given private identity
+// ([channel.PrivateIdentity]).
 //
-// This function initialises an indexedDb database.
+// Parameters:
+//  - args[0] - Bytes of the private identity
+//    (channel.PrivateIdentity]) (Uint8Array).
+//
+// Returns:
+//  - JSON of the public identity ([channel.Identity]) (Uint8Array).
+//  - Throws a TypeError if unmarshalling the bytes or marshalling the identity
+//    fails.
+func GetPublicChannelIdentityFromPrivate(_ js.Value, args []js.Value) interface{} {
+	marshaledPrivate := utils.CopyBytesToGo(args[0])
+	identity, err := bindings.GetPublicChannelIdentityFromPrivate(
+		marshaledPrivate)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+	}
+
+	return utils.CopyBytesToJS(identity)
+}
+
+// NewChannelsManager creates a new [ChannelsManager] from a new private
+// identity ([channel.PrivateIdentity]).
+//
+// This is for creating a manager for an identity for the first time. For
+// generating a new one channel identity, use [GenerateChannelIdentity]. To
+// reload this channel manager, use [LoadChannelsManager], passing in the
+// storage tag retrieved by [ChannelsManager.GetStorageTag].
 //
 // Parameters:
 //  - args[0] - ID of [Cmix] object in tracker (int). This can be retrieved
 //    using [Cmix.GetID].
-//  - args[1] - Username (string).
-//
-// Returns:
-//  - Javascript representation of the [bindings.ChannelsManager] object.
-//  - Throws a TypeError if initialising indexedDb or created the new channel
-//    manager fails.
-func NewChannelsManagerWithIndexedDbDummyNameService(_ js.Value, args []js.Value) interface{} {
-	em, err := indexedDb.NewWasmEventModel(args[1].String())
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
-	}
-
-	cm, err := bindings.NewChannelsManagerGoEventModelDummyNameService(
-		args[0].Int(), args[1].String(), em)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
-	}
-
-	return newChannelsManagerJS(cm)
-}
-
-// NewChannelsManagerDummyNameService constructs a [ChannelsManager]
-// using a Javascript event model backend and a dummy name server instead of UD.
-//
-// Parameters:
-//  - args[0] -  ID of [Cmix] object in tracker (int). This can be retrieved
-//    using [Cmix.GetID].
-//  - args[1] - Username (string).
+//  - args[1] - Bytes of a private identity ([channel.PrivateIdentity]) that is
+//    generated by [GenerateChannelIdentity] (Uint8Array).
 //  - args[2] - Javascript object that matches the [bindings.EventModel]
 //    interface.
 //
 // Returns:
-//  - Javascript representation of the [bindings.ChannelsManager] object.
-//  - Throws a TypeError if initialising indexedDb or created the new channel
-//    manager fails.
-func NewChannelsManagerDummyNameService(_ js.Value, args []js.Value) interface{} {
+//  - Javascript representation of the [ChannelsManager] object.
+//  - Throws a TypeError if creating the manager fails.
+func NewChannelsManager(_ js.Value, args []js.Value) interface{} {
+	privateIdentity := utils.CopyBytesToGo(args[1])
 	em := &eventModel{
 		joinChannel:      utils.WrapCB(args[2], "JoinChannel"),
 		leaveChannel:     utils.WrapCB(args[2], "LeaveChannel"),
@@ -170,8 +159,7 @@ func NewChannelsManagerDummyNameService(_ js.Value, args []js.Value) interface{}
 		updateSentStatus: utils.WrapCB(args[2], "UpdateSentStatus"),
 	}
 
-	cm, err := bindings.NewChannelsManagerGoEventModelDummyNameService(
-		args[0].Int(), args[1].String(), bindings.NewEventModel(em))
+	cm, err := bindings.NewChannelsManager(args[0].Int(), privateIdentity, em)
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
@@ -180,21 +168,96 @@ func NewChannelsManagerDummyNameService(_ js.Value, args []js.Value) interface{}
 	return newChannelsManagerJS(cm)
 }
 
-// GenerateChannel is used to create a channel. This makes a new channel of
-// which you are the admin. It is only for making new channels, not joining
-// existing ones.
+// NewChannelsManagerWithIndexedDb creates a new [ChannelsManager] from a new
+// private identity ([channel.PrivateIdentity]) and using indexedDb as a backend
+// to manage the event model.
+//
+// This is for creating a manager for an identity for the first time. For
+// generating a new one channel identity, use [GenerateChannelIdentity]. To
+// reload this channel manager, use [LoadChannelsManagerGoEventModel], passing
+// in the storage tag retrieved by [ChannelsManager.GetStorageTag].
+//
+// This function initialises an indexedDb database.
+//
+// Parameters:
+//  - args[0] - ID of [Cmix] object in tracker (int). This can be retrieved
+//    using [Cmix.GetID].
+//  - args[1] - Bytes of a private identity ([channel.PrivateIdentity]) that is
+//    generated by [GenerateChannelIdentity] (Uint8Array).
+//  - args[2] - Username (string).
+//
+// Returns:
+//  - Javascript representation of the [ChannelsManager] object.
+//  - Throws a TypeError if initialising indexedDb or created the new channel
+//    manager fails.
+func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
+	privateIdentity := utils.CopyBytesToGo(args[1])
+	em, err := indexedDb.NewWasmEventModel(args[2].String())
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	cm, err := bindings.NewChannelsManagerGoEventModel(
+		args[0].Int(), privateIdentity, em)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return newChannelsManagerJS(cm)
+}
+
+// LoadChannelsManager loads an existing [ChannelsManager].
+//
+// This is for loading a manager for an identity that has already been created.
+// The channel manager should have previously been created with
+// [NewChannelsManager] and the storage is retrievable with
+// [ChannelsManager.GetStorageTag].
+//
+// Parameters:
+//  - args[0] - ID of [Cmix] object in tracker (int). This can be retrieved
+//    using [Cmix.GetID].
+//  - args[1] - The storage tag associated with the previously created channel
+//    manager and retrieved with [ChannelsManager.GetStorageTag] (string).
+//  - args[2] - Javascript object that matches the [bindings.EventModel]
+//    interface.
+//
+// Returns:
+//  - Javascript representation of the [ChannelsManager] object.
+//  - Throws a TypeError if loading the manager fails.
+func LoadChannelsManager(_ js.Value, args []js.Value) interface{} {
+	em := &eventModel{
+		joinChannel:      utils.WrapCB(args[2], "JoinChannel"),
+		leaveChannel:     utils.WrapCB(args[2], "LeaveChannel"),
+		receiveMessage:   utils.WrapCB(args[2], "ReceiveMessage"),
+		receiveReply:     utils.WrapCB(args[2], "ReceiveReply"),
+		receiveReaction:  utils.WrapCB(args[2], "ReceiveReaction"),
+		updateSentStatus: utils.WrapCB(args[2], "UpdateSentStatus"),
+	}
+
+	cm, err := bindings.LoadChannelsManager(args[0].Int(), args[1].String(), em)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return newChannelsManagerJS(cm)
+}
+
+// GenerateChannel is used to create a channel a new channel of which you are
+// the admin. It is only for making new channels, not joining existing ones.
 //
 // It returns a pretty print of the channel and the private key.
 //
-// The name cannot be longer that ____ characters.
-//
-// The description cannot be longer than ___ and can only use ______ characters.
+// The name cannot be longer that __ characters. The description cannot be
+// longer than __ and can only use ______ characters.
 //
 // Parameters:
 //  - args[0] - ID of [Cmix] object in tracker (int).
 //  - args[1] - The name of the new channel. The name cannot be longer than __
-//    characters and must contain only __ characters. It cannot be changed once
-//    a channel is created (string).
+//    characters and must contain only _____ characters. It cannot be changed
+//    once a channel is created. (string).
 //  - args[2] - The description of a channel. The description cannot be longer
 //    than __ characters and must contain only __ characters. It cannot be
 //    changed once a channel is created (string).
@@ -541,6 +604,106 @@ func (ch *ChannelsManager) SendReaction(_ js.Value, args []js.Value) interface{}
 	return utils.CreatePromise(promiseFn)
 }
 
+// GetIdentity returns the marshaled public identity ([channel.Identity]) that
+// the channel is using.
+//
+// Returns:
+//  - JSON of the [channel.Identity] (Uint8Array).
+//  - Throws TypeError if marshalling the identity fails.
+func (ch *ChannelsManager) GetIdentity(js.Value, []js.Value) interface{} {
+	i, err := ch.api.GetIdentity()
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(i)
+}
+
+// GetStorageTag returns the storage tag needed to reload the manager.
+//
+// Returns:
+//  - Storage tag (string).
+func (ch *ChannelsManager) GetStorageTag(js.Value, []js.Value) interface{} {
+	return ch.api.GetStorageTag()
+}
+
+// SetNickname sets the nickname for a given channel. The nickname must be valid
+// according to [IsNicknameValid].
+//
+// Parameters:
+//  - args[0] - The nickname to set (string).
+//  - args[1] - Marshalled bytes if the channel's [id.ID] (Uint8Array).
+//
+// Returns:
+//  - Throws TypeError if unmarshalling the ID fails or the nickname is invalid.
+func (ch *ChannelsManager) SetNickname(_ js.Value, args []js.Value) interface{} {
+	err := ch.api.SetNickname(args[0].String(), utils.CopyBytesToGo(args[1]))
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return nil
+}
+
+// DeleteNickname deletes the nickname for a given channel.
+//
+// Parameters:
+//  - args[0] - Marshalled bytes if the channel's [id.ID] (Uint8Array).
+//
+// Returns:
+//  - Throws TypeError if deleting the nickname fails.
+func (ch *ChannelsManager) DeleteNickname(_ js.Value, args []js.Value) interface{} {
+	err := ch.api.DeleteNickname(utils.CopyBytesToGo(args[0]))
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return nil
+}
+
+// GetNickname returns the nickname set for a given channel. Returns an error if
+// there is no nickname set.
+//
+// Parameters:
+//  - args[0] - Marshalled bytes if the channel's [id.ID] (Uint8Array).
+//
+// Returns:
+//  - The nickname (string).
+//  - Throws TypeError if the channel has no nickname set.
+func (ch *ChannelsManager) GetNickname(_ js.Value, args []js.Value) interface{} {
+	nickname, err := ch.api.GetNickname(utils.CopyBytesToGo(args[0]))
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return nickname
+}
+
+// IsNicknameValid checks if a nickname is valid.
+//
+// Rules:
+//  1. A nickname must not be longer than 24 characters.
+//  2. A nickname must not be shorter than 1 character.
+//
+// Parameters:
+//  - args[0] - Nickname to check (string).
+//
+// Returns:
+//  - A Javascript Error object if the nickname is invalid with the reason why.
+//  - Null if the nickname is valid.
+func IsNicknameValid(_ js.Value, args []js.Value) interface{} {
+	err := bindings.IsNicknameValid(args[0].String())
+	if err != nil {
+		return utils.JsError(err)
+	}
+
+	return nil
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Channel Receiving Logic and Callback Registration                          //
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,10 +720,16 @@ type channelMessageReceptionCallback struct {
 //  - receivedChannelMessageReport - Returns the JSON of
 //   [bindings.ReceivedChannelMessageReport] (Uint8Array).
 //  - err - Returns an error on failure (Error).
+//
+// Returns:
+//  - It must return a unique UUID for the message that it can be referenced by
+//    later (int).
 func (cmrCB *channelMessageReceptionCallback) Callback(
-	receivedChannelMessageReport []byte, err error) {
-	cmrCB.callback(utils.CopyBytesToJS(receivedChannelMessageReport),
-		utils.JsTrace(err))
+	receivedChannelMessageReport []byte, err error) int {
+	uuid := cmrCB.callback(
+		utils.CopyBytesToJS(receivedChannelMessageReport), utils.JsTrace(err))
+
+	return uuid.Int()
 }
 
 // RegisterReceiveHandler is used to register handlers for non-default message
@@ -632,8 +801,9 @@ func (em *eventModel) LeaveChannel(channelID []byte) {
 //  - channelID - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //  - messageID - The bytes of the [channel.MessageID] of the received message
 //    (Uint8Array).
-//  - senderUsername - The username of the sender of the message (string).
+//  - nickname - The nickname of the sender of the message (string).
 //  - text - The content of the message (string).
+//  - identity - JSON of the sender's public ([channel.Identity]) (Uint8Array).
 //  - timestamp - Time the message was received; represented as nanoseconds
 //    since unix epoch (int).
 //  - lease - The number of nanoseconds that the message is valid for (int).
@@ -644,11 +814,17 @@ func (em *eventModel) LeaveChannel(channelID []byte) {
 //  Sent      =  0
 //  Delivered =  1
 //  Failed    =  2
-func (em *eventModel) ReceiveMessage(channelID, messageID []byte,
-	senderUsername, text string, timestamp, lease, roundId, status int64) {
-	em.receiveMessage(utils.CopyBytesToJS(channelID),
-		utils.CopyBytesToJS(messageID),
-		senderUsername, text, timestamp, lease, roundId, status)
+//
+// Returns:
+//  - A non-negative unique UUID for the message that it can be referenced by
+//    later with [eventModel.UpdateSentStatus].
+func (em *eventModel) ReceiveMessage(channelID, messageID []byte, nickname,
+	text string, identity []byte, timestamp, lease, roundId, status int64) int64 {
+	uuid := em.receiveMessage(utils.CopyBytesToJS(channelID),
+		utils.CopyBytesToJS(messageID), nickname, text,
+		utils.CopyBytesToJS(identity), timestamp, lease, roundId, status)
+
+	return int64(uuid.Int())
 }
 
 // ReceiveReply is called whenever a message is received that is a reply on a
@@ -666,6 +842,7 @@ func (em *eventModel) ReceiveMessage(channelID, messageID []byte,
 //    (Uint8Array).
 //  - senderUsername - The username of the sender of the message (string).
 //  - text - The content of the message (string).
+//  - identity - JSON of the sender's public ([channel.Identity]) (Uint8Array).
 //  - timestamp - Time the message was received; represented as nanoseconds
 //    since unix epoch (int).
 //  - lease - The number of nanoseconds that the message is valid for (int).
@@ -676,11 +853,19 @@ func (em *eventModel) ReceiveMessage(channelID, messageID []byte,
 //  Sent      =  0
 //  Delivered =  1
 //  Failed    =  2
+//
+// Returns:
+//  - A non-negative unique UUID for the message that it can be referenced by
+//    later with [eventModel.UpdateSentStatus].
 func (em *eventModel) ReceiveReply(channelID, messageID, reactionTo []byte,
-	senderUsername, text string, timestamp, lease, roundId, status int64) {
-	em.receiveReply(utils.CopyBytesToJS(channelID),
+	senderUsername, text string, identity []byte, timestamp, lease, roundId,
+	status int64) int64 {
+	uuid := em.receiveReply(utils.CopyBytesToJS(channelID),
 		utils.CopyBytesToJS(messageID), utils.CopyBytesToJS(reactionTo),
-		senderUsername, text, timestamp, lease, roundId, status)
+		senderUsername, text, utils.CopyBytesToJS(identity),
+		timestamp, lease, roundId, status)
+
+	return int64(uuid.Int())
 }
 
 // ReceiveReaction is called whenever a reaction to a message is received on a
@@ -698,6 +883,7 @@ func (em *eventModel) ReceiveReply(channelID, messageID, reactionTo []byte,
 //    (Uint8Array).
 //  - senderUsername - The username of the sender of the message (string).
 //  - reaction - The contents of the reaction message (string).
+//  - identity - JSON of the sender's public ([channel.Identity]) (Uint8Array).
 //  - timestamp - Time the message was received; represented as nanoseconds
 //    since unix epoch (int).
 //  - lease - The number of nanoseconds that the message is valid for (int).
@@ -708,25 +894,39 @@ func (em *eventModel) ReceiveReply(channelID, messageID, reactionTo []byte,
 //  Sent      =  0
 //  Delivered =  1
 //  Failed    =  2
+//
+// Returns:
+//  - A non-negative unique UUID for the message that it can be referenced by
+//    later with [eventModel.UpdateSentStatus].
 func (em *eventModel) ReceiveReaction(channelID, messageID, reactionTo []byte,
-	senderUsername, reaction string, timestamp, lease, roundId, status int64) {
-	em.receiveReaction(utils.CopyBytesToJS(channelID),
+	senderUsername, reaction string, identity []byte, timestamp, lease, roundId,
+	status int64) int64 {
+	uuid := em.receiveReaction(utils.CopyBytesToJS(channelID),
 		utils.CopyBytesToJS(messageID), utils.CopyBytesToJS(reactionTo),
-		senderUsername, reaction, timestamp, lease, roundId, status)
+		senderUsername, reaction, utils.CopyBytesToJS(identity),
+		timestamp, lease, roundId, status)
+
+	return int64(uuid.Int())
 }
 
 // UpdateSentStatus is called whenever the sent status of a message has
 // changed.
 //
 // Parameters:
+//  - uuid - The unique identifier for the message (int).
 //  - messageID - The bytes of the [channel.MessageID] of the received message
 //    (Uint8Array).
+//  - timestamp - Time the message was received; represented as nanoseconds
+//    since unix epoch (int).
+//  - roundId - The ID of the round that the message was received on (int).
 //  - status - The [channels.SentStatus] of the message (int).
 //
 // Statuses will be enumerated as such:
 //  Sent      =  0
 //  Delivered =  1
 //  Failed    =  2
-func (em *eventModel) UpdateSentStatus(messageID []byte, status int64) {
-	em.updateSentStatus(utils.CopyBytesToJS(messageID), status)
+func (em *eventModel) UpdateSentStatus(
+	uuid int64, messageID []byte, timestamp, roundID, status int64) {
+	em.updateSentStatus(
+		uuid, utils.CopyBytesToJS(messageID), timestamp, roundID, status)
 }
