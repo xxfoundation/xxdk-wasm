@@ -30,6 +30,7 @@ const (
 	messageStorePubkeyIndex    = "pubkey_index"
 
 	// Message keyPath names (must match json struct tags).
+	messageStoreMessage   = "channel_id"
 	messageStoreChannel   = "channel_id"
 	messageStoreParent    = "parent_message_id"
 	messageStoreTimestamp = "timestamp"
@@ -59,10 +60,10 @@ type Message struct {
 	Text            string        `json:"text"`
 
 	// User cryptographic IDentity struct -- could be pulled out
-	Pubkey         []byte `json:"pubkey"` // Index
-	Honorific      string `json:"honorific"`
-	Adjective      string `json:"adjective"`
-	Noun           string `json:"noun"`
+	Pubkey []byte `json:"pubkey"` // Index
+	// Honorific      string `json:"honorific"`
+	// Adjective      string `json:"adjective"`
+	// Noun           string `json:"noun"`
 	Codename       string `json:"codename"`
 	Color          string `json:"color"`
 	Extension      string `json:"extension"`

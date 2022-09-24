@@ -82,6 +82,11 @@ func v1Upgrade(db *idb.Database) error {
 	if err != nil {
 		return err
 	}
+	_, err = messageStore.CreateIndex(messageStoreMessageIndex,
+		js.ValueOf(messageStoreMessage), indexOpts)
+	if err != nil {
+		return err
+	}
 	_, err = messageStore.CreateIndex(messageStoreChannelIndex,
 		js.ValueOf(messageStoreChannel), indexOpts)
 	if err != nil {

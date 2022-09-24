@@ -83,7 +83,7 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 	}
 
 	// Perform the operation
-	_, err = store.Add(channelObj)
+	_, err = store.Put(channelObj)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to Add Channel: %+v", err))
@@ -260,8 +260,29 @@ func buildMessage(channelID, messageID, parentID []byte, nickname,
 	}
 }
 
+// // uuidHelper is ap rivate helper to determine an autoincremented
+// // uuid value for a given store. The way it works right now
+// // is by counting all the objects and returning count + 1, but
+// // there may be a better way to retrieve this value with the pkName
+// func (w *wasmModel) uuidHelper(pkName, storeName string) uint64 {
+// 	w.db.
+// 	// Prepare the Transaction
+// 	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
+// 	if err != nil {
+// 		jww.
+// 		return 0, errors.Errorf("Unable to create Transaction: %+v",
+// 			err)
+// 	}
+// 	store, err := txn.ObjectStore(storeName)
+// 	if err != nil {
+// 		return 0, errors.Errorf("Unable to get ObjectStore: %+v", err)
+// 	}
+
+// }
+
 // receiveHelper is a private helper for receiving any sort of message.
-func (w *wasmModel) receiveHelper(newMessage *Message) (uint64, error) {
+func (w *wasmModel) receiveHelper(newMessage *Message) (uint64,
+	error) {
 	// Convert to jsObject
 	newMessageJson, err := json.Marshal(newMessage)
 	if err != nil {
@@ -270,6 +291,13 @@ func (w *wasmModel) receiveHelper(newMessage *Message) (uint64, error) {
 	messageObj, err := utils.JsonToJS(newMessageJson)
 	if err != nil {
 		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
+	}
+
+	// NOTE: This is weird, but correct. When the "ID" field is 0, we
+	// unset it from the JSValue so that it is auto-populated and
+	// incremented
+	if newMessage.ID == 0 {
+		messageObj.JSValue().Delete("id")
 	}
 
 	// Prepare the Transaction
@@ -284,7 +312,7 @@ func (w *wasmModel) receiveHelper(newMessage *Message) (uint64, error) {
 	}
 
 	// Perform the upsert (put) operation
-	putReq, err := store.Put(messageObj)
+	addReq, err := store.Put(messageObj)
 	if err != nil {
 		return 0, errors.Errorf("Unable to upsert Message: %+v", err)
 	}
@@ -296,11 +324,12 @@ func (w *wasmModel) receiveHelper(newMessage *Message) (uint64, error) {
 	if err != nil {
 		return 0, errors.Errorf("Upserting Message failed: %+v", err)
 	}
-	res, _ := putReq.Result()
+	res, _ := addReq.Result()
 	uuid := uint64(res.Int())
 	jww.DEBUG.Printf(
 		"Successfully stored message from %s, id %d",
 		newMessage.Codename, uuid)
+
 	return uuid, nil
 }
 
@@ -368,16 +397,17 @@ func (w *wasmModel) dump(objectStoreName string) ([]string, error) {
 	jww.DEBUG.Printf("%s values:", objectStoreName)
 	results := make([]string, 0)
 	ctx, cancel := newContext()
-	err = cursorRequest.Iter(ctx, func(cursor *idb.CursorWithValue) error {
-		value, err := cursor.Value()
-		if err != nil {
-			return err
-		}
-		valueStr := utils.JsToJson(value)
-		results = append(results, valueStr)
-		jww.DEBUG.Printf("- %v", valueStr)
-		return nil
-	})
+	err = cursorRequest.Iter(ctx,
+		func(cursor *idb.CursorWithValue) error {
+			value, err := cursor.Value()
+			if err != nil {
+				return err
+			}
+			valueStr := utils.JsToJson(value)
+			results = append(results, valueStr)
+			jww.DEBUG.Printf("- %v", valueStr)
+			return nil
+		})
 	cancel()
 	if err != nil {
 		return nil, errors.WithMessagef(parentErr,
