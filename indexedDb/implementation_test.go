@@ -122,3 +122,38 @@ func TestWasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 		t.Fatalf("Expected 1 channels to exist")
 	}
 }
+
+// Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
+func TestWasmModel_UUIDTest(t *testing.T) {
+	testString := "test"
+	testMsgId := channel.MakeMessageID([]byte(testString))
+	eventModel, err := newWasmModel(testString)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	cid := channel.Identity{}
+
+	uuids := make([]uint64, 10)
+
+	for i := 0; i < 10; i++ {
+		// Store a test message
+		testMsg := buildMessage([]byte(testString), testMsgId.Bytes(),
+			nil, testString, testString, cid, time.Now(),
+			time.Second, channels.Sent)
+		uuid, err := eventModel.receiveHelper(testMsg)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+		uuids[i] = uuid
+	}
+
+	for i := 0; i < 10; i++ {
+		for j := i + 1; j < 10; j++ {
+			if uuids[i] == uuids[j] {
+				t.Fatalf("uuid failed: %d[%d] == %d[%d]",
+					uuids[i], i, uuids[j], j)
+			}
+		}
+	}
+}
