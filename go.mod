@@ -9,6 +9,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0
 	gitlab.com/elixxir/client v1.5.1-0.20220924203712-7d4b1dce86b8
 	gitlab.com/elixxir/crypto v0.0.7-0.20220923233816-0364f1b203c6
+	gitlab.com/elixxir/primitives v0.0.3-0.20220901220638-1acc75fabdc6
 	gitlab.com/xx_network/primitives v0.0.4-0.20220809193445-9fc0a5209548
 )
 
@@ -54,7 +55,6 @@ require (
 	gitlab.com/elixxir/bloomfilter v0.0.0-20211222005329-7d931ceead6f // indirect
 	gitlab.com/elixxir/comms v0.0.4-0.20220916185715-f1e9a5eda939 // indirect
 	gitlab.com/elixxir/ekv v0.2.1 // indirect
-	gitlab.com/elixxir/primitives v0.0.3-0.20220901220638-1acc75fabdc6 // indirect
 	gitlab.com/xx_network/comms v0.0.4-0.20220916185248-8a984b8594de // indirect
 	gitlab.com/xx_network/crypto v0.0.5-0.20220913213008-98764f5b3287 // indirect
 	gitlab.com/xx_network/ring v0.0.3-0.20220222211904-da613960ad93 // indirect
