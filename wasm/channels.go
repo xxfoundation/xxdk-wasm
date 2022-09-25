@@ -92,25 +92,27 @@ func NewChannelsManager(_ js.Value, args []js.Value) interface{} {
 //    retrieved using [UserDiscovery.GetID].
 //  - args[2] - username (string).
 //
-// Returns:
-//  - Javascript representation of the [bindings.ChannelsManager] object.
-//  - Throws a TypeError if initialising indexedDb or created the new channel
-//    manager fails.
+// Returns a promise:
+//  - Resolves to a Javascript representation of the [bindings.ChannelsManager]
+//    object.
+//  - Rejected with an error if loading indexedDb or the manager fails.
 func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
-	em, err := indexedDb.NewWasmEventModel(args[2].String())
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		em, err := indexedDb.NewWasmEventModel(args[2].String())
+		if err != nil {
+			reject(utils.JsTrace(err))
+		}
+
+		cm, err := bindings.NewChannelsManagerGoEventModel(
+			args[0].Int(), args[1].Int(), em)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(newChannelsManagerJS(cm))
+		}
 	}
 
-	cm, err := bindings.NewChannelsManagerGoEventModel(
-		args[0].Int(), args[1].Int(), em)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
-	}
-
-	return newChannelsManagerJS(cm)
+	return utils.CreatePromise(promiseFn)
 }
 
 // NewChannelsManagerWithIndexedDbDummyNameService constructs a
@@ -124,25 +126,27 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
 //    using [Cmix.GetID].
 //  - args[1] - Username (string).
 //
-// Returns:
-//  - Javascript representation of the [bindings.ChannelsManager] object.
-//  - Throws a TypeError if initialising indexedDb or created the new channel
-//    manager fails.
+// Returns a promise:
+//  - Resolves to a Javascript representation of the [bindings.ChannelsManager]
+//    object.
+//  - Rejected with an error if loading indexedDb or the manager fails.
 func NewChannelsManagerWithIndexedDbDummyNameService(_ js.Value, args []js.Value) interface{} {
-	em, err := indexedDb.NewWasmEventModel(args[1].String())
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		em, err := indexedDb.NewWasmEventModel(args[1].String())
+		if err != nil {
+			reject(utils.JsTrace(err))
+		}
+
+		cm, err := bindings.NewChannelsManagerGoEventModelDummyNameService(
+			args[0].Int(), args[1].String(), em)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(newChannelsManagerJS(cm))
+		}
 	}
 
-	cm, err := bindings.NewChannelsManagerGoEventModelDummyNameService(
-		args[0].Int(), args[1].String(), em)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
-	}
-
-	return newChannelsManagerJS(cm)
+	return utils.CreatePromise(promiseFn)
 }
 
 // NewChannelsManagerDummyNameService constructs a [ChannelsManager]
