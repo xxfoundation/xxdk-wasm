@@ -29,8 +29,9 @@ const (
 )
 
 // NewWasmEventModel returns a [channels.EventModel] backed by a wasmModel.
-func NewWasmEventModel(codename string) (channels.EventModel, error) {
-	databaseName := codename + databaseSuffix
+// The name should be a base64 encoding of the users public key.
+func NewWasmEventModel(pubkeyBase64 string) (channels.EventModel, error) {
+	databaseName := pubkeyBase64 + databaseSuffix
 	return newWasmModel(databaseName)
 }
 
