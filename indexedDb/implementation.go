@@ -264,26 +264,6 @@ func buildMessage(channelID, messageID, parentID []byte, nickname,
 	}
 }
 
-// // uuidHelper is ap rivate helper to determine an autoincremented
-// // uuid value for a given store. The way it works right now
-// // is by counting all the objects and returning count + 1, but
-// // there may be a better way to retrieve this value with the pkName
-// func (w *wasmModel) uuidHelper(pkName, storeName string) uint64 {
-// 	w.db.
-// 	// Prepare the Transaction
-// 	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
-// 	if err != nil {
-// 		jww.
-// 		return 0, errors.Errorf("Unable to create Transaction: %+v",
-// 			err)
-// 	}
-// 	store, err := txn.ObjectStore(storeName)
-// 	if err != nil {
-// 		return 0, errors.Errorf("Unable to get ObjectStore: %+v", err)
-// 	}
-
-// }
-
 // receiveHelper is a private helper for receiving any sort of message.
 func (w *wasmModel) receiveHelper(newMessage *Message) (uint64,
 	error) {
