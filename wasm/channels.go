@@ -245,13 +245,12 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
 	privateIdentity := utils.CopyBytesToGo(args[1])
 
 	fn := func(uuid uint64, channelID *id.ID) {
-		args[2].Invoke(uuid, channelID.Marshal())
+		args[2].Invoke(uuid, utils.CopyBytesToJS(channelID.Marshal()))
 	}
 
 	model := indexedDb.NewWASMEventModelBuilder(fn)
 
 	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
-
 		cm, err := bindings.NewChannelsManagerGoEventModel(
 			cmixID, privateIdentity, model)
 		if err != nil {
@@ -292,13 +291,12 @@ func LoadChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
 	storageTag := args[1].String()
 
 	fn := func(uuid uint64, channelID *id.ID) {
-		args[2].Invoke(uuid, channelID.Marshal())
+		args[2].Invoke(uuid, utils.CopyBytesToJS(channelID.Marshal()))
 	}
 
 	model := indexedDb.NewWASMEventModelBuilder(fn)
 
 	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
-
 		cm, err := bindings.LoadChannelsManagerGoEventModel(
 			cmixID, storageTag, model)
 		if err != nil {
