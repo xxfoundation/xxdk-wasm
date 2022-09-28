@@ -91,8 +91,9 @@ func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) interface{} {
 //  - A promise that resolves if the network is healthy and rejects if the
 //    network is not healthy.
 func (c *Cmix) WaitForNetwork(_ js.Value, args []js.Value) interface{} {
+	timeoutMS := args[0].Int()
 	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
-		if c.api.WaitForNetwork(args[0].Int()) {
+		if c.api.WaitForNetwork(timeoutMS) {
 			resolve()
 		} else {
 			reject()
