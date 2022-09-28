@@ -10,7 +10,6 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/client/channels"
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/bindings"
@@ -135,7 +134,9 @@ type eventModelBuilder struct {
 	build func(args ...interface{}) js.Value
 }
 
-// Build initializes and returns the event model.
+// Build initializes and returns the event model.  It wraps a Javascript object
+// that has all the methods in [bindings.EventModel] to make it adhere to the Go
+// interface [bindings.EventModel].
 func (emb *eventModelBuilder) Build(path string) bindings.EventModel {
 	emJs := emb.build(path)
 	return &eventModel{
@@ -233,21 +234,12 @@ func LoadChannelsManager(_ js.Value, args []js.Value) interface{} {
 //  - Resolves to a Javascript representation of the [ChannelsManager] object.
 //  - Rejected with an error if loading indexedDb or the manager fails.
 func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
+	cmixID := args[0].Int()
 	privateIdentity := utils.CopyBytesToGo(args[1])
 
 	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
-		emBuilder := func(path string) channels.EventModel {
-			em, err := indexedDb.NewWasmEventModel(path)
-			if err != nil {
-				reject(utils.JsTrace(err))
-				return nil
-			}
-
-			return em
-		}
-
 		cm, err := bindings.NewChannelsManagerGoEventModel(
-			args[0].Int(), privateIdentity, emBuilder)
+			cmixID, privateIdentity, indexedDb.NewWasmEventModel)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -276,19 +268,12 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
 //  - Resolves to a Javascript representation of the [ChannelsManager] object.
 //  - Rejected with an error if loading indexedDb or the manager fails.
 func LoadChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
+	cmixID := args[0].Int()
+	storageTag := args[1].String()
+
 	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
-		emBuilder := func(path string) channels.EventModel {
-			em, err := indexedDb.NewWasmEventModel(path)
-			if err != nil {
-				reject(utils.JsTrace(err))
-				return nil
-			}
-
-			return em
-		}
-
 		cm, err := bindings.LoadChannelsManagerGoEventModel(
-			args[0].Int(), args[1].String(), emBuilder)
+			cmixID, storageTag, indexedDb.NewWasmEventModel)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -569,15 +554,15 @@ func (ch *ChannelsManager) SendMessage(_ js.Value, args []js.Value) interface{} 
 	return utils.CreatePromise(promiseFn)
 }
 
-// SendReply is used to send a formatted message over a channel.
-// Due to the underlying encoding using compression, it isn't possible to define
-// the largest payload that can be sent, but it will always be possible to send
-// a payload of 766 bytes at minimum.
+// SendReply is used to send a formatted message over a channel. Due to the
+// underlying encoding using compression, it isn't possible to define the
+// largest payload that can be sent, but it will always be possible to send a
+// payload of 766 bytes at minimum.
 //
-// If the message ID the reply is sent to does not exist, then the other side
-// will post the message as a normal message and not a reply.
-// The message will auto delete validUntil after the round it is sent in,
-// lasting forever if ValidForever is used.
+// If the message ID the reply is sent to is nonexistent, the other side will
+// post the message as a normal message and not a reply. The message will auto
+// delete validUntil after the round it is sent in, lasting forever if
+// [channels.ValidForever] is used.
 //
 // Parameters:
 //  - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
