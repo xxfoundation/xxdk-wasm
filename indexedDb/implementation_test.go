@@ -29,11 +29,13 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func dummyCallback(uuid uint64, channelID *id.ID) {}
+
 // Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
 func TestWasmModel_UpdateSentStatus(t *testing.T) {
 	testString := "test"
 	testMsgId := channel.MakeMessageID([]byte(testString))
-	eventModel, err := newWasmModel(testString)
+	eventModel, err := newWASMModel(testString, dummyCallback)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -88,7 +90,7 @@ func TestWasmModel_UpdateSentStatus(t *testing.T) {
 
 // Smoke test wasmModel.JoinChannel/wasmModel.LeaveChannel happy paths.
 func TestWasmModel_JoinChannel_LeaveChannel(t *testing.T) {
-	eventModel, err := newWasmModel("test")
+	eventModel, err := newWASMModel("test", dummyCallback)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -128,7 +130,7 @@ func TestWasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 func TestWasmModel_UUIDTest(t *testing.T) {
 	testString := "testHello"
 	testMsgId := channel.MakeMessageID([]byte(testString))
-	eventModel, err := newWasmModel(testString)
+	eventModel, err := newWASMModel(testString, dummyCallback)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
