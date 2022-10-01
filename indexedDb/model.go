@@ -30,7 +30,7 @@ const (
 	messageStorePubkeyIndex    = "pubkey_index"
 
 	// Message keyPath names (must match json struct tags).
-	messageStoreMessage   = "channel_id"
+	messageStoreMessage   = "message_id"
 	messageStoreChannel   = "channel_id"
 	messageStoreParent    = "parent_message_id"
 	messageStoreTimestamp = "timestamp"
