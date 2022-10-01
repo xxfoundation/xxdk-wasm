@@ -160,8 +160,21 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
 	}
+
+	if checkZero(messageID.Bytes()) {
+		jww.FATAL.Panicf("Empty message ID is impossible!")
+	}
 	go w.receivedMessageCB(uuid, channelID)
 	return uuid
+}
+
+func checkZero(b []byte) bool {
+	for i := 0; i < len(b); i++ {
+		if b[i] != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // ReceiveReply is called whenever a message is received that is a reply on a
@@ -182,6 +195,9 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 		timestamp, lease, status))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
+	}
+	if checkZero(messageID.Bytes()) {
+		jww.FATAL.Panicf("Empty message ID is impossible!")
 	}
 	go w.receivedMessageCB(uuid, channelID)
 	return uuid
@@ -204,6 +220,9 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID cryptoChannel.Me
 		identity, timestamp, lease, status))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
+	}
+	if checkZero(messageID.Bytes()) {
+		jww.FATAL.Panicf("Empty message ID is impossible!")
 	}
 	go w.receivedMessageCB(uuid, channelID)
 	return uuid
@@ -246,6 +265,9 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.Messag
 	}
 	channelID := &id.ID{}
 	copy(channelID[:], newMessage.ChannelID)
+	if checkZero(messageID.Bytes()) {
+		jww.FATAL.Panicf("Empty message ID is impossible!")
+	}
 	go w.receivedMessageCB(uuid, channelID)
 }
 
