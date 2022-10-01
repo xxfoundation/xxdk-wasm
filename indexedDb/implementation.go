@@ -11,6 +11,7 @@ package indexedDb
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"sync"
 	"syscall/js"
@@ -154,27 +155,29 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	status channels.SentStatus) uint64 {
 	parentErr := errors.New("failed to ReceiveMessage")
 
-	uuid, err := w.receiveHelper(buildMessage(channelID.Marshal(),
+	msgToInsert := buildMessage(channelID.Marshal(),
 		messageID.Bytes(), nil, nickname, text, identity,
-		timestamp, lease, status))
+		timestamp, lease, status)
+
+	// Attempt a lookup on the MessageID if it is non-zero to find
+	// an existing entry for it. This occurs any time a sender
+	// receives their own message from the mixnet.
+	if !messageID.Equals(cryptoChannel.MessageID{}) {
+		uuid, err := w.msgIDLookup(messageID)
+		if err != nil {
+			// NOTE: No stack is OK here
+			jww.WARN.Printf(err.Error())
+		}
+		msgToInsert.ID = uuid
+	}
+
+	uuid, err := w.receiveHelper(msgToInsert)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
 	}
 
-	if checkZero(messageID.Bytes()) {
-		jww.FATAL.Panicf("Empty message ID is impossible!")
-	}
 	go w.receivedMessageCB(uuid, channelID)
 	return uuid
-}
-
-func checkZero(b []byte) bool {
-	for i := 0; i < len(b); i++ {
-		if b[i] != 0 {
-			return false
-		}
-	}
-	return true
 }
 
 // ReceiveReply is called whenever a message is received that is a reply on a
@@ -195,9 +198,6 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 		timestamp, lease, status))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
-	}
-	if checkZero(messageID.Bytes()) {
-		jww.FATAL.Panicf("Empty message ID is impossible!")
 	}
 	go w.receivedMessageCB(uuid, channelID)
 	return uuid
@@ -221,15 +221,13 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID cryptoChannel.Me
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
 	}
-	if checkZero(messageID.Bytes()) {
-		jww.FATAL.Panicf("Empty message ID is impossible!")
-	}
 	go w.receivedMessageCB(uuid, channelID)
 	return uuid
 }
 
-// UpdateSentStatus is called whenever the [channels.SentStatus] of a message
-// has changed.
+// UpdateSentStatus is called whenever the [channels.SentStatus] of a
+// message has changed. At this point the message ID goes from
+// empty/unknown to populated.
 // TODO: Potential race condition due to separate get/update operations.
 func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.MessageID,
 	timestamp time.Time, round rounds.Round, status channels.SentStatus) {
@@ -257,6 +255,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.Messag
 		return
 	}
 	newMessage.Status = uint8(status)
+	newMessage.MessageID = messageID.Bytes()
 
 	// Store the updated Message
 	_, err = w.receiveHelper(newMessage)
@@ -265,9 +264,6 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.Messag
 	}
 	channelID := &id.ID{}
 	copy(channelID[:], newMessage.ChannelID)
-	if checkZero(messageID.Bytes()) {
-		jww.FATAL.Panicf("Empty message ID is impossible!")
-	}
 	go w.receivedMessageCB(uuid, channelID)
 }
 
@@ -316,7 +312,7 @@ func (w *wasmModel) receiveHelper(newMessage *Message) (uint64,
 
 	// NOTE: This is weird, but correct. When the "ID" field is 0, we
 	// unset it from the JSValue so that it is auto-populated and
-	// incremented
+	// incremented.
 	if newMessage.ID == 0 {
 		messageObj.JSValue().Delete("id")
 	}
@@ -391,6 +387,56 @@ func (w *wasmModel) get(objectStoreName string, key js.Value) (string, error) {
 	resultStr := utils.JsToJson(resultObj)
 	jww.DEBUG.Printf("Got from %s/%s: %s", objectStoreName, key, resultStr)
 	return resultStr, nil
+}
+
+func (w *wasmModel) msgIDLookup(messageID cryptoChannel.MessageID) (uint64,
+	error) {
+	parentErr := errors.Errorf("failed to get %s/%s", messageStoreName,
+		messageID)
+
+	// Prepare the Transaction
+	txn, err := w.db.Transaction(idb.TransactionReadOnly, messageStoreName)
+	if err != nil {
+		return 0, errors.WithMessagef(parentErr,
+			"Unable to create Transaction: %+v", err)
+	}
+	store, err := txn.ObjectStore(messageStoreName)
+	if err != nil {
+		return 0, errors.WithMessagef(parentErr,
+			"Unable to get ObjectStore: %+v", err)
+	}
+	idx, err := store.Index(messageStoreMessageIndex)
+	if err != nil {
+		return 0, errors.WithMessagef(parentErr,
+			"Unable to get index: %+v", err)
+	}
+
+	msgIDStr := base64.StdEncoding.EncodeToString(messageID.Bytes())
+
+	keyReq, err := idx.Get(js.ValueOf(msgIDStr))
+	if err != nil {
+		return 0, errors.WithMessagef(parentErr,
+			"Unable to get keyReq: %+v", err)
+	}
+	// Wait for the operation to return
+	ctx, cancel := newContext()
+	keyObj, err := keyReq.Await(ctx)
+	cancel()
+	if err != nil {
+		return 0, errors.WithMessagef(parentErr,
+			"Unable to get from ObjectStore: %+v", err)
+	}
+
+	// Process result into string
+	resultStr := utils.JsToJson(keyObj)
+	jww.DEBUG.Printf("Index lookup of %s/%s/%s: %s", messageStoreName,
+		messageStoreMessageIndex, msgIDStr, resultStr)
+
+	uuid := uint64(0)
+	if !keyObj.IsUndefined() {
+		uuid = uint64(keyObj.Get("id").Int())
+	}
+	return uuid, nil
 }
 
 // dump returns the given [idb.ObjectStore] contents to string slice for

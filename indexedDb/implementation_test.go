@@ -129,7 +129,6 @@ func TestWasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 // Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
 func TestWasmModel_UUIDTest(t *testing.T) {
 	testString := "testHello"
-	testMsgId := channel.MakeMessageID([]byte(testString))
 	eventModel, err := newWASMModel(testString, dummyCallback)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -147,15 +146,13 @@ func TestWasmModel_UUIDTest(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		// Store a test message
-		testMsg := buildMessage([]byte(testString),
-			testMsgId.Bytes(),
-			nil, testString, testString+fmt.Sprintf("%d", i), cid,
-			time.Now(),
-			time.Second, channels.Sent)
-		uuid, err := eventModel.receiveHelper(testMsg)
-		if err != nil {
-			t.Fatalf("%+v", err)
-		}
+		channelID := id.NewIdFromBytes([]byte(testString), t)
+		msgID := channel.MessageID{}
+		copy(msgID[:], []byte(testString+fmt.Sprintf("%d", i)))
+		rnd := rounds.Round{ID: id.Round(42)}
+		uuid := eventModel.ReceiveMessage(channelID, msgID,
+			"test", testString+fmt.Sprintf("%d", i), cid, time.Now(),
+			time.Hour, rnd, channels.Sent)
 		uuids[i] = uuid
 	}
 
