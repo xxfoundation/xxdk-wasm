@@ -28,9 +28,11 @@ import (
 //  - Resolves to the JSON of the NDF ([ndf.NetworkDefinition]) (Uint8Array).
 //  - Rejected with an error if downloading fails.
 func DownloadAndVerifySignedNdfWithUrl(_ js.Value, args []js.Value) interface{} {
+	url := args[0].String()
+	cert := args[1].String()
+
 	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
-		ndf, err := bindings.DownloadAndVerifySignedNdfWithUrl(
-			args[0].String(), args[1].String())
+		ndf, err := bindings.DownloadAndVerifySignedNdfWithUrl(url, cert)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {

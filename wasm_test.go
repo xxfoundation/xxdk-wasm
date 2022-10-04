@@ -39,9 +39,9 @@ func TestPublicFunctions(t *testing.T) {
 
 		// These functions are used internally by the WASM bindings but are not
 		// exposed
-		"NewEventModel":                                  {},
-		"NewChannelsManagerGoEventModel":                 {},
-		"NewChannelsManagerGoEventModelDummyNameService": {},
+		"NewEventModel":                   {},
+		"NewChannelsManagerGoEventModel":  {},
+		"LoadChannelsManagerGoEventModel": {},
 	}
 	wasmFuncs := getPublicFunctions("wasm", t)
 	bindingsFuncs := getPublicFunctions(

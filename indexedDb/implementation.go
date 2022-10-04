@@ -13,12 +13,14 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"sync"
+	"syscall/js"
+	"time"
+
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
-	"syscall/js"
-	"time"
 
 	"gitlab.com/elixxir/client/channels"
 	"gitlab.com/elixxir/client/cmix/rounds"
@@ -35,7 +37,9 @@ const dbTimeout = time.Second
 // system passed an object that adheres to in order to get events on the
 // channel.
 type wasmModel struct {
-	db *idb.Database
+	db                *idb.Database
+	receivedMessageCB MessageReceivedCallback
+	updateMux         sync.Mutex
 }
 
 // newContext builds a context for database operations.
@@ -49,7 +53,7 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 
 	// Build object
 	newChannel := Channel{
-		Id:          channel.ReceptionID.Marshal(),
+		ID:          channel.ReceptionID.Marshal(),
 		Name:        channel.Name,
 		Description: channel.Description,
 	}
@@ -83,7 +87,7 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 	}
 
 	// Perform the operation
-	_, err = store.Add(channelObj)
+	_, err = store.Put(channelObj)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to Add Channel: %+v", err))
@@ -145,16 +149,32 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 // It may be called multiple times on the same message; it is incumbent on the
 // user of the API to filter such called by message ID.
 func (w *wasmModel) ReceiveMessage(channelID *id.ID,
-	messageID cryptoChannel.MessageID, senderUsername string, text string,
-	timestamp time.Time, lease time.Duration, _ rounds.Round,
-	status channels.SentStatus) {
-	parentErr := errors.New("failed to ReceiveMessage")
+	messageID cryptoChannel.MessageID, nickname, text string,
+	identity cryptoChannel.Identity, timestamp time.Time, lease time.Duration,
+	round rounds.Round, mType channels.MessageType,
+	status channels.SentStatus) uint64 {
 
-	err := w.receiveHelper(buildMessage(channelID.Marshal(), messageID.Bytes(),
-		nil, senderUsername, text, timestamp, lease, status))
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
+	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(), nil,
+		nickname, text, identity, timestamp, lease, round.ID, mType, status)
+
+	// Attempt a lookup on the MessageID if it is non-zero to find an existing
+	// entry for it. This occurs any time a sender receives their own message
+	// from the mixnet.
+	if !messageID.Equals(cryptoChannel.MessageID{}) {
+		uuid, err := w.msgIDLookup(messageID)
+		if err != nil {
+			// message is already in the database, no insert necessary
+			return uuid
+		}
 	}
+
+	uuid, err := w.receiveHelper(msgToInsert)
+	if err != nil {
+		jww.ERROR.Printf("Failed to receiver message: %+v", err)
+	}
+
+	go w.receivedMessageCB(uuid, channelID, false)
+	return uuid
 }
 
 // ReceiveReply is called whenever a message is received that is a reply on a
@@ -165,15 +185,32 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 // the initial message. As a result, it may be important to buffer replies.
 func (w *wasmModel) ReceiveReply(channelID *id.ID,
 	messageID cryptoChannel.MessageID, replyTo cryptoChannel.MessageID,
-	senderUsername string, text string, timestamp time.Time,
-	lease time.Duration, _ rounds.Round, status channels.SentStatus) {
-	parentErr := errors.New("failed to ReceiveReply")
+	nickname, text string, identity cryptoChannel.Identity, timestamp time.Time,
+	lease time.Duration, round rounds.Round, mType channels.MessageType,
+	status channels.SentStatus) uint64 {
 
-	err := w.receiveHelper(buildMessage(channelID.Marshal(), messageID.Bytes(),
-		replyTo.Bytes(), senderUsername, text, timestamp, lease, status))
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
+	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
+		replyTo.Bytes(), nickname, text, identity, timestamp, lease, round.ID,
+		mType, status)
+
+	// Attempt a lookup on the MessageID if it is non-zero to find an existing
+	// entry for it. This occurs any time a sender receives their own message
+	// from the mixnet.
+	if !messageID.Equals(cryptoChannel.MessageID{}) {
+		uuid, err := w.msgIDLookup(messageID)
+		if err != nil {
+			// message is already in the database, no insert necessary
+			return uuid
+		}
 	}
+
+	uuid, err := w.receiveHelper(msgToInsert)
+
+	if err != nil {
+		jww.ERROR.Printf("Failed to receive reply: %+v", err)
+	}
+	go w.receivedMessageCB(uuid, channelID, false)
+	return uuid
 }
 
 // ReceiveReaction is called whenever a reaction to a message is received on a
@@ -184,26 +221,50 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 // the initial message. As a result, it may be important to buffer reactions.
 func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 	messageID cryptoChannel.MessageID, reactionTo cryptoChannel.MessageID,
-	senderUsername string, reaction string, timestamp time.Time,
-	lease time.Duration, _ rounds.Round, status channels.SentStatus) {
-	parentErr := errors.New("failed to ReceiveReaction")
+	nickname, reaction string, identity cryptoChannel.Identity,
+	timestamp time.Time, lease time.Duration, round rounds.Round,
+	mType channels.MessageType, status channels.SentStatus) uint64 {
 
-	err := w.receiveHelper(buildMessage(channelID.Marshal(), messageID.Bytes(),
-		reactionTo.Bytes(), senderUsername, reaction, timestamp, lease, status))
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
+	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
+		reactionTo.Bytes(), nickname, reaction, identity, timestamp, lease,
+		round.ID, mType, status)
+
+	// Attempt a lookup on the MessageID if it is non-zero to find
+	// an existing entry for it. This occurs any time a sender
+	// receives their own message from the mixnet.
+	if !messageID.Equals(cryptoChannel.MessageID{}) {
+		uuid, err := w.msgIDLookup(messageID)
+		if err != nil {
+			// message is already in the database, no insert necessary
+			return uuid
+		}
 	}
+
+	uuid, err := w.receiveHelper(msgToInsert)
+	if err != nil {
+		jww.ERROR.Printf("Failed to receive reaction: %+v", err)
+	}
+	go w.receivedMessageCB(uuid, channelID, false)
+	return uuid
 }
 
 // UpdateSentStatus is called whenever the [channels.SentStatus] of a message
-// has changed.
+// has changed. At this point the message ID goes from empty/unknown to
+// populated.
+//
 // TODO: Potential race condition due to separate get/update operations.
-func (w *wasmModel) UpdateSentStatus(messageID cryptoChannel.MessageID,
-	status channels.SentStatus) {
+func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.MessageID,
+	timestamp time.Time, round rounds.Round, status channels.SentStatus) {
 	parentErr := errors.New("failed to UpdateSentStatus")
 
+	// FIXME: this is a bit of race condition without the mux.
+	//        This should be done via the transactions (i.e., make a
+	//        special version of receiveHelper)
+	w.updateMux.Lock()
+	defer w.updateMux.Unlock()
+
 	// Convert messageID to the key generated by json.Marshal
-	key := js.ValueOf(base64.StdEncoding.EncodeToString(messageID[:]))
+	key := js.ValueOf(uuid)
 
 	// Use the key to get the existing Message
 	currentMsg, err := w.get(messageStoreName, key)
@@ -218,59 +279,95 @@ func (w *wasmModel) UpdateSentStatus(messageID cryptoChannel.MessageID,
 		return
 	}
 	newMessage.Status = uint8(status)
+	if !messageID.Equals(cryptoChannel.MessageID{}) {
+		newMessage.MessageID = messageID.Bytes()
+	}
+
+	if round.ID == 0 {
+		newMessage.Round = uint64(round.ID)
+	}
+
+	if !timestamp.Equal(time.Time{}) {
+		newMessage.Timestamp = timestamp
+	}
 
 	// Store the updated Message
-	err = w.receiveHelper(newMessage)
+	_, err = w.receiveHelper(newMessage)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
 	}
+	channelID := &id.ID{}
+	copy(channelID[:], newMessage.ChannelID)
+	go w.receivedMessageCB(uuid, channelID, true)
 }
 
 // buildMessage is a private helper that converts typical [channels.EventModel]
 // inputs into a basic Message structure for insertion into storage.
-func buildMessage(channelID, messageID, parentId []byte, senderUsername,
-	text string, timestamp time.Time, lease time.Duration,
+// NOTE: ID is not set inside this function because we want to use the
+//       autoincrement key by default. If you are trying to overwrite
+//       an existing message, then you need to set it manually
+//       yourself.
+func buildMessage(channelID, messageID, parentID []byte, nickname, text string,
+	identity cryptoChannel.Identity, timestamp time.Time, lease time.Duration,
+	round id.Round, mType channels.MessageType,
 	status channels.SentStatus) *Message {
 	return &Message{
-		Id:              messageID,
-		SenderUsername:  senderUsername,
-		ChannelId:       channelID,
-		ParentMessageId: parentId,
+		MessageID:       messageID,
+		Nickname:        nickname,
+		ChannelID:       channelID,
+		ParentMessageID: parentID,
 		Timestamp:       timestamp,
 		Lease:           lease,
 		Status:          uint8(status),
 		Hidden:          false,
 		Pinned:          false,
 		Text:            text,
+		Type:            uint16(mType),
+		Round:           uint64(round),
+		// User Identity Info
+		Pubkey:         identity.PubKey,
+		Codename:       identity.Codename,
+		Color:          identity.Color,
+		Extension:      identity.Extension,
+		CodesetVersion: identity.CodesetVersion,
 	}
 }
 
 // receiveHelper is a private helper for receiving any sort of message.
-func (w *wasmModel) receiveHelper(newMessage *Message) error {
+func (w *wasmModel) receiveHelper(newMessage *Message) (uint64,
+	error) {
 	// Convert to jsObject
 	newMessageJson, err := json.Marshal(newMessage)
 	if err != nil {
-		return errors.Errorf("Unable to marshal Message: %+v", err)
+		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
 	}
 	messageObj, err := utils.JsonToJS(newMessageJson)
 	if err != nil {
-		return errors.Errorf("Unable to marshal Message: %+v", err)
+		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
+	}
+
+	// NOTE: This is weird, but correct. When the "ID" field is 0, we
+	// unset it from the JSValue so that it is auto-populated and
+	// incremented.
+	if newMessage.ID == 0 {
+		messageObj.JSValue().Delete("id")
 	}
 
 	// Prepare the Transaction
 	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
 	if err != nil {
-		return errors.Errorf("Unable to create Transaction: %+v", err)
+		return 0, errors.Errorf("Unable to create Transaction: %+v",
+			err)
 	}
 	store, err := txn.ObjectStore(messageStoreName)
 	if err != nil {
-		return errors.Errorf("Unable to get ObjectStore: %+v", err)
+		return 0, errors.Errorf("Unable to get ObjectStore: %+v", err)
 	}
 
 	// Perform the upsert (put) operation
-	_, err = store.Put(messageObj)
+	addReq, err := store.Put(messageObj)
 	if err != nil {
-		return errors.Errorf("Unable to upsert Message: %+v", err)
+		return 0, errors.Errorf("Unable to upsert Message: %+v", err)
 	}
 
 	// Wait for the operation to return
@@ -278,11 +375,15 @@ func (w *wasmModel) receiveHelper(newMessage *Message) error {
 	err = txn.Await(ctx)
 	cancel()
 	if err != nil {
-		return errors.Errorf("Upserting Message failed: %+v", err)
+		return 0, errors.Errorf("Upserting Message failed: %+v", err)
 	}
+	res, _ := addReq.Result()
+	uuid := uint64(res.Int())
 	jww.DEBUG.Printf(
-		"Successfully stored message from %s", newMessage.SenderUsername)
-	return nil
+		"Successfully stored message from %s, id %d",
+		newMessage.Codename, uuid)
+
+	return uuid, nil
 }
 
 // get is a generic private helper for getting values from the given
@@ -324,6 +425,56 @@ func (w *wasmModel) get(objectStoreName string, key js.Value) (string, error) {
 	return resultStr, nil
 }
 
+func (w *wasmModel) msgIDLookup(messageID cryptoChannel.MessageID) (uint64,
+	error) {
+	parentErr := errors.Errorf("failed to get %s/%s", messageStoreName,
+		messageID)
+
+	// Prepare the Transaction
+	txn, err := w.db.Transaction(idb.TransactionReadOnly, messageStoreName)
+	if err != nil {
+		return 0, errors.WithMessagef(parentErr,
+			"Unable to create Transaction: %+v", err)
+	}
+	store, err := txn.ObjectStore(messageStoreName)
+	if err != nil {
+		return 0, errors.WithMessagef(parentErr,
+			"Unable to get ObjectStore: %+v", err)
+	}
+	idx, err := store.Index(messageStoreMessageIndex)
+	if err != nil {
+		return 0, errors.WithMessagef(parentErr,
+			"Unable to get index: %+v", err)
+	}
+
+	msgIDStr := base64.StdEncoding.EncodeToString(messageID.Bytes())
+
+	keyReq, err := idx.Get(js.ValueOf(msgIDStr))
+	if err != nil {
+		return 0, errors.WithMessagef(parentErr,
+			"Unable to get keyReq: %+v", err)
+	}
+	// Wait for the operation to return
+	ctx, cancel := newContext()
+	keyObj, err := keyReq.Await(ctx)
+	cancel()
+	if err != nil {
+		return 0, errors.WithMessagef(parentErr,
+			"Unable to get from ObjectStore: %+v", err)
+	}
+
+	// Process result into string
+	resultStr := utils.JsToJson(keyObj)
+	jww.DEBUG.Printf("Index lookup of %s/%s/%s: %s", messageStoreName,
+		messageStoreMessageIndex, msgIDStr, resultStr)
+
+	uuid := uint64(0)
+	if !keyObj.IsUndefined() {
+		uuid = uint64(keyObj.Get("id").Int())
+	}
+	return uuid, nil
+}
+
 // dump returns the given [idb.ObjectStore] contents to string slice for
 // debugging purposes.
 func (w *wasmModel) dump(objectStoreName string) ([]string, error) {
@@ -349,16 +500,17 @@ func (w *wasmModel) dump(objectStoreName string) ([]string, error) {
 	jww.DEBUG.Printf("%s values:", objectStoreName)
 	results := make([]string, 0)
 	ctx, cancel := newContext()
-	err = cursorRequest.Iter(ctx, func(cursor *idb.CursorWithValue) error {
-		value, err := cursor.Value()
-		if err != nil {
-			return err
-		}
-		valueStr := utils.JsToJson(value)
-		results = append(results, valueStr)
-		jww.DEBUG.Printf("- %v", valueStr)
-		return nil
-	})
+	err = cursorRequest.Iter(ctx,
+		func(cursor *idb.CursorWithValue) error {
+			value, err := cursor.Value()
+			if err != nil {
+				return err
+			}
+			valueStr := utils.JsToJson(value)
+			results = append(results, valueStr)
+			jww.DEBUG.Printf("- %v", valueStr)
+			return nil
+		})
 	cancel()
 	if err != nil {
 		return nil, errors.WithMessagef(parentErr,

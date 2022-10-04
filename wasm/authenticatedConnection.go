@@ -68,10 +68,11 @@ func (ac *AuthenticatedConnection) GetId(js.Value, []js.Value) interface{} {
 //    [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //  - Rejected with an error if sending fails.
 func (ac *AuthenticatedConnection) SendE2E(_ js.Value, args []js.Value) interface{} {
-	payload := utils.CopyBytesToGo(args[2])
+	mt := args[0].Int()
+	payload := utils.CopyBytesToGo(args[1])
 
 	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
-		sendReport, err := ac.api.SendE2E(args[0].Int(), payload)
+		sendReport, err := ac.api.SendE2E(mt, payload)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -135,12 +136,13 @@ func (ac *AuthenticatedConnection) RegisterListener(
 //  - Resolves to a Javascript representation of the [Connection] object.
 //  - Rejected with an error if loading the parameters or connecting fails.
 func (c *Cmix) ConnectWithAuthentication(_ js.Value, args []js.Value) interface{} {
+	e2eID := args[0].Int()
 	recipientContact := utils.CopyBytesToGo(args[1])
 	e2eParamsJSON := utils.CopyBytesToGo(args[2])
 
 	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
 		ac, err := c.api.ConnectWithAuthentication(
-			args[0].Int(), recipientContact, e2eParamsJSON)
+			e2eID, recipientContact, e2eParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {

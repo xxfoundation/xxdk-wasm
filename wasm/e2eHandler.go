@@ -170,13 +170,13 @@ func (e *E2e) RemoveService(_ js.Value, args []js.Value) interface{} {
 //    into [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //  - Rejected with an error if sending fails.
 func (e *E2e) SendE2E(_ js.Value, args []js.Value) interface{} {
+	mt := args[0].Int()
 	recipientId := utils.CopyBytesToGo(args[1])
 	payload := utils.CopyBytesToGo(args[2])
 	e2eParams := utils.CopyBytesToGo(args[3])
 
 	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
-		sendReport, err := e.api.SendE2E(
-			args[0].Int(), recipientId, payload, e2eParams)
+		sendReport, err := e.api.SendE2E(mt, recipientId, payload, e2eParams)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {

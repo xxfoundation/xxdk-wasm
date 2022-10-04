@@ -113,8 +113,9 @@ func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) interface{} {
 //    into [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //  - Rejected with an error if resending the request fails.
 func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) interface{} {
+	groupId := utils.CopyBytesToGo(args[0])
 	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
-		sendReport, err := g.api.ResendRequest(utils.CopyBytesToGo(args[0]))
+		sendReport, err := g.api.ResendRequest(groupId)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -181,9 +182,10 @@ func (g *GroupChat) LeaveGroup(_ js.Value, args []js.Value) interface{} {
 func (g *GroupChat) Send(_ js.Value, args []js.Value) interface{} {
 	groupId := utils.CopyBytesToGo(args[0])
 	message := utils.CopyBytesToGo(args[1])
+	tag := args[2].String()
 
 	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
-		sendReport, err := g.api.Send(groupId, message, args[2].String())
+		sendReport, err := g.api.Send(groupId, message, tag)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
