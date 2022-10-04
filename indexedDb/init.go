@@ -31,7 +31,8 @@ const (
 )
 
 // MessageReceivedCallback is called any time a message is received or updated
-type MessageReceivedCallback func(uuid uint64, channelID *id.ID)
+// update is true if the row is old and was edited
+type MessageReceivedCallback func(uuid uint64, channelID *id.ID, update bool)
 
 // NewWASMEventModelBuilder returns an EventModelBuilder which allows
 // the channel manager to define the path but the callback is the same
