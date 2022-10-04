@@ -58,8 +58,10 @@ type Message struct {
 	Hidden          bool          `json:"hidden"`
 	Pinned          bool          `json:"pinned"` // Index
 	Text            string        `json:"text"`
+	Type            uint16        `json:"type"`
+	Round           uint64        `json:"round"`
 
-	// User cryptographic IDentity struct -- could be pulled out
+	// User cryptographic Identity struct -- could be pulled out
 	Pubkey []byte `json:"pubkey"` // Index
 	// Honorific      string `json:"honorific"`
 	// Adjective      string `json:"adjective"`

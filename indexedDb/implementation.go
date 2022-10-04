@@ -149,34 +149,31 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 // It may be called multiple times on the same message; it is incumbent on the
 // user of the API to filter such called by message ID.
 func (w *wasmModel) ReceiveMessage(channelID *id.ID,
-	messageID cryptoChannel.MessageID,
-	nickname, text string, identity cryptoChannel.Identity,
-	timestamp time.Time, lease time.Duration, round rounds.Round,
+	messageID cryptoChannel.MessageID, nickname, text string,
+	identity cryptoChannel.Identity, timestamp time.Time, lease time.Duration,
+	round rounds.Round, mType channels.MessageType,
 	status channels.SentStatus) uint64 {
-	parentErr := errors.New("failed to ReceiveMessage")
 
-	msgToInsert := buildMessage(channelID.Marshal(),
-		messageID.Bytes(), nil, nickname, text, identity,
-		timestamp, lease, status)
+	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(), nil,
+		nickname, text, identity, timestamp, lease, round.ID, mType, status)
 
-	// Attempt a lookup on the MessageID if it is non-zero to find
-	// an existing entry for it. This occurs any time a sender
-	// receives their own message from the mixnet.
+	// Attempt a lookup on the MessageID if it is non-zero to find an existing
+	// entry for it. This occurs any time a sender receives their own message
+	// from the mixnet.
 	if !messageID.Equals(cryptoChannel.MessageID{}) {
 		uuid, err := w.msgIDLookup(messageID)
 		if err != nil {
-			// NOTE: No stack is OK here
-			jww.WARN.Printf(err.Error())
+			// message is already in the database, no insert necessary
+			return uuid
 		}
-		msgToInsert.ID = uuid
 	}
 
 	uuid, err := w.receiveHelper(msgToInsert)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
+		jww.ERROR.Printf("Failed to receiver message: %+v", err)
 	}
 
-	go w.receivedMessageCB(uuid, channelID)
+	go w.receivedMessageCB(uuid, channelID, false)
 	return uuid
 }
 
@@ -187,19 +184,32 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 // Messages may arrive our of order, so a reply, in theory, can arrive before
 // the initial message. As a result, it may be important to buffer replies.
 func (w *wasmModel) ReceiveReply(channelID *id.ID,
-	messageID cryptoChannel.MessageID,
-	replyTo cryptoChannel.MessageID, nickname, text string,
-	identity cryptoChannel.Identity, timestamp time.Time,
-	lease time.Duration, round rounds.Round, status channels.SentStatus) uint64 {
-	parentErr := errors.New("failed to ReceiveReply")
+	messageID cryptoChannel.MessageID, replyTo cryptoChannel.MessageID,
+	nickname, text string, identity cryptoChannel.Identity, timestamp time.Time,
+	lease time.Duration, round rounds.Round, mType channels.MessageType,
+	status channels.SentStatus) uint64 {
 
-	uuid, err := w.receiveHelper(buildMessage(channelID.Marshal(),
-		messageID.Bytes(), replyTo.Bytes(), nickname, text, identity,
-		timestamp, lease, status))
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
+	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
+		replyTo.Bytes(), nickname, text, identity, timestamp, lease, round.ID,
+		mType, status)
+
+	// Attempt a lookup on the MessageID if it is non-zero to find an existing
+	// entry for it. This occurs any time a sender receives their own message
+	// from the mixnet.
+	if !messageID.Equals(cryptoChannel.MessageID{}) {
+		uuid, err := w.msgIDLookup(messageID)
+		if err != nil {
+			// message is already in the database, no insert necessary
+			return uuid
+		}
 	}
-	go w.receivedMessageCB(uuid, channelID)
+
+	uuid, err := w.receiveHelper(msgToInsert)
+
+	if err != nil {
+		jww.ERROR.Printf("Failed to receive reply: %+v", err)
+	}
+	go w.receivedMessageCB(uuid, channelID, false)
 	return uuid
 }
 
@@ -209,25 +219,39 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 //
 // Messages may arrive our of order, so a reply, in theory, can arrive before
 // the initial message. As a result, it may be important to buffer reactions.
-func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID cryptoChannel.MessageID,
-	reactionTo cryptoChannel.MessageID, nickname, reaction string,
-	identity cryptoChannel.Identity, timestamp time.Time,
-	lease time.Duration, round rounds.Round, status channels.SentStatus) uint64 {
-	parentErr := errors.New("failed to ReceiveReaction")
+func (w *wasmModel) ReceiveReaction(channelID *id.ID,
+	messageID cryptoChannel.MessageID, reactionTo cryptoChannel.MessageID,
+	nickname, reaction string, identity cryptoChannel.Identity,
+	timestamp time.Time, lease time.Duration, round rounds.Round,
+	mType channels.MessageType, status channels.SentStatus) uint64 {
 
-	uuid, err := w.receiveHelper(buildMessage(channelID.Marshal(),
-		messageID.Bytes(), reactionTo.Bytes(), nickname, reaction,
-		identity, timestamp, lease, status))
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
+	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
+		reactionTo.Bytes(), nickname, reaction, identity, timestamp, lease,
+		round.ID, mType, status)
+
+	// Attempt a lookup on the MessageID if it is non-zero to find
+	// an existing entry for it. This occurs any time a sender
+	// receives their own message from the mixnet.
+	if !messageID.Equals(cryptoChannel.MessageID{}) {
+		uuid, err := w.msgIDLookup(messageID)
+		if err != nil {
+			// message is already in the database, no insert necessary
+			return uuid
+		}
 	}
-	go w.receivedMessageCB(uuid, channelID)
+
+	uuid, err := w.receiveHelper(msgToInsert)
+	if err != nil {
+		jww.ERROR.Printf("Failed to receive reaction: %+v", err)
+	}
+	go w.receivedMessageCB(uuid, channelID, false)
 	return uuid
 }
 
-// UpdateSentStatus is called whenever the [channels.SentStatus] of a
-// message has changed. At this point the message ID goes from
-// empty/unknown to populated.
+// UpdateSentStatus is called whenever the [channels.SentStatus] of a message
+// has changed. At this point the message ID goes from empty/unknown to
+// populated.
+//
 // TODO: Potential race condition due to separate get/update operations.
 func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.MessageID,
 	timestamp time.Time, round rounds.Round, status channels.SentStatus) {
@@ -255,7 +279,17 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.Messag
 		return
 	}
 	newMessage.Status = uint8(status)
-	newMessage.MessageID = messageID.Bytes()
+	if !messageID.Equals(cryptoChannel.MessageID{}) {
+		newMessage.MessageID = messageID.Bytes()
+	}
+
+	if round.ID == 0 {
+		newMessage.Round = uint64(round.ID)
+	}
+
+	if !timestamp.Equal(time.Time{}) {
+		newMessage.Timestamp = timestamp
+	}
 
 	// Store the updated Message
 	_, err = w.receiveHelper(newMessage)
@@ -264,7 +298,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.Messag
 	}
 	channelID := &id.ID{}
 	copy(channelID[:], newMessage.ChannelID)
-	go w.receivedMessageCB(uuid, channelID)
+	go w.receivedMessageCB(uuid, channelID, true)
 }
 
 // buildMessage is a private helper that converts typical [channels.EventModel]
@@ -273,9 +307,9 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.Messag
 //       autoincrement key by default. If you are trying to overwrite
 //       an existing message, then you need to set it manually
 //       yourself.
-func buildMessage(channelID, messageID, parentID []byte, nickname,
-	text string, identity cryptoChannel.Identity, timestamp time.Time,
-	lease time.Duration,
+func buildMessage(channelID, messageID, parentID []byte, nickname, text string,
+	identity cryptoChannel.Identity, timestamp time.Time, lease time.Duration,
+	round id.Round, mType channels.MessageType,
 	status channels.SentStatus) *Message {
 	return &Message{
 		MessageID:       messageID,
@@ -288,8 +322,10 @@ func buildMessage(channelID, messageID, parentID []byte, nickname,
 		Hidden:          false,
 		Pinned:          false,
 		Text:            text,
+		Type:            uint16(mType),
+		Round:           uint64(round),
 		// User Identity Info
-		Pubkey:         []byte(identity.PubKey),
+		Pubkey:         identity.PubKey,
 		Codename:       identity.Codename,
 		Color:          identity.Color,
 		Extension:      identity.Extension,
