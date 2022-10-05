@@ -110,8 +110,11 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 	parentErr := errors.New("failed to LeaveChannel")
 
+	channelIDVal := js.ValueOf(channelID.String())
+
 	// Prepare the Transaction
-	txn, err := w.db.Transaction(idb.TransactionReadWrite, channelsStoreName)
+	txn, err := w.db.Transaction(idb.TransactionReadWrite,
+		channelsStoreName)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to create Transaction: %+v", err))
@@ -124,8 +127,42 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 		return
 	}
 
-	// Perform the operation
-	_, err = store.Delete(js.ValueOf(channelID.String()))
+	// Delete all messages associated with this channel in the message store
+	msgStore, err := txn.ObjectStore(messageStoreName)
+	if err != nil {
+		jww.ERROR.Printf("Unable to get message ObjectStore: %+v", err)
+		return
+	}
+	idx, err := msgStore.Index(messageStoreChannelIndex)
+	if err != nil {
+		jww.ERROR.Printf("Unable to get index: %+v", err)
+	}
+	cursorRequest, err := idx.OpenCursorKey(channelIDVal,
+		idb.CursorNext)
+	if err != nil {
+		jww.ERROR.Printf("Unable to open Cursor: %+v", err)
+		return
+	}
+	ctx, cancel := newContext()
+	err = cursorRequest.Iter(ctx,
+		func(cursor *idb.CursorWithValue) error {
+			value, err := cursor.Value()
+			if err != nil {
+				return err
+			}
+			valueStr := utils.JsToJson(value)
+			jww.DEBUG.Printf("DELETE: %v", valueStr)
+			_, err = cursor.Delete()
+			return err
+		})
+	cancel()
+	if err != nil {
+		jww.ERROR.Printf("Unable to dump ObjectStore: %+v", err)
+		return
+	}
+
+	// Delete the entry in the channel store for this channel id
+	_, err = store.Delete(channelIDVal)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to Delete Channel: %+v", err))
@@ -133,7 +170,7 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 	}
 
 	// Wait for the operation to return
-	ctx, cancel := newContext()
+	ctx, cancel = newContext()
 	err = txn.Await(ctx)
 	cancel()
 	if err != nil {

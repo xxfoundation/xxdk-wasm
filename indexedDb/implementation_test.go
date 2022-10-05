@@ -122,7 +122,7 @@ func TestWasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	if len(results) != 1 {
-		t.Fatalf("Expected 1 channels to exist")
+		t.Fatalf("Expected 1 channels to exist, got %d", len(results))
 	}
 }
 
