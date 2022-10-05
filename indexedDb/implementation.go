@@ -382,7 +382,14 @@ func (w *wasmModel) receiveHelper(newMessage *Message) (uint64,
 	err = txn.Await(ctx)
 	cancel()
 	if err != nil {
-		return 0, errors.Errorf("Upserting Message failed: %+v", err)
+		err = errors.Errorf("Upserting Message failed: %+v", err)
+		msgID := cryptoChannel.MessageID{}
+		copy(msgID[:], newMessage.MessageID)
+		uuid, _ := w.msgIDLookup(msgID)
+		if uuid == 0 {
+			return uuid, nil
+		}
+		return 0, err
 	}
 	res, _ := addReq.Result()
 	uuid := uint64(res.Int())
