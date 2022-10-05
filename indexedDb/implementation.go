@@ -167,11 +167,8 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	if !messageID.Equals(cryptoChannel.MessageID{}) {
 		jww.DEBUG.Printf("non-empty messageID detected")
 		uuid, err := w.msgIDLookup(messageID)
-		if err == nil {
-			jww.DEBUG.Printf("MessageID found: %d", uuid)
-			// message is already in the database, no
-			// insert necessary
-			return uuid
+		if err == nil && uuid != 0 {
+			jww.WARN.Printf("MessageID found: %d", uuid)
 		}
 	}
 
