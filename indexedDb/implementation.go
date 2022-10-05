@@ -168,7 +168,9 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 		jww.DEBUG.Printf("non-empty messageID detected")
 		uuid, err := w.msgIDLookup(messageID)
 		if err == nil && uuid != 0 {
-			jww.WARN.Printf("MessageID found: %d", uuid)
+			jww.WARN.Printf("found MessageID, will upsert: %d",
+				uuid)
+			msgToInsert.ID = uuid
 		}
 	}
 
