@@ -102,8 +102,13 @@ func v1Upgrade(db *idb.Database) error {
 	if err != nil {
 		return err
 	}
+
+	messageStoreMessageIndexOpts := idb.IndexOptions{
+		Unique:     true,
+		MultiEntry: false,
+	}
 	_, err = messageStore.CreateIndex(messageStoreMessageIndex,
-		js.ValueOf(messageStoreMessage), indexOpts)
+		js.ValueOf(messageStoreMessage), messageStoreMessageIndexOpts)
 	if err != nil {
 		return err
 	}
