@@ -87,6 +87,8 @@ github.com/aws/aws-sdk-go v1.27.0/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
 github.com/badoux/checkmail v1.2.1 h1:TzwYx5pnsV6anJweMx2auXdekBwGr/yt1GgalIx9nBQ=
 github.com/badoux/checkmail v1.2.1/go.mod h1:XroCOBU5zzZJcLvgwU15I+2xXyCdTWXyR9MGfRhBYy0=
+github.com/beevik/ntp v0.3.0 h1:xzVrPrE4ziasFXgBVBZJDP0Wg/KpMwk2KHJ4Ba8GrDw=
+github.com/beevik/ntp v0.3.0/go.mod h1:hIHWr+l3+/clUnF44zdK+CWW7fO8dR5cIylAQ76NRpg=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
@@ -632,6 +634,8 @@ gitlab.com/elixxir/client v1.5.1-0.20221004163122-5a4635dce0fa h1:sjZ+73Jesh/wU0
 gitlab.com/elixxir/client v1.5.1-0.20221004163122-5a4635dce0fa/go.mod h1:wuTIcLuMnvIGSo8i/Gg/SbYF57bE+CbKPpA1Xbk2AKk=
 gitlab.com/elixxir/client v1.5.1-0.20221005170957-7bd7001c3f39 h1:KDgJOCkKwKQBBDM6q9MF3OBNkr0Y7h/YEcgX8OH/Chg=
 gitlab.com/elixxir/client v1.5.1-0.20221005170957-7bd7001c3f39/go.mod h1:wuTIcLuMnvIGSo8i/Gg/SbYF57bE+CbKPpA1Xbk2AKk=
+gitlab.com/elixxir/client v1.5.1-0.20221005222316-6aad5ef9fb23 h1:wRXqIMw7EzJMWxmi3XbX9m9jDR/gtNF+pTirCd4Sdsk=
+gitlab.com/elixxir/client v1.5.1-0.20221005222316-6aad5ef9fb23/go.mod h1:2lMkL4403zPYS3ndydbe4iqxI1BXpwjKNlJd4G/jjf8=
 gitlab.com/elixxir/comms v0.0.4-0.20220916185715-f1e9a5eda939 h1:+VRx2ULHKs040bBhDAOKNCZnbcXxUk3jD9JoKQzQpLk=
 gitlab.com/elixxir/comms v0.0.4-0.20220916185715-f1e9a5eda939/go.mod h1:AO6XkMhaHJW8eXlgL5m3UUcJqsSP8F5Wm1GX+wyq/rw=
 gitlab.com/elixxir/crypto v0.0.0-20200804182833-984246dea2c4/go.mod h1:ucm9SFKJo+K0N2GwRRpaNr+tKXMIOVWzmyUD0SbOu2c=

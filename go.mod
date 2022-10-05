@@ -7,7 +7,7 @@ require (
 	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client v1.5.1-0.20221005170957-7bd7001c3f39
+	gitlab.com/elixxir/client v1.5.1-0.20221005222316-6aad5ef9fb23
 	gitlab.com/elixxir/crypto v0.0.7-0.20221003185354-b091598d2322
 	gitlab.com/elixxir/primitives v0.0.3-0.20220901220638-1acc75fabdc6
 	gitlab.com/xx_network/primitives v0.0.4-0.20220809193445-9fc0a5209548
@@ -17,6 +17,7 @@ require (
 	git.xx.network/elixxir/grpc-web-go-client v0.0.0-20220908170150-ef04339ffe65 // indirect
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/badoux/checkmail v1.2.1 // indirect
+	github.com/beevik/ntp v0.3.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/cloudflare/circl v1.2.0 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
