@@ -157,23 +157,6 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(), nil,
 		nickname, text, identity, timestamp, lease, round.ID, mType, status)
 
-	// Attempt a lookup on the MessageID if it is non-zero to find an existing
-	// entry for it. This occurs any time a sender receives their own message
-	// from the mixnet.
-	emptyID := cryptoChannel.MessageID{}
-	jww.DEBUG.Printf("messageID: %s, blank messageID: %s",
-		messageID.String(),
-		emptyID)
-	if !messageID.Equals(cryptoChannel.MessageID{}) {
-		jww.DEBUG.Printf("non-empty messageID detected")
-		uuid, err := w.msgIDLookup(messageID)
-		if err == nil && uuid != 0 {
-			jww.WARN.Printf("found MessageID, will upsert: %d",
-				uuid)
-			msgToInsert.ID = uuid
-		}
-	}
-
 	uuid, err := w.receiveHelper(msgToInsert)
 	if err != nil {
 		jww.ERROR.Printf("Failed to receiver message: %+v", err)
@@ -199,17 +182,6 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 		replyTo.Bytes(), nickname, text, identity, timestamp, lease, round.ID,
 		mType, status)
 
-	// Attempt a lookup on the MessageID if it is non-zero to find an existing
-	// entry for it. This occurs any time a sender receives their own message
-	// from the mixnet.
-	if !messageID.Equals(cryptoChannel.MessageID{}) {
-		uuid, err := w.msgIDLookup(messageID)
-		if err != nil {
-			// message is already in the database, no insert necessary
-			return uuid
-		}
-	}
-
 	uuid, err := w.receiveHelper(msgToInsert)
 
 	if err != nil {
@@ -234,17 +206,6 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
 		reactionTo.Bytes(), nickname, reaction, identity, timestamp, lease,
 		round.ID, mType, status)
-
-	// Attempt a lookup on the MessageID if it is non-zero to find
-	// an existing entry for it. This occurs any time a sender
-	// receives their own message from the mixnet.
-	if !messageID.Equals(cryptoChannel.MessageID{}) {
-		uuid, err := w.msgIDLookup(messageID)
-		if err == nil {
-			// message is already in the database, no insert necessary
-			return uuid
-		}
-	}
 
 	uuid, err := w.receiveHelper(msgToInsert)
 	if err != nil {
