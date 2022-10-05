@@ -167,7 +167,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	if !messageID.Equals(cryptoChannel.MessageID{}) {
 		jww.DEBUG.Printf("non-empty messageID detected")
 		uuid, err := w.msgIDLookup(messageID)
-		if err != nil {
+		if err == nil {
 			jww.DEBUG.Printf("MessageID found: %d", uuid)
 			// message is already in the database, no
 			// insert necessary
@@ -241,7 +241,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 	// receives their own message from the mixnet.
 	if !messageID.Equals(cryptoChannel.MessageID{}) {
 		uuid, err := w.msgIDLookup(messageID)
-		if err != nil {
+		if err == nil {
 			// message is already in the database, no insert necessary
 			return uuid
 		}

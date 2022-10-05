@@ -126,7 +126,7 @@ func TestWasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 	}
 }
 
-// Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
+// Test UUID gets returned when different messages are added
 func TestWasmModel_UUIDTest(t *testing.T) {
 	testString := "testHello"
 	eventModel, err := newWASMModel(testString, dummyCallback)
@@ -162,6 +162,49 @@ func TestWasmModel_UUIDTest(t *testing.T) {
 		for j := i + 1; j < 10; j++ {
 			if uuids[i] == uuids[j] {
 				t.Fatalf("uuid failed: %d[%d] == %d[%d]",
+					uuids[i], i, uuids[j], j)
+			}
+		}
+	}
+}
+
+// TestWasmModel_DuplicateReceives tests if the same message ID being sent
+// always returns the same uuid
+func TestWasmModel_DuplicateReceives(t *testing.T) {
+	testString := "testHello"
+	eventModel, err := newWASMModel(testString, dummyCallback)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	cid := channel.Identity{
+		Codename:       "codename123",
+		PubKey:         []byte{8, 6, 7, 5},
+		Color:          "#FFFFFF",
+		Extension:      "gif",
+		CodesetVersion: 0,
+	}
+
+	uuids := make([]uint64, 10)
+
+	msgID := channel.MessageID{}
+	copy(msgID[:], testString)
+	for i := 0; i < 10; i++ {
+		// Store a test message
+		channelID := id.NewIdFromBytes([]byte(testString), t)
+		rnd := rounds.Round{ID: id.Round(42)}
+		uuid := eventModel.ReceiveMessage(channelID, msgID,
+			"test", testString+fmt.Sprintf("%d", i), cid, time.Now(),
+			time.Hour, rnd, 0, channels.Sent)
+		uuids[i] = uuid
+	}
+
+	_, _ = eventModel.dump(messageStoreName)
+
+	for i := 0; i < 10; i++ {
+		for j := i + 1; j < 10; j++ {
+			if uuids[i] != uuids[j] {
+				t.Fatalf("uuid failed: %d[%d] != %d[%d]",
 					uuids[i], i, uuids[j], j)
 			}
 		}
