@@ -290,7 +290,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.Messag
 		newMessage.MessageID = messageID.Bytes()
 	}
 
-	if round.ID == 0 {
+	if round.ID != 0 {
 		newMessage.Round = uint64(round.ID)
 	}
 
