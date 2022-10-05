@@ -382,16 +382,21 @@ func (w *wasmModel) receiveHelper(newMessage *Message) (uint64,
 	err = txn.Await(ctx)
 	cancel()
 	if err != nil {
-		err = errors.Errorf("Upserting Message failed: %+v", err)
+		return 0, errors.Errorf("Upserting Message failed: %+v", err)
+	}
+	res, err := addReq.Result()
+	// NOTE: Sometimes the insert fails to return an error but hits
+	// a duplicate insert, so this fallthrough returns the uuid entry in
+	// that case.
+	if res.IsUndefined() {
 		msgID := cryptoChannel.MessageID{}
 		copy(msgID[:], newMessage.MessageID)
-		uuid, _ := w.msgIDLookup(msgID)
-		if uuid == 0 {
+		uuid, errLookup := w.msgIDLookup(msgID)
+		if uuid != 0 && errLookup == nil {
 			return uuid, nil
 		}
-		return 0, err
+		return 0, errors.Errorf("uuid lookup failure: %+v", err)
 	}
-	res, _ := addReq.Result()
 	uuid := uint64(res.Int())
 	jww.DEBUG.Printf(
 		"Successfully stored message from %s, id %d",
