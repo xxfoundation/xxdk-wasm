@@ -160,10 +160,17 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	// Attempt a lookup on the MessageID if it is non-zero to find an existing
 	// entry for it. This occurs any time a sender receives their own message
 	// from the mixnet.
+	emptyID := cryptoChannel.MessageID{}
+	jww.DEBUG.Printf("messageID: %s, blank messageID: %s",
+		messageID.String(),
+		emptyID)
 	if !messageID.Equals(cryptoChannel.MessageID{}) {
+		jww.DEBUG.Printf("non-empty messageID detected")
 		uuid, err := w.msgIDLookup(messageID)
 		if err != nil {
-			// message is already in the database, no insert necessary
+			jww.DEBUG.Printf("MessageID found: %d", uuid)
+			// message is already in the database, no
+			// insert necessary
 			return uuid
 		}
 	}
