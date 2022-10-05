@@ -160,11 +160,17 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	// Attempt a lookup on the MessageID if it is non-zero to find an existing
 	// entry for it. This occurs any time a sender receives their own message
 	// from the mixnet.
+	emptyID := cryptoChannel.MessageID{}
+	jww.DEBUG.Printf("messageID: %s, blank messageID: %s",
+		messageID.String(),
+		emptyID)
 	if !messageID.Equals(cryptoChannel.MessageID{}) {
+		jww.DEBUG.Printf("non-empty messageID detected")
 		uuid, err := w.msgIDLookup(messageID)
-		if err != nil {
-			// message is already in the database, no insert necessary
-			return uuid
+		if err == nil && uuid != 0 {
+			jww.WARN.Printf("found MessageID, will upsert: %d",
+				uuid)
+			msgToInsert.ID = uuid
 		}
 	}
 
@@ -234,7 +240,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 	// receives their own message from the mixnet.
 	if !messageID.Equals(cryptoChannel.MessageID{}) {
 		uuid, err := w.msgIDLookup(messageID)
-		if err != nil {
+		if err == nil {
 			// message is already in the database, no insert necessary
 			return uuid
 		}
@@ -283,7 +289,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.Messag
 		newMessage.MessageID = messageID.Bytes()
 	}
 
-	if round.ID == 0 {
+	if round.ID != 0 {
 		newMessage.Round = uint64(round.ID)
 	}
 
@@ -377,7 +383,19 @@ func (w *wasmModel) receiveHelper(newMessage *Message) (uint64,
 	if err != nil {
 		return 0, errors.Errorf("Upserting Message failed: %+v", err)
 	}
-	res, _ := addReq.Result()
+	res, err := addReq.Result()
+	// NOTE: Sometimes the insert fails to return an error but hits
+	// a duplicate insert, so this fallthrough returns the uuid entry in
+	// that case.
+	if res.IsUndefined() {
+		msgID := cryptoChannel.MessageID{}
+		copy(msgID[:], newMessage.MessageID)
+		uuid, errLookup := w.msgIDLookup(msgID)
+		if uuid != 0 && errLookup == nil {
+			return uuid, nil
+		}
+		return 0, errors.Errorf("uuid lookup failure: %+v", err)
+	}
 	uuid := uint64(res.Int())
 	jww.DEBUG.Printf(
 		"Successfully stored message from %s, id %d",
