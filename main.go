@@ -13,6 +13,7 @@ import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/creds"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
 	"os"
@@ -35,6 +36,11 @@ func main() {
 	js.Global().Set("Uint8ArrayToBase64", js.FuncOf(utils.Uint8ArrayToBase64))
 	js.Global().Set("Base64ToUint8Array", js.FuncOf(utils.Base64ToUint8Array))
 	js.Global().Set("Uint8ArrayEquals", js.FuncOf(utils.Uint8ArrayEquals))
+
+	// creds/password.go
+	js.Global().Set("GetOrInit", js.FuncOf(creds.GetOrInitJS))
+	js.Global().Set("ChangeExternalPassword",
+		js.FuncOf(creds.ChangeExternalPasswordJS))
 
 	// wasm/backup.go
 	js.Global().Set("NewCmixFromBackup", js.FuncOf(wasm.NewCmixFromBackup))
