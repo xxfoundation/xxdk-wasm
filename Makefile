@@ -15,12 +15,14 @@ update_release:
 	GOFLAGS="" go get -d gitlab.com/elixxir/client@release
 	GOFLAGS="" go get gitlab.com/elixxir/crypto@release
 	GOFLAGS="" go get gitlab.com/elixxir/primitives@release
+	GOFLAGS="" go get gitlab.com/xx_network/crypto@release
 	GOFLAGS="" go get gitlab.com/xx_network/primitives@release
 
 update_master:
 	GOFLAGS="" go get -d gitlab.com/elixxir/client@master
 	GOFLAGS="" go get gitlab.com/elixxir/crypto@master
 	GOFLAGS="" go get gitlab.com/elixxir/primitives@master
+	GOFLAGS="" go get gitlab.com/xx_network/crypto@master
 	GOFLAGS="" go get gitlab.com/xx_network/primitives@master
 
 binary:
