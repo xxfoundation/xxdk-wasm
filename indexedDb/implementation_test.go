@@ -229,16 +229,17 @@ func TestWasmModel_deleteMsgByChannel(t *testing.T) {
 
 	// Store some test messages
 	cid := channel.Identity{}
-	for i := 0; i < expectedMessages; i++ {
+	for i := 0; i < totalMessages; i++ {
 		testStr := testString + strconv.Itoa(i)
+
+		// Interleave the channel id to ensure cursor is behaving intelligently
+		thisChannel := deleteChannel
+		if i%2 == 0 {
+			thisChannel = keepChannel
+		}
+
 		testMsgId := channel.MakeMessageID([]byte(testStr), &id.ID{1})
-		eventModel.ReceiveMessage(deleteChannel, testMsgId, testStr,
-			testStr, cid, time.Now(), time.Second, rounds.Round{ID: id.Round(0)}, 0, channels.Sent)
-	}
-	for i := expectedMessages; i < totalMessages; i++ {
-		testStr := testString + strconv.Itoa(i)
-		testMsgId := channel.MakeMessageID([]byte(testStr), &id.ID{1})
-		eventModel.ReceiveMessage(keepChannel, testMsgId, testStr,
+		eventModel.ReceiveMessage(thisChannel, testMsgId, testStr,
 			testStr, cid, time.Now(), time.Second, rounds.Round{ID: id.Round(0)}, 0, channels.Sent)
 	}
 
