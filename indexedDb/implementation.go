@@ -20,12 +20,12 @@ import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 
 	"gitlab.com/elixxir/client/channels"
 	"gitlab.com/elixxir/client/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
 )
 
@@ -141,7 +141,58 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 			"Deleting Channel failed: %+v", err))
 		return
 	}
+
+	// Clean up lingering data
+	err = w.deleteMsgByChannel(channelID)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Deleting Channel's Message data failed: %+v", err))
+		return
+	}
 	jww.DEBUG.Printf("Successfully deleted channel: %s", channelID)
+}
+
+// deleteMsgByChannel is a private helper that uses messageStoreChannelIndex
+// to delete all Message with the given Channel ID.
+func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
+	parentErr := errors.New("failed to deleteMsgByChannel")
+
+	// Prepare the Transaction
+	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
+	if err != nil {
+		return errors.WithMessagef(parentErr,
+			"Unable to create Transaction: %+v", err)
+	}
+	store, err := txn.ObjectStore(messageStoreName)
+	if err != nil {
+		return errors.WithMessagef(parentErr,
+			"Unable to get ObjectStore: %+v", err)
+	}
+	index, err := store.Index(messageStoreChannelIndex)
+	if err != nil {
+		return errors.WithMessagef(parentErr,
+			"Unable to get Index: %+v", err)
+	}
+
+	// Perform the operation
+	channelIdStr := base64.StdEncoding.EncodeToString(channelID.Marshal())
+	keyRange, err := idb.NewKeyRangeOnly(js.ValueOf(channelIdStr))
+	cursorRequest, err := index.OpenCursorRange(keyRange, idb.CursorNext)
+	if err != nil {
+		return errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
+	}
+	ctx, cancel := newContext()
+	err = cursorRequest.Iter(ctx,
+		func(cursor *idb.CursorWithValue) error {
+			_, err := cursor.Delete()
+			return err
+		})
+	cancel()
+	if err != nil {
+		return errors.WithMessagef(parentErr,
+			"Unable to delete Message data: %+v", err)
+	}
+	return nil
 }
 
 // ReceiveMessage is called whenever a message is received on a given channel.
@@ -159,7 +210,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 
 	uuid, err := w.receiveHelper(msgToInsert)
 	if err != nil {
-		jww.ERROR.Printf("Failed to receiver message: %+v", err)
+		jww.ERROR.Printf("Failed to receive Message: %+v", err)
 	}
 
 	go w.receivedMessageCB(uuid, channelID, false)
