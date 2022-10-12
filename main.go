@@ -147,6 +147,10 @@ func main() {
 	js.Global().Set("TransmitSingleUse", js.FuncOf(wasm.TransmitSingleUse))
 	js.Global().Set("Listen", js.FuncOf(wasm.Listen))
 
+	// wasm/timeNow.go
+	js.Global().Set("SetTimeSource", js.FuncOf(wasm.SetTimeSource))
+	js.Global().Set("SetOffset", js.FuncOf(wasm.SetOffset))
+
 	// wasm/ud.go
 	js.Global().Set("NewOrLoadUd", js.FuncOf(wasm.NewOrLoadUd))
 	js.Global().Set("NewUdManagerFromBackup",
