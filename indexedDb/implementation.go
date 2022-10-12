@@ -190,7 +190,7 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 	cancel()
 	if err != nil {
 		return errors.WithMessagef(parentErr,
-			"Unable to dump ObjectStore: %+v", err)
+			"Unable to delete Message data: %+v", err)
 	}
 	return nil
 }
@@ -210,7 +210,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 
 	uuid, err := w.receiveHelper(msgToInsert)
 	if err != nil {
-		jww.ERROR.Printf("Failed to receiver message: %+v", err)
+		jww.ERROR.Printf("Failed to receive Message: %+v", err)
 	}
 
 	go w.receivedMessageCB(uuid, channelID, false)
