@@ -27,7 +27,6 @@ const (
 	messageStoreParentIndex    = "parent_message_id_index"
 	messageStoreTimestampIndex = "timestamp_index"
 	messageStorePinnedIndex    = "pinned_index"
-	messageStorePubkeyIndex    = "pubkey_index"
 
 	// Message keyPath names (must match json struct tags).
 	messageStoreMessage   = "message_id"

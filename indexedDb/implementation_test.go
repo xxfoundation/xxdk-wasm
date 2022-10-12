@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -208,5 +209,60 @@ func TestWasmModel_DuplicateReceives(t *testing.T) {
 					uuids[i], i, uuids[j], j)
 			}
 		}
+	}
+}
+
+// TestWasmModel_deleteMsgByChannel is a happy path test. Inserts many messages,
+// deletes some, and checks that the final result is as expected.
+func TestWasmModel_deleteMsgByChannel(t *testing.T) {
+	testString := "test_deleteMsgByChannel"
+	totalMessages := 10
+	expectedMessages := 5
+	eventModel, err := newWASMModel(testString, dummyCallback)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Create a test channel id
+	deleteChannel := id.NewIdFromString("deleteMe", id.Generic, t)
+	keepChannel := id.NewIdFromString("dontDeleteMe", id.Generic, t)
+
+	// Store some test messages
+	cid := channel.Identity{}
+	for i := 0; i < expectedMessages; i++ {
+		testStr := testString + strconv.Itoa(i)
+		testMsgId := channel.MakeMessageID([]byte(testStr), &id.ID{1})
+		eventModel.ReceiveMessage(deleteChannel, testMsgId, testStr,
+			testStr, cid, time.Now(), time.Second, rounds.Round{ID: id.Round(0)}, 0, channels.Sent)
+	}
+	for i := expectedMessages; i < totalMessages; i++ {
+		testStr := testString + strconv.Itoa(i)
+		testMsgId := channel.MakeMessageID([]byte(testStr), &id.ID{1})
+		eventModel.ReceiveMessage(keepChannel, testMsgId, testStr,
+			testStr, cid, time.Now(), time.Second, rounds.Round{ID: id.Round(0)}, 0, channels.Sent)
+	}
+
+	// Check pre-results
+	result, err := eventModel.dump(messageStoreName)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if len(result) != totalMessages {
+		t.Errorf("Expected %d messages, got %d", totalMessages, len(result))
+	}
+
+	// Do delete
+	err = eventModel.deleteMsgByChannel(deleteChannel)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Check final results
+	result, err = eventModel.dump(messageStoreName)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if len(result) != expectedMessages {
+		t.Errorf("Expected %d messages, got %d", expectedMessages, len(result))
 	}
 }
