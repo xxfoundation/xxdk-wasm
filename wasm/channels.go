@@ -83,6 +83,30 @@ func GenerateChannelIdentity(_ js.Value, args []js.Value) interface{} {
 	pi, err := bindings.GenerateChannelIdentity(args[0].Int())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(pi)
+}
+
+// ImportPrivateIdentity generates a new [channel.PrivateIdentity] from exported
+// data.
+//
+// Parameters:
+//  - args[0] - The password used to encrypt the identity (string).
+//  - args[2] - The encrypted data (Uint8Array).
+//
+// Returns:
+//  - JSON of [channel.PrivateIdentity] (Uint8Array).
+//  - Throws a TypeError if importing the identity fails.
+func ImportPrivateIdentity(_ js.Value, args []js.Value) interface{} {
+	password := args[0].String()
+	data := utils.CopyBytesToGo(args[1])
+
+	pi, err := bindings.ImportPrivateIdentity(password, data)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
 	}
 
 	return utils.CopyBytesToJS(pi)
@@ -103,6 +127,7 @@ func GetPublicChannelIdentity(_ js.Value, args []js.Value) interface{} {
 	pi, err := bindings.GetPublicChannelIdentity(marshaledPublic)
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
+		return nil
 	}
 
 	return utils.CopyBytesToJS(pi)
@@ -122,10 +147,11 @@ func GetPublicChannelIdentity(_ js.Value, args []js.Value) interface{} {
 //    fails.
 func GetPublicChannelIdentityFromPrivate(_ js.Value, args []js.Value) interface{} {
 	marshaledPrivate := utils.CopyBytesToGo(args[0])
-	identity, err := bindings.GetPublicChannelIdentityFromPrivate(
-		marshaledPrivate)
+	identity, err :=
+		bindings.GetPublicChannelIdentityFromPrivate(marshaledPrivate)
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
+		return nil
 	}
 
 	return utils.CopyBytesToJS(identity)

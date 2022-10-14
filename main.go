@@ -50,6 +50,8 @@ func main() {
 	// wasm/channels.go
 	js.Global().Set("GenerateChannelIdentity",
 		js.FuncOf(wasm.GenerateChannelIdentity))
+	js.Global().Set("ImportPrivateIdentity",
+		js.FuncOf(wasm.ImportPrivateIdentity))
 	js.Global().Set("GetPublicChannelIdentity",
 		js.FuncOf(wasm.GetPublicChannelIdentity))
 	js.Global().Set("GetPublicChannelIdentityFromPrivate",
