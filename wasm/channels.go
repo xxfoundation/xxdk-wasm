@@ -41,16 +41,17 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]interface{} 
 		"ReplayChannel": js.FuncOf(cm.ReplayChannel),
 
 		// Channel Sending Methods and Reports
-		"SendGeneric":      js.FuncOf(cm.SendGeneric),
-		"SendAdminGeneric": js.FuncOf(cm.SendAdminGeneric),
-		"SendMessage":      js.FuncOf(cm.SendMessage),
-		"SendReply":        js.FuncOf(cm.SendReply),
-		"SendReaction":     js.FuncOf(cm.SendReaction),
-		"GetIdentity":      js.FuncOf(cm.GetIdentity),
-		"GetStorageTag":    js.FuncOf(cm.GetStorageTag),
-		"SetNickname":      js.FuncOf(cm.SetNickname),
-		"DeleteNickname":   js.FuncOf(cm.DeleteNickname),
-		"GetNickname":      js.FuncOf(cm.GetNickname),
+		"SendGeneric":           js.FuncOf(cm.SendGeneric),
+		"SendAdminGeneric":      js.FuncOf(cm.SendAdminGeneric),
+		"SendMessage":           js.FuncOf(cm.SendMessage),
+		"SendReply":             js.FuncOf(cm.SendReply),
+		"SendReaction":          js.FuncOf(cm.SendReaction),
+		"GetIdentity":           js.FuncOf(cm.GetIdentity),
+		"ExportPrivateIdentity": js.FuncOf(cm.ExportPrivateIdentity),
+		"GetStorageTag":         js.FuncOf(cm.GetStorageTag),
+		"SetNickname":           js.FuncOf(cm.SetNickname),
+		"DeleteNickname":        js.FuncOf(cm.DeleteNickname),
+		"GetNickname":           js.FuncOf(cm.GetNickname),
 
 		// Channel Receiving Logic and Callback Registration
 		"RegisterReceiveHandler": js.FuncOf(cm.RegisterReceiveHandler),
@@ -678,6 +679,25 @@ func (ch *ChannelsManager) SendReaction(_ js.Value, args []js.Value) interface{}
 //  - Throws TypeError if marshalling the identity fails.
 func (ch *ChannelsManager) GetIdentity(js.Value, []js.Value) interface{} {
 	i, err := ch.api.GetIdentity()
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(i)
+}
+
+// ExportPrivateIdentity encrypts and exports the private identity to a portable
+// string.
+//
+// Parameters:
+//  - args[0] - Password to encrypt the identity with (string).
+//
+// Returns:
+//  - JSON of the encrypted private identity (Uint8Array).
+//  - Throws TypeError if exporting the identity fails.
+func (ch *ChannelsManager) ExportPrivateIdentity(_ js.Value, args []js.Value) interface{} {
+	i, err := ch.api.ExportPrivateIdentity(args[0].String())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
