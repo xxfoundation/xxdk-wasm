@@ -32,6 +32,11 @@ func main() {
 	fmt.Println("Starting xxDK WebAssembly bindings.")
 	fmt.Printf("Client version %s\n", bindings.GetVersion())
 
+	// creds/password.go
+	js.Global().Set("GetOrInitPassword", js.FuncOf(creds.GetOrInitJS))
+	js.Global().Set("ChangeExternalPassword",
+		js.FuncOf(creds.ChangeExternalPasswordJS))
+
 	// utils/array.go
 	js.Global().Set("Uint8ArrayToBase64", js.FuncOf(utils.Uint8ArrayToBase64))
 	js.Global().Set("Base64ToUint8Array", js.FuncOf(utils.Base64ToUint8Array))
