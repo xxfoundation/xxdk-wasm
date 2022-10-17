@@ -11,7 +11,11 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/crypto/channel"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/xx_network/crypto/csprng"
 	"reflect"
+	"syscall/js"
 	"testing"
 )
 
@@ -53,5 +57,63 @@ func Test_ChannelsManagerMethods(t *testing.T) {
 		if _, exists := cmType.MethodByName(method.Name); !exists {
 			t.Errorf("Method %s does not exist.", method.Name)
 		}
+	}
+}
+
+type jsIdentity struct {
+	pubKey  js.Value
+	codeset js.Value
+}
+
+// Benchmark times the ConstructIdentity, which uses a sync.Map to increase
+// efficiency for previously generated identities.
+func BenchmarkConstructIdentity(b *testing.B) {
+	const n = 100_000
+	identities, j := make([]jsIdentity, 1000), 0
+	for i := 0; i < n; i++ {
+		pi, err := channel.GenerateIdentity(csprng.NewSystemRNG())
+		if err != nil {
+			b.Fatalf("%+v", err)
+		}
+
+		pubKey := utils.CopyBytesToJS(pi.PubKey)
+		codeset := js.ValueOf(int(pi.CodesetVersion))
+		ConstructIdentity(js.Value{}, []js.Value{pubKey, codeset})
+
+		if i%(n/len(identities)) == 0 {
+			identities[j] = jsIdentity{pubKey, codeset}
+			j++
+		}
+	}
+
+	b.ResetTimer()
+	for i := range identities {
+		go func(identity jsIdentity) {
+			ConstructIdentity(
+				js.Value{}, []js.Value{identity.pubKey, identity.codeset})
+		}(identities[i])
+	}
+}
+
+// Benchmark times the constructIdentity, which generates each new identity.
+func Benchmark_constructIdentity(b *testing.B) {
+	identities := make([]jsIdentity, b.N)
+	for i := range identities {
+		pi, err := channel.GenerateIdentity(csprng.NewSystemRNG())
+		if err != nil {
+			b.Fatalf("%+v", err)
+		}
+
+		pubKey := utils.CopyBytesToJS(pi.PubKey)
+		codeset := js.ValueOf(int(pi.CodesetVersion))
+		identities[i] = jsIdentity{pubKey, codeset}
+	}
+
+	b.ResetTimer()
+	for i := range identities {
+		go func(identity jsIdentity) {
+			constructIdentity(
+				js.Value{}, []js.Value{identity.pubKey, identity.codeset})
+		}(identities[i])
 	}
 }
