@@ -42,7 +42,6 @@ const (
 //
 // A Message may belong to one Message (Parent).
 //
-// A Message belongs to one User (cryptographic identity).
 // The user's nickname can change each message, but the rest does not. We
 // still duplicate all of it for each entry to simplify code for now.
 type Message struct {
@@ -61,13 +60,7 @@ type Message struct {
 	Round           uint64        `json:"round"`
 
 	// User cryptographic Identity struct -- could be pulled out
-	Pubkey []byte `json:"pubkey"` // Index
-	// Honorific      string `json:"honorific"`
-	// Adjective      string `json:"adjective"`
-	// Noun           string `json:"noun"`
-	Codename       string `json:"codename"`
-	Color          string `json:"color"`
-	Extension      string `json:"extension"`
+	Pubkey         []byte `json:"pubkey"` // Index
 	CodesetVersion uint8  `json:"codeset_version"`
 }
 

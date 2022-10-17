@@ -11,6 +11,7 @@ package indexedDb
 
 import (
 	"context"
+	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"sync"
@@ -201,12 +202,13 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 // user of the API to filter such called by message ID.
 func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	messageID cryptoChannel.MessageID, nickname, text string,
-	identity cryptoChannel.Identity, timestamp time.Time, lease time.Duration,
-	round rounds.Round, mType channels.MessageType,
-	status channels.SentStatus) uint64 {
+	pubKey ed25519.PublicKey, codeset uint8,
+	timestamp time.Time, lease time.Duration, round rounds.Round,
+	mType channels.MessageType, status channels.SentStatus) uint64 {
 
-	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(), nil,
-		nickname, text, identity, timestamp, lease, round.ID, mType, status)
+	msgToInsert := buildMessage(
+		channelID.Marshal(), messageID.Bytes(), nil, nickname, text, pubKey,
+		codeset, timestamp, lease, round.ID, mType, status)
 
 	uuid, err := w.receiveHelper(msgToInsert)
 	if err != nil {
@@ -225,12 +227,12 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 // the initial message. As a result, it may be important to buffer replies.
 func (w *wasmModel) ReceiveReply(channelID *id.ID,
 	messageID cryptoChannel.MessageID, replyTo cryptoChannel.MessageID,
-	nickname, text string, identity cryptoChannel.Identity, timestamp time.Time,
+	nickname, text string, pubKey ed25519.PublicKey, codeset uint8, timestamp time.Time,
 	lease time.Duration, round rounds.Round, mType channels.MessageType,
 	status channels.SentStatus) uint64 {
 
 	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
-		replyTo.Bytes(), nickname, text, identity, timestamp, lease, round.ID,
+		replyTo.Bytes(), nickname, text, pubKey, codeset, timestamp, lease, round.ID,
 		mType, status)
 
 	uuid, err := w.receiveHelper(msgToInsert)
@@ -250,13 +252,13 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 // the initial message. As a result, it may be important to buffer reactions.
 func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 	messageID cryptoChannel.MessageID, reactionTo cryptoChannel.MessageID,
-	nickname, reaction string, identity cryptoChannel.Identity,
+	nickname, reaction string, pubKey ed25519.PublicKey, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
 
-	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
-		reactionTo.Bytes(), nickname, reaction, identity, timestamp, lease,
-		round.ID, mType, status)
+	msgToInsert := buildMessage(
+		channelID.Marshal(), messageID.Bytes(), reactionTo.Bytes(), nickname,
+		reaction, pubKey, codeset, timestamp, lease, round.ID, mType, status)
 
 	uuid, err := w.receiveHelper(msgToInsert)
 	if err != nil {
@@ -326,8 +328,8 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.Messag
 //       an existing message, then you need to set it manually
 //       yourself.
 func buildMessage(channelID, messageID, parentID []byte, nickname, text string,
-	identity cryptoChannel.Identity, timestamp time.Time, lease time.Duration,
-	round id.Round, mType channels.MessageType,
+	pubKey ed25519.PublicKey, codeset uint8, timestamp time.Time,
+	lease time.Duration, round id.Round, mType channels.MessageType,
 	status channels.SentStatus) *Message {
 	return &Message{
 		MessageID:       messageID,
@@ -343,11 +345,8 @@ func buildMessage(channelID, messageID, parentID []byte, nickname, text string,
 		Type:            uint16(mType),
 		Round:           uint64(round),
 		// User Identity Info
-		Pubkey:         identity.PubKey,
-		Codename:       identity.Codename,
-		Color:          identity.Color,
-		Extension:      identity.Extension,
-		CodesetVersion: identity.CodesetVersion,
+		Pubkey:         pubKey,
+		CodesetVersion: codeset,
 	}
 }
 
@@ -409,9 +408,7 @@ func (w *wasmModel) receiveHelper(newMessage *Message) (uint64,
 		return 0, errors.Errorf("uuid lookup failure: %+v", err)
 	}
 	uuid := uint64(res.Int())
-	jww.DEBUG.Printf(
-		"Successfully stored message from %s, id %d",
-		newMessage.Codename, uuid)
+	jww.DEBUG.Printf("Successfully stored message %d", uuid)
 
 	return uuid, nil
 }
