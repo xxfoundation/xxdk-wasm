@@ -33,19 +33,14 @@ func main() {
 	fmt.Printf("Client version %s\n", bindings.GetVersion())
 
 	// creds/password.go
-	js.Global().Set("GetOrInitPassword", js.FuncOf(creds.GetOrInitJS))
+	js.Global().Set("GetOrInitPassword", js.FuncOf(creds.GetOrInitPassword))
 	js.Global().Set("ChangeExternalPassword",
-		js.FuncOf(creds.ChangeExternalPasswordJS))
+		js.FuncOf(creds.ChangeExternalPassword))
 
 	// utils/array.go
 	js.Global().Set("Uint8ArrayToBase64", js.FuncOf(utils.Uint8ArrayToBase64))
 	js.Global().Set("Base64ToUint8Array", js.FuncOf(utils.Base64ToUint8Array))
 	js.Global().Set("Uint8ArrayEquals", js.FuncOf(utils.Uint8ArrayEquals))
-
-	// creds/password.go
-	js.Global().Set("GetOrInit", js.FuncOf(creds.GetOrInitJS))
-	js.Global().Set("ChangeExternalPassword",
-		js.FuncOf(creds.ChangeExternalPasswordJS))
 
 	// wasm/backup.go
 	js.Global().Set("NewCmixFromBackup", js.FuncOf(wasm.NewCmixFromBackup))

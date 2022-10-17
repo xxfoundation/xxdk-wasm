@@ -20,16 +20,16 @@ import (
 	"testing"
 )
 
-// Tests that running GetOrInit twice returns the same internal password both
+// Tests that running getOrInit twice returns the same internal password both
 // times.
-func TestGetOrInit(t *testing.T) {
+func Test_getOrInit(t *testing.T) {
 	externalPassword := "myPassword"
-	internalPassword, err := GetOrInit(externalPassword)
+	internalPassword, err := getOrInit(externalPassword)
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
 
-	loadedInternalPassword, err := GetOrInit(externalPassword)
+	loadedInternalPassword, err := getOrInit(externalPassword)
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -41,20 +41,22 @@ func TestGetOrInit(t *testing.T) {
 	}
 }
 
-func TestChangeExternalPassword(t *testing.T) {
+// Tests that changeExternalPassword correctly changes the password and updates
+// the encryption.
+func Test_changeExternalPassword(t *testing.T) {
 	oldExternalPassword := "myPassword"
 	newExternalPassword := "hunter2"
-	oldInternalPassword, err := GetOrInit(oldExternalPassword)
+	oldInternalPassword, err := getOrInit(oldExternalPassword)
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
 
-	err = ChangeExternalPassword(oldExternalPassword, newExternalPassword)
+	err = changeExternalPassword(oldExternalPassword, newExternalPassword)
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
 
-	newInternalPassword, err := GetOrInit(newExternalPassword)
+	newInternalPassword, err := getOrInit(newExternalPassword)
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -65,7 +67,7 @@ func TestChangeExternalPassword(t *testing.T) {
 			oldInternalPassword, newInternalPassword)
 	}
 
-	_, err = GetOrInit(oldExternalPassword)
+	_, err = getOrInit(oldExternalPassword)
 	expectedErr := strings.Split(decryptWithPasswordErr, "%")[0]
 	if err == nil || !strings.Contains(err.Error(), expectedErr) {
 		t.Errorf("Unexpected error when trying to get internal password with "+

@@ -52,16 +52,16 @@ const (
 
 // Error messages.
 const (
+	// initInternalPassword
+	readInternalPasswordErr     = "could not generate internal password: %+v"
+	internalPasswordNumBytesErr = "expected %d bytes for internal password, found %d bytes"
+
 	// getInternalPassword
 	getPasswordStorageErr = "could not retrieve encrypted internal password from storage: %+v"
 	getSaltStorageErr     = "could not retrieve salt from storage: %+v"
 	getParamsStorageErr   = "could not retrieve encryption parameters from storage: %+v"
 	paramsUnmarshalErr    = "failed to unmarshal encryption parameters loaded from storage: %+v"
 	decryptPasswordErr    = "could not decrypt internal password: %+v"
-
-	// initInternalPassword
-	readInternalPasswordErr     = "could not generate internal password: %+v"
-	internalPasswordNumBytesErr = "expected %d bytes for internal password, found %d bytes"
 
 	// decryptPassword
 	readNonceLenErr        = "read %d bytes, too short to decrypt"
@@ -72,8 +72,8 @@ const (
 	saltNumBytesErr = "expected %d bytes for salt, found %d bytes"
 )
 
-// GetOrInitJS takes a user-provided password and returns its associated 256-bit
-// internal password.
+// GetOrInitPassword takes a user-provided password and returns its associated
+// 256-bit internal password.
 //
 // If the internal password has not previously been created, then it is
 // generated, saved to local storage, and returned. If the internal password has
@@ -88,8 +88,8 @@ const (
 // Returns:
 //  - Internal password (Uint8Array).
 //  - Throws TypeError on failure.
-func GetOrInitJS(_ js.Value, args []js.Value) interface{} {
-	internalPassword, err := GetOrInit(args[0].String())
+func GetOrInitPassword(_ js.Value, args []js.Value) interface{} {
+	internalPassword, err := getOrInit(args[0].String())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
@@ -98,7 +98,7 @@ func GetOrInitJS(_ js.Value, args []js.Value) interface{} {
 	return utils.CopyBytesToJS(internalPassword)
 }
 
-// ChangeExternalPasswordJS allows a user to change their external password.
+// ChangeExternalPassword allows a user to change their external password.
 //
 // Parameters:
 //  - args[0] - The user's old password (string).
@@ -106,8 +106,8 @@ func GetOrInitJS(_ js.Value, args []js.Value) interface{} {
 //
 // Returns:
 //  - Throws TypeError on failure.
-func ChangeExternalPasswordJS(_ js.Value, args []js.Value) interface{} {
-	err := ChangeExternalPassword(args[0].String(), args[1].String())
+func ChangeExternalPassword(_ js.Value, args []js.Value) interface{} {
+	err := changeExternalPassword(args[0].String(), args[1].String())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
@@ -116,7 +116,7 @@ func ChangeExternalPasswordJS(_ js.Value, args []js.Value) interface{} {
 	return nil
 }
 
-// GetOrInit takes a user-provided password and returns its associated 256-bit
+// getOrInit takes a user-provided password and returns its associated 256-bit
 // internal password.
 //
 // If the internal password has not previously been created, then it is
@@ -125,7 +125,7 @@ func ChangeExternalPasswordJS(_ js.Value, args []js.Value) interface{} {
 //
 // Any password saved to local storage is encrypted using the user-provided
 // password.
-func GetOrInit(externalPassword string) ([]byte, error) {
+func getOrInit(externalPassword string) ([]byte, error) {
 	localStorage := utils.GetLocalStorage()
 	internalPassword, err := getInternalPassword(externalPassword, localStorage)
 	if err != nil {
@@ -141,8 +141,8 @@ func GetOrInit(externalPassword string) ([]byte, error) {
 	return internalPassword, nil
 }
 
-// ChangeExternalPassword allows a user to change their external password.
-func ChangeExternalPassword(oldExternalPassword, newExternalPassword string) error {
+// changeExternalPassword allows a user to change their external password.
+func changeExternalPassword(oldExternalPassword, newExternalPassword string) error {
 	localStorage := utils.GetLocalStorage()
 	internalPassword, err := getInternalPassword(oldExternalPassword, localStorage)
 	if err != nil {
