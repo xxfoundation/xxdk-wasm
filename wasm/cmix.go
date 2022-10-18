@@ -41,6 +41,7 @@ func newCmixJS(api *bindings.Cmix) map[string]interface{} {
 		"StartNetworkFollower":        js.FuncOf(c.StartNetworkFollower),
 		"StopNetworkFollower":         js.FuncOf(c.StopNetworkFollower),
 		"WaitForNetwork":              js.FuncOf(c.WaitForNetwork),
+		"ReadyToSend":                 js.FuncOf(c.ReadyToSend),
 		"NetworkFollowerStatus":       js.FuncOf(c.NetworkFollowerStatus),
 		"GetNodeRegistrationStatus":   js.FuncOf(c.GetNodeRegistrationStatus),
 		"HasRunningProcessies":        js.FuncOf(c.HasRunningProcessies),

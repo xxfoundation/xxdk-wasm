@@ -103,6 +103,16 @@ func (c *Cmix) WaitForNetwork(_ js.Value, args []js.Value) interface{} {
 	return utils.CreatePromise(promiseFn)
 }
 
+// ReadyToSend determines if the network is ready to send messages on. It
+// returns true if the network is healthy and if the client has registered with
+// at least 70% of the nodes. Returns false otherwise.
+//
+// Returns:
+//  - Returns true if network is ready to send on (boolean).
+func (c *Cmix) ReadyToSend(js.Value, []js.Value) interface{} {
+	return c.api.ReadyToSend()
+}
+
 // NetworkFollowerStatus gets the state of the network follower. It returns a
 // status with the following values:
 //  Stopped  - 0
