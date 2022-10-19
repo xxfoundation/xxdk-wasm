@@ -42,6 +42,7 @@ func main() {
 	js.Global().Set("GetOrInitPassword", js.FuncOf(creds.GetOrInitPassword))
 	js.Global().Set("ChangeExternalPassword",
 		js.FuncOf(creds.ChangeExternalPassword))
+	js.Global().Set("VerifyPassword", js.FuncOf(creds.VerifyPassword))
 
 	// utils/array.go
 	js.Global().Set("Uint8ArrayToBase64", js.FuncOf(utils.Uint8ArrayToBase64))

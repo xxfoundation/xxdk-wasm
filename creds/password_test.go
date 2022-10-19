@@ -75,6 +75,24 @@ func Test_changeExternalPassword(t *testing.T) {
 	}
 }
 
+// Tests that verifyPassword returns true for a valid password and false for an
+// invalid password
+func Test_verifyPassword(t *testing.T) {
+	externalPassword := "myPassword"
+
+	if _, err := getOrInit(externalPassword); err != nil {
+		t.Errorf("%+v", err)
+	}
+
+	if !verifyPassword(externalPassword) {
+		t.Errorf("Password %q is incorrect.", externalPassword)
+	}
+
+	if verifyPassword("wrong password") {
+		t.Error("Incorrect password found to be correct.")
+	}
+}
+
 // Tests that the internal password returned by initInternalPassword matches
 // the encrypted one saved to local storage.
 func Test_initInternalPassword(t *testing.T) {

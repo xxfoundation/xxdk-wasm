@@ -116,15 +116,19 @@ func ChangeExternalPassword(_ js.Value, args []js.Value) interface{} {
 	return nil
 }
 
-// getOrInit takes a user-provided password and returns its associated 256-bit
-// internal password.
+// VerifyPassword determines if the user-provided password is correct.
 //
-// If the internal password has not previously been created, then it is
-// generated, saved to local storage, and returned. If the internal password has
-// been previously generated, it is retrieved from local storage and returned.
+// Parameters:
+//  - args[0] - The user supplied password (string).
 //
-// Any password saved to local storage is encrypted using the user-provided
-// password.
+// Returns:
+//  - True if the password is correct and false if it is incorrect (boolean).
+func VerifyPassword(_ js.Value, args []js.Value) interface{} {
+	return verifyPassword(args[0].String())
+}
+
+// getOrInit is the private function for GetOrInitPassword that is used for
+// testing.
 func getOrInit(externalPassword string) ([]byte, error) {
 	localStorage := utils.GetLocalStorage()
 	internalPassword, err := getInternalPassword(externalPassword, localStorage)
@@ -141,7 +145,8 @@ func getOrInit(externalPassword string) ([]byte, error) {
 	return internalPassword, nil
 }
 
-// changeExternalPassword allows a user to change their external password.
+// changeExternalPassword is the private function for ChangeExternalPassword
+// that is used for testing.
 func changeExternalPassword(oldExternalPassword, newExternalPassword string) error {
 	localStorage := utils.GetLocalStorage()
 	internalPassword, err := getInternalPassword(oldExternalPassword, localStorage)
@@ -162,6 +167,13 @@ func changeExternalPassword(oldExternalPassword, newExternalPassword string) err
 	localStorage.SetItem(passwordKey, encryptedInternalPassword)
 
 	return nil
+}
+
+// verifyPassword is the private function for VerifyPassword that is used for
+// testing.
+func verifyPassword(externalPassword string) bool {
+	_, err := getInternalPassword(externalPassword, utils.GetLocalStorage())
+	return err == nil
 }
 
 // initInternalPassword generates a new internal password, stores an encrypted
