@@ -26,7 +26,7 @@ const (
 
 	// currentVersion is the current version of the IndexDb
 	// runtime. Used for migration purposes.
-	currentVersion uint = 2
+	currentVersion uint = 1
 )
 
 // MessageReceivedCallback is called any time a message is received or updated
