@@ -170,8 +170,9 @@ func main() {
 
 	// wasm/version.go
 	js.Global().Set("GetVersion", js.FuncOf(wasm.GetVersion))
-	js.Global().Set("GetGitVersion", js.FuncOf(wasm.GetGitVersion))
-	js.Global().Set("GetDependencies", js.FuncOf(wasm.GetDependencies))
+	js.Global().Set("GetClientVersion", js.FuncOf(wasm.GetClientVersion))
+	js.Global().Set("GetClientGitVersion", js.FuncOf(wasm.GetClientGitVersion))
+	js.Global().Set("GetClientDependencies", js.FuncOf(wasm.GetClientDependencies))
 
 	<-make(chan bool)
 	os.Exit(0)

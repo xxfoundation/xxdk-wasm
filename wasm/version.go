@@ -11,29 +11,41 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
-// GetVersion returns the [xxdk.SEMVER].
+// GetVersion returns the current xxDK WASM semantic version.
 //
 // Returns:
-//  - Version (string).
+//  - Current version (string).
 func GetVersion(js.Value, []js.Value) interface{} {
+	return utils.SEMVER
+}
+
+// GetClientVersion returns the current client xxDK semantic version
+// ([xxdk.SEMVER]).
+//
+// Returns:
+//  - Current version (string).
+func GetClientVersion(js.Value, []js.Value) interface{} {
 	return bindings.GetVersion()
 }
 
-// GetGitVersion returns the [xxdk.GITVERSION].
+// GetClientGitVersion returns the current client xxDK git version
+// ([xxdk.GITVERSION]).
 //
 // Returns:
 //  - Git version (string).
-func GetGitVersion(js.Value, []js.Value) interface{} {
+func GetClientGitVersion(js.Value, []js.Value) interface{} {
 	return bindings.GetGitVersion()
 }
 
-// GetDependencies returns the [xxdk.DEPENDENCIES].
+// GetClientDependencies returns the client's dependencies
+// ([xxdk.DEPENDENCIES]).
 //
 // Returns:
-//  - Git dependencies (string).
-func GetDependencies(js.Value, []js.Value) interface{} {
+//  - Dependency list (string).
+func GetClientDependencies(js.Value, []js.Value) interface{} {
 	return bindings.GetDependencies()
 }
