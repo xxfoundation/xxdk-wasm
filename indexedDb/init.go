@@ -13,7 +13,6 @@ import (
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
-	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/client/channels"
@@ -27,7 +26,7 @@ const (
 
 	// currentVersion is the current version of the IndexDb
 	// runtime. Used for migration purposes.
-	currentVersion uint = 1
+	currentVersion uint = 2
 )
 
 // MessageReceivedCallback is called any time a message is received or updated
@@ -62,19 +61,24 @@ func newWASMModel(databaseName string, cb MessageReceivedCallback) (
 	openRequest, _ := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			if oldVersion == newVersion {
-				jww.INFO.Printf("IndexDb version is current: v%d", newVersion)
+				jww.INFO.Printf("IndexDb version is current: v%d",
+					newVersion)
 				return nil
 			}
 
-			jww.INFO.Printf(
-				"IndexDb upgrade required: v%d -> v%d", oldVersion, newVersion)
+			jww.INFO.Printf("IndexDb upgrade required: v%d -> v%d",
+				oldVersion, newVersion)
 
-			if oldVersion == 0 && newVersion == 1 {
-				return v1Upgrade(db)
+			if oldVersion == 0 && newVersion >= 1 {
+				err := v1Upgrade(db)
+				if err != nil {
+					return err
+				}
+				oldVersion = 1
 			}
 
-			return errors.Errorf("Invalid version upgrade path: v%d -> v%d",
-				oldVersion, newVersion)
+			// if oldVersion == 1 && newVersion >= 2 { v2Upgrade(), oldVersion = 2 }
+			return nil
 		})
 
 	// Wait for database open to finish
