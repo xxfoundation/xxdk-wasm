@@ -42,6 +42,11 @@ func TestPublicFunctions(t *testing.T) {
 		"NewEventModel":                   {},
 		"NewChannelsManagerGoEventModel":  {},
 		"LoadChannelsManagerGoEventModel": {},
+
+		// Version functions were renamed to differentiate between WASM and
+		// client versions
+		"GetGitVersion":   {},
+		"GetDependencies": {},
 	}
 	wasmFuncs := getPublicFunctions("wasm", t)
 	bindingsFuncs := getPublicFunctions(
