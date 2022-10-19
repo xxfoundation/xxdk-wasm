@@ -26,6 +26,12 @@ func init() {
 	ll := wasm.NewJsConsoleLogListener(jww.LevelInfo)
 	jww.SetLogListeners(ll.Listen)
 	jww.SetStdoutThreshold(jww.LevelFatal + 1)
+
+	// Check that the WASM binary version is correct
+	err := utils.CheckAndStoreVersions()
+	if err != nil {
+		jww.FATAL.Panicf("WASM binary version error: %+v", err)
+	}
 }
 
 func main() {

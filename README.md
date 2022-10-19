@@ -4,8 +4,15 @@ This repository contains the WebAssembly bindings for xxDK. It also includes
 examples and a test server to serve the compiled WebAssembly module.
 
 **Note:** If you are updating the version of Go that this repository uses, you
-need to ensure that you update the wasm_exec.js file as described
+need to ensure that you update the `wasm_exec.js` file as described
 [below](#wasm_execjs).
+
+## Updates
+
+The current semantic version of this repository is stored in `SEMVER` in
+`version.go`. When making major updates or updates that create an
+incompatibility in the storage or databases, the semantic version needs to be
+updated and an upgrade path needs to be provided.
 
 ## Building
 
