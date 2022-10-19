@@ -78,6 +78,7 @@ func Test_changeExternalPassword(t *testing.T) {
 // Tests that verifyPassword returns true for a valid password and false for an
 // invalid password
 func Test_verifyPassword(t *testing.T) {
+	utils.GetLocalStorage().Clear()
 	externalPassword := "myPassword"
 
 	if _, err := getOrInit(externalPassword); err != nil {
