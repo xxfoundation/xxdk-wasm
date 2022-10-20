@@ -227,13 +227,13 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 // the initial message. As a result, it may be important to buffer replies.
 func (w *wasmModel) ReceiveReply(channelID *id.ID,
 	messageID cryptoChannel.MessageID, replyTo cryptoChannel.MessageID,
-	nickname, text string, pubKey ed25519.PublicKey, codeset uint8, timestamp time.Time,
-	lease time.Duration, round rounds.Round, mType channels.MessageType,
-	status channels.SentStatus) uint64 {
+	nickname, text string, pubKey ed25519.PublicKey, codeset uint8,
+	timestamp time.Time, lease time.Duration, round rounds.Round,
+	mType channels.MessageType, status channels.SentStatus) uint64 {
 
 	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
-		replyTo.Bytes(), nickname, text, pubKey, codeset, timestamp, lease, round.ID,
-		mType, status)
+		replyTo.Bytes(), nickname, text, pubKey, codeset, timestamp, lease,
+		round.ID, mType, status)
 
 	uuid, err := w.receiveHelper(msgToInsert)
 
@@ -273,8 +273,9 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 // populated.
 //
 // TODO: Potential race condition due to separate get/update operations.
-func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.MessageID,
-	timestamp time.Time, round rounds.Round, status channels.SentStatus) {
+func (w *wasmModel) UpdateSentStatus(uuid uint64,
+	messageID cryptoChannel.MessageID, timestamp time.Time, round rounds.Round,
+	status channels.SentStatus) {
 	parentErr := errors.New("failed to UpdateSentStatus")
 
 	// FIXME: this is a bit of race condition without the mux.
@@ -323,10 +324,10 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID cryptoChannel.Messag
 
 // buildMessage is a private helper that converts typical [channels.EventModel]
 // inputs into a basic Message structure for insertion into storage.
+//
 // NOTE: ID is not set inside this function because we want to use the
-//       autoincrement key by default. If you are trying to overwrite
-//       an existing message, then you need to set it manually
-//       yourself.
+//  autoincrement key by default. If you are trying to overwrite an existing
+//  message, then you need to set it manually yourself.
 func buildMessage(channelID, messageID, parentID []byte, nickname, text string,
 	pubKey ed25519.PublicKey, codeset uint8, timestamp time.Time,
 	lease time.Duration, round id.Round, mType channels.MessageType,
@@ -363,9 +364,8 @@ func (w *wasmModel) receiveHelper(newMessage *Message) (uint64,
 		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
 	}
 
-	// NOTE: This is weird, but correct. When the "ID" field is 0, we
-	// unset it from the JSValue so that it is auto-populated and
-	// incremented.
+	// NOTE: This is weird, but correct. When the "ID" field is 0, we unset it
+	// from the JSValue so that it is auto-populated and incremented.
 	if newMessage.ID == 0 {
 		messageObj.JSValue().Delete("id")
 	}
@@ -395,9 +395,9 @@ func (w *wasmModel) receiveHelper(newMessage *Message) (uint64,
 		return 0, errors.Errorf("Upserting Message failed: %+v", err)
 	}
 	res, err := addReq.Result()
-	// NOTE: Sometimes the insert fails to return an error but hits
-	// a duplicate insert, so this fallthrough returns the uuid entry in
-	// that case.
+
+	// NOTE: Sometimes the insert fails to return an error but hits a duplicate
+	//  insert, so this fallthrough returns the UUID entry in that case.
 	if res.IsUndefined() {
 		msgID := cryptoChannel.MessageID{}
 		copy(msgID[:], newMessage.MessageID)

@@ -29,8 +29,9 @@ const (
 	currentVersion uint = 1
 )
 
-// MessageReceivedCallback is called any time a message is received or updated
-// update is true if the row is old and was edited
+// MessageReceivedCallback is called any time a message is received or updated.
+//
+// update is true if the row is old and was edited.
 type MessageReceivedCallback func(uuid uint64, channelID *id.ID, update bool)
 
 // NewWASMEventModelBuilder returns an EventModelBuilder which allows

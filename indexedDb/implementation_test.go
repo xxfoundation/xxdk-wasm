@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 func dummyCallback(uint64, *id.ID, bool) {}
 
 // Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
-func TestWasmModel_UpdateSentStatus(t *testing.T) {
+func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 	testString := "test"
 	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
 	eventModel, err := newWASMModel(testString, dummyCallback)
@@ -89,7 +89,7 @@ func TestWasmModel_UpdateSentStatus(t *testing.T) {
 }
 
 // Smoke test wasmModel.JoinChannel/wasmModel.LeaveChannel happy paths.
-func TestWasmModel_JoinChannel_LeaveChannel(t *testing.T) {
+func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 	eventModel, err := newWASMModel("test", dummyCallback)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -126,8 +126,8 @@ func TestWasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 	}
 }
 
-// Test UUID gets returned when different messages are added
-func TestWasmModel_UUIDTest(t *testing.T) {
+// Test UUID gets returned when different messages are added.
+func Test_wasmModel_UUIDTest(t *testing.T) {
 	testString := "testHello"
 	eventModel, err := newWASMModel(testString, dummyCallback)
 	if err != nil {
@@ -160,9 +160,8 @@ func TestWasmModel_UUIDTest(t *testing.T) {
 	}
 }
 
-// TestWasmModel_DuplicateReceives tests if the same message ID being sent
-// always returns the same uuid
-func TestWasmModel_DuplicateReceives(t *testing.T) {
+// Tests if the same message ID being sent always returns the same UUID.
+func Test_wasmModel_DuplicateReceives(t *testing.T) {
 	testString := "testHello"
 	eventModel, err := newWASMModel(testString, dummyCallback)
 	if err != nil {
@@ -195,9 +194,9 @@ func TestWasmModel_DuplicateReceives(t *testing.T) {
 	}
 }
 
-// TestWasmModel_deleteMsgByChannel is a happy path test. Inserts many messages,
-// deletes some, and checks that the final result is as expected.
-func TestWasmModel_deleteMsgByChannel(t *testing.T) {
+// Happy path: Inserts many messages, deletes some, and checks that the final
+// result is as expected.
+func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 	testString := "test_deleteMsgByChannel"
 	totalMessages := 10
 	expectedMessages := 5
