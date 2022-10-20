@@ -59,7 +59,7 @@ func newWASMModel(databaseName string, cb MessageReceivedCallback) (
 	// Attempt to open database object
 	ctx, cancel := newContext()
 	defer cancel()
-	openRequest, _ := idb.Global().Open(ctx, databaseName, currentVersion,
+	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			if oldVersion == newVersion {
 				jww.INFO.Printf("IndexDb version is current: v%d",
@@ -81,6 +81,9 @@ func newWASMModel(databaseName string, cb MessageReceivedCallback) (
 			// if oldVersion == 1 && newVersion >= 2 { v2Upgrade(), oldVersion = 2 }
 			return nil
 		})
+	if err != nil {
+		return nil, err
+	}
 
 	// Wait for database open to finish
 	db, err := openRequest.Await(ctx)
