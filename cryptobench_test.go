@@ -5,18 +5,19 @@
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
-package utils
+package main
 
 import (
 	"testing"
 
-	"gitlab.com/elixxir/crypto/cyclic"
-	"gitlab.com/elixxir/crypto/rsa"
-	dh "gitlab.com/elixxir/crypto/diffieHellman"
-	"gitlab.com/xx_network/crypto/csprng"
-	"gitlab.com/xx_network/crypto/large"
 	"crypto/rand"
 	"strconv"
+
+	"gitlab.com/elixxir/crypto/cyclic"
+	dh "gitlab.com/elixxir/crypto/diffieHellman"
+	"gitlab.com/elixxir/crypto/rsa"
+	"gitlab.com/xx_network/crypto/csprng"
+	"gitlab.com/xx_network/crypto/large"
 )
 
 // //tests Session keys are generated correctly
@@ -77,7 +78,6 @@ func BenchmarkCreateDHSessionKey(b *testing.B) {
 		dh.GenerateSessionKey(privkeys[i], pubkeys[i], grp)
 	}
 }
-
 
 func BenchmarkRSASigCreate(b *testing.B) {
 	// Generate keys
