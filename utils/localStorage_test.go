@@ -87,7 +87,7 @@ func TestLocalStorage_Clear(t *testing.T) {
 // Tests that LocalStorage.Key return all added keys when looping through all
 // indexes.
 func TestLocalStorage_Key(t *testing.T) {
-	jsStorage.v.Call("clear")
+	jsStorage.clear()
 	values := map[string][]byte{
 		"key1": []byte("key value"),
 		"key2": {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
@@ -119,7 +119,7 @@ func TestLocalStorage_Key(t *testing.T) {
 // Tests that LocalStorage.Key returns the error os.ErrNotExist when the index
 // is greater than or equal to the number of keys.
 func TestLocalStorage_Key_NotExistError(t *testing.T) {
-	jsStorage.v.Call("clear")
+	jsStorage.clear()
 	jsStorage.SetItem("key", []byte("value"))
 
 	_, err := jsStorage.Key(1)
@@ -138,7 +138,7 @@ func TestLocalStorage_Key_NotExistError(t *testing.T) {
 // Tests that LocalStorage.Length returns the correct Length when adding and
 // removing various keys.
 func TestLocalStorage_Length(t *testing.T) {
-	jsStorage.v.Call("clear")
+	jsStorage.clear()
 	values := map[string][]byte{
 		"key1": []byte("key value"),
 		"key2": {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
