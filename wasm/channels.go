@@ -1260,7 +1260,7 @@ func newChannelDbCipherJS(api *bindings.ChannelDbCipher) map[string]interface{} 
 //    passed into [NewCmix] (Uint8Array).
 //  - args[2] - The maximum size of a payload to be encrypted.
 //    A payload passed into [ChannelDbCipher.Encrypt] that is larger than
-//    plaintTextBlockSize will result in an error (int).
+//    this value will result in an error (int).
 //
 // Returns:
 //   - A JavaScript representation of the [ChannelDbCipher].
