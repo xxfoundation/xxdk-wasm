@@ -10,6 +10,7 @@
 package indexedDb
 
 import (
+	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
@@ -37,25 +38,25 @@ type MessageReceivedCallback func(uuid uint64, channelID *id.ID, update bool)
 // NewWASMEventModelBuilder returns an EventModelBuilder which allows
 // the channel manager to define the path but the callback is the same
 // across the board.
-func NewWASMEventModelBuilder(
+func NewWASMEventModelBuilder(encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) channels.EventModelBuilder {
 	fn := func(path string) (channels.EventModel, error) {
-		return NewWASMEventModel(path, cb)
+		return NewWASMEventModel(path, encryption, cb)
 	}
 	return fn
 }
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
-func NewWASMEventModel(path string, cb MessageReceivedCallback) (
-	channels.EventModel, error) {
+func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
+	cb MessageReceivedCallback) (channels.EventModel, error) {
 	databaseName := path + databaseSuffix
-	return newWASMModel(databaseName, cb)
+	return newWASMModel(databaseName, encryption, cb)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
-func newWASMModel(databaseName string, cb MessageReceivedCallback) (
-	*wasmModel, error) {
+func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
+	cb MessageReceivedCallback) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := newContext()
 	defer cancel()
@@ -88,7 +89,10 @@ func newWASMModel(databaseName string, cb MessageReceivedCallback) (
 	// Wait for database open to finish
 	db, err := openRequest.Await(ctx)
 
-	return &wasmModel{db: db, receivedMessageCB: cb}, err
+	if encryption == nil {
+		jww.WARN.Printf("IndexedDb encryption disabled!")
+	}
+	return &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}, err
 }
 
 // v1Upgrade performs the v0 -> v1 database upgrade.
