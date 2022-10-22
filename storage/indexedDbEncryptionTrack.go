@@ -5,7 +5,7 @@
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
-package utils
+package storage
 
 import (
 	"github.com/pkg/errors"

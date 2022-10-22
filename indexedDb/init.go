@@ -12,7 +12,7 @@ package indexedDb
 import (
 	"github.com/pkg/errors"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
@@ -92,7 +92,7 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	db, err := openRequest.Await(ctx)
 
 	encryptionStatus := encryption != nil
-	loadedEncryptionStatus, err := utils.StoreIndexedDbEncryptionStatus(
+	loadedEncryptionStatus, err := storage.StoreIndexedDbEncryptionStatus(
 		databaseName, encryptionStatus)
 	if err != nil {
 		return nil, err
