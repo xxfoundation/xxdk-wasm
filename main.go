@@ -13,7 +13,7 @@ import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/creds"
+	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
 	"os"
@@ -28,7 +28,7 @@ func init() {
 	jww.SetStdoutThreshold(jww.LevelFatal + 1)
 
 	// Check that the WASM binary version is correct
-	err := utils.CheckAndStoreVersions()
+	err := storage.CheckAndStoreVersions()
 	if err != nil {
 		jww.FATAL.Panicf("WASM binary version error: %+v", err)
 	}
@@ -38,11 +38,11 @@ func main() {
 	fmt.Println("Starting xxDK WebAssembly bindings.")
 	fmt.Printf("Client version %s\n", bindings.GetVersion())
 
-	// creds/password.go
-	js.Global().Set("GetOrInitPassword", js.FuncOf(creds.GetOrInitPassword))
+	// storage/password.go
+	js.Global().Set("GetOrInitPassword", js.FuncOf(storage.GetOrInitPassword))
 	js.Global().Set("ChangeExternalPassword",
-		js.FuncOf(creds.ChangeExternalPassword))
-	js.Global().Set("VerifyPassword", js.FuncOf(creds.VerifyPassword))
+		js.FuncOf(storage.ChangeExternalPassword))
+	js.Global().Set("VerifyPassword", js.FuncOf(storage.VerifyPassword))
 
 	// utils/array.go
 	js.Global().Set("Uint8ArrayToBase64", js.FuncOf(utils.Uint8ArrayToBase64))
@@ -71,6 +71,9 @@ func main() {
 	js.Global().Set("LoadChannelsManagerWithIndexedDb",
 		js.FuncOf(wasm.LoadChannelsManagerWithIndexedDb))
 	js.Global().Set("GenerateChannel", js.FuncOf(wasm.GenerateChannel))
+	js.Global().Set("DecodePublicURL", js.FuncOf(wasm.DecodePublicURL))
+	js.Global().Set("DecodePrivateURL", js.FuncOf(wasm.DecodePrivateURL))
+	js.Global().Set("GetChannelJSON", js.FuncOf(wasm.GetChannelJSON))
 	js.Global().Set("GetChannelInfo", js.FuncOf(wasm.GetChannelInfo))
 	js.Global().Set("GetShareUrlType", js.FuncOf(wasm.GetShareUrlType))
 	js.Global().Set("IsNicknameValid", js.FuncOf(wasm.IsNicknameValid))
