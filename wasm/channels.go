@@ -1229,3 +1229,98 @@ func (em *eventModel) UpdateSentStatus(
 	em.updateSentStatus(
 		uuid, utils.CopyBytesToJS(messageID), timestamp, roundID, status)
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Channel Cipher                                                             //
+////////////////////////////////////////////////////////////////////////////////
+
+// ChannelDbCipher wraps the [bindings.ChannelDbCipher] object so its methods
+// can be wrapped to be Javascript compatible.
+type ChannelDbCipher struct {
+	api *bindings.ChannelDbCipher
+}
+
+// newChannelDbCipherJS creates a new Javascript compatible object
+// (map[string]interface{}) that matches the [ChannelDbCipher] structure.
+func newChannelDbCipherJS(api *bindings.ChannelDbCipher) map[string]interface{} {
+	c := ChannelDbCipher{api}
+	channelDbCipherMap := map[string]interface{}{
+		"Encrypt": js.FuncOf(c.Encrypt),
+		"Decrypt": js.FuncOf(c.Decrypt),
+	}
+
+	return channelDbCipherMap
+}
+
+// NewChannelsDatabaseCipher constructs a ChannelDbCipher object.
+//
+// Parameters:
+//  - args[0] - The tracked [Cmix] object ID (int).
+//  - args[1] - The password for storage. This should be the same password
+//    passed into [NewCmix] (Uint8Array).
+//  - args[2] - The maximum size of a payload to be encrypted.
+//    A payload passed into [ChannelDbCipher.Encrypt] that is larger than
+//    this value will result in an error (int).
+//
+// Returns:
+//   - A JavaScript representation of the [ChannelDbCipher].
+//   - Throws a TypeError if creating the cipher fails.
+func NewChannelsDatabaseCipher(_ js.Value, args []js.Value) interface{} {
+	cmixId := args[0].Int()
+	password := utils.CopyBytesToGo(args[1])
+	plaintTextBlockSize := args[2].Int()
+
+	cipher, err := bindings.NewChannelsDatabaseCipher(
+		cmixId, password, plaintTextBlockSize)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return newChannelDbCipherJS(cipher)
+}
+
+// Encrypt will encrypt the raw data. It will return a ciphertext. Padding is
+// done on the plaintext so all encrypted data looks uniform at rest.
+//
+// Parameters:
+//  - args[0] - The data to be encrypted (Uint8Array). This must be smaller than the block
+//    size passed into [NewChannelsDatabaseCipher]. If it is larger, this will
+//    return an error.
+//
+// Returns:
+//   - The ciphertext of the plaintext passed in (Uint8Array).
+//   - Throws a TypeError if it fails to encrypt the plaintext.
+func (c *ChannelDbCipher) Encrypt(_ js.Value, args []js.Value) interface{} {
+
+	ciphertext, err := c.api.Encrypt(utils.CopyBytesToGo(args[0]))
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(ciphertext)
+
+}
+
+// Decrypt will decrypt the passed in encrypted value. The plaintext will
+// be returned by this function. Any padding will be discarded within
+// this function.
+//
+// Parameters:
+//  - args[0] - the encrypted data returned by [ChannelDbCipher.Encrypt]
+//    (Uint8Array).
+//
+// Returns:
+//   - The plaintext of the ciphertext passed in (Uint8Array).
+//   - Throws a TypeError if it fails to encrypt the plaintext.
+func (c *ChannelDbCipher) Decrypt(_ js.Value, args []js.Value) interface{} {
+	plaintext, err := c.api.Decrypt(utils.CopyBytesToGo(args[0]))
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(plaintext)
+
+}

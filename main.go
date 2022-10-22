@@ -74,6 +74,8 @@ func main() {
 	js.Global().Set("GetChannelInfo", js.FuncOf(wasm.GetChannelInfo))
 	js.Global().Set("GetShareUrlType", js.FuncOf(wasm.GetShareUrlType))
 	js.Global().Set("IsNicknameValid", js.FuncOf(wasm.IsNicknameValid))
+	js.Global().Set("NewChannelsDatabaseCipher",
+		js.FuncOf(wasm.NewChannelsDatabaseCipher))
 
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
