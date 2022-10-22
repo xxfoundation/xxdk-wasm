@@ -1290,6 +1290,7 @@ type ChannelDbCipher struct {
 func newChannelDbCipherJS(api *bindings.ChannelDbCipher) map[string]interface{} {
 	c := ChannelDbCipher{api}
 	channelDbCipherMap := map[string]interface{}{
+		"GetID":   js.FuncOf(c.GetID),
 		"Encrypt": js.FuncOf(c.Encrypt),
 		"Decrypt": js.FuncOf(c.Decrypt),
 	}
@@ -1303,12 +1304,12 @@ func newChannelDbCipherJS(api *bindings.ChannelDbCipher) map[string]interface{} 
 //  - args[0] - The tracked [Cmix] object ID (int).
 //  - args[1] - The password for storage. This should be the same password
 //    passed into [NewCmix] (Uint8Array).
-//  - args[2] - The maximum size of a payload to be encrypted.
-//    A payload passed into [ChannelDbCipher.Encrypt] that is larger than
-//    this value will result in an error (int).
+//  - args[2] - The maximum size of a payload to be encrypted. A payload passed
+//    into [ChannelDbCipher.Encrypt] that is larger than this value will result
+//    in an error (int).
 //
 // Returns:
-//   - A JavaScript representation of the [ChannelDbCipher].
+//   - JavaScript representation of the [ChannelDbCipher] object.
 //   - Throws a TypeError if creating the cipher fails.
 func NewChannelsDatabaseCipher(_ js.Value, args []js.Value) interface{} {
 	cmixId := args[0].Int()
@@ -1325,13 +1326,22 @@ func NewChannelsDatabaseCipher(_ js.Value, args []js.Value) interface{} {
 	return newChannelDbCipherJS(cipher)
 }
 
+// GetID returns the ID for this [bindings.ChannelDbCipher] in the
+// channelDbCipherTracker.
+//
+// Returns:
+//  - Tracker ID (int).
+func (c *ChannelDbCipher) GetID(js.Value, []js.Value) interface{} {
+	return c.api.GetID()
+}
+
 // Encrypt will encrypt the raw data. It will return a ciphertext. Padding is
 // done on the plaintext so all encrypted data looks uniform at rest.
 //
 // Parameters:
-//  - args[0] - The data to be encrypted (Uint8Array). This must be smaller than the block
-//    size passed into [NewChannelsDatabaseCipher]. If it is larger, this will
-//    return an error.
+//  - args[0] - The data to be encrypted (Uint8Array). This must be smaller than
+//    the block size passed into [NewChannelsDatabaseCipher]. If it is larger,
+//    this will return an error.
 //
 // Returns:
 //   - The ciphertext of the plaintext passed in (Uint8Array).
@@ -1348,9 +1358,9 @@ func (c *ChannelDbCipher) Encrypt(_ js.Value, args []js.Value) interface{} {
 
 }
 
-// Decrypt will decrypt the passed in encrypted value. The plaintext will
-// be returned by this function. Any padding will be discarded within
-// this function.
+// Decrypt will decrypt the passed in encrypted value. The plaintext will be
+// returned by this function. Any padding will be discarded within this
+// function.
 //
 // Parameters:
 //  - args[0] - the encrypted data returned by [ChannelDbCipher.Encrypt]
