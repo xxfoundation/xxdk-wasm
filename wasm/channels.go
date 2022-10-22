@@ -36,12 +36,11 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]interface{} 
 	cm := ChannelsManager{api}
 	channelsManagerMap := map[string]interface{}{
 		// Basic Channel API
-		"GetID":              js.FuncOf(cm.GetID),
-		"JoinChannel":        js.FuncOf(cm.JoinChannel),
-		"JoinChannelFromURL": js.FuncOf(cm.JoinChannelFromURL),
-		"GetChannels":        js.FuncOf(cm.GetChannels),
-		"LeaveChannel":       js.FuncOf(cm.LeaveChannel),
-		"ReplayChannel":      js.FuncOf(cm.ReplayChannel),
+		"GetID":         js.FuncOf(cm.GetID),
+		"JoinChannel":   js.FuncOf(cm.JoinChannel),
+		"GetChannels":   js.FuncOf(cm.GetChannels),
+		"LeaveChannel":  js.FuncOf(cm.LeaveChannel),
+		"ReplayChannel": js.FuncOf(cm.ReplayChannel),
 
 		// Share URL
 		"GetShareURL": js.FuncOf(cm.GetShareURL),
@@ -449,13 +448,85 @@ func GenerateChannel(_ js.Value, args []js.Value) interface{} {
 	return utils.CopyBytesToJS(gen)
 }
 
+// DecodePublicURL decodes the channel URL into a channel pretty print. This
+// function can only be used for public channel URLs. To get the privacy level
+// of a channel URL, use [GetShareUrlType].
+//
+// Parameters:
+//  - args[0] - The channel's share URL (string). Should be received from
+//    another user or generated via [GetShareURL].
+//
+// Returns:
+//  - The channel pretty print (string).
+func DecodePublicURL(_ js.Value, args []js.Value) interface{} {
+	c, err := bindings.DecodePublicURL(args[0].String())
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return c
+}
+
+// DecodePrivateURL decodes the channel URL, using the password, into a channel
+// pretty print. This function can only be used for private or secret channel
+// URLs. To get the privacy level of a channel URL, use [GetShareUrlType].
+//
+// Parameters:
+//  - args[0] - The channel's share URL (string). Should be received from
+//    another user or generated via [GetShareURL].
+//  - args[1] - The password needed to decrypt the secret data in the URL
+//    (string).
+//
+// Returns:
+//  - The channel pretty print (string)
+func DecodePrivateURL(_ js.Value, args []js.Value) interface{} {
+	c, err := bindings.DecodePrivateURL(args[0].String(), args[1].String())
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return c
+}
+
+// GetChannelJSON returns the JSON of the channel for the given pretty print.
+//
+// Parameters:
+//  - args[0] - The pretty print of the channel (string).
+//
+// Returns:
+//  - JSON of the [broadcast.Channel] object (Uint8Array).
+//
+// Example JSON of [broadcast.Channel]:
+//  {
+//    "ReceptionID": "Ja/+Jh+1IXZYUOn+IzE3Fw/VqHOscomD0Q35p4Ai//kD",
+//    "Name": "My_Channel",
+//    "Description": "Here is information about my channel.",
+//    "Salt": "+tlrU/htO6rrV3UFDfpQALUiuelFZ+Cw9eZCwqRHk+g=",
+//    "RsaPubKeyHash": "PViT1mYkGBj6AYmE803O2RpA7BX24EjgBdldu3pIm4o=",
+//    "RsaPubKeyLength": 5,
+//    "RSASubPayloads": 1,
+//    "Secret": "JxZt/wPx2luoPdHY6jwbXqNlKnixVU/oa9DgypZOuyI=",
+//    "Level": 0
+//  }
+func GetChannelJSON(_ js.Value, args []js.Value) interface{} {
+	c, err := bindings.GetChannelJSON(args[0].String())
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return c
+}
+
 // GetChannelInfo returns the info about a channel from its public description.
 //
 // Parameters:
 //  - args[0] - The pretty print of the channel (string).
 //
 // The pretty print will be of the format:
-//  <Speakeasy-v1:Test Channel,description:This is a test channel,secrets:YxHhRAKy2D4XU2oW5xnW/3yaqOeh8nO+ZSd3nUmiQ3c=,6pXN2H9FXcOj7pjJIZoq6nMi4tGX2s53fWH5ze2dU1g=,493,1,MVjkHlm0JuPxQNAn6WHsPdOw9M/BUF39p7XB/QEkQyc=>
+//  <Speakeasy-v2:Test_Channel|description:Channel description.|level:Public|secrets:+oHcqDbJPZaT3xD5NcdLY8OjOMtSQNKdKgLPmr7ugdU=|rCI0wr01dHFStjSFMvsBzFZClvDIrHLL5xbCOPaUOJ0=|493|1|7cBhJxVfQxWo+DypOISRpeWdQBhuQpAZtUbQHjBm8NQ=>
 //
 // Returns:
 //  - JSON of [bindings.ChannelInfo], which describes all relevant channel info
@@ -479,7 +550,7 @@ func GetChannelInfo(_ js.Value, args []js.Value) interface{} {
 //    or generated via GenerateChannel (string).
 //
 // The pretty print will be of the format:
-//  <Speakeasy-v1:Test Channel,description:This is a test channel,secrets:YxHhRAKy2D4XU2oW5xnW/3yaqOeh8nO+ZSd3nUmiQ3c=,6pXN2H9FXcOj7pjJIZoq6nMi4tGX2s53fWH5ze2dU1g=,493,1,MVjkHlm0JuPxQNAn6WHsPdOw9M/BUF39p7XB/QEkQyc=>
+//  <Speakeasy-v2:Test_Channel|description:Channel description.|level:Public|secrets:+oHcqDbJPZaT3xD5NcdLY8OjOMtSQNKdKgLPmr7ugdU=|rCI0wr01dHFStjSFMvsBzFZClvDIrHLL5xbCOPaUOJ0=|493|1|7cBhJxVfQxWo+DypOISRpeWdQBhuQpAZtUbQHjBm8NQ=>
 //
 // Returns:
 //  - JSON of [bindings.ChannelInfo], which describes all relevant channel info
@@ -487,32 +558,6 @@ func GetChannelInfo(_ js.Value, args []js.Value) interface{} {
 //  - Throws a TypeError if joining the channel fails.
 func (ch *ChannelsManager) JoinChannel(_ js.Value, args []js.Value) interface{} {
 	ci, err := ch.api.JoinChannel(args[0].String())
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
-	}
-
-	return utils.CopyBytesToJS(ci)
-}
-
-// JoinChannelFromURL joins the given channel from a URL. It will fail if the
-// channel has already been joined. A password is required unless it is of the
-// privacy level [broadcast.Public], in which case it can be left empty. To get
-// the privacy level of a channel URL, use [GetShareUrlType].
-//
-// Parameters:
-//  - args[0] - The channel's share URL. Should be received from another user
-//    or generated via [ChannelsManager.GetShareURL] (string).
-//  - args[1] - The password needed to decrypt the secret data in the URL
-//    (string). Only required for private or secret channels. Use empty string
-//    ("") for public channels.
-//
-// Returns:
-//  - JSON of [bindings.ChannelInfo], which describes all relevant channel info
-//    (Uint8Array).
-//  - Throws a TypeError if joining the channel fails.
-func (ch *ChannelsManager) JoinChannelFromURL(_ js.Value, args []js.Value) interface{} {
-	ci, err := ch.api.JoinChannelFromURL(args[0].String(), args[1].String())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
