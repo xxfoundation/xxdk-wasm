@@ -70,6 +70,10 @@ func main() {
 		js.FuncOf(wasm.NewChannelsManagerWithIndexedDb))
 	js.Global().Set("LoadChannelsManagerWithIndexedDb",
 		js.FuncOf(wasm.LoadChannelsManagerWithIndexedDb))
+	js.Global().Set("LoadChannelsManagerWithIndexedDbUnsafe",
+		js.FuncOf(wasm.LoadChannelsManagerWithIndexedDbUnsafe))
+	js.Global().Set("NewChannelsManagerWithIndexedDbUnsafe",
+		js.FuncOf(wasm.NewChannelsManagerWithIndexedDbUnsafe))
 	js.Global().Set("GenerateChannel", js.FuncOf(wasm.GenerateChannel))
 	js.Global().Set("GetChannelInfo", js.FuncOf(wasm.GetChannelInfo))
 	js.Global().Set("GetShareUrlType", js.FuncOf(wasm.GetShareUrlType))
