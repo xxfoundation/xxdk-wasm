@@ -10,7 +10,9 @@
 package indexedDb
 
 import (
+	"github.com/pkg/errors"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
@@ -89,7 +91,17 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	// Wait for database open to finish
 	db, err := openRequest.Await(ctx)
 
-	if encryption == nil {
+	encryptionStatus := encryption != nil
+	loadedEncryptionStatus, err := utils.StoreIndexedDbEncryptionStatus(
+		databaseName, encryptionStatus)
+	if err != nil {
+		return nil, err
+	}
+
+	if encryptionStatus != loadedEncryptionStatus {
+		return nil, errors.New(
+			"Cannot load database with different encryption status.")
+	} else if !encryptionStatus {
 		jww.WARN.Printf("IndexedDb encryption disabled!")
 	}
 	return &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}, err
