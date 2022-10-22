@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package utils
+package storage
 
 import (
 	"encoding/base64"

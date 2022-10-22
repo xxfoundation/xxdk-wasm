@@ -25,9 +25,10 @@ func TestPublicFunctions(t *testing.T) {
 	// not implemented.
 	excludeList := map[string]struct{}{
 		// Notifications are not available in the browser
-		"GetNotificationsReport":     {},
-		"RegisterForNotifications":   {},
-		"UnregisterForNotifications": {},
+		"GetNotificationsReport":          {},
+		"RegisterForNotifications":        {},
+		"UnregisterForNotifications":      {},
+		"GetChannelDbCipherTrackerFromID": {},
 
 		// UD not available in the browser
 		"IsRegisteredWithUD":     {},
