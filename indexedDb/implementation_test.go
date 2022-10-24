@@ -12,6 +12,7 @@ package indexedDb
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hack-pad/go-indexeddb/idb"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/xx_network/primitives/netTime"
 	"os"
@@ -250,5 +251,57 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 	}
 	if len(result) != expectedMessages {
 		t.Errorf("Expected %d messages, got %d", expectedMessages, len(result))
+	}
+}
+
+// This test is designed to prove the behavior of unique indexes.
+// Inserts will not fail, they simply will not happen.
+func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
+	testString := "test_receiveHelper_UniqueIndex"
+	eventModel, err := newWASMModel(testString, nil, dummyCallback)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Ensure index is unique
+	txn, err := eventModel.db.Transaction(idb.TransactionReadOnly, messageStoreName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := txn.ObjectStore(messageStoreName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	idx, err := store.Index(messageStoreMessageIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if isUnique, err := idx.Unique(); !isUnique {
+		t.Fatalf("Index is not unique!")
+	} else if err != nil {
+		t.Fatal(err)
+	}
+
+	// First message insert should succeed
+	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
+	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
+		testString, testString, []byte{8, 6, 7, 5}, 0, netTime.Now(),
+		time.Second, 0, 0, channels.Sent)
+	_, err = eventModel.receiveHelper(testMsg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The duplicate entry won't fail, it just silently shouldn't happen
+	_, err = eventModel.receiveHelper(testMsg)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	results, err := eventModel.dump(messageStoreName)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Expected only a single message, got %d", len(results))
 	}
 }
