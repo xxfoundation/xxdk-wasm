@@ -70,6 +70,10 @@ func main() {
 		js.FuncOf(wasm.NewChannelsManagerWithIndexedDb))
 	js.Global().Set("LoadChannelsManagerWithIndexedDb",
 		js.FuncOf(wasm.LoadChannelsManagerWithIndexedDb))
+	js.Global().Set("LoadChannelsManagerWithIndexedDbUnsafe",
+		js.FuncOf(wasm.LoadChannelsManagerWithIndexedDbUnsafe))
+	js.Global().Set("NewChannelsManagerWithIndexedDbUnsafe",
+		js.FuncOf(wasm.NewChannelsManagerWithIndexedDbUnsafe))
 	js.Global().Set("GenerateChannel", js.FuncOf(wasm.GenerateChannel))
 	js.Global().Set("DecodePublicURL", js.FuncOf(wasm.DecodePublicURL))
 	js.Global().Set("DecodePrivateURL", js.FuncOf(wasm.DecodePrivateURL))

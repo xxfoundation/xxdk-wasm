@@ -25,10 +25,9 @@ func TestPublicFunctions(t *testing.T) {
 	// not implemented.
 	excludeList := map[string]struct{}{
 		// Notifications are not available in the browser
-		"GetNotificationsReport":          {},
-		"RegisterForNotifications":        {},
-		"UnregisterForNotifications":      {},
-		"GetChannelDbCipherTrackerFromID": {},
+		"GetNotificationsReport":     {},
+		"RegisterForNotifications":   {},
+		"UnregisterForNotifications": {},
 
 		// UD not available in the browser
 		"IsRegisteredWithUD":     {},
@@ -43,6 +42,7 @@ func TestPublicFunctions(t *testing.T) {
 		"NewEventModel":                   {},
 		"NewChannelsManagerGoEventModel":  {},
 		"LoadChannelsManagerGoEventModel": {},
+		"GetChannelDbCipherTrackerFromID": {},
 
 		// Version functions were renamed to differentiate between WASM and
 		// client versions
