@@ -12,6 +12,7 @@ package indexedDb
 import (
 	"encoding/json"
 	"fmt"
+	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/xx_network/primitives/netTime"
 	"os"
 	"strconv"
@@ -90,6 +91,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 
 // Smoke test wasmModel.JoinChannel/wasmModel.LeaveChannel happy paths.
 func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
+	storage.GetLocalStorage().Clear()
 	eventModel, err := newWASMModel("test", nil, dummyCallback)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -162,6 +164,7 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 
 // Tests if the same message ID being sent always returns the same UUID.
 func Test_wasmModel_DuplicateReceives(t *testing.T) {
+	storage.GetLocalStorage().Clear()
 	testString := "testHello"
 	eventModel, err := newWASMModel(testString, nil, dummyCallback)
 	if err != nil {
