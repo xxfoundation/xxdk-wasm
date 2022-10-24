@@ -91,6 +91,9 @@ func newWASMModel(databaseName string, cb MessageReceivedCallback) (
 		return nil, err
 	}
 
+	// FIXME: The below is a hack that for some reason prevents moving on with
+	//        uninitialized database despite the previous call to Await.
+	//        It would be idea to find a different solution.
 	// Close and open again to ensure the state is finalized
 	err = db.Close()
 	if err != nil {
