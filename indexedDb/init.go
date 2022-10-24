@@ -186,5 +186,12 @@ func v1Upgrade(db *idb.Database) error {
 		return err
 	}
 
+	// Get the database name and save it to storage
+	if databaseName, err := db.Name(); err != nil {
+		return err
+	} else if err = storage.StoreIndexedDb(databaseName); err != nil {
+		return err
+	}
+
 	return nil
 }

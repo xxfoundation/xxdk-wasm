@@ -44,6 +44,9 @@ func main() {
 		js.FuncOf(storage.ChangeExternalPassword))
 	js.Global().Set("VerifyPassword", js.FuncOf(storage.VerifyPassword))
 
+	// storage/purge.go
+	js.Global().Set("Purge", js.FuncOf(storage.Purge))
+
 	// utils/array.go
 	js.Global().Set("Uint8ArrayToBase64", js.FuncOf(utils.Uint8ArrayToBase64))
 	js.Global().Set("Base64ToUint8Array", js.FuncOf(utils.Base64ToUint8Array))
