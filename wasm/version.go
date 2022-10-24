@@ -11,7 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"syscall/js"
 )
 
@@ -20,7 +20,7 @@ import (
 // Returns:
 //  - Current version (string).
 func GetVersion(js.Value, []js.Value) interface{} {
-	return utils.SEMVER
+	return storage.SEMVER
 }
 
 // GetClientVersion returns the current client xxDK semantic version

@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package creds
+package storage
 
 import (
 	"crypto/cipher"
@@ -130,7 +130,7 @@ func VerifyPassword(_ js.Value, args []js.Value) interface{} {
 // getOrInit is the private function for GetOrInitPassword that is used for
 // testing.
 func getOrInit(externalPassword string) ([]byte, error) {
-	localStorage := utils.GetLocalStorage()
+	localStorage := GetLocalStorage()
 	internalPassword, err := getInternalPassword(externalPassword, localStorage)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -148,7 +148,7 @@ func getOrInit(externalPassword string) ([]byte, error) {
 // changeExternalPassword is the private function for ChangeExternalPassword
 // that is used for testing.
 func changeExternalPassword(oldExternalPassword, newExternalPassword string) error {
-	localStorage := utils.GetLocalStorage()
+	localStorage := GetLocalStorage()
 	internalPassword, err := getInternalPassword(oldExternalPassword, localStorage)
 	if err != nil {
 		return err
@@ -172,14 +172,14 @@ func changeExternalPassword(oldExternalPassword, newExternalPassword string) err
 // verifyPassword is the private function for VerifyPassword that is used for
 // testing.
 func verifyPassword(externalPassword string) bool {
-	_, err := getInternalPassword(externalPassword, utils.GetLocalStorage())
+	_, err := getInternalPassword(externalPassword, GetLocalStorage())
 	return err == nil
 }
 
 // initInternalPassword generates a new internal password, stores an encrypted
 // version in local storage, and returns it.
 func initInternalPassword(externalPassword string,
-	localStorage *utils.LocalStorage, csprng io.Reader,
+	localStorage *LocalStorage, csprng io.Reader,
 	params argonParams) ([]byte, error) {
 	internalPassword := make([]byte, internalPasswordLen)
 
@@ -217,7 +217,7 @@ func initInternalPassword(externalPassword string,
 // getInternalPassword retrieves the internal password from local storage,
 // decrypts it, and returns it.
 func getInternalPassword(
-	externalPassword string, localStorage *utils.LocalStorage) ([]byte, error) {
+	externalPassword string, localStorage *LocalStorage) ([]byte, error) {
 	encryptedInternalPassword, err := localStorage.GetItem(passwordKey)
 	if err != nil {
 		return nil, errors.WithMessage(err, getPasswordStorageErr)
