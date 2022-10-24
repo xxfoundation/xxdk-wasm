@@ -48,7 +48,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 		testString, testString, []byte{8, 6, 7, 5}, 0, netTime.Now(),
 		time.Second, 0, 0, channels.Sent)
-	uuid, err := eventModel.receiveHelper(testMsg)
+	uuid, err := eventModel.receiveHelper(testMsg, false)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -287,13 +287,13 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 		testString, testString, []byte{8, 6, 7, 5}, 0, netTime.Now(),
 		time.Second, 0, 0, channels.Sent)
-	_, err = eventModel.receiveHelper(testMsg)
+	_, err = eventModel.receiveHelper(testMsg, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// The duplicate entry won't fail, it just silently shouldn't happen
-	_, err = eventModel.receiveHelper(testMsg)
+	_, err = eventModel.receiveHelper(testMsg, true)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}

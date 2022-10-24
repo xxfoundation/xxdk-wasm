@@ -221,7 +221,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 		channelID.Marshal(), messageID.Bytes(), nil, nickname, text, pubKey,
 		codeset, timestamp, lease, round.ID, mType, status)
 
-	uuid, err := w.receiveHelper(msgToInsert)
+	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
 		jww.ERROR.Printf("Failed to receive Message: %+v", err)
 	}
@@ -246,7 +246,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 		replyTo.Bytes(), nickname, text, pubKey, codeset, timestamp, lease,
 		round.ID, mType, status)
 
-	uuid, err := w.receiveHelper(msgToInsert)
+	uuid, err := w.receiveHelper(msgToInsert, false)
 
 	if err != nil {
 		jww.ERROR.Printf("Failed to receive reply: %+v", err)
@@ -271,7 +271,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 		channelID.Marshal(), messageID.Bytes(), reactionTo.Bytes(), nickname,
 		reaction, pubKey, codeset, timestamp, lease, round.ID, mType, status)
 
-	uuid, err := w.receiveHelper(msgToInsert)
+	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
 		jww.ERROR.Printf("Failed to receive reaction: %+v", err)
 	}
@@ -324,7 +324,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64,
 	}
 
 	// Store the updated Message
-	_, err = w.receiveHelper(newMessage)
+	_, err = w.receiveHelper(newMessage, true)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
 	}
@@ -363,7 +363,7 @@ func buildMessage(channelID, messageID, parentID []byte, nickname, text string,
 }
 
 // receiveHelper is a private helper for receiving any sort of message.
-func (w *wasmModel) receiveHelper(newMessage *Message) (uint64,
+func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 	error) {
 	// Convert to jsObject
 	newMessageJson, err := json.Marshal(newMessage)
@@ -375,9 +375,8 @@ func (w *wasmModel) receiveHelper(newMessage *Message) (uint64,
 		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
 	}
 
-	// NOTE: This is weird, but correct. When the "ID" field is 0, we unset it
-	// from the JSValue so that it is auto-populated and incremented.
-	if newMessage.ID == 0 {
+	// Unset the primaryKey for inserts so it can be auto-populated and incremented.
+	if !isUpdate {
 		messageObj.JSValue().Delete("id")
 	}
 
