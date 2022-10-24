@@ -12,8 +12,15 @@ package storage
 import (
 	"encoding/base64"
 	"os"
+	"strings"
 	"syscall/js"
 )
+
+// localStorageWasmPrefix is prefixed to every keyName saved to local storage by
+// LocalStorage. It allows the identifications and deletion of keys only created
+// by this WASM binary while ignoring keys made by other scripts on the same
+// page.
+const localStorageWasmPrefix = "xxdkWasmStorage/"
 
 // LocalStorage contains the js.Value representation of localStorage.
 type LocalStorage struct {
@@ -43,7 +50,7 @@ func GetLocalStorage() *LocalStorage {
 //  - Documentation:
 //    https://developer.mozilla.org/en-US/docs/Web/API/Storage/getItem
 func (ls *LocalStorage) GetItem(keyName string) ([]byte, error) {
-	keyValue := ls.getItem(keyName)
+	keyValue := ls.getItem(localStorageWasmPrefix + keyName)
 	if keyValue.IsNull() {
 		return nil, os.ErrNotExist
 	}
@@ -65,7 +72,7 @@ func (ls *LocalStorage) GetItem(keyName string) ([]byte, error) {
 //    https://developer.mozilla.org/en-US/docs/Web/API/Storage/setItem
 func (ls *LocalStorage) SetItem(keyName string, keyValue []byte) {
 	encodedKeyValue := base64.StdEncoding.EncodeToString(keyValue)
-	ls.setItem(keyName, encodedKeyValue)
+	ls.setItem(localStorageWasmPrefix+keyName, encodedKeyValue)
 }
 
 // RemoveItem removes a key's value from local storage given its name. If there
@@ -77,7 +84,7 @@ func (ls *LocalStorage) SetItem(keyName string, keyValue []byte) {
 //  - Documentation:
 //    https://developer.mozilla.org/en-US/docs/Web/API/Storage/removeItem
 func (ls *LocalStorage) RemoveItem(keyName string) {
-	ls.removeItem(keyName)
+	ls.removeItem(localStorageWasmPrefix + keyName)
 }
 
 // Clear clears all the keys in storage. Underneath, it calls
@@ -89,6 +96,38 @@ func (ls *LocalStorage) RemoveItem(keyName string) {
 //    https://developer.mozilla.org/en-US/docs/Web/API/Storage/clear
 func (ls *LocalStorage) Clear() {
 	ls.clear()
+}
+
+// ClearPrefix clears all keys with the given prefix.
+func (ls *LocalStorage) ClearPrefix(prefix string) {
+	// Get a copy of all key names at once
+	keys := js.Global().Get("Object").Call("keys", ls.v)
+
+	// Loop through each key
+	for i := 0; i < keys.Length(); i++ {
+		if v := keys.Index(i); !v.IsNull() {
+			keyName := strings.TrimPrefix(v.String(), localStorageWasmPrefix)
+			if strings.HasPrefix(keyName, prefix) {
+				ls.RemoveItem(keyName)
+			}
+		}
+	}
+}
+
+// ClearWASM clears all the keys in storage created by WASM.
+func (ls *LocalStorage) ClearWASM() {
+	// Get a copy of all key names at once
+	keys := js.Global().Get("Object").Call("keys", ls.v)
+
+	// Loop through each key
+	for i := 0; i < keys.Length(); i++ {
+		if v := keys.Index(i); !v.IsNull() {
+			keyName := v.String()
+			if strings.HasPrefix(keyName, localStorageWasmPrefix) {
+				ls.RemoveItem(strings.TrimPrefix(keyName, localStorageWasmPrefix))
+			}
+		}
+	}
 }
 
 // Key returns the name of the nth key in localStorage. Return os.ErrNotExist if
@@ -106,7 +145,7 @@ func (ls *LocalStorage) Key(n int) (string, error) {
 		return "", os.ErrNotExist
 	}
 
-	return keyName.String(), nil
+	return strings.TrimPrefix(keyName.String(), localStorageWasmPrefix), nil
 }
 
 // Length returns the number of keys in localStorage. Underneath, it accesses
