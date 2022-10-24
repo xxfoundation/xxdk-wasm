@@ -70,6 +70,10 @@ func main() {
 		js.FuncOf(wasm.NewChannelsManagerWithIndexedDb))
 	js.Global().Set("LoadChannelsManagerWithIndexedDb",
 		js.FuncOf(wasm.LoadChannelsManagerWithIndexedDb))
+	js.Global().Set("LoadChannelsManagerWithIndexedDbUnsafe",
+		js.FuncOf(wasm.LoadChannelsManagerWithIndexedDbUnsafe))
+	js.Global().Set("NewChannelsManagerWithIndexedDbUnsafe",
+		js.FuncOf(wasm.NewChannelsManagerWithIndexedDbUnsafe))
 	js.Global().Set("GenerateChannel", js.FuncOf(wasm.GenerateChannel))
 	js.Global().Set("DecodePublicURL", js.FuncOf(wasm.DecodePublicURL))
 	js.Global().Set("DecodePrivateURL", js.FuncOf(wasm.DecodePrivateURL))
@@ -77,6 +81,8 @@ func main() {
 	js.Global().Set("GetChannelInfo", js.FuncOf(wasm.GetChannelInfo))
 	js.Global().Set("GetShareUrlType", js.FuncOf(wasm.GetShareUrlType))
 	js.Global().Set("IsNicknameValid", js.FuncOf(wasm.IsNicknameValid))
+	js.Global().Set("NewChannelsDatabaseCipher",
+		js.FuncOf(wasm.NewChannelsDatabaseCipher))
 
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))

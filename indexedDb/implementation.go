@@ -39,6 +39,7 @@ const dbTimeout = time.Second
 // channel.
 type wasmModel struct {
 	db                *idb.Database
+	cipher            cryptoChannel.Cipher
 	receivedMessageCB MessageReceivedCallback
 	updateMux         sync.Mutex
 }
@@ -205,6 +206,16 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	pubKey ed25519.PublicKey, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
+
+	// Handle encryption, if it is present
+	if w.cipher != nil {
+		cipherText, err := w.cipher.Encrypt([]byte(text))
+		if err != nil {
+			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
+			return 0
+		}
+		text = string(cipherText)
+	}
 
 	msgToInsert := buildMessage(
 		channelID.Marshal(), messageID.Bytes(), nil, nickname, text, pubKey,
