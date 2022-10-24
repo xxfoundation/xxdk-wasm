@@ -12,6 +12,7 @@ package indexedDb
 import (
 	"encoding/json"
 	"fmt"
+	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/xx_network/primitives/netTime"
 	"os"
 	"strconv"
@@ -37,7 +38,7 @@ func dummyCallback(uint64, *id.ID, bool) {}
 func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 	testString := "test"
 	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
-	eventModel, err := newWASMModel(testString, dummyCallback)
+	eventModel, err := newWASMModel(testString, nil, dummyCallback)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -90,7 +91,8 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 
 // Smoke test wasmModel.JoinChannel/wasmModel.LeaveChannel happy paths.
 func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
-	eventModel, err := newWASMModel("test", dummyCallback)
+	storage.GetLocalStorage().Clear()
+	eventModel, err := newWASMModel("test", nil, dummyCallback)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -129,7 +131,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 // Test UUID gets returned when different messages are added.
 func Test_wasmModel_UUIDTest(t *testing.T) {
 	testString := "testHello"
-	eventModel, err := newWASMModel(testString, dummyCallback)
+	eventModel, err := newWASMModel(testString, nil, dummyCallback)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -162,8 +164,9 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 
 // Tests if the same message ID being sent always returns the same UUID.
 func Test_wasmModel_DuplicateReceives(t *testing.T) {
+	storage.GetLocalStorage().Clear()
 	testString := "testHello"
-	eventModel, err := newWASMModel(testString, dummyCallback)
+	eventModel, err := newWASMModel(testString, nil, dummyCallback)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -200,7 +203,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 	testString := "test_deleteMsgByChannel"
 	totalMessages := 10
 	expectedMessages := 5
-	eventModel, err := newWASMModel(testString, dummyCallback)
+	eventModel, err := newWASMModel(testString, nil, dummyCallback)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}

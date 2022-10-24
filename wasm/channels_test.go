@@ -60,6 +60,47 @@ func Test_ChannelsManagerMethods(t *testing.T) {
 	}
 }
 
+// Tests that the map representing ChannelDbCipher returned by
+// newChannelDbCipherJS contains all of the methods on ChannelDbCipher.
+func Test_newChannelDbCipherJS(t *testing.T) {
+	cipherType := reflect.TypeOf(&ChannelDbCipher{})
+
+	cipher := newChannelDbCipherJS(&bindings.ChannelDbCipher{})
+	if len(cipher) != cipherType.NumMethod() {
+		t.Errorf("ChannelDbCipher JS object does not have all methods."+
+			"\nexpected: %d\nreceived: %d", cipherType.NumMethod(), len(cipher))
+	}
+
+	for i := 0; i < cipherType.NumMethod(); i++ {
+		method := cipherType.Method(i)
+
+		if _, exists := cipher[method.Name]; !exists {
+			t.Errorf("Method %s does not exist.", method.Name)
+		}
+	}
+}
+
+// Tests that ChannelDbCipher has all the methods that
+// [bindings.ChannelDbCipher] has.
+func Test_ChannelDbCipherMethods(t *testing.T) {
+	cipherType := reflect.TypeOf(&ChannelDbCipher{})
+	binCipherType := reflect.TypeOf(&bindings.ChannelDbCipher{})
+
+	if binCipherType.NumMethod() != cipherType.NumMethod() {
+		t.Errorf("WASM ChannelDbCipher object does not have all methods from "+
+			"bindings.\nexpected: %d\nreceived: %d",
+			binCipherType.NumMethod(), cipherType.NumMethod())
+	}
+
+	for i := 0; i < binCipherType.NumMethod(); i++ {
+		method := binCipherType.Method(i)
+
+		if _, exists := cipherType.MethodByName(method.Name); !exists {
+			t.Errorf("Method %s does not exist.", method.Name)
+		}
+	}
+}
+
 type jsIdentity struct {
 	pubKey  js.Value
 	codeset js.Value
