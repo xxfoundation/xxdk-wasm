@@ -292,8 +292,8 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The duplicate entry won't fail, it just silently shouldn't happen
-	_, err = eventModel.receiveHelper(testMsg, true)
+	// The duplicate entry won't fail, but it just silently shouldn't happen
+	_, err = eventModel.receiveHelper(testMsg, false)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -304,4 +304,31 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 	if len(results) != 1 {
 		t.Fatalf("Expected only a single message, got %d", len(results))
 	}
+
+	// Now insert a message with a different message ID from the first
+	testMsgId2 := channel.MakeMessageID([]byte(testString), &id.ID{2})
+	testMsg = buildMessage([]byte(testString), testMsgId2.Bytes(), nil,
+		testString, testString, []byte{8, 6, 7, 5}, 0, netTime.Now(),
+		time.Second, 0, 0, channels.Sent)
+	primaryKey, err := eventModel.receiveHelper(testMsg, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Except this time, we update the second entry to have the same
+	// message ID as the first
+	testMsg.ID = primaryKey
+	testMsg.MessageID = testMsgId.Bytes()
+	_, err = eventModel.receiveHelper(testMsg, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The update to duplicate message ID won't fail,
+	// but it just silently shouldn't happen
+	results, err = eventModel.dump(messageStoreName)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	// TODO: Convert JSON to Message, ensure Message ID fields differ
 }
