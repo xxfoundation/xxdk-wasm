@@ -90,6 +90,30 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 
 	// Wait for database open to finish
 	db, err := openRequest.Await(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// FIXME: The below is a hack that for some reason prevents moving on with
+	//        uninitialized database despite the previous call to Await.
+	//        It would be idea to find a different solution.
+	// Close and open again to ensure the state is finalized
+	err = db.Close()
+	if err != nil {
+		return nil, err
+	}
+	openRequest, err = idb.Global().Open(ctx, databaseName, currentVersion,
+		func(db *idb.Database, oldVersion, newVersion uint) error {
+			return nil
+		})
+	if err != nil {
+		return nil, err
+	}
+	// Wait for database open to finish
+	db, err = openRequest.Await(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	encryptionStatus := encryption != nil
 	loadedEncryptionStatus, err := storage.StoreIndexedDbEncryptionStatus(

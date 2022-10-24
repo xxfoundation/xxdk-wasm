@@ -616,7 +616,7 @@ func GetChannelJSON(_ js.Value, args []js.Value) interface{} {
 		return nil
 	}
 
-	return c
+	return utils.CopyBytesToJS(c)
 }
 
 // GetChannelInfo returns the info about a channel from its public description.
