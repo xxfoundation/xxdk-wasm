@@ -355,8 +355,8 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) interface{} {
 //
 // This is for creating a manager for an identity for the first time. For
 // generating a new one channel identity, use [GenerateChannelIdentity]. To
-// reload this channel manager, use [LoadChannelsManagerWithIndexedDb], passing
-// in the storage tag retrieved by [ChannelsManager.GetStorageTag].
+// reload this channel manager, use [LoadChannelsManagerWithIndexedDbUnsafe],
+// passing in the storage tag retrieved by [ChannelsManager.GetStorageTag].
 //
 // This function initialises an indexedDb database.
 //
@@ -1397,7 +1397,7 @@ func newChannelDbCipherJS(api *bindings.ChannelDbCipher) map[string]interface{} 
 	return channelDbCipherMap
 }
 
-// NewChannelsDatabaseCipher constructs a ChannelDbCipher object.
+// NewChannelsDatabaseCipher constructs a [ChannelDbCipher] object.
 //
 // Parameters:
 //  - args[0] - The tracked [Cmix] object ID (int).
