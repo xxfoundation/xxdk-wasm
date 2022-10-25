@@ -206,20 +206,21 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	pubKey ed25519.PublicKey, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
+	textBytes := []byte(text)
+	var err error
 
 	// Handle encryption, if it is present
 	if w.cipher != nil {
-		cipherText, err := w.cipher.Encrypt([]byte(text))
+		textBytes, err = w.cipher.Encrypt([]byte(text))
 		if err != nil {
 			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
 			return 0
 		}
-		text = string(cipherText)
 	}
 
 	msgToInsert := buildMessage(
-		channelID.Marshal(), messageID.Bytes(), nil, nickname, text, pubKey,
-		codeset, timestamp, lease, round.ID, mType, status)
+		channelID.Marshal(), messageID.Bytes(), nil, nickname,
+		textBytes, pubKey, codeset, timestamp, lease, round.ID, mType, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -243,7 +244,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
 
 	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
-		replyTo.Bytes(), nickname, text, pubKey, codeset, timestamp, lease,
+		replyTo.Bytes(), nickname, []byte(text), pubKey, codeset, timestamp, lease,
 		round.ID, mType, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
@@ -269,7 +270,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 
 	msgToInsert := buildMessage(
 		channelID.Marshal(), messageID.Bytes(), reactionTo.Bytes(), nickname,
-		reaction, pubKey, codeset, timestamp, lease, round.ID, mType, status)
+		[]byte(reaction), pubKey, codeset, timestamp, lease, round.ID, mType, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -339,8 +340,8 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64,
 // NOTE: ID is not set inside this function because we want to use the
 //  autoincrement key by default. If you are trying to overwrite an existing
 //  message, then you need to set it manually yourself.
-func buildMessage(channelID, messageID, parentID []byte, nickname, text string,
-	pubKey ed25519.PublicKey, codeset uint8, timestamp time.Time,
+func buildMessage(channelID, messageID, parentID []byte, nickname string,
+	text []byte, pubKey ed25519.PublicKey, codeset uint8, timestamp time.Time,
 	lease time.Duration, round id.Round, mType channels.MessageType,
 	status channels.SentStatus) *Message {
 	return &Message{

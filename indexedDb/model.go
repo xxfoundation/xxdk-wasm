@@ -55,7 +55,7 @@ type Message struct {
 	Status          uint8         `json:"status"`
 	Hidden          bool          `json:"hidden"`
 	Pinned          bool          `json:"pinned"` // Index
-	Text            string        `json:"text"`
+	Text            []byte        `json:"text"`
 	Type            uint16        `json:"type"`
 	Round           uint64        `json:"round"`
 
