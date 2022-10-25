@@ -648,7 +648,7 @@ func GetChannelJSON(_ js.Value, args []js.Value) interface{} {
 //  - args[0] - The pretty print of the channel (string).
 //
 // The pretty print will be of the format:
-//  <Speakeasy-v2:Test_Channel|description:Channel description.|level:Public|secrets:+oHcqDbJPZaT3xD5NcdLY8OjOMtSQNKdKgLPmr7ugdU=|rCI0wr01dHFStjSFMvsBzFZClvDIrHLL5xbCOPaUOJ0=|493|1|7cBhJxVfQxWo+DypOISRpeWdQBhuQpAZtUbQHjBm8NQ=>
+//  <Speakeasy-v3:Test_Channel|description:Channel description.|level:Public|created:1666718081766741100|secrets:+oHcqDbJPZaT3xD5NcdLY8OjOMtSQNKdKgLPmr7ugdU=|rCI0wr01dHFStjSFMvsBzFZClvDIrHLL5xbCOPaUOJ0=|493|1|7cBhJxVfQxWo+DypOISRpeWdQBhuQpAZtUbQHjBm8NQ=>
 //
 // Returns:
 //  - JSON of [bindings.ChannelInfo], which describes all relevant channel info
@@ -672,7 +672,7 @@ func GetChannelInfo(_ js.Value, args []js.Value) interface{} {
 //    or generated via [GenerateChannel] (string).
 //
 // The pretty print will be of the format:
-//  <Speakeasy-v2:Test_Channel|description:Channel description.|level:Public|secrets:+oHcqDbJPZaT3xD5NcdLY8OjOMtSQNKdKgLPmr7ugdU=|rCI0wr01dHFStjSFMvsBzFZClvDIrHLL5xbCOPaUOJ0=|493|1|7cBhJxVfQxWo+DypOISRpeWdQBhuQpAZtUbQHjBm8NQ=>
+//  <Speakeasy-v3:Test_Channel|description:Channel description.|level:Public|created:1666718081766741100|secrets:+oHcqDbJPZaT3xD5NcdLY8OjOMtSQNKdKgLPmr7ugdU=|rCI0wr01dHFStjSFMvsBzFZClvDIrHLL5xbCOPaUOJ0=|493|1|7cBhJxVfQxWo+DypOISRpeWdQBhuQpAZtUbQHjBm8NQ=>
 //
 // Returns:
 //  - JSON of [bindings.ChannelInfo], which describes all relevant channel info
