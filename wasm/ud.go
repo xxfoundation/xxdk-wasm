@@ -132,19 +132,13 @@ func NewOrLoadUd(_ js.Value, args []js.Value) interface{} {
 //  - args[1] - Javascript object that has functions that implement the
 //    [bindings.UdNetworkStatus] interface. This is the network follower
 //    function wrapped in [bindings.UdNetworkStatus].
-//  - args[2] - JSON of [fact.Fact] username that is registered with UD
-//    (Uint8Array).
-//  - args[3] - JSON of [fact.Fact] email address that is registered with UD
-//    (Uint8Array).
-//  - args[4] - JSON of [fact.Fact] phone number that is registered with UD
-//    (Uint8Array).
-//  - args[5] - The TLS certificate for the UD server this call will connect
+//  - args[2] - The TLS certificate for the UD server this call will connect
 //    with. You may use the UD server run by the xx network team by using
 //    [E2e.GetUdCertFromNdf] (Uint8Array).
-//  - args[6] - Marshalled bytes of the [contact.Contact] of the server this
+//  - args[3] - Marshalled bytes of the [contact.Contact] of the server this
 //    call will connect with. You may use the UD server run by the xx network
 //    team by using [E2e.GetUdContactFromNdf] (Uint8Array).
-//  - args[7] - The IP address of the UD server this call will connect with. You
+//  - args[4] - The IP address of the UD server this call will connect with. You
 //    may use the UD server run by the xx network team by using
 //    [E2e.GetUdAddressFromNdf] (string).
 //
@@ -155,15 +149,12 @@ func NewOrLoadUd(_ js.Value, args []js.Value) interface{} {
 func NewUdManagerFromBackup(_ js.Value, args []js.Value) interface{} {
 	e2eID := args[0].Int()
 	follower := &udNetworkStatus{utils.WrapCB(args[1], "UdNetworkStatus")}
-	usernameFactJson := utils.CopyBytesToGo(args[2])
-	emailFactJson := utils.CopyBytesToGo(args[3])
-	phoneFactJson := utils.CopyBytesToGo(args[4])
 	cert := utils.CopyBytesToGo(args[5])
 	contactFile := utils.CopyBytesToGo(args[6])
 	address := args[7].String()
 
 	api, err := bindings.NewUdManagerFromBackup(
-		e2eID, follower, usernameFactJson, emailFactJson, phoneFactJson, cert,
+		e2eID, follower, cert,
 		contactFile, address)
 	if err != nil {
 		utils.Throw(utils.TypeError, err)

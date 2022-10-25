@@ -390,10 +390,10 @@ type groupChatProcessor struct {
 //  - roundId - Returns the ID of the round sent on (int).
 //  - err - Returns an error on failure (Error).
 func (gcp *groupChatProcessor) Process(decryptedMessage, msg,
-	receptionId []byte, ephemeralId, roundId int64, err error) {
+	receptionId []byte, ephemeralId, roundId int64, roundURL string, err error) {
 	gcp.process(utils.CopyBytesToJS(decryptedMessage),
 		utils.CopyBytesToJS(msg), utils.CopyBytesToJS(receptionId), ephemeralId,
-		roundId, utils.JsTrace(err))
+		roundId, roundURL, utils.JsTrace(err))
 }
 
 // String returns a name identifying this processor. Used for debugging.
