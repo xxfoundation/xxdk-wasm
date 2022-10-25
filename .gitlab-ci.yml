@@ -15,6 +15,9 @@ before_script:
   - git config --global url."git@$GITLAB_SERVER:".insteadOf "https://git.xx.network/" --add
   - export PATH=$HOME/go/bin:$PATH
 
+  - export GOPATH=$(go env GOPATH)
+  - export GOBIN=$(go env GOPATH)/bin
+
 stages:
   - test
   - build
