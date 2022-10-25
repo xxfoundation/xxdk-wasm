@@ -242,9 +242,20 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 	nickname, text string, pubKey ed25519.PublicKey, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
+	textBytes := []byte(text)
+	var err error
+
+	// Handle encryption, if it is present
+	if w.cipher != nil {
+		textBytes, err = w.cipher.Encrypt([]byte(text))
+		if err != nil {
+			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
+			return 0
+		}
+	}
 
 	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
-		replyTo.Bytes(), nickname, []byte(text), pubKey, codeset, timestamp, lease,
+		replyTo.Bytes(), nickname, textBytes, pubKey, codeset, timestamp, lease,
 		round.ID, mType, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
@@ -267,10 +278,21 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 	nickname, reaction string, pubKey ed25519.PublicKey, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
+	textBytes := []byte(reaction)
+	var err error
+
+	// Handle encryption, if it is present
+	if w.cipher != nil {
+		textBytes, err = w.cipher.Encrypt([]byte(reaction))
+		if err != nil {
+			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
+			return 0
+		}
+	}
 
 	msgToInsert := buildMessage(
 		channelID.Marshal(), messageID.Bytes(), reactionTo.Bytes(), nickname,
-		[]byte(reaction), pubKey, codeset, timestamp, lease, round.ID, mType, status)
+		textBytes, pubKey, codeset, timestamp, lease, round.ID, mType, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
