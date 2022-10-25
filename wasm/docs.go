@@ -22,6 +22,7 @@ import (
 	"gitlab.com/elixxir/client/groupChat/groupStore"
 	"gitlab.com/elixxir/client/restlike"
 	"gitlab.com/elixxir/client/single"
+	"gitlab.com/elixxir/crypto/broadcast"
 	"gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/contact"
 	"gitlab.com/elixxir/crypto/cyclic"
@@ -32,6 +33,7 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/id/ephemeral"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/netTime"
 )
 
 // These objects are imported so that doc linking on pkg.go.dev does not require
@@ -62,4 +64,7 @@ var (
 	_ = format.Message{}
 	_ = restlike.Message{}
 	_ = auth.Callbacks(nil)
+	_ = broadcast.PrivacyLevel(0)
+	_ = broadcast.Channel{}
+	_ = netTime.Now
 )

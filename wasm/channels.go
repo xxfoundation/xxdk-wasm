@@ -576,7 +576,7 @@ func GetSavedChannelPrivateKeyUNSAFE(_ js.Value, args []js.Value) interface{} {
 //
 // Parameters:
 //  - args[0] - The channel's share URL (string). Should be received from
-//    another user or generated via [GetShareURL].
+//    another user or generated via [ChannelsManager.GetShareURL].
 //
 // Returns:
 //  - The channel pretty print (string).
@@ -596,7 +596,7 @@ func DecodePublicURL(_ js.Value, args []js.Value) interface{} {
 //
 // Parameters:
 //  - args[0] - The channel's share URL (string). Should be received from
-//    another user or generated via [GetShareURL].
+//    another user or generated via [ChannelsManager.GetShareURL].
 //  - args[1] - The password needed to decrypt the secret data in the URL
 //    (string).
 //
@@ -772,7 +772,7 @@ type ShareURL struct {
 // uses is set as a URL parameter using the key [broadcast.MaxUsesKey]. Note
 // that this number is also encoded in the secret data for private and secret
 // URLs, so if the number is changed in the URL, is will be verified when
-// calling [ChannelsManager.JoinChannelFromURL]. There is no enforcement for
+// calling [DecodePublicURL] or [DecodePrivateURL]. There is no enforcement for
 // public URLs.
 //
 // Parameters:
