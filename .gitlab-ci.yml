@@ -36,6 +36,7 @@ wasm-test:
   stage: wasm-test
   script:
     - export PATH=/root/go/bin:$PATH
+    - mv utils/utils_js.s utils/utils_js.s.bak
     - GOOS=js GOARCH=wasm go test ./... -v
 
 go-test:
