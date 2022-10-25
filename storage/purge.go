@@ -33,7 +33,7 @@ var NumClientsRunning uint64
 //
 // Parameters:
 //  - args[0] - Storage directory path (string).
-//  - args[1] - Password used for storage (Uint8Array).
+//  - args[1] - The user-supplied password (string).
 //
 // Returns:
 //  - Throws a TypeError if the password is incorrect or if not all Cmix
