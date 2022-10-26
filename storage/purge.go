@@ -12,6 +12,7 @@ package storage
 import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
+	"gitlab.com/elixxir/ekv/portableOS"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"sync/atomic"
 	"syscall/js"
@@ -32,15 +33,14 @@ var NumClientsRunning uint64
 // Only use if you want to destroy everything.
 //
 // Parameters:
-//  - args[0] - Storage directory path (string).
-//  - args[1] - The user-supplied password (string).
+//  - args[0] - The user-supplied password (string).
 //
 // Returns:
 //  - Throws a TypeError if the password is incorrect or if not all Cmix
 //    followers have been stopped.
 func Purge(_ js.Value, args []js.Value) interface{} {
 	// Check the password
-	if !verifyPassword(args[1].String()) {
+	if !verifyPassword(args[0].String()) {
 		utils.Throw(utils.TypeError, errors.New("invalid password"))
 		return nil
 	}
@@ -61,6 +61,9 @@ func Purge(_ js.Value, args []js.Value) interface{} {
 		return nil
 	}
 
+	// Add EKV database to list
+	databaseList[portableOS.DatabaseName] = struct{}{}
+
 	// Delete each database
 	for dbName := range databaseList {
 		_, err = idb.Global().DeleteDatabase(dbName)
@@ -72,10 +75,9 @@ func Purge(_ js.Value, args []js.Value) interface{} {
 		}
 	}
 
-	// Clear WASM local storage and EKV
+	// Clear WASM local storage
 	ls := GetLocalStorage()
 	ls.ClearWASM()
-	ls.ClearPrefix(args[0].String())
 
 	return nil
 }
