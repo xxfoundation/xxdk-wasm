@@ -7,8 +7,9 @@ require (
 	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client v1.5.1-0.20221026222417-20c1fd8ab65d
+	gitlab.com/elixxir/client v1.5.1-0.20221026223736-cb6cbedf70c3
 	gitlab.com/elixxir/crypto v0.0.7-0.20221026155635-b8e44a9e8bba
+	gitlab.com/elixxir/ekv v0.2.2-0.20221026223704-61d3deefabc8
 	gitlab.com/elixxir/primitives v0.0.3-0.20221025020430-f5d2eb330fbc
 	gitlab.com/xx_network/crypto v0.0.5-0.20221025020316-517fa8f91d2c
 	gitlab.com/xx_network/primitives v0.0.4-0.20221025020003-cbec15a71b8f
@@ -43,7 +44,6 @@ require (
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	gitlab.com/elixxir/bloomfilter v0.0.0-20211222005329-7d931ceead6f // indirect
 	gitlab.com/elixxir/comms v0.0.4-0.20221025202829-c33bbe4d8838 // indirect
-	gitlab.com/elixxir/ekv v0.2.2-0.20221026222329-d6b810dfc35e // indirect
 	gitlab.com/xx_network/comms v0.0.4-0.20221025202603-3043ba10b2a2 // indirect
 	gitlab.com/xx_network/ring v0.0.3-0.20220902183151-a7d3b15bc981 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
