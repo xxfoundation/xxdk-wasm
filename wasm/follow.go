@@ -146,6 +146,66 @@ func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(b)
 }
 
+// IsReady returns true if at least the given percent of node registrations have
+// completed. If not all have completed, then it returns false and howClose will
+// be a percent (0-1) of node registrations completed.
+//
+// Parameters:
+//  - args[0] - The percentage of nodes required to be registered with to be
+//    ready. This is a number between 0 and 1 (float64).
+//
+// Returns:
+//  - JSON of [bindings.IsReadyInfo] (Uint8Array).
+//  - Throws TypeError if getting the information fails.
+func (c *Cmix) IsReady(_ js.Value, args []js.Value) interface{} {
+	isReadyInfo, err := c.api.IsReady(args[0].Float())
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(isReadyInfo)
+}
+
+// PauseNodeRegistrations stops all node registrations and returns a function to
+// resume them.
+//
+// Parameters:
+//  - args[0] - The timeout, in milliseconds, to wait when stopping threads
+//    before failing (int).
+//
+// Returns:
+//  - Throws TypeError if pausing fails.
+func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) interface{} {
+	err := c.api.PauseNodeRegistrations(args[0].Int())
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return nil
+}
+
+// ChangeNumberOfNodeRegistrations changes the number of parallel node
+// registrations up to the initialized maximum.
+//
+// Parameters:
+//  - args[0] - The number of parallel node registrations (int).
+//  - args[1] - The timeout, in milliseconds, to wait when changing node
+//    registrations before failing (int).
+//
+// Returns:
+//  - Throws TypeError if changing registrations fails.
+func (c *Cmix) ChangeNumberOfNodeRegistrations(_ js.Value, args []js.Value) interface{} {
+	err := c.api.ChangeNumberOfNodeRegistrations(args[0].Int(), args[1].Int())
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return nil
+}
+
 // HasRunningProcessies checks if any background threads are running and returns
 // true if one or more are.
 //
