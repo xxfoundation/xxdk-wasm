@@ -12,7 +12,6 @@ package storage
 import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
-	"gitlab.com/elixxir/ekv/portableOS"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"sync/atomic"
 	"syscall/js"
@@ -60,9 +59,6 @@ func Purge(_ js.Value, args []js.Value) interface{} {
 				"failed to get list of indexedDb database names: %+v", err))
 		return nil
 	}
-
-	// Add EKV database to list
-	databaseList[portableOS.DatabaseName] = struct{}{}
 
 	// Delete each database
 	for dbName := range databaseList {
