@@ -10,14 +10,12 @@
 package indexedDb
 
 import (
+	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
-	"gitlab.com/elixxir/crypto/broadcast"
+	jww "github.com/spf13/jwalterweatherman"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"syscall/js"
-
-	"github.com/hack-pad/go-indexeddb/idb"
-	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/client/channels"
 	"gitlab.com/xx_network/primitives/id"
@@ -187,14 +185,16 @@ func v1Upgrade(db *idb.Database) error {
 // inserting some nonsense data and then checking to see if it persists.
 // If this function still exists in 2023, god help us all. Amen.
 func (w *wasmModel) hackTestDb() error {
-	testId := &id.DummyUser
-	testChannel := &broadcast.Channel{
-		ReceptionID: testId,
-		Name:        "test",
-		Description: "test",
+	testMessage := &Message{
+		ID:        0,
+		Nickname:  "test",
+		MessageID: id.DummyUser.Marshal(),
 	}
-	w.JoinChannel(testChannel)
-	result, err := w.get(channelsStoreName, js.ValueOf(testId.String()))
+	msgId, helper := w.receiveHelper(testMessage, false)
+	if helper != nil {
+		return helper
+	}
+	result, err := w.get(messageStoreName, js.ValueOf(msgId))
 	if err != nil {
 		return err
 	}
