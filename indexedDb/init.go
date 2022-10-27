@@ -16,6 +16,7 @@ import (
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"syscall/js"
+	"time"
 
 	"gitlab.com/elixxir/client/channels"
 	"gitlab.com/xx_network/primitives/id"
@@ -93,27 +94,6 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 		return nil, err
 	}
 
-	// FIXME: The below is a hack that for some reason prevents moving on with
-	//        uninitialized database despite the previous call to Await.
-	//        It would be idea to find a different solution.
-	// Close and open again to ensure the state is finalized
-	err = db.Close()
-	if err != nil {
-		return nil, err
-	}
-	openRequest, err = idb.Global().Open(ctx, databaseName, currentVersion,
-		func(db *idb.Database, oldVersion, newVersion uint) error {
-			return nil
-		})
-	if err != nil {
-		return nil, err
-	}
-	// Wait for database open to finish
-	db, err = openRequest.Await(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	// Save the encryption status to storage
 	encryptionStatus := encryption != nil
 	loadedEncryptionStatus, err := storage.StoreIndexedDbEncryptionStatus(
@@ -131,7 +111,37 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	}
 
 	// Attempt to ensure the database has been properly initialized
-	wrapper := &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}
+
+	var wrapper *wasmModel
+	for shittyError := errors.New("dummy"); shittyError != nil; {
+		// FIXME: The below is a hack that for some reason prevents moving on with
+		//        uninitialized database despite the previous call to Await.
+		//        It would be idea to find a different solution.
+		// Close and open again to ensure the state is finalized
+		err = db.Close()
+		if err != nil {
+			return nil, err
+		}
+		openRequest, err = idb.Global().Open(ctx, databaseName, currentVersion,
+			func(db *idb.Database, oldVersion, newVersion uint) error {
+				return nil
+			})
+		if err != nil {
+			return nil, err
+		}
+		// Wait for database open to finish
+		db, err = openRequest.Await(ctx)
+		if err != nil {
+			return nil, err
+		}
+		wrapper = &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}
+		shittyError = wrapper.hackTestDb()
+		if shittyError != nil {
+			jww.ERROR.Println(shittyError)
+		}
+		time.Sleep(1 * time.Second)
+	}
+
 	return wrapper, nil
 }
 
