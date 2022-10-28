@@ -18,7 +18,7 @@ import (
 )
 
 // SEMVER is the current semantic version of xxDK WASM.
-const SEMVER = "0.1.3"
+const SEMVER = "0.1.4"
 
 // Storage keys.
 const (
