@@ -10,14 +10,15 @@
 package storage
 
 import (
+	"os"
+
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/bindings"
-	"os"
 )
 
 // SEMVER is the current semantic version of xxDK WASM.
-const SEMVER = "0.1.1"
+const SEMVER = "0.1.2"
 
 // Storage keys.
 const (
