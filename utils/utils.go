@@ -16,19 +16,23 @@ import (
 )
 
 var (
-	// Error is the Javascript Error object. It used to create new Javascript
+	// Error is the Javascript Error type. It used to create new Javascript
 	// errors.
 	Error = js.Global().Get("Error")
 
-	// JSON is the Javascript JSON object. It is used to perform JSON operations
+	// JSON is the Javascript JSON type. It is used to perform JSON operations
 	// on the Javascript layer.
 	JSON = js.Global().Get("JSON")
 
-	// Promise is the Javascript Promise object. It is used to generate new
+	// Object is the Javascript Object type. It is used to perform Object
+	// operations on the Javascript layer.
+	Object = js.Global().Get("Object")
+
+	// Promise is the Javascript Promise type. It is used to generate new
 	// promises.
 	Promise = js.Global().Get("Promise")
 
-	// Uint8Array is the Javascript Uint8Array object. It is used to create new
+	// Uint8Array is the Javascript Uint8Array type. It is used to create new
 	// Uint8Array.
 	Uint8Array = js.Global().Get("Uint8Array")
 )

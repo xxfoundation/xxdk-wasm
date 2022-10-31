@@ -88,7 +88,8 @@ func TestLocalStorage_Clear(t *testing.T) {
 // Tests that LocalStorage.ClearPrefix deletes only the keys with the given
 // prefix.
 func TestLocalStorage_ClearPrefix(t *testing.T) {
-	jsStorage.clear()
+	s := newLocalStorage("")
+	s.clear()
 	prng := rand.New(rand.NewSource(11))
 	var yesPrefix, noPrefix []string
 	prefix := "keyNamePrefix/"
@@ -102,18 +103,18 @@ func TestLocalStorage_ClearPrefix(t *testing.T) {
 			noPrefix = append(noPrefix, keyName)
 		}
 
-		jsStorage.SetItem(keyName, []byte(strconv.Itoa(i)))
+		s.SetItem(keyName, []byte(strconv.Itoa(i)))
 	}
 
-	jsStorage.ClearPrefix(prefix)
+	s.ClearPrefix(prefix)
 
 	for _, keyName := range noPrefix {
-		if _, err := jsStorage.GetItem(keyName); err != nil {
+		if _, err := s.GetItem(keyName); err != nil {
 			t.Errorf("Could not get keyName %q: %+v", keyName, err)
 		}
 	}
 	for _, keyName := range yesPrefix {
-		keyValue, err := jsStorage.GetItem(keyName)
+		keyValue, err := s.GetItem(keyName)
 		if err == nil || !errors.Is(err, os.ErrNotExist) {
 			t.Errorf("Found keyName %q: %q", keyName, keyValue)
 		}
@@ -232,6 +233,28 @@ func TestLocalStorage_Length(t *testing.T) {
 		if jsStorage.Length() != i {
 			t.Errorf("Incorrect length.\nexpected: %d\nreceived: %d",
 				i, jsStorage.Length())
+		}
+	}
+}
+
+// Tests that LocalStorage.Keys return a list that contains all the added keys.
+func TestLocalStorage_Keys(t *testing.T) {
+	s := newLocalStorage("")
+	s.clear()
+	values := map[string][]byte{
+		"key1": []byte("key value"),
+		"key2": {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+		"key3": {0, 49, 0, 0, 0, 38, 249, 93},
+	}
+
+	for keyName, keyValue := range values {
+		s.SetItem(keyName, keyValue)
+	}
+
+	keys := s.Keys()
+	for i, keyName := range keys {
+		if _, exists := values[keyName]; !exists {
+			t.Errorf("Key %q does not exist (%d).", keyName, i)
 		}
 	}
 }

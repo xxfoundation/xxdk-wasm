@@ -53,6 +53,8 @@ func DecrementNumClientsRunning() {
 func Purge(_ js.Value, args []js.Value) interface{} {
 	storageDirectory := args[0].String()
 	userPassword := args[1].String()
+	// Clear all EKV from local storage
+	GetLocalStorage().ClearPrefix("speakeasyapp")
 
 	// Check the password
 	if !verifyPassword(userPassword) {
@@ -61,11 +63,11 @@ func Purge(_ js.Value, args []js.Value) interface{} {
 	}
 
 	// Verify all Cmix followers are stopped
-	if n := atomic.LoadUint64(&numClientsRunning); n != 0 {
-		utils.Throw(utils.TypeError, errors.Errorf(
-			"%d cMix followers running; all need to be stopped", n))
-		return nil
-	}
+	// if n := atomic.LoadUint64(&numClientsRunning); n != 0 {
+	// 	utils.Throw(utils.TypeError, errors.Errorf(
+	// 		"%d cMix followers running; all need to be stopped", n))
+	// 	return nil
+	// }
 
 	// Get all indexedDb database names
 	databaseList, err := GetIndexedDbList()

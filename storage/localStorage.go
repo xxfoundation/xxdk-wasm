@@ -11,6 +11,9 @@ package storage
 
 import (
 	"encoding/base64"
+	"encoding/json"
+	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"os"
 	"strings"
 	"syscall/js"
@@ -26,6 +29,11 @@ const localStorageWasmPrefix = "xxdkWasmStorage/"
 type LocalStorage struct {
 	// The Javascript value containing the localStorage object
 	v js.Value
+
+	// The prefix appended to each key name. This is so that all keys created by
+	// this structure can be deleted without affecting other keys in local
+	// storage.
+	prefix string
 }
 
 // jsStorage is the global that stores Javascript as window.localStorage.
@@ -34,11 +42,19 @@ type LocalStorage struct {
 //    https://html.spec.whatwg.org/multipage/webstorage.html#dom-localstorage-dev
 //  - Documentation:
 //    https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
-var jsStorage = LocalStorage{js.Global().Get("localStorage")}
+var jsStorage = newLocalStorage(localStorageWasmPrefix)
+
+// newLocalStorage creates a new LocalStorage object with the specified prefix.
+func newLocalStorage(prefix string) *LocalStorage {
+	return &LocalStorage{
+		v:      js.Global().Get("localStorage"),
+		prefix: prefix,
+	}
+}
 
 // GetLocalStorage returns Javascript's local storage.
 func GetLocalStorage() *LocalStorage {
-	return &jsStorage
+	return jsStorage
 }
 
 // GetItem returns a key's value from the local storage given its name. Returns
@@ -50,7 +66,7 @@ func GetLocalStorage() *LocalStorage {
 //  - Documentation:
 //    https://developer.mozilla.org/en-US/docs/Web/API/Storage/getItem
 func (ls *LocalStorage) GetItem(keyName string) ([]byte, error) {
-	keyValue := ls.getItem(localStorageWasmPrefix + keyName)
+	keyValue := ls.getItem(ls.prefix + keyName)
 	if keyValue.IsNull() {
 		return nil, os.ErrNotExist
 	}
@@ -72,7 +88,7 @@ func (ls *LocalStorage) GetItem(keyName string) ([]byte, error) {
 //    https://developer.mozilla.org/en-US/docs/Web/API/Storage/setItem
 func (ls *LocalStorage) SetItem(keyName string, keyValue []byte) {
 	encodedKeyValue := base64.StdEncoding.EncodeToString(keyValue)
-	ls.setItem(localStorageWasmPrefix+keyName, encodedKeyValue)
+	ls.setItem(ls.prefix+keyName, encodedKeyValue)
 }
 
 // RemoveItem removes a key's value from local storage given its name. If there
@@ -84,7 +100,7 @@ func (ls *LocalStorage) SetItem(keyName string, keyValue []byte) {
 //  - Documentation:
 //    https://developer.mozilla.org/en-US/docs/Web/API/Storage/removeItem
 func (ls *LocalStorage) RemoveItem(keyName string) {
-	ls.removeItem(localStorageWasmPrefix + keyName)
+	ls.removeItem(ls.prefix + keyName)
 }
 
 // Clear clears all the keys in storage. Underneath, it calls
@@ -101,14 +117,14 @@ func (ls *LocalStorage) Clear() {
 // ClearPrefix clears all keys with the given prefix.
 func (ls *LocalStorage) ClearPrefix(prefix string) {
 	// Get a copy of all key names at once
-	keys := js.Global().Get("Object").Call("keys", ls.v)
+	keys := ls.keys()
 
 	// Loop through each key
 	for i := 0; i < keys.Length(); i++ {
 		if v := keys.Index(i); !v.IsNull() {
-			keyName := strings.TrimPrefix(v.String(), localStorageWasmPrefix)
+			keyName := strings.TrimPrefix(v.String(), ls.prefix)
 			if strings.HasPrefix(keyName, prefix) {
-				ls.RemoveItem(keyName)
+				ls.removeItem(v.String())
 			}
 		}
 	}
@@ -117,14 +133,14 @@ func (ls *LocalStorage) ClearPrefix(prefix string) {
 // ClearWASM clears all the keys in storage created by WASM.
 func (ls *LocalStorage) ClearWASM() {
 	// Get a copy of all key names at once
-	keys := js.Global().Get("Object").Call("keys", ls.v)
+	keys := ls.keys()
 
 	// Loop through each key
 	for i := 0; i < keys.Length(); i++ {
 		if v := keys.Index(i); !v.IsNull() {
 			keyName := v.String()
-			if strings.HasPrefix(keyName, localStorageWasmPrefix) {
-				ls.RemoveItem(strings.TrimPrefix(keyName, localStorageWasmPrefix))
+			if strings.HasPrefix(keyName, ls.prefix) {
+				ls.RemoveItem(strings.TrimPrefix(keyName, ls.prefix))
 			}
 		}
 	}
@@ -145,7 +161,21 @@ func (ls *LocalStorage) Key(n int) (string, error) {
 		return "", os.ErrNotExist
 	}
 
-	return strings.TrimPrefix(keyName.String(), localStorageWasmPrefix), nil
+	return strings.TrimPrefix(keyName.String(), ls.prefix), nil
+}
+
+// Keys returns a list of all key names in local storage.
+func (ls *LocalStorage) Keys() []string {
+	keyNamesJson := utils.JSON.Call("stringify", ls.keys())
+
+	var keyNames []string
+	err := json.Unmarshal([]byte(keyNamesJson.String()), &keyNames)
+	if err != nil {
+		jww.FATAL.Panicf(
+			"Failed to JSON unmarshal localStorage key name list: %+v", err)
+	}
+
+	return keyNames
 }
 
 // Length returns the number of keys in localStorage. Underneath, it accesses
@@ -166,3 +196,4 @@ func (ls *LocalStorage) removeItem(keyName string)        { ls.v.Call("removeIte
 func (ls *LocalStorage) clear()                           { ls.v.Call("clear") }
 func (ls *LocalStorage) key(n int) js.Value               { return ls.v.Call("key", n) }
 func (ls *LocalStorage) length() js.Value                 { return ls.v.Get("length") }
+func (ls *LocalStorage) keys() js.Value                   { return utils.Object.Call("keys", ls.v) }
