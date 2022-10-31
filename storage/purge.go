@@ -53,8 +53,6 @@ func DecrementNumClientsRunning() {
 func Purge(_ js.Value, args []js.Value) interface{} {
 	storageDirectory := args[0].String()
 	userPassword := args[1].String()
-	// Clear all EKV from local storage
-	GetLocalStorage().ClearPrefix("speakeasyapp")
 
 	// Check the password
 	if !verifyPassword(userPassword) {
