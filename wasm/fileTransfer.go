@@ -62,9 +62,8 @@ type receiveFileCallback struct {
 // Parameters:
 //  - payload - Returns the contents of the message. JSON of
 //    [bindings.ReceivedFile] (Uint8Array).
-//  - err - Returns an error on failure (Error).
-func (rfc *receiveFileCallback) Callback(payload []byte, err error) {
-	rfc.callback(utils.CopyBytesToJS(payload), utils.JsTrace(err))
+func (rfc *receiveFileCallback) Callback(payload []byte) {
+	rfc.callback(utils.CopyBytesToJS(payload))
 }
 
 // fileTransferSentProgressCallback wraps Javascript callbacks to adhere to the
