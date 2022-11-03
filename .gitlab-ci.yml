@@ -48,8 +48,6 @@ go-test:
 
 tag:
     stage: tag
-    only:
-        - master
     image: $DOCKER_IMAGE
     script:
         - git remote add origin_tags git@$GITLAB_SERVER:elixxir/xxdk-wasm.git || true
