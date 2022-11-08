@@ -360,8 +360,8 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64,
 // inputs into a basic Message structure for insertion into storage.
 //
 // NOTE: ID is not set inside this function because we want to use the
-//  autoincrement key by default. If you are trying to overwrite an existing
-//  message, then you need to set it manually yourself.
+// autoincrement key by default. If you are trying to overwrite an existing
+// message, then you need to set it manually yourself.
 func buildMessage(channelID, messageID, parentID []byte, nickname string,
 	text []byte, pubKey ed25519.PublicKey, codeset uint8, timestamp time.Time,
 	lease time.Duration, round id.Round, mType channels.MessageType,
@@ -398,9 +398,10 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
 	}
 
-	// Unset the primaryKey for inserts so it can be auto-populated and incremented.
+	// Unset the primaryKey for inserts so that it can be auto-populated and
+	// incremented
 	if !isUpdate {
-		messageObj.JSValue().Delete("id")
+		messageObj.Delete("id")
 	}
 
 	// Prepare the Transaction

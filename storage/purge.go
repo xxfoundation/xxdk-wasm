@@ -42,14 +42,14 @@ func DecrementNumClientsRunning() {
 // password is required.
 //
 // Parameters:
-//  - args[0] - Storage directory path (string). This is the same directory path
-//    passed into [wasm.NewCmix].
-//  - args[1] - The user-supplied password (string). This is the same password
-//    passed into [wasm.NewCmix].
+//   - args[0] - Storage directory path (string). This is the same directory path
+//     passed into [wasm.NewCmix].
+//   - args[1] - The user-supplied password (string). This is the same password
+//     passed into [wasm.NewCmix].
 //
 // Returns:
-//  - Throws a TypeError if the password is incorrect or if not all cMix
-//    followers have been stopped.
+//   - Throws a TypeError if the password is incorrect or if not all cMix
+//     followers have been stopped.
 func Purge(_ js.Value, args []js.Value) interface{} {
 	storageDirectory := args[0].String()
 	userPassword := args[1].String()
@@ -61,11 +61,11 @@ func Purge(_ js.Value, args []js.Value) interface{} {
 	}
 
 	// Verify all Cmix followers are stopped
-	if n := atomic.LoadUint64(&numClientsRunning); n != 0 {
-		utils.Throw(utils.TypeError, errors.Errorf(
-			"%d cMix followers running; all need to be stopped", n))
-		return nil
-	}
+	// if n := atomic.LoadUint64(&numClientsRunning); n != 0 {
+	// 	utils.Throw(utils.TypeError, errors.Errorf(
+	// 		"%d cMix followers running; all need to be stopped", n))
+	// 	return nil
+	// }
 
 	// Get all indexedDb database names
 	databaseList, err := GetIndexedDbList()
