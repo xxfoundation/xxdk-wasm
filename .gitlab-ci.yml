@@ -19,6 +19,7 @@ stages:
   - test
   - build
   - doc-update
+  - version_check
 
 build:
   stage: build
@@ -44,6 +45,17 @@ go-test:
   script:
     - go mod vendor -v
     - go test ./... -v
+
+version_check:
+    stage: version_check
+    only:
+        - master
+        - release
+    image: $DOCKER_IMAGE
+    script:
+        - GITTAG=$(git describe --tags)
+        - CODEVERS=$(cat utils/version.go | grep "const SEMVER =" | cut -d ' ' -f4 | tr -d '"')
+        - if [[ $GITTAG != $CODEVERS ]]; then echo "VERSION NUMBER BAD $GITTAG != $CODEVER"; exit -1; fi
 
 # This pipeline job will attempt to have pkg.go.dev update docs for xxdk-wasm.
 #
