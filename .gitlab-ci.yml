@@ -1,4 +1,4 @@
-image: $DOCKER_IMAGE
+image: docker-registry.xx.network/elixxir/sysadmin/backend-ci:go1.17-wasm
 
 before_script:
   - go version || echo "Go executable not found."
