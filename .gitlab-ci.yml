@@ -18,8 +18,8 @@ before_script:
 stages:
   - test
   - build
-  - tag
   - doc-update
+  - version_check
 
 build:
   stage: build
@@ -46,14 +46,16 @@ go-test:
     - go mod vendor -v
     - go test ./... -v
 
-tag:
-    stage: tag
+version_check:
+    stage: version_check
+    only:
+        - master
+        - release
     image: $DOCKER_IMAGE
     script:
-        - git remote add origin_tags git@$GITLAB_SERVER:elixxir/xxdk-wasm.git || true
-        - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -o release/xxdk.wasm main.go
-        - git tag $(sha256sum release/xxdk.wasm | awk '{ print $1 }') -f
-        - git push origin_tags -f --tags
+        - GITTAG=$(git describe --tags)
+        - CODEVERS=$(cat utils/version.go | grep "const SEMVER =" | cut -d ' ' -f4 | tr -d '"')
+        - if [[ $GITTAG != $CODEVERS ]]; then echo "VERSION NUMBER BAD $GITTAG != $CODEVER"; exit -1; fi
 
 # This pipeline job will attempt to have pkg.go.dev update docs for xxdk-wasm.
 #
