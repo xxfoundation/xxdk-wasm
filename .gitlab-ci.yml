@@ -21,6 +21,7 @@ stages:
   - tag
   - version_check
   - doc-update
+  - version_check
 
 build:
   stage: build
