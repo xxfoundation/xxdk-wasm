@@ -14,7 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/client/v5/bindings"
+	"gitlab.com/elixxir/client/v4/bindings"
 )
 
 // SEMVER is the current semantic version of xxDK WASM.

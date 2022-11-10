@@ -10,7 +10,7 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/client/v5/bindings"
+	"gitlab.com/elixxir/client/v4/bindings"
 	"reflect"
 	"testing"
 )

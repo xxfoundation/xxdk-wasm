@@ -12,7 +12,7 @@ package storage
 import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
-	"gitlab.com/elixxir/client/v5/storage/utility"
+	"gitlab.com/elixxir/client/v4/storage/utility"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"sync/atomic"
 	"syscall/js"
