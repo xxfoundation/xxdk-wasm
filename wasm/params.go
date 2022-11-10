@@ -10,7 +10,7 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/client/v5/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
@@ -60,7 +60,7 @@ func GetDefaultSingleUseParams(js.Value, []js.Value) interface{} {
 // modify the JSON to change single use settings.
 //
 // Returns:
-//  - JSON of [gitlab.com/elixxir/client/fileTransfer/e2e.Params] (Uint8Array).
+//  - JSON of [gitlab.com/elixxir/client/v5/fileTransfer/e2e.Params] (Uint8Array).
 func GetDefaultE2eFileTransferParams(js.Value, []js.Value) interface{} {
 	return utils.CopyBytesToJS(bindings.GetDefaultE2eFileTransferParams())
 }

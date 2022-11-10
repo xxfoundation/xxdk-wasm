@@ -21,8 +21,8 @@ import (
 	"time"
 
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/client/channels"
-	"gitlab.com/elixxir/client/cmix/rounds"
+	"gitlab.com/elixxir/client/v5/channels"
+	"gitlab.com/elixxir/client/v5/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
 	"gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/xx_network/primitives/id"

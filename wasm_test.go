@@ -51,7 +51,7 @@ func TestPublicFunctions(t *testing.T) {
 	}
 	wasmFuncs := getPublicFunctions("wasm", t)
 	bindingsFuncs := getPublicFunctions(
-		"vendor/gitlab.com/elixxir/client/bindings", t)
+		"vendor/gitlab.com/elixxir/client/v5/bindings", t)
 
 	for fnName := range bindingsFuncs {
 		if _, exists := wasmFuncs[fnName]; !exists {

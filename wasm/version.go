@@ -10,7 +10,7 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/client/v5/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"syscall/js"
 )
