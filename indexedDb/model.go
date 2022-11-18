@@ -60,7 +60,8 @@ type Message struct {
 	Round           uint64        `json:"round"`
 
 	// User cryptographic Identity struct -- could be pulled out
-	Pubkey         []byte `json:"pubkey"` // Index
+	Pubkey         []byte `json:"pubkey"`   // Index
+	DmToken        []byte `json:"dm_token"` // Index
 	CodesetVersion uint8  `json:"codeset_version"`
 }
 

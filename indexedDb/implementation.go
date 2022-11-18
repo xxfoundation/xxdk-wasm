@@ -203,7 +203,7 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 // user of the API to filter such called by message ID.
 func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	messageID cryptoChannel.MessageID, nickname, text string,
-	pubKey ed25519.PublicKey, codeset uint8,
+	pubKey ed25519.PublicKey, dmToken []byte, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
 	textBytes := []byte(text)
@@ -220,7 +220,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 
 	msgToInsert := buildMessage(
 		channelID.Marshal(), messageID.Bytes(), nil, nickname,
-		textBytes, pubKey, codeset, timestamp, lease, round.ID, mType, status)
+		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -239,7 +239,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 // the initial message. As a result, it may be important to buffer replies.
 func (w *wasmModel) ReceiveReply(channelID *id.ID,
 	messageID cryptoChannel.MessageID, replyTo cryptoChannel.MessageID,
-	nickname, text string, pubKey ed25519.PublicKey, codeset uint8,
+	nickname, text string, pubKey ed25519.PublicKey, dmToken []byte, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
 	textBytes := []byte(text)
@@ -255,8 +255,8 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 	}
 
 	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
-		replyTo.Bytes(), nickname, textBytes, pubKey, codeset, timestamp, lease,
-		round.ID, mType, status)
+		replyTo.Bytes(), nickname, textBytes, pubKey, dmToken, codeset,
+		timestamp, lease, round.ID, mType, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 
@@ -275,7 +275,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 // the initial message. As a result, it may be important to buffer reactions.
 func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 	messageID cryptoChannel.MessageID, reactionTo cryptoChannel.MessageID,
-	nickname, reaction string, pubKey ed25519.PublicKey, codeset uint8,
+	nickname, reaction string, pubKey ed25519.PublicKey, dmToken []byte, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
 	textBytes := []byte(reaction)
@@ -292,7 +292,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 
 	msgToInsert := buildMessage(
 		channelID.Marshal(), messageID.Bytes(), reactionTo.Bytes(), nickname,
-		textBytes, pubKey, codeset, timestamp, lease, round.ID, mType, status)
+		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -363,7 +363,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64,
 // autoincrement key by default. If you are trying to overwrite an existing
 // message, then you need to set it manually yourself.
 func buildMessage(channelID, messageID, parentID []byte, nickname string,
-	text []byte, pubKey ed25519.PublicKey, codeset uint8, timestamp time.Time,
+	text []byte, pubKey ed25519.PublicKey, dmToken []byte, codeset uint8, timestamp time.Time,
 	lease time.Duration, round id.Round, mType channels.MessageType,
 	status channels.SentStatus) *Message {
 	return &Message{
@@ -381,6 +381,7 @@ func buildMessage(channelID, messageID, parentID []byte, nickname string,
 		Round:           uint64(round),
 		// User Identity Info
 		Pubkey:         pubKey,
+		DmToken:        dmToken,
 		CodesetVersion: codeset,
 	}
 }
