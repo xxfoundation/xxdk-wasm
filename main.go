@@ -78,6 +78,10 @@ func main() {
 	js.Global().Set("NewChannelsManagerWithIndexedDbUnsafe",
 		js.FuncOf(wasm.NewChannelsManagerWithIndexedDbUnsafe))
 	js.Global().Set("GenerateChannel", js.FuncOf(wasm.GenerateChannel))
+	js.Global().Set("GetSavedChannelPrivateKey",
+		js.FuncOf(wasm.GetSavedChannelPrivateKey))
+	js.Global().Set("ImportChannelPrivateKey",
+		js.FuncOf(wasm.ImportChannelPrivateKey))
 	js.Global().Set("GetSavedChannelPrivateKeyUNSAFE",
 		js.FuncOf(wasm.GetSavedChannelPrivateKeyUNSAFE))
 	js.Global().Set("DecodePublicURL", js.FuncOf(wasm.DecodePublicURL))

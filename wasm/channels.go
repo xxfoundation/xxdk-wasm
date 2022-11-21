@@ -551,6 +551,59 @@ func GenerateChannel(_ js.Value, args []js.Value) interface{} {
 	return utils.CopyBytesToJS(gen)
 }
 
+// GetSavedChannelPrivateKey loads the private key from storage for the given
+// channel ID. And returns it encrypted with th given password.
+//
+// Parameters:
+//   - args[0] - ID of [Cmix] object in tracker (int).
+//   - args[1] - Marshalled bytes of the channel's [id.ID] (Uint8Array).
+//   - args[2] - The password used to encrypt the private key (string).
+//
+// Returns:
+//   - Portable string of the channel private key encrypted with the password
+//     (Uint8Array).
+//   - Throws a TypeError if there is no channel private key for the given
+//     channel or if encrypting the key fails.
+func GetSavedChannelPrivateKey(_ js.Value, args []js.Value) interface{} {
+	cmixID := args[0].Int()
+	channelIdBytes := utils.CopyBytesToGo(args[1])
+	password := args[2].String()
+
+	pkPacket, err :=
+		bindings.GetSavedChannelPrivateKey(cmixID, channelIdBytes, password)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(pkPacket)
+}
+
+// ImportChannelPrivateKey decrypts the given private channel ID and saves it to
+// storage.
+//
+// Parameters:
+//   - args[0] - ID of [Cmix] object in tracker (int).
+//   - args[1] - The password used to encrypt the private key (string).
+//   - args[2] - The encrypted channel private key packet (Uint8Array).
+//
+// Returns:
+//   - Throws a TypeError if decryption the private key or saving it to storage
+//     fails.
+func ImportChannelPrivateKey(_ js.Value, args []js.Value) interface{} {
+	cmixID := args[0].Int()
+	password := args[1].String()
+	encryptedPrivKey := utils.CopyBytesToGo(args[2])
+
+	err := bindings.ImportChannelPrivateKey(cmixID, password, encryptedPrivKey)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return nil
+}
+
 // GetSavedChannelPrivateKeyUNSAFE loads the private key from storage for the
 // given channel ID.
 //
