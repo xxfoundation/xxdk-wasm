@@ -14,7 +14,7 @@ import (
 	"github.com/armon/circbuf"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"io"
 	"log"

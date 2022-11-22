@@ -10,7 +10,7 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/client/bindings"
+	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
@@ -118,7 +118,7 @@ func (rpc *fileTransferReceiveProgressCallback) Callback(
 //  - args[0] - ID of [E2e] object in tracker (int).
 //  - args[1] - Javascript object that has functions that implement the
 //    [bindings.ReceiveFileCallback] interface.
-//  - args[2] - JSON of [gitlab.com/elixxir/client/fileTransfer/e2e.Params]
+//  - args[2] - JSON of [gitlab.com/elixxir/client/v4/fileTransfer/e2e.Params]
 //    (Uint8Array).
 //  - args[3] - JSON of [fileTransfer.Params] (Uint8Array).
 //

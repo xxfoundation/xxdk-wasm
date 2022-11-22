@@ -3,14 +3,14 @@ module gitlab.com/elixxir/xxdk-wasm
 go 1.19
 
 require (
-	github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e
+	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
 	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client v1.5.1-0.20221122004847-08fb6e6d3c0e
-	gitlab.com/elixxir/crypto v0.0.7-0.20221121233335-83f145891bc7
-	gitlab.com/elixxir/primitives v0.0.3-0.20221114231218-cc461261a6af
-	gitlab.com/xx_network/crypto v0.0.5-0.20221121220724-8eefdbb0eb46
+	gitlab.com/elixxir/client/v4 v4.3.6
+	gitlab.com/elixxir/crypto v0.0.7-0.20221110181326-dd7e5293feb0
+	gitlab.com/elixxir/primitives v0.0.3-0.20221110181119-e83320a48b13
+	gitlab.com/xx_network/crypto v0.0.5-0.20221110181048-76f0c556fe95
 	gitlab.com/xx_network/primitives v0.0.4-0.20221110180011-fd6ea3058225
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 )
