@@ -12,7 +12,7 @@ package wasm
 import (
 	"encoding/base64"
 	"encoding/json"
-	"gitlab.com/elixxir/client/channels"
+	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/xx_network/primitives/id"
 	"sync"
 	"syscall/js"
