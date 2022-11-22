@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Copyright © 2022 xx foundation                                             //
-//                                                                            //
+//                                                                           //
 // Use of this source code is governed by a license that can be found in the  //
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,12 +53,16 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]interface{} 
 		"SendMessage":           js.FuncOf(cm.SendMessage),
 		"SendReply":             js.FuncOf(cm.SendReply),
 		"SendReaction":          js.FuncOf(cm.SendReaction),
+		"DeleteMessage":         js.FuncOf(cm.DeleteMessage),
+		"PinMessage":            js.FuncOf(cm.PinMessage),
+		"MuteUser":              js.FuncOf(cm.MuteUser),
 		"GetIdentity":           js.FuncOf(cm.GetIdentity),
 		"ExportPrivateIdentity": js.FuncOf(cm.ExportPrivateIdentity),
 		"GetStorageTag":         js.FuncOf(cm.GetStorageTag),
 		"SetNickname":           js.FuncOf(cm.SetNickname),
 		"DeleteNickname":        js.FuncOf(cm.DeleteNickname),
 		"GetNickname":           js.FuncOf(cm.GetNickname),
+		"Muted":                 js.FuncOf(cm.Muted),
 
 		// Channel Receiving Logic and Callback Registration
 		"RegisterReceiveHandler": js.FuncOf(cm.RegisterReceiveHandler),
@@ -1105,6 +1109,122 @@ func (ch *ChannelsManager) SendReaction(_ js.Value, args []js.Value) interface{}
 	return utils.CreatePromise(promiseFn)
 }
 
+// DeleteMessage is used to send a reaction to a message over a channel. The
+// reaction must be a single emoji with no other characters, and will be
+// rejected otherwise.
+//
+// Users will drop the reaction if they do not recognize the reactTo message.
+//
+// Parameters:
+//   - args[0] - The PEM-encoded admin RSA private key for the channel
+//     (Uint8Array). If a user is trying to delete their own message, make this
+//     empty.
+//   - args[1] - Marshalled bytes of channel [id.ID] (Uint8Array).
+//   - args[2] - The marshalled [channel.MessageID] of the message you want to
+//     delete (Uint8Array).
+//   - args[3] - Set to true to un-delete the message (boolean).
+//   - args[4] - JSON of [xxdk.CMIXParams]. This may be empty, and
+//     [GetDefaultCMixParams] will be used internally (Uint8Array).
+//
+// Returns:
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
+func (ch *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) interface{} {
+	adminPrivateKey := utils.CopyBytesToGo(args[0])
+	channelIdBytes := utils.CopyBytesToGo(args[1])
+	targetMessageIdBytes := utils.CopyBytesToGo(args[2])
+	undoAction := args[3].Bool()
+	cmixParamsJSON := utils.CopyBytesToGo(args[4])
+
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		sendReport, err := ch.api.DeleteMessage(adminPrivateKey, channelIdBytes,
+			targetMessageIdBytes, undoAction, cmixParamsJSON)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// PinMessage pins the target message to the top of a channel view for all
+// users in the specified channel. Only the channel admin can pin user
+// messages.
+//
+// Clients will drop the pin if they do not recognize the target message.
+//
+// Parameters:
+//   - args[0] - The PEM-encoded admin RSA private key for the channel
+//     (Uint8Array).
+//   - args[1] - Marshalled bytes of channel [id.ID] (Uint8Array).
+//   - args[2] - The marshalled [channel.MessageID] of the message you want to
+//     pin (Uint8Array).
+//   - args[3] - Set to true to un-delete the message (boolean).
+//   - args[4] - JSON of [xxdk.CMIXParams]. This may be empty, and
+//     [GetDefaultCMixParams] will be used internally (Uint8Array).
+//
+// Returns:
+//   - []byte - JSON of [ChannelSendReport].
+func (ch *ChannelsManager) PinMessage(_ js.Value, args []js.Value) interface{} {
+	adminPrivateKey := utils.CopyBytesToGo(args[0])
+	channelIdBytes := utils.CopyBytesToGo(args[1])
+	targetMessageIdBytes := utils.CopyBytesToGo(args[2])
+	undoAction := args[3].Bool()
+	cmixParamsJSON := utils.CopyBytesToGo(args[4])
+
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		sendReport, err := ch.api.PinMessage(adminPrivateKey, channelIdBytes,
+			targetMessageIdBytes, undoAction, cmixParamsJSON)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// MuteUser is used to mute a user in a channel. Muting a user will cause all
+// future messages from the user being hidden from view. Muted users are also
+// unable to send messages. Only the channel admin can mute a user.
+//
+// If undoAction is true, then the targeted user will be unmuted.
+//
+// Parameters:
+//   - args[0] - The PEM-encoded admin RSA private key for the channel
+//     (Uint8Array).
+//   - args[1] - Marshalled bytes of channel [id.ID] (Uint8Array).
+//   - mutedUserPubKeyBytes - The [ed25519.PublicKey] of the user you want to
+//     mute.
+//   - args[3] - Set to true to un-delete the message (boolean).
+//   - args[4] - JSON of [xxdk.CMIXParams]. This may be empty, and
+//     [GetDefaultCMixParams] will be used internally (Uint8Array).
+//
+// Returns:
+//   - []byte - JSON of [ChannelSendReport].
+func (ch *ChannelsManager) MuteUser(_ js.Value, args []js.Value) interface{} {
+	adminPrivateKey := utils.CopyBytesToGo(args[0])
+	channelIdBytes := utils.CopyBytesToGo(args[1])
+	mutedUserPubKeyBytes := utils.CopyBytesToGo(args[2])
+	undoAction := args[3].Bool()
+	cmixParamsJSON := utils.CopyBytesToGo(args[4])
+
+	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+		sendReport, err := ch.api.MuteUser(adminPrivateKey, channelIdBytes,
+			mutedUserPubKeyBytes, undoAction, cmixParamsJSON)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
 // GetIdentity returns the marshaled public identity ([channel.Identity]) that
 // the channel is using.
 //
@@ -1222,6 +1342,27 @@ func IsNicknameValid(_ js.Value, args []js.Value) interface{} {
 	}
 
 	return nil
+}
+
+// Muted returns true if the user is currently muted in the given channel.
+//
+// Parameters:
+//   - args[0] - Marshalled bytes if the channel's [id.ID] (Uint8Array).
+//
+// Returns:
+//   - Returns true if the user is muted in the channel and false otherwise
+//     (boolean).
+//   - Throws a TypeError if the channel ID cannot be unmarshalled.
+func (ch *ChannelsManager) Muted(_ js.Value, args []js.Value) interface{} {
+	channelIDBytes := utils.CopyBytesToGo(args[0])
+
+	muted, err := ch.api.Muted(channelIDBytes)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return muted
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1345,11 +1486,11 @@ func (em *eventModel) LeaveChannel(channelID []byte) {
 //     later with [eventModel.UpdateSentStatus].
 func (em *eventModel) ReceiveMessage(channelID, messageID []byte, nickname,
 	text string, pubKey []byte, codeset int, timestamp, lease, roundId, msgType,
-	status int64) int64 {
+	status int64, hidden bool) int64 {
 	uuid := em.receiveMessage(utils.CopyBytesToJS(channelID),
 		utils.CopyBytesToJS(messageID), nickname, text,
 		utils.CopyBytesToJS(pubKey), codeset, timestamp, lease, roundId,
-		msgType, status)
+		msgType, status, hidden)
 
 	return int64(uuid.Int())
 }
@@ -1389,11 +1530,11 @@ func (em *eventModel) ReceiveMessage(channelID, messageID []byte, nickname,
 //     later with [eventModel.UpdateSentStatus].
 func (em *eventModel) ReceiveReply(channelID, messageID, reactionTo []byte,
 	senderUsername, text string, pubKey []byte, codeset int, timestamp, lease,
-	roundId, msgType, status int64) int64 {
+	roundId, msgType, status int64, hidden bool) int64 {
 	uuid := em.receiveReply(utils.CopyBytesToJS(channelID),
 		utils.CopyBytesToJS(messageID), utils.CopyBytesToJS(reactionTo),
 		senderUsername, text, utils.CopyBytesToJS(pubKey), codeset,
-		timestamp, lease, roundId, msgType, status)
+		timestamp, lease, roundId, msgType, status, hidden)
 
 	return int64(uuid.Int())
 }
@@ -1433,11 +1574,11 @@ func (em *eventModel) ReceiveReply(channelID, messageID, reactionTo []byte,
 //     later with [eventModel.UpdateSentStatus].
 func (em *eventModel) ReceiveReaction(channelID, messageID, reactionTo []byte,
 	senderUsername, reaction string, pubKey []byte, codeset int, timestamp,
-	lease, roundId, msgType, status int64) int64 {
+	lease, roundId, msgType, status int64, hidden bool) int64 {
 	uuid := em.receiveReaction(utils.CopyBytesToJS(channelID),
 		utils.CopyBytesToJS(messageID), utils.CopyBytesToJS(reactionTo),
 		senderUsername, reaction, utils.CopyBytesToJS(pubKey), codeset,
-		timestamp, lease, roundId, msgType, status)
+		timestamp, lease, roundId, msgType, status, hidden)
 
 	return int64(uuid.Int())
 }
