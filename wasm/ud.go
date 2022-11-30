@@ -25,11 +25,11 @@ type UserDiscovery struct {
 	api *bindings.UserDiscovery
 }
 
-// newE2eJS creates a new Javascript compatible object (map[string]interface{})
-// that matches the [E2e] structure.
-func newUserDiscoveryJS(api *bindings.UserDiscovery) map[string]interface{} {
+// newE2eJS creates a new Javascript compatible object (map[string]any) that
+// matches the [E2e] structure.
+func newUserDiscoveryJS(api *bindings.UserDiscovery) map[string]any {
 	ud := UserDiscovery{api}
-	udMap := map[string]interface{}{
+	udMap := map[string]any{
 		"GetID":                  js.FuncOf(ud.GetID),
 		"GetFacts":               js.FuncOf(ud.GetFacts),
 		"GetContact":             js.FuncOf(ud.GetContact),
@@ -45,21 +45,21 @@ func newUserDiscoveryJS(api *bindings.UserDiscovery) map[string]interface{} {
 // GetID returns the ID for this [UserDiscovery] in the [UserDiscovery] tracker.
 //
 // Returns:
-//  - Tracker ID (int).
-func (ud *UserDiscovery) GetID(js.Value, []js.Value) interface{} {
+//   - Tracker ID (int).
+func (ud *UserDiscovery) GetID(js.Value, []js.Value) any {
 	return ud.api.GetID()
 }
 
 // udNetworkStatus wraps Javascript callbacks to adhere to the
 // [bindings.UdNetworkStatus] interface.
 type udNetworkStatus struct {
-	udNetworkStatus func(args ...interface{}) js.Value
+	udNetworkStatus func(args ...any) js.Value
 }
 
 // UdNetworkStatus returns the status of UD.
 //
 // Returns:
-//  - UD status (int).
+//   - UD status (int).
 func (uns *udNetworkStatus) UdNetworkStatus() int {
 	return uns.udNetworkStatus().Int()
 }
@@ -76,31 +76,31 @@ func (uns *udNetworkStatus) UdNetworkStatus() int {
 // be pulled from the NDF using the bindings.
 //
 // Params
-//  - args[0] - ID of [E2e] object in tracker (int).
-//  - args[1] - Javascript object that has functions that implement the
-//    [bindings.UdNetworkStatus] interface. This is the network follower
-//    function wrapped in [bindings.UdNetworkStatus].
-//  - args[2] - The username the user wants to register with UD. If the user is
-//    already registered, this field may be blank (string).
-//  - args[3] - The registration validation signature; a signature provided by
-//    the network (i.e., the client registrar). This may be nil; however, UD may
-//    return an error in some cases (e.g., in a production level environment)
-//    (Uint8Array).
-//  - args[4] - The TLS certificate for the UD server this call will connect
-//    with. You may use the UD server run by the xx network team by using
-//    [E2e.GetUdCertFromNdf] (Uint8Array).
-//  - args[5] - Marshalled bytes of the [contact.Contact] of the server this
-//    call will connect with. You may use the UD server run by the xx network
-//    team by using [E2e.GetUdContactFromNdf] (Uint8Array).
-//  - args[6] - the IP address of the UD server this call will connect with. You
-//    may use the UD server run by the xx network team by using
-//    [E2e.GetUdAddressFromNdf] (string).
+//   - args[0] - ID of [E2e] object in tracker (int).
+//   - args[1] - Javascript object that has functions that implement the
+//     [bindings.UdNetworkStatus] interface. This is the network follower
+//     function wrapped in [bindings.UdNetworkStatus].
+//   - args[2] - The username the user wants to register with UD. If the user is
+//     already registered, this field may be blank (string).
+//   - args[3] - The registration validation signature; a signature provided by
+//     the network (i.e., the client registrar). This may be nil; however, UD
+//     may return an error in some cases (e.g., in a production level
+//     environment) (Uint8Array).
+//   - args[4] - The TLS certificate for the UD server this call will connect
+//     with. You may use the UD server run by the xx network team by using
+//     [E2e.GetUdCertFromNdf] (Uint8Array).
+//   - args[5] - Marshalled bytes of the [contact.Contact] of the server this
+//     call will connect with. You may use the UD server run by the xx network
+//     team by using [E2e.GetUdContactFromNdf] (Uint8Array).
+//   - args[6] - the IP address of the UD server this call will connect with.
+//     You may use the UD server run by the xx network team by using
+//     [E2e.GetUdAddressFromNdf] (string).
 //
 // Returns:
-//  - Javascript representation of the [UserDiscovery] object that is registered
-//    to the specified UD service.
-//  - Throws a TypeError if creating or loading fails.
-func NewOrLoadUd(_ js.Value, args []js.Value) interface{} {
+//   - Javascript representation of the [UserDiscovery] object that is
+//     registered to the specified UD service.
+//   - Throws a TypeError if creating or loading fails.
+func NewOrLoadUd(_ js.Value, args []js.Value) any {
 	e2eID := args[0].Int()
 	follower := &udNetworkStatus{utils.WrapCB(args[1], "UdNetworkStatus")}
 	username := args[2].String()
@@ -128,25 +128,25 @@ func NewOrLoadUd(_ js.Value, args []js.Value) interface{} {
 // an error.
 //
 // Parameters:
-//  - args[0] - ID of [E2e] object in tracker (int).
-//  - args[1] - Javascript object that has functions that implement the
-//    [bindings.UdNetworkStatus] interface. This is the network follower
-//    function wrapped in [bindings.UdNetworkStatus].
-//  - args[2] - The TLS certificate for the UD server this call will connect
-//    with. You may use the UD server run by the xx network team by using
-//    [E2e.GetUdCertFromNdf] (Uint8Array).
-//  - args[3] - Marshalled bytes of the [contact.Contact] of the server this
-//    call will connect with. You may use the UD server run by the xx network
-//    team by using [E2e.GetUdContactFromNdf] (Uint8Array).
-//  - args[4] - The IP address of the UD server this call will connect with. You
-//    may use the UD server run by the xx network team by using
-//    [E2e.GetUdAddressFromNdf] (string).
+//   - args[0] - ID of [E2e] object in tracker (int).
+//   - args[1] - Javascript object that has functions that implement the
+//     [bindings.UdNetworkStatus] interface. This is the network follower
+//     function wrapped in [bindings.UdNetworkStatus].
+//   - args[2] - The TLS certificate for the UD server this call will connect
+//     with. You may use the UD server run by the xx network team by using
+//     [E2e.GetUdCertFromNdf] (Uint8Array).
+//   - args[3] - Marshalled bytes of the [contact.Contact] of the server this
+//     call will connect with. You may use the UD server run by the xx network
+//     team by using [E2e.GetUdContactFromNdf] (Uint8Array).
+//   - args[4] - The IP address of the UD server this call will connect with.
+//     You may use the UD server run by the xx network team by using
+//     [E2e.GetUdAddressFromNdf] (string).
 //
 // Returns:
-//  - Javascript representation of the [UserDiscovery] object that is loaded
-//    from backup.
-//  - Throws a TypeError if getting UD from backup fails.
-func NewUdManagerFromBackup(_ js.Value, args []js.Value) interface{} {
+//   - Javascript representation of the [UserDiscovery] object that is loaded
+//     from backup.
+//   - Throws a TypeError if getting UD from backup fails.
+func NewUdManagerFromBackup(_ js.Value, args []js.Value) any {
 	e2eID := args[0].Int()
 	follower := &udNetworkStatus{utils.WrapCB(args[1], "UdNetworkStatus")}
 	cert := utils.CopyBytesToGo(args[5])
@@ -168,8 +168,8 @@ func NewUdManagerFromBackup(_ js.Value, args []js.Value) interface{} {
 // within the Store's registeredFacts map.
 //
 // Returns:
-//  - JSON of [fact.FactList] (Uint8Array).
-func (ud *UserDiscovery) GetFacts(js.Value, []js.Value) interface{} {
+//   - JSON of [fact.FactList] (Uint8Array).
+func (ud *UserDiscovery) GetFacts(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(ud.api.GetFacts())
 }
 
@@ -177,9 +177,9 @@ func (ud *UserDiscovery) GetFacts(js.Value, []js.Value) interface{} {
 // retrieved from the NDF.
 //
 // Returns:
-//  - Marshalled bytes of [contact.Contact] (Uint8Array).
-//  - Throws TypeError if getting the contact fails.
-func (ud *UserDiscovery) GetContact(js.Value, []js.Value) interface{} {
+//   - Marshalled bytes of [contact.Contact] (Uint8Array).
+//   - Throws TypeError if getting the contact fails.
+func (ud *UserDiscovery) GetContact(js.Value, []js.Value) any {
 	c, err := ud.api.GetContact()
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -195,12 +195,12 @@ func (ud *UserDiscovery) GetContact(js.Value, []js.Value) interface{} {
 // communications system.
 //
 // Parameters:
-//  - args[0] - Confirmation ID (string).
-//  - args[1] - Code (string).
+//   - args[0] - Confirmation ID (string).
+//   - args[1] - Code (string).
 //
 // Returns:
-//  - Throws TypeError if confirming the fact fails.
-func (ud *UserDiscovery) ConfirmFact(_ js.Value, args []js.Value) interface{} {
+//   - Throws TypeError if confirming the fact fails.
+func (ud *UserDiscovery) ConfirmFact(_ js.Value, args []js.Value) any {
 	err := ud.api.ConfirmFact(args[0].String(), args[1].String())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -220,12 +220,12 @@ func (ud *UserDiscovery) ConfirmFact(_ js.Value, args []js.Value) interface{} {
 // along with the code to finalize the fact.
 //
 // Parameters:
-//  - args[0] - JSON of [fact.Fact] (Uint8Array).
+//   - args[0] - JSON of [fact.Fact] (Uint8Array).
 //
 // Returns:
-//  - The confirmation ID (string).
-//  - Throws TypeError if sending the fact fails.
-func (ud *UserDiscovery) SendRegisterFact(_ js.Value, args []js.Value) interface{} {
+//   - The confirmation ID (string).
+//   - Throws TypeError if sending the fact fails.
+func (ud *UserDiscovery) SendRegisterFact(_ js.Value, args []js.Value) any {
 	confirmationID, err := ud.api.SendRegisterFact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -240,11 +240,11 @@ func (ud *UserDiscovery) SendRegisterFact(_ js.Value, args []js.Value) interface
 // be associated with this user.
 //
 // Parameters:
-//  - args[0] - JSON of [fact.Fact] (Uint8Array).
+//   - args[0] - JSON of [fact.Fact] (Uint8Array).
 //
 // Returns:
-//  - Throws TypeError if deletion fails.
-func (ud *UserDiscovery) PermanentDeleteAccount(_ js.Value, args []js.Value) interface{} {
+//   - Throws TypeError if deletion fails.
+func (ud *UserDiscovery) PermanentDeleteAccount(_ js.Value, args []js.Value) any {
 	err := ud.api.PermanentDeleteAccount(utils.CopyBytesToGo(args[0]))
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -258,11 +258,11 @@ func (ud *UserDiscovery) PermanentDeleteAccount(_ js.Value, args []js.Value) int
 // passed in is not UD service does not associate this fact with this user.
 //
 // Parameters:
-//  - args[0] - JSON of [fact.Fact] (Uint8Array).
+//   - args[0] - JSON of [fact.Fact] (Uint8Array).
 //
 // Returns:
-//  - Throws TypeError if removing the fact fails.
-func (ud *UserDiscovery) RemoveFact(_ js.Value, args []js.Value) interface{} {
+//   - Throws TypeError if removing the fact fails.
+func (ud *UserDiscovery) RemoveFact(_ js.Value, args []js.Value) any {
 	err := ud.api.RemoveFact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -279,16 +279,16 @@ func (ud *UserDiscovery) RemoveFact(_ js.Value, args []js.Value) interface{} {
 // udLookupCallback wraps Javascript callbacks to adhere to the
 // [bindings.UdLookupCallback] interface.
 type udLookupCallback struct {
-	callback func(args ...interface{}) js.Value
+	callback func(args ...any) js.Value
 }
 
 // Callback is called by [LookupUD] to return the contact that matches the
 // passed in ID.
 //
 // Parameters:
-//  - contactBytes - Marshalled bytes of the [contact.Contact] returned from the
-//    lookup, or nil if an error occurs (Uint8Array).
-//  - err - Returns an error on failure (Error).
+//   - contactBytes - Marshalled bytes of the [contact.Contact] returned from
+//     the lookup, or nil if an error occurs (Uint8Array).
+//   - err - Returns an error on failure (Error).
 func (ulc *udLookupCallback) Callback(contactBytes []byte, err error) {
 	ulc.callback(utils.CopyBytesToJS(contactBytes), utils.JsTrace(err))
 }
@@ -297,28 +297,28 @@ func (ulc *udLookupCallback) Callback(contactBytes []byte, err error) {
 // discovery system or returns by the timeout.
 //
 // Parameters:
-//  - args[0] - ID of [E2e] object in tracker (int).
-//  - args[1] - Marshalled bytes of the User Discovery's [contact.Contact]
-//    (Uint8Array).
-//  - args[2] - Javascript object that has functions that implement the
-//    [bindings.UdLookupCallback] interface.
-//  - args[3] - Marshalled bytes of the [id.ID] for the user to look up
-//    (Uint8Array).
-//  - args[4] - JSON of [single.RequestParams] (Uint8Array).
+//   - args[0] - ID of [E2e] object in tracker (int).
+//   - args[1] - Marshalled bytes of the User Discovery's [contact.Contact]
+//     (Uint8Array).
+//   - args[2] - Javascript object that has functions that implement the
+//     [bindings.UdLookupCallback] interface.
+//   - args[3] - Marshalled bytes of the [id.ID] for the user to look up
+//     (Uint8Array).
+//   - args[4] - JSON of [single.RequestParams] (Uint8Array).
 //
 // Returns a promise:
-//  - Resolves to the JSON of the [bindings.SingleUseSendReport], which can be
-//    passed into [Cmix.WaitForRoundResult] to see if the send succeeded
-//    (Uint8Array).
-//  - Rejected with an error if the lookup fails.
-func LookupUD(_ js.Value, args []js.Value) interface{} {
+//   - Resolves to the JSON of the [bindings.SingleUseSendReport], which can be
+//     passed into [Cmix.WaitForRoundResult] to see if the send succeeded
+//     (Uint8Array).
+//   - Rejected with an error if the lookup fails.
+func LookupUD(_ js.Value, args []js.Value) any {
 	e2eID := args[0].Int()
 	udContact := utils.CopyBytesToGo(args[1])
 	cb := &udLookupCallback{utils.WrapCB(args[2], "Callback")}
 	lookupId := utils.CopyBytesToGo(args[3])
 	singleRequestParamsJSON := utils.CopyBytesToGo(args[4])
 
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := bindings.LookupUD(
 			e2eID, udContact, cb, lookupId, singleRequestParamsJSON)
 		if err != nil {
@@ -338,23 +338,24 @@ func LookupUD(_ js.Value, args []js.Value) interface{} {
 // udSearchCallback wraps Javascript callbacks to adhere to the
 // [bindings.UdSearchCallback] interface.
 type udSearchCallback struct {
-	callback func(args ...interface{}) js.Value
+	callback func(args ...any) js.Value
 }
 
 // Callback is called by [SearchUD] to return a list of [contact.Contact]
 // objects that match the list of facts passed into [SearchUD].
 //
 // Parameters:
-//  - contactListJSON - JSON of an array of [contact.Contact], or nil if an
-//    error occurs (Uint8Array).
-//  - err - Returns any error that occurred in the search (Error).
+//   - contactListJSON - JSON of an array of [contact.Contact], or nil if an
+//     error occurs (Uint8Array).
+//   - err - Returns any error that occurred in the search (Error).
 //
 // JSON Example:
-//  {
-//    "<xxc(2)F8dL9EC6gy+RMJuk3R+Au6eGExo02Wfio5cacjBcJRwDEgB7Ugdw/BAr6RkCABkWAFV1c2VybmFtZTA7c4LzV05sG+DMt+rFB0NIJg==xxc>",
-//    "<xxc(2)eMhAi/pYkW5jCmvKE5ZaTglQb+fTo1D8NxVitr5CCFADEgB7Ugdw/BAr6RoCABkWAFV1c2VybmFtZTE7fElAa7z3IcrYrrkwNjMS2w==xxc>",
-//    "<xxc(2)d7RJTu61Vy1lDThDMn8rYIiKSe1uXA/RCvvcIhq5Yg4DEgB7Ugdw/BAr6RsCABkWAFV1c2VybmFtZTI7N3XWrxIUpR29atpFMkcR6A==xxc>"
-//  }
+//
+//	{
+//	  "<xxc(2)F8dL9EC6gy+RMJuk3R+Au6eGExo02Wfio5cacjBcJRwDEgB7Ugdw/BAr6RkCABkWAFV1c2VybmFtZTA7c4LzV05sG+DMt+rFB0NIJg==xxc>",
+//	  "<xxc(2)eMhAi/pYkW5jCmvKE5ZaTglQb+fTo1D8NxVitr5CCFADEgB7Ugdw/BAr6RoCABkWAFV1c2VybmFtZTE7fElAa7z3IcrYrrkwNjMS2w==xxc>",
+//	  "<xxc(2)d7RJTu61Vy1lDThDMn8rYIiKSe1uXA/RCvvcIhq5Yg4DEgB7Ugdw/BAr6RsCABkWAFV1c2VybmFtZTI7N3XWrxIUpR29atpFMkcR6A==xxc>"
+//	}
 func (usc *udSearchCallback) Callback(contactListJSON []byte, err error) {
 	usc.callback(utils.CopyBytesToJS(contactListJSON), utils.JsTrace(err))
 }
@@ -366,25 +367,25 @@ func (usc *udSearchCallback) Callback(contactListJSON []byte, err error) {
 // where multiple pieces of information is known.
 //
 // Parameters:
-//  - args[0] - ID of [E2e] object in tracker (int).
-//  - args[1] - Marshalled bytes of the User Discovery's [contact.Contact]
-//    (Uint8Array).
-//  - args[2] - JSON of [fact.FactList] (Uint8Array).
-//  - args[4] - JSON of [single.RequestParams] (Uint8Array).
+//   - args[0] - ID of [E2e] object in tracker (int).
+//   - args[1] - Marshalled bytes of the User Discovery's [contact.Contact]
+//     (Uint8Array).
+//   - args[2] - JSON of [fact.FactList] (Uint8Array).
+//   - args[4] - JSON of [single.RequestParams] (Uint8Array).
 //
 // Returns a promise:
-//  - Resolves to the JSON of the [bindings.SingleUseSendReport], which can be
-//    passed into [Cmix.WaitForRoundResult] to see if the send succeeded
-//    (Uint8Array).
-//  - Rejected with an error if the search fails.
-func SearchUD(_ js.Value, args []js.Value) interface{} {
+//   - Resolves to the JSON of the [bindings.SingleUseSendReport], which can be
+//     passed into [Cmix.WaitForRoundResult] to see if the send succeeded
+//     (Uint8Array).
+//   - Rejected with an error if the search fails.
+func SearchUD(_ js.Value, args []js.Value) any {
 	e2eID := args[0].Int()
 	udContact := utils.CopyBytesToGo(args[1])
 	cb := &udSearchCallback{utils.WrapCB(args[2], "Callback")}
 	factListJSON := utils.CopyBytesToGo(args[3])
 	singleRequestParamsJSON := utils.CopyBytesToGo(args[4])
 
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := bindings.SearchUD(
 			e2eID, udContact, cb, factListJSON, singleRequestParamsJSON)
 		if err != nil {

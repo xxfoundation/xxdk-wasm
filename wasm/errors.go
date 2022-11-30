@@ -26,9 +26,9 @@ import (
 //   - args[0] - an error returned from the backend (string).
 //
 // Returns
-//  - A user-friendly error message. This should be devoid of technical speak
-//    but still be meaningful for front-end or back-end teams (string).
-func CreateUserFriendlyErrorMessage(_ js.Value, args []js.Value) interface{} {
+//   - A user-friendly error message. This should be devoid of technical speak
+//     but still be meaningful for front-end or back-end teams (string).
+func CreateUserFriendlyErrorMessage(_ js.Value, args []js.Value) any {
 	return bindings.CreateUserFriendlyErrorMessage(args[0].String())
 }
 
@@ -37,19 +37,20 @@ func CreateUserFriendlyErrorMessage(_ js.Value, args []js.Value) interface{} {
 // messages.
 //
 // Parameters:
-//  - args[0] - Contents of a JSON file whose format conforms to the example
-//    below (string).
+//   - args[0] - Contents of a JSON file whose format conforms to the example
+//     below (string).
 //
 // Example Input:
-//  {
-//    "Failed to Unmarshal Conversation": "Could not retrieve conversation",
-//    "Failed to unmarshal SentRequestMap": "Failed to pull up friend requests",
-//    "cannot create username when network is not health": "Cannot create username, unable to connect to network",
-//  }
+//
+//	{
+//	  "Failed to Unmarshal Conversation": "Could not retrieve conversation",
+//	  "Failed to unmarshal SentRequestMap": "Failed to pull up friend requests",
+//	  "cannot create username when network is not health": "Cannot create username, unable to connect to network",
+//	}
 //
 // Returns:
-//  - Throws a TypeError if the JSON cannot be unmarshalled.
-func UpdateCommonErrors(_ js.Value, args []js.Value) interface{} {
+//   - Throws a TypeError if the JSON cannot be unmarshalled.
+func UpdateCommonErrors(_ js.Value, args []js.Value) any {
 	err := bindings.UpdateCommonErrors(args[0].String())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)

@@ -73,8 +73,8 @@ func Test_checkAndStoreVersions(t *testing.T) {
 	}
 }
 
-// Tests that initOrLoadStoredSemver initialises the correct version on first run
-// and returns the same version on subsequent runs.
+// Tests that initOrLoadStoredSemver initialises the correct version on first
+// run and returns the same version on subsequent runs.
 func Test_initOrLoadStoredSemver(t *testing.T) {
 	ls := GetLocalStorage()
 	key := "testKey"

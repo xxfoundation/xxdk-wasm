@@ -25,11 +25,11 @@ type Backup struct {
 	api *bindings.Backup
 }
 
-// newBackupJS creates a new Javascript compatible object
-// (map[string]interface{}) that matches the [Backup] structure.
-func newBackupJS(api *bindings.Backup) map[string]interface{} {
+// newBackupJS creates a new Javascript compatible object (map[string]any) tha
+// matches the [Backup] structure.
+func newBackupJS(api *bindings.Backup) map[string]any {
 	b := Backup{api}
-	backupMap := map[string]interface{}{
+	backupMap := map[string]any{
 		"StopBackup":      js.FuncOf(b.StopBackup),
 		"IsBackupRunning": js.FuncOf(b.IsBackupRunning),
 		"AddJson":         js.FuncOf(b.AddJson),
@@ -41,13 +41,13 @@ func newBackupJS(api *bindings.Backup) map[string]interface{} {
 // updateBackupFunc wraps Javascript callbacks to adhere to the
 // [bindings.UpdateBackupFunc] interface.
 type updateBackupFunc struct {
-	updateBackup func(args ...interface{}) js.Value
+	updateBackup func(args ...any) js.Value
 }
 
 // UpdateBackup is a function callback that returns new backups.
 //
 // Parameters:
-//  - encryptedBackup - Returns the bytes of the encrypted backup (Uint8Array).
+//   - encryptedBackup - Returns the bytes of the encrypted backup (Uint8Array).
 func (ubf *updateBackupFunc) UpdateBackup(encryptedBackup []byte) {
 	ubf.updateBackup(utils.CopyBytesToJS(encryptedBackup))
 }
@@ -61,16 +61,16 @@ func (ubf *updateBackupFunc) UpdateBackup(encryptedBackup []byte) {
 // this function should call LoadCmix as normal once this call succeeds.
 //
 // Parameters:
-//  - args[0] - JSON of the NDF ([ndf.NetworkDefinition]) (string).
-//  - args[1] - Storage directory (string).
-//  - args[2] - Backup passphrase (string).
-//  - args[3] - Session password (Uint8Array).
-//  - args[4] - Backup file contents (Uint8Array).
+//   - args[0] - JSON of the NDF ([ndf.NetworkDefinition]) (string).
+//   - args[1] - Storage directory (string).
+//   - args[2] - Backup passphrase (string).
+//   - args[3] - Session password (Uint8Array).
+//   - args[4] - Backup file contents (Uint8Array).
 //
 // Returns:
-//  - JSON of [bindings.BackupReport] (Uint8Array).
-//  - Throws a TypeError if creating [Cmix] from backup fails.
-func NewCmixFromBackup(_ js.Value, args []js.Value) interface{} {
+//   - JSON of [bindings.BackupReport] (Uint8Array).
+//   - Throws a TypeError if creating [Cmix] from backup fails.
+func NewCmixFromBackup(_ js.Value, args []js.Value) any {
 	ndfJSON := args[0].String()
 	storageDir := args[1].String()
 	backupPassphrase := args[2].String()
@@ -94,18 +94,18 @@ func NewCmixFromBackup(_ js.Value, args []js.Value) interface{} {
 // InitializeBackup creates a bindings-layer [Backup] object.
 //
 // Parameters:
-//  - args[0] - ID of [E2e] object in tracker (int).
-//  - args[1] - ID of [UserDiscovery] object in tracker (int).
-//  - args[2] - [Backup] passphrase provided by the user (string). Used to
-//    decrypt the backup.
-//  - args[3] - The callback to be called when a backup is triggered. Must be
-//    Javascript object that has functions that implement the
-//    [bindings.UpdateBackupFunc] interface.
+//   - args[0] - ID of [E2e] object in tracker (int).
+//   - args[1] - ID of [UserDiscovery] object in tracker (int).
+//   - args[2] - [Backup] passphrase provided by the user (string). Used to
+//     decrypt the backup.
+//   - args[3] - The callback to be called when a backup is triggered. Must be
+//     Javascript object that has functions that implement the
+//     [bindings.UpdateBackupFunc] interface.
 //
 // Returns:
-//  - Javascript representation of the [Backup] object.
-//  - Throws a TypeError if initializing the [Backup] fails.
-func InitializeBackup(_ js.Value, args []js.Value) interface{} {
+//   - Javascript representation of the [Backup] object.
+//   - Throws a TypeError if initializing the [Backup] fails.
+func InitializeBackup(_ js.Value, args []js.Value) any {
 	cb := &updateBackupFunc{utils.WrapCB(args[3], "UpdateBackup")}
 	api, err := bindings.InitializeBackup(
 		args[0].Int(), args[1].Int(), args[2].String(), cb)
@@ -124,17 +124,17 @@ func InitializeBackup(_ js.Value, args []js.Value) interface{} {
 // [InitializeBackup].
 //
 // Parameters:
-//  - args[0] - ID of [E2e] object in tracker (int).
-//  - args[1] - ID of [UserDiscovery] object in tracker (int).
-//  - args[2] - The callback to be called when a backup is triggered. Must be
-//    Javascript object that has functions that implement the
-//    [bindings.UpdateBackupFunc] interface. This will replace any callback that
-//    has been passed into [InitializeBackup].
+//   - args[0] - ID of [E2e] object in tracker (int).
+//   - args[1] - ID of [UserDiscovery] object in tracker (int).
+//   - args[2] - The callback to be called when a backup is triggered. Must be
+//     Javascript object that has functions that implement the
+//     [bindings.UpdateBackupFunc] interface. This will replace any callback
+//     that has been passed into [InitializeBackup].
 //
 // Returns:
-//  - Javascript representation of the [Backup] object.
-//  - Throws a TypeError if initializing the [Backup] fails.
-func ResumeBackup(_ js.Value, args []js.Value) interface{} {
+//   - Javascript representation of the [Backup] object.
+//   - Throws a TypeError if initializing the [Backup] fails.
+func ResumeBackup(_ js.Value, args []js.Value) any {
 	cb := &updateBackupFunc{utils.WrapCB(args[2], "UpdateBackup")}
 	api, err := bindings.ResumeBackup(args[0].Int(), args[1].Int(), cb)
 	if err != nil {
@@ -149,8 +149,8 @@ func ResumeBackup(_ js.Value, args []js.Value) interface{} {
 // storage. To enable backups again, call [InitializeBackup].
 //
 // Returns:
-//  - Throws a TypeError if stopping the backup fails.
-func (b *Backup) StopBackup(js.Value, []js.Value) interface{} {
+//   - Throws a TypeError if stopping the backup fails.
+func (b *Backup) StopBackup(js.Value, []js.Value) any {
 	err := b.api.StopBackup()
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -164,16 +164,16 @@ func (b *Backup) StopBackup(js.Value, []js.Value) interface{} {
 // running. Returns false if it has been stopped.
 //
 // Returns:
-//  - If the backup is running (boolean).
-func (b *Backup) IsBackupRunning(js.Value, []js.Value) interface{} {
+//   - If the backup is running (boolean).
+func (b *Backup) IsBackupRunning(js.Value, []js.Value) any {
 	return b.api.IsBackupRunning()
 }
 
 // AddJson stores the argument within the [Backup] structure.
 //
 // Parameters:
-//  - args[0] - JSON to store (string).
-func (b *Backup) AddJson(_ js.Value, args []js.Value) interface{} {
+//   - args[0] - JSON to store (string).
+func (b *Backup) AddJson(_ js.Value, args []js.Value) any {
 	b.api.AddJson(args[0].String())
 	return nil
 }

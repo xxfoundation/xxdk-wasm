@@ -18,14 +18,14 @@ import (
 // RestlikeCallback wraps Javascript callbacks to adhere to the
 // [bindings.RestlikeCallback] interface.
 type restlikeCallback struct {
-	callback func(args ...interface{}) js.Value
+	callback func(args ...any) js.Value
 }
 
 // Callback returns the response from an asynchronous restlike request.
 //
 // Parameters:
-//  - payload - JSON of [restlike.Message] (Uint8Array).
-//  - err - Returns an error on failure (Error).
+//   - payload - JSON of [restlike.Message] (Uint8Array).
+//   - err - Returns an error on failure (Error).
 func (rlc *restlikeCallback) Callback(payload []byte, err error) {
 	rlc.callback(utils.CopyBytesToJS(payload), utils.JsTrace(err))
 }
@@ -33,24 +33,24 @@ func (rlc *restlikeCallback) Callback(payload []byte, err error) {
 // RequestRestLike sends a restlike request to a given contact.
 //
 // Parameters:
-//  - args[0] - ID of [E2e] object in tracker (int).
-//  - args[1] - Marshalled bytes of the recipient [contact.Contact]
-//    (Uint8Array).
-//  - args[2] - JSON of [bindings.RestlikeMessage] (Uint8Array).
-//  - args[3] - JSON of [single.RequestParams] (Uint8Array).
+//   - args[0] - ID of [E2e] object in tracker (int).
+//   - args[1] - Marshalled bytes of the recipient [contact.Contact]
+//     (Uint8Array).
+//   - args[2] - JSON of [bindings.RestlikeMessage] (Uint8Array).
+//   - args[3] - JSON of [single.RequestParams] (Uint8Array).
 //
 // Returns a promise:
-//  - Resolves to the JSON of the [bindings.Message], which can be passed into
-//    [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
-//  - Rejected with an error if parsing the parameters or making the request
-//    fails.
-func RequestRestLike(_ js.Value, args []js.Value) interface{} {
+//   - Resolves to the JSON of the [bindings.Message], which can be passed into
+//     [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
+//   - Rejected with an error if parsing the parameters or making the request
+//     fails.
+func RequestRestLike(_ js.Value, args []js.Value) any {
 	e2eID := args[0].Int()
 	recipient := utils.CopyBytesToGo(args[1])
 	request := utils.CopyBytesToGo(args[2])
 	paramsJSON := utils.CopyBytesToGo(args[3])
 
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		msg, err := bindings.RequestRestLike(
 			e2eID, recipient, request, paramsJSON)
 		if err != nil {
@@ -70,17 +70,17 @@ func RequestRestLike(_ js.Value, args []js.Value) interface{} {
 // response when received.
 //
 // Parameters:
-//  - args[0] - ID of [E2e] object in tracker (int).
-//  - args[1] - Marshalled bytes of the recipient [contact.Contact]
-//    (Uint8Array).
-//  - args[2] - JSON of [bindings.RestlikeMessage] (Uint8Array).
-//  - args[3] - JSON of [single.RequestParams] (Uint8Array).
-//  - args[4] - Javascript object that has functions that implement the
-//    [bindings.RestlikeCallback] interface.
+//   - args[0] - ID of [E2e] object in tracker (int).
+//   - args[1] - Marshalled bytes of the recipient [contact.Contact]
+//     (Uint8Array).
+//   - args[2] - JSON of [bindings.RestlikeMessage] (Uint8Array).
+//   - args[3] - JSON of [single.RequestParams] (Uint8Array).
+//   - args[4] - Javascript object that has functions that implement the
+//     [bindings.RestlikeCallback] interface.
 //
 // Returns:
-//  - Throws a TypeError if parsing the parameters or making the request fails.
-func AsyncRequestRestLike(_ js.Value, args []js.Value) interface{} {
+//   - Throws a TypeError if parsing the parameters or making the request fails.
+func AsyncRequestRestLike(_ js.Value, args []js.Value) any {
 	e2eID := args[0].Int()
 	recipient := utils.CopyBytesToGo(args[1])
 	request := utils.CopyBytesToGo(args[2])

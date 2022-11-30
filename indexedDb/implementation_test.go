@@ -264,7 +264,8 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 	}
 
 	// Ensure index is unique
-	txn, err := eventModel.db.Transaction(idb.TransactionReadOnly, messageStoreName)
+	txn, err := eventModel.db.Transaction(
+		idb.TransactionReadOnly, messageStoreName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,10 +277,10 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if isUnique, err := idx.Unique(); !isUnique {
+	if isUnique, err2 := idx.Unique(); !isUnique {
 		t.Fatalf("Index is not unique!")
-	} else if err != nil {
-		t.Fatal(err)
+	} else if err2 != nil {
+		t.Fatal(err2)
 	}
 
 	// First message insert should succeed

@@ -21,11 +21,11 @@ type Cmix struct {
 	api *bindings.Cmix
 }
 
-// newCmixJS creates a new Javascript compatible object (map[string]interface{})
-// that matches the [Cmix] structure.
-func newCmixJS(api *bindings.Cmix) map[string]interface{} {
+// newCmixJS creates a new Javascript compatible object (map[string]any) that
+// matches the [Cmix] structure.
+func newCmixJS(api *bindings.Cmix) map[string]any {
 	c := Cmix{api}
-	cmix := map[string]interface{}{
+	cmix := map[string]any{
 		// cmix.go
 		"GetID": js.FuncOf(c.GetID),
 
@@ -84,7 +84,7 @@ func newCmixJS(api *bindings.Cmix) map[string]interface{} {
 //
 // Returns:
 //   - Throws a TypeError if creating new [Cmix] fails.
-func NewCmix(_ js.Value, args []js.Value) interface{} {
+func NewCmix(_ js.Value, args []js.Value) any {
 	password := utils.CopyBytesToGo(args[2])
 
 	err := bindings.NewCmix(
@@ -115,12 +115,12 @@ func NewCmix(_ js.Value, args []js.Value) interface{} {
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [Cmix] object.
 //   - Rejected with an error if loading [Cmix] fails.
-func LoadCmix(_ js.Value, args []js.Value) interface{} {
+func LoadCmix(_ js.Value, args []js.Value) any {
 	storageDir := args[0].String()
 	password := utils.CopyBytesToGo(args[1])
 	cmixParamsJSON := utils.CopyBytesToGo(args[2])
 
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		net, err := bindings.LoadCmix(storageDir, password, cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
@@ -136,6 +136,6 @@ func LoadCmix(_ js.Value, args []js.Value) interface{} {
 //
 // Returns:
 //   - Tracker ID (int).
-func (c *Cmix) GetID(js.Value, []js.Value) interface{} {
+func (c *Cmix) GetID(js.Value, []js.Value) any {
 	return c.api.GetID()
 }

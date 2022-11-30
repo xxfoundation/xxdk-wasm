@@ -38,10 +38,10 @@ type LocalStorage struct {
 
 // jsStorage is the global that stores Javascript as window.localStorage.
 //
-//  - Specification:
-//    https://html.spec.whatwg.org/multipage/webstorage.html#dom-localstorage-dev
-//  - Documentation:
-//    https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
+//   - Specification:
+//     https://html.spec.whatwg.org/multipage/webstorage.html#dom-localstorage-dev
+//   - Documentation:
+//     https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
 var jsStorage = newLocalStorage(localStorageWasmPrefix)
 
 // newLocalStorage creates a new LocalStorage object with the specified prefix.
@@ -61,10 +61,10 @@ func GetLocalStorage() *LocalStorage {
 // os.ErrNotExist if the key does not exist. Underneath, it calls
 // localStorage.GetItem().
 //
-//  - Specification:
-//    https://html.spec.whatwg.org/multipage/webstorage.html#dom-storage-getitem-dev
-//  - Documentation:
-//    https://developer.mozilla.org/en-US/docs/Web/API/Storage/getItem
+//   - Specification:
+//     https://html.spec.whatwg.org/multipage/webstorage.html#dom-storage-getitem-dev
+//   - Documentation:
+//     https://developer.mozilla.org/en-US/docs/Web/API/Storage/getItem
 func (ls *LocalStorage) GetItem(keyName string) ([]byte, error) {
 	keyValue := ls.getItem(ls.prefix + keyName)
 	if keyValue.IsNull() {
@@ -82,10 +82,10 @@ func (ls *LocalStorage) GetItem(keyName string) ([]byte, error) {
 // SetItem adds a key's value to local storage given its name. Underneath, it
 // calls localStorage.SetItem().
 //
-//  - Specification:
-//    https://html.spec.whatwg.org/multipage/webstorage.html#dom-storage-setitem-dev
-//  - Documentation:
-//    https://developer.mozilla.org/en-US/docs/Web/API/Storage/setItem
+//   - Specification:
+//     https://html.spec.whatwg.org/multipage/webstorage.html#dom-storage-setitem-dev
+//   - Documentation:
+//     https://developer.mozilla.org/en-US/docs/Web/API/Storage/setItem
 func (ls *LocalStorage) SetItem(keyName string, keyValue []byte) {
 	encodedKeyValue := base64.StdEncoding.EncodeToString(keyValue)
 	ls.setItem(ls.prefix+keyName, encodedKeyValue)
@@ -95,10 +95,10 @@ func (ls *LocalStorage) SetItem(keyName string, keyValue []byte) {
 // is no item with the given key, this function does nothing. Underneath, it
 // calls localStorage.RemoveItem().
 //
-//  - Specification:
-//    https://html.spec.whatwg.org/multipage/webstorage.html#dom-storage-removeitem-dev
-//  - Documentation:
-//    https://developer.mozilla.org/en-US/docs/Web/API/Storage/removeItem
+//   - Specification:
+//     https://html.spec.whatwg.org/multipage/webstorage.html#dom-storage-removeitem-dev
+//   - Documentation:
+//     https://developer.mozilla.org/en-US/docs/Web/API/Storage/removeItem
 func (ls *LocalStorage) RemoveItem(keyName string) {
 	ls.removeItem(ls.prefix + keyName)
 }
@@ -106,10 +106,10 @@ func (ls *LocalStorage) RemoveItem(keyName string) {
 // Clear clears all the keys in storage. Underneath, it calls
 // localStorage.clear().
 //
-//  - Specification:
-//    https://html.spec.whatwg.org/multipage/webstorage.html#dom-storage-clear-dev
-//  - Documentation:
-//    https://developer.mozilla.org/en-US/docs/Web/API/Storage/clear
+//   - Specification:
+//     https://html.spec.whatwg.org/multipage/webstorage.html#dom-storage-clear-dev
+//   - Documentation:
+//     https://developer.mozilla.org/en-US/docs/Web/API/Storage/clear
 func (ls *LocalStorage) Clear() {
 	ls.clear()
 }
@@ -151,10 +151,10 @@ func (ls *LocalStorage) ClearWASM() {
 // with the given key, this function does nothing. Underneath, it calls
 // localStorage.key().
 //
-//  - Specification:
-//    https://html.spec.whatwg.org/multipage/webstorage.html#dom-storage-key-dev
-//  - Documentation:
-//    https://developer.mozilla.org/en-US/docs/Web/API/Storage/key
+//   - Specification:
+//     https://html.spec.whatwg.org/multipage/webstorage.html#dom-storage-key-dev
+//   - Documentation:
+//     https://developer.mozilla.org/en-US/docs/Web/API/Storage/key
 func (ls *LocalStorage) Key(n int) (string, error) {
 	keyName := ls.key(n)
 	if keyName.IsNull() {
@@ -181,10 +181,10 @@ func (ls *LocalStorage) Keys() []string {
 // Length returns the number of keys in localStorage. Underneath, it accesses
 // the property localStorage.length.
 //
-//  - Specification:
-//    https://html.spec.whatwg.org/multipage/webstorage.html#dom-storage-key-dev
-//  - Documentation:
-//    https://developer.mozilla.org/en-US/docs/Web/API/Storage/length
+//   - Specification:
+//     https://html.spec.whatwg.org/multipage/webstorage.html#dom-storage-key-dev
+//   - Documentation:
+//     https://developer.mozilla.org/en-US/docs/Web/API/Storage/length
 func (ls *LocalStorage) Length() int {
 	return ls.length().Int()
 }

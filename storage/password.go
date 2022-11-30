@@ -83,12 +83,12 @@ const (
 // password.
 //
 // Parameters:
-//  - args[0] - The user supplied password (string).
+//   - args[0] - The user supplied password (string).
 //
 // Returns:
-//  - Internal password (Uint8Array).
-//  - Throws TypeError on failure.
-func GetOrInitPassword(_ js.Value, args []js.Value) interface{} {
+//   - Internal password (Uint8Array).
+//   - Throws TypeError on failure.
+func GetOrInitPassword(_ js.Value, args []js.Value) any {
 	internalPassword, err := getOrInit(args[0].String())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -101,12 +101,12 @@ func GetOrInitPassword(_ js.Value, args []js.Value) interface{} {
 // ChangeExternalPassword allows a user to change their external password.
 //
 // Parameters:
-//  - args[0] - The user's old password (string).
-//  - args[1] - The user's new password (string).
+//   - args[0] - The user's old password (string).
+//   - args[1] - The user's new password (string).
 //
 // Returns:
-//  - Throws TypeError on failure.
-func ChangeExternalPassword(_ js.Value, args []js.Value) interface{} {
+//   - Throws TypeError on failure.
+func ChangeExternalPassword(_ js.Value, args []js.Value) any {
 	err := changeExternalPassword(args[0].String(), args[1].String())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -119,11 +119,11 @@ func ChangeExternalPassword(_ js.Value, args []js.Value) interface{} {
 // VerifyPassword determines if the user-provided password is correct.
 //
 // Parameters:
-//  - args[0] - The user supplied password (string).
+//   - args[0] - The user supplied password (string).
 //
 // Returns:
-//  - True if the password is correct and false if it is incorrect (boolean).
-func VerifyPassword(_ js.Value, args []js.Value) interface{} {
+//   - True if the password is correct and false if it is incorrect (boolean).
+func VerifyPassword(_ js.Value, args []js.Value) any {
 	return verifyPassword(args[0].String())
 }
 
@@ -149,7 +149,8 @@ func getOrInit(externalPassword string) ([]byte, error) {
 // that is used for testing.
 func changeExternalPassword(oldExternalPassword, newExternalPassword string) error {
 	localStorage := GetLocalStorage()
-	internalPassword, err := getInternalPassword(oldExternalPassword, localStorage)
+	internalPassword, err := getInternalPassword(
+		oldExternalPassword, localStorage)
 	if err != nil {
 		return err
 	}

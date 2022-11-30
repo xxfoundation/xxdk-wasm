@@ -21,17 +21,17 @@ import (
 // that may be used to start a client.
 //
 // Parameters:
-//  - args[0] - The URL to download from (string).
-//  - args[1] - The NDF certificate (string).
+//   - args[0] - The URL to download from (string).
+//   - args[1] - The NDF certificate (string).
 //
 // Returns a promise:
-//  - Resolves to the JSON of the NDF ([ndf.NetworkDefinition]) (Uint8Array).
-//  - Rejected with an error if downloading fails.
-func DownloadAndVerifySignedNdfWithUrl(_ js.Value, args []js.Value) interface{} {
+//   - Resolves to the JSON of the NDF ([ndf.NetworkDefinition]) (Uint8Array).
+//   - Rejected with an error if downloading fails.
+func DownloadAndVerifySignedNdfWithUrl(_ js.Value, args []js.Value) any {
 	url := args[0].String()
 	cert := args[1].String()
 
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		ndf, err := bindings.DownloadAndVerifySignedNdfWithUrl(url, cert)
 		if err != nil {
 			reject(utils.JsTrace(err))

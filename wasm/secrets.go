@@ -19,12 +19,12 @@ import (
 // number generator.
 //
 // Parameters:
-//  - args[0] - The size of secret. It should be set to 32, but can be set
-//    higher in certain cases, but not lower (int).
+//   - args[0] - The size of secret. It should be set to 32, but can be set
+//     higher in certain cases, but not lower (int).
 //
 // Returns:
-//  - Secret password (Uint8Array).
-func GenerateSecret(_ js.Value, args []js.Value) interface{} {
+//   - Secret password (Uint8Array).
+func GenerateSecret(_ js.Value, args []js.Value) any {
 	secret := bindings.GenerateSecret(args[0].Int())
 	return utils.CopyBytesToJS(secret)
 }

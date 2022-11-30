@@ -37,7 +37,7 @@ func JsToJson(value js.Value) string {
 
 // JsonToJS converts a JSON bytes input to a [js.Value] of the object subtype.
 func JsonToJS(inputJson []byte) (js.Value, error) {
-	var jsObj map[string]interface{}
+	var jsObj map[string]any
 	err := json.Unmarshal(inputJson, &jsObj)
 	if err != nil {
 		return js.ValueOf(nil), err
