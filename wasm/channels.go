@@ -1125,11 +1125,13 @@ func (ch *ChannelsManager) SendReaction(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
-// DeleteMessage is used to send a reaction to a message over a channel. The
-// reaction must be a single emoji with no other characters, and will be
-// rejected otherwise.
+// DeleteMessage deletes the targeted message from user's view. Users may delete
+// their own messages (by leaving the private key as nil) but only the channel
+// admin can delete other user's messages.
 //
-// Users will drop the reaction if they do not recognize the reactTo message.
+// If undoAction is true, then the targeted message is un-deleted.
+//
+// Clients will drop the deletion if they do not recognize the target message.
 //
 // Parameters:
 //   - args[0] - The PEM-encoded admin RSA private key for the channel
@@ -1165,9 +1167,10 @@ func (ch *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
-// PinMessage pins the target message to the top of a channel view for all
-// users in the specified channel. Only the channel admin can pin user
-// messages.
+// PinMessage pins the target message to the top of a channel view for all users
+// in the specified channel. Only the channel admin can pin user messages.
+//
+// If undoAction is true, then the targeted message is unpinned.
 //
 // Clients will drop the pin if they do not recognize the target message.
 //
@@ -1177,7 +1180,7 @@ func (ch *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) any {
 //   - args[1] - Marshalled bytes of channel [id.ID] (Uint8Array).
 //   - args[2] - The marshalled [channel.MessageID] of the message you want to
 //     pin (Uint8Array).
-//   - args[3] - Set to true to un-delete the message (boolean).
+//   - args[3] - Set to true to unpin the message (boolean).
 //   - args[4] - JSON of [xxdk.CMIXParams]. This may be empty, and
 //     [GetDefaultCMixParams] will be used internally (Uint8Array).
 //
@@ -1215,7 +1218,7 @@ func (ch *ChannelsManager) PinMessage(_ js.Value, args []js.Value) any {
 //   - args[1] - Marshalled bytes of channel [id.ID] (Uint8Array).
 //   - mutedUserPubKeyBytes - The [ed25519.PublicKey] of the user you want to
 //     mute.
-//   - args[3] - Set to true to un-delete the message (boolean).
+//   - args[3] - Set to true to unmute the message (boolean).
 //   - args[4] - JSON of [xxdk.CMIXParams]. This may be empty, and
 //     [GetDefaultCMixParams] will be used internally (Uint8Array).
 //
