@@ -576,7 +576,7 @@ func GenerateChannel(_ js.Value, args []js.Value) any {
 //     (Uint8Array).
 //   - Throws a TypeError if there is no channel private key for the given
 //     channel or if encrypting the key fails.
-func GetSavedChannelPrivateKey(_ js.Value, args []js.Value) interface{} {
+func GetSavedChannelPrivateKey(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
 	channelIdBytes := utils.CopyBytesToGo(args[1])
 	password := args[2].String()
@@ -602,7 +602,7 @@ func GetSavedChannelPrivateKey(_ js.Value, args []js.Value) interface{} {
 // Returns:
 //   - Throws a TypeError if decryption the private key or saving it to storage
 //     fails.
-func ImportChannelPrivateKey(_ js.Value, args []js.Value) interface{} {
+func ImportChannelPrivateKey(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
 	password := args[1].String()
 	encryptedPrivKey := utils.CopyBytesToGo(args[2])
@@ -1145,14 +1145,14 @@ func (ch *ChannelsManager) SendReaction(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
-func (ch *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) interface{} {
+func (ch *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) any {
 	adminPrivateKey := utils.CopyBytesToGo(args[0])
 	channelIdBytes := utils.CopyBytesToGo(args[1])
 	targetMessageIdBytes := utils.CopyBytesToGo(args[2])
 	undoAction := args[3].Bool()
 	cmixParamsJSON := utils.CopyBytesToGo(args[4])
 
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := ch.api.DeleteMessage(adminPrivateKey, channelIdBytes,
 			targetMessageIdBytes, undoAction, cmixParamsJSON)
 		if err != nil {
@@ -1183,14 +1183,14 @@ func (ch *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) interface{
 //
 // Returns:
 //   - []byte - JSON of [ChannelSendReport].
-func (ch *ChannelsManager) PinMessage(_ js.Value, args []js.Value) interface{} {
+func (ch *ChannelsManager) PinMessage(_ js.Value, args []js.Value) any {
 	adminPrivateKey := utils.CopyBytesToGo(args[0])
 	channelIdBytes := utils.CopyBytesToGo(args[1])
 	targetMessageIdBytes := utils.CopyBytesToGo(args[2])
 	undoAction := args[3].Bool()
 	cmixParamsJSON := utils.CopyBytesToGo(args[4])
 
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := ch.api.PinMessage(adminPrivateKey, channelIdBytes,
 			targetMessageIdBytes, undoAction, cmixParamsJSON)
 		if err != nil {
@@ -1221,14 +1221,14 @@ func (ch *ChannelsManager) PinMessage(_ js.Value, args []js.Value) interface{} {
 //
 // Returns:
 //   - []byte - JSON of [ChannelSendReport].
-func (ch *ChannelsManager) MuteUser(_ js.Value, args []js.Value) interface{} {
+func (ch *ChannelsManager) MuteUser(_ js.Value, args []js.Value) any {
 	adminPrivateKey := utils.CopyBytesToGo(args[0])
 	channelIdBytes := utils.CopyBytesToGo(args[1])
 	mutedUserPubKeyBytes := utils.CopyBytesToGo(args[2])
 	undoAction := args[3].Bool()
 	cmixParamsJSON := utils.CopyBytesToGo(args[4])
 
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := ch.api.MuteUser(adminPrivateKey, channelIdBytes,
 			mutedUserPubKeyBytes, undoAction, cmixParamsJSON)
 		if err != nil {
@@ -1370,7 +1370,7 @@ func IsNicknameValid(_ js.Value, args []js.Value) any {
 //   - Returns true if the user is muted in the channel and false otherwise
 //     (boolean).
 //   - Throws a TypeError if the channel ID cannot be unmarshalled.
-func (ch *ChannelsManager) Muted(_ js.Value, args []js.Value) interface{} {
+func (ch *ChannelsManager) Muted(_ js.Value, args []js.Value) any {
 	channelIDBytes := utils.CopyBytesToGo(args[0])
 
 	muted, err := ch.api.Muted(channelIDBytes)
@@ -1622,7 +1622,8 @@ func (em *eventModel) UpdateFromUUID(uuid int64, messageUpdateInfoJSON []byte) {
 // Returns:
 //   - A non-negative unique uuid for the modified message by which it can be
 //     referenced later with [EventModel.UpdateFromUUID] int).
-func (em *eventModel) UpdateFromMessageID(messageID []byte, messageUpdateInfoJSON []byte) int64 {
+func (em *eventModel) UpdateFromMessageID(
+	messageID []byte, messageUpdateInfoJSON []byte) int64 {
 	return int64(em.updateFromMessageID(utils.CopyBytesToJS(messageID),
 		utils.CopyBytesToJS(messageUpdateInfoJSON)).Int())
 }
