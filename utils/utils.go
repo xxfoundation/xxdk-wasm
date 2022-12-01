@@ -41,29 +41,27 @@ var (
 // later with only the arguments and without specifying the function name.
 //
 // Panics if m is not a function.
-func WrapCB(parent js.Value, m string) func(args ...interface{}) js.Value {
+func WrapCB(parent js.Value, m string) func(args ...any) js.Value {
 	if parent.Get(m).Type() != js.TypeFunction {
 		// Create the error separate from the print so stack trace is printed
 		err := errors.Errorf("Function %q is not of type %s", m, js.TypeFunction)
 		jww.FATAL.Panicf("%+v", err)
 	}
 
-	return func(args ...interface{}) js.Value {
-		return parent.Call(m, args...)
-	}
+	return func(args ...any) js.Value { return parent.Call(m, args...) }
 }
 
 // PromiseFn converts the Javascript Promise construct into Go.
 //
 // Call resolve with the return of the function on success. Call reject with an
 // error on failure.
-type PromiseFn func(resolve, reject func(args ...interface{}) js.Value)
+type PromiseFn func(resolve, reject func(args ...any) js.Value)
 
 // CreatePromise creates a Javascript promise to return the value of a blocking
 // Go function to Javascript.
-func CreatePromise(f PromiseFn) interface{} {
+func CreatePromise(f PromiseFn) any {
 	// Create handler for promise (this will be a Javascript function)
-	handler := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	handler := js.FuncOf(func(this js.Value, args []js.Value) any {
 		// Spawn a new go routine to perform the blocking function
 		go func(resolve, reject js.Value) {
 			f(resolve.Invoke, reject.Invoke)
@@ -83,7 +81,7 @@ func CreatePromise(f PromiseFn) interface{} {
 func Await(awaitable js.Value) (result []js.Value, err []js.Value) {
 	then := make(chan []js.Value)
 	defer close(then)
-	thenFunc := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	thenFunc := js.FuncOf(func(this js.Value, args []js.Value) any {
 		then <- args
 		return nil
 	})
@@ -91,7 +89,7 @@ func Await(awaitable js.Value) (result []js.Value, err []js.Value) {
 
 	catch := make(chan []js.Value)
 	defer close(catch)
-	catchFunc := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	catchFunc := js.FuncOf(func(this js.Value, args []js.Value) any {
 		catch <- args
 		return nil
 	})

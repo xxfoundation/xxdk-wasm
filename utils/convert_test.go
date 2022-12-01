@@ -83,14 +83,14 @@ func TestCopyBytesToJSCopyBytesToGo(t *testing.T) {
 // Tests that JsToJson can convert a Javascript object to JSON that matches the
 // output of json.Marshal on the Go version of the same object.
 func TestJsToJson(t *testing.T) {
-	testObj := map[string]interface{}{
+	testObj := map[string]any{
 		"nil":    nil,
 		"bool":   true,
 		"int":    1,
 		"float":  1.5,
 		"string": "I am string",
-		"array":  []interface{}{1, 2, 3},
-		"object": map[string]interface{}{"int": 5},
+		"array":  []any{1, 2, 3},
+		"object": map[string]any{"int": 5},
 	}
 
 	expected, err := json.Marshal(testObj)
@@ -116,15 +116,15 @@ func TestJsToJson(t *testing.T) {
 // Tests that JsonToJS can convert a JSON object with multiple types to a
 // Javascript object and that all values match.
 func TestJsonToJS(t *testing.T) {
-	testObj := map[string]interface{}{
+	testObj := map[string]any{
 		"nil":    nil,
 		"bool":   true,
 		"int":    1,
 		"float":  1.5,
 		"string": "I am string",
 		"bytes":  []byte{1, 2, 3},
-		"array":  []interface{}{1, 2, 3},
-		"object": map[string]interface{}{"int": 5},
+		"array":  []any{1, 2, 3},
+		"object": map[string]any{"int": 5},
 	}
 	jsonData, err := json.Marshal(testObj)
 	if err != nil {
@@ -171,7 +171,7 @@ func TestJsonToJS(t *testing.T) {
 					jsVal.String())
 			}
 		case "array":
-			for i, v := range val.([]interface{}) {
+			for i, v := range val.([]any) {
 				if jsVal.Index(i).Int() != v {
 					t.Errorf("Incorrect value for key %s index %d."+
 						"\nexpected: %d\nreceived: %d",
@@ -179,10 +179,10 @@ func TestJsonToJS(t *testing.T) {
 				}
 			}
 		case "object":
-			if jsVal.Get("int").Int() != val.(map[string]interface{})["int"] {
+			if jsVal.Get("int").Int() != val.(map[string]any)["int"] {
 				t.Errorf("Incorrect value for key %s."+
 					"\nexpected: %d\nreceived: %d", key,
-					val.(map[string]interface{})["int"], jsVal.Get("int").Int())
+					val.(map[string]any)["int"], jsVal.Get("int").Int())
 			}
 		}
 	}
@@ -191,15 +191,15 @@ func TestJsonToJS(t *testing.T) {
 // Tests that JSON can be converted to a Javascript object via JsonToJS and back
 // to JSON using JsToJson and matches the original.
 func TestJsonToJSJsToJson(t *testing.T) {
-	testObj := map[string]interface{}{
+	testObj := map[string]any{
 		"nil":    nil,
 		"bool":   true,
 		"int":    1,
 		"float":  1.5,
 		"string": "I am string",
 		"bytes":  []byte{1, 2, 3},
-		"array":  []interface{}{1, 2, 3},
-		"object": map[string]interface{}{"int": 5},
+		"array":  []any{1, 2, 3},
+		"object": map[string]any{"int": 5},
 	}
 	jsonData, err := json.Marshal(testObj)
 	if err != nil {

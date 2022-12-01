@@ -54,7 +54,7 @@ import (
 //
 // Returns:
 //   - Throws a TypeError if starting the network follower fails.
-func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) interface{} {
+func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) any {
 	err := c.api.StartNetworkFollower(args[0].Int())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -73,7 +73,7 @@ func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) interface{} {
 // Returns:
 //   - Throws a TypeError if the follower is in the wrong state to stop or if it
 //     fails to stop.
-func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) interface{} {
+func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) any {
 	err := c.api.StopNetworkFollower()
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -93,9 +93,9 @@ func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) interface{} {
 // Returns a promise:
 //   - A promise that resolves if the network is healthy and rejects if the
 //     network is not healthy.
-func (c *Cmix) WaitForNetwork(_ js.Value, args []js.Value) interface{} {
+func (c *Cmix) WaitForNetwork(_ js.Value, args []js.Value) any {
 	timeoutMS := args[0].Int()
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		if c.api.WaitForNetwork(timeoutMS) {
 			resolve()
 		} else {
@@ -112,7 +112,7 @@ func (c *Cmix) WaitForNetwork(_ js.Value, args []js.Value) interface{} {
 //
 // Returns:
 //   - Returns true if network is ready to send on (boolean).
-func (c *Cmix) ReadyToSend(js.Value, []js.Value) interface{} {
+func (c *Cmix) ReadyToSend(js.Value, []js.Value) any {
 	return c.api.ReadyToSend()
 }
 
@@ -125,7 +125,7 @@ func (c *Cmix) ReadyToSend(js.Value, []js.Value) interface{} {
 //
 // Returns:
 //   - Network status code (int).
-func (c *Cmix) NetworkFollowerStatus(js.Value, []js.Value) interface{} {
+func (c *Cmix) NetworkFollowerStatus(js.Value, []js.Value) any {
 	return c.api.NetworkFollowerStatus()
 }
 
@@ -137,7 +137,7 @@ func (c *Cmix) NetworkFollowerStatus(js.Value, []js.Value) interface{} {
 //     NDF.
 //   - An error if it cannot get the node registration status. The most likely
 //     cause is that the network is unhealthy.
-func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) interface{} {
+func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) any {
 	b, err := c.api.GetNodeRegistrationStatus()
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -158,7 +158,7 @@ func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) interface{} {
 // Returns:
 //   - JSON of [bindings.IsReadyInfo] (Uint8Array).
 //   - Throws TypeError if getting the information fails.
-func (c *Cmix) IsReady(_ js.Value, args []js.Value) interface{} {
+func (c *Cmix) IsReady(_ js.Value, args []js.Value) any {
 	isReadyInfo, err := c.api.IsReady(args[0].Float())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -177,7 +177,7 @@ func (c *Cmix) IsReady(_ js.Value, args []js.Value) interface{} {
 //
 // Returns:
 //   - Throws TypeError if pausing fails.
-func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) interface{} {
+func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) any {
 	err := c.api.PauseNodeRegistrations(args[0].Int())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -197,7 +197,7 @@ func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) interface{} {
 //
 // Returns:
 //   - Throws TypeError if changing registrations fails.
-func (c *Cmix) ChangeNumberOfNodeRegistrations(_ js.Value, args []js.Value) interface{} {
+func (c *Cmix) ChangeNumberOfNodeRegistrations(_ js.Value, args []js.Value) any {
 	err := c.api.ChangeNumberOfNodeRegistrations(args[0].Int(), args[1].Int())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -216,7 +216,7 @@ func (c *Cmix) ChangeNumberOfNodeRegistrations(_ js.Value, args []js.Value) inte
 //
 // Returns:
 //   - True if there are running processes (boolean).
-func (c *Cmix) HasRunningProcessies(js.Value, []js.Value) interface{} {
+func (c *Cmix) HasRunningProcessies(js.Value, []js.Value) any {
 	return c.api.HasRunningProcessies()
 }
 
@@ -225,7 +225,7 @@ func (c *Cmix) HasRunningProcessies(js.Value, []js.Value) interface{} {
 //
 // Returns:
 //   - True if the network is healthy (boolean).
-func (c *Cmix) IsHealthy(js.Value, []js.Value) interface{} {
+func (c *Cmix) IsHealthy(js.Value, []js.Value) any {
 	return c.api.IsHealthy()
 }
 
@@ -243,7 +243,7 @@ func (c *Cmix) IsHealthy(js.Value, []js.Value) interface{} {
 //	  "FileTransfer{BatchBuilderThread, FilePartSendingThread#0, FilePartSendingThread#1, FilePartSendingThread#2, FilePartSendingThread#3}",
 //	  "MessageReception Worker 0"
 //	}
-func (c *Cmix) GetRunningProcesses(js.Value, []js.Value) interface{} {
+func (c *Cmix) GetRunningProcesses(js.Value, []js.Value) any {
 	list, err := c.api.GetRunningProcesses()
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -256,7 +256,7 @@ func (c *Cmix) GetRunningProcesses(js.Value, []js.Value) interface{} {
 // networkHealthCallback adheres to the [bindings.NetworkHealthCallback]
 // interface.
 type networkHealthCallback struct {
-	callback func(args ...interface{}) js.Value
+	callback func(args ...any) js.Value
 }
 
 // Callback receives notification if network health changes.
@@ -275,7 +275,7 @@ func (nhc *networkHealthCallback) Callback(health bool) { nhc.callback(health) }
 //
 // Returns:
 //   - A registration ID that can be used to unregister the callback (int).
-func (c *Cmix) AddHealthCallback(_ js.Value, args []js.Value) interface{} {
+func (c *Cmix) AddHealthCallback(_ js.Value, args []js.Value) any {
 	return c.api.AddHealthCallback(
 		&networkHealthCallback{utils.WrapCB(args[0], "Callback")})
 }
@@ -284,14 +284,14 @@ func (c *Cmix) AddHealthCallback(_ js.Value, args []js.Value) interface{} {
 //
 // Parameters:
 //   - args[0] - Callback registration ID (int).
-func (c *Cmix) RemoveHealthCallback(_ js.Value, args []js.Value) interface{} {
+func (c *Cmix) RemoveHealthCallback(_ js.Value, args []js.Value) any {
 	c.api.RemoveHealthCallback(int64(args[0].Int()))
 	return nil
 }
 
 // clientError adheres to the [bindings.ClientError] interface.
 type clientError struct {
-	report func(args ...interface{}) js.Value
+	report func(args ...any) js.Value
 }
 
 // Report handles errors from the network follower threads.
@@ -306,7 +306,7 @@ func (ce *clientError) Report(source, message, trace string) {
 // Parameters:
 //   - args[0] - Javascript object that has functions that implement the
 //     [bindings.ClientError] interface.
-func (c *Cmix) RegisterClientErrorCallback(_ js.Value, args []js.Value) interface{} {
+func (c *Cmix) RegisterClientErrorCallback(_ js.Value, args []js.Value) any {
 	c.api.RegisterClientErrorCallback(
 		&clientError{utils.WrapCB(args[0], "Report")})
 	return nil
@@ -315,7 +315,7 @@ func (c *Cmix) RegisterClientErrorCallback(_ js.Value, args []js.Value) interfac
 // trackServicesCallback adheres to the [bindings.TrackServicesCallback]
 // interface.
 type trackServicesCallback struct {
-	callback func(args ...interface{}) js.Value
+	callback func(args ...any) js.Value
 }
 
 // Callback is the callback for [Cmix.TrackServices]. This will pass to the user
@@ -367,7 +367,7 @@ func (tsc *trackServicesCallback) Callback(marshalData []byte, err error) {
 //
 // Returns:
 //   - Throws TypeError if the [E2e] ID is invalid.
-func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) interface{} {
+func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) any {
 	err := c.api.TrackServicesWithIdentity(args[0].Int(),
 		&trackServicesCallback{utils.WrapCB(args[0], "Callback")})
 	if err != nil {
@@ -386,7 +386,7 @@ func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) interface{
 // Parameters:
 //   - args[0] - Javascript object that has functions that implement the
 //     [bindings.TrackServicesCallback] interface.
-func (c *Cmix) TrackServices(_ js.Value, args []js.Value) interface{} {
+func (c *Cmix) TrackServices(_ js.Value, args []js.Value) any {
 	c.api.TrackServices(
 		&trackServicesCallback{utils.WrapCB(args[0], "Callback")})
 	return nil

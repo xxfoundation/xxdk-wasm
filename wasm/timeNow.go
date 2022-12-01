@@ -18,7 +18,7 @@ import (
 // timeSource wraps Javascript callbacks to adhere to the [netTime.TimeSource]
 // interface.
 type timeSource struct {
-	nowMs func(args ...interface{}) js.Value
+	nowMs func(args ...any) js.Value
 }
 
 // NowMs returns the current time in milliseconds.
@@ -32,9 +32,9 @@ func (ts *timeSource) NowMs() int64 {
 // may result in a crash.
 //
 // Parameters:
-//  - timeNow is an object which adheres to [netTime.TimeSource]. Specifically,
-//    this object should a NowMs() method which return a 64-bit integer value.
-func SetTimeSource(_ js.Value, args []js.Value) interface{} {
+//   - timeNow is an object which adheres to [netTime.TimeSource]. Specifically,
+//     this object should a NowMs() method which return a 64-bit integer value.
+func SetTimeSource(_ js.Value, args []js.Value) any {
 	bindings.SetTimeSource(&timeSource{utils.WrapCB(args[0], "NowMs")})
 	return nil
 }
@@ -43,10 +43,10 @@ func SetTimeSource(_ js.Value, args []js.Value) interface{} {
 // will have this offset applied to this value.
 //
 // Parameters:
-//  - args[0] - a time by which netTime.Now will be offset. This value may be
-//    negative or positive. This expects a 64-bit integer value which will
-//    represent the number in microseconds this offset will be (int).
-func SetOffset(_ js.Value, args []js.Value) interface{} {
+//   - args[0] - a time by which netTime.Now will be offset. This value may be
+//     negative or positive. This expects a 64-bit integer value which will
+//     represent the number in microseconds this offset will be (int).
+func SetOffset(_ js.Value, args []js.Value) any {
 	bindings.SetOffset(int64(args[0].Int()))
 	return nil
 }

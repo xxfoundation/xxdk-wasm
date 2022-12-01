@@ -21,11 +21,11 @@ type DummyTraffic struct {
 	api *bindings.DummyTraffic
 }
 
-// newDummyTrafficJS creates a new Javascript compatible object
-// (map[string]interface{}) that matches the [DummyTraffic] structure.
-func newDummyTrafficJS(newDT *bindings.DummyTraffic) map[string]interface{} {
+// newDummyTrafficJS creates a new Javascript compatible object (map[string]any)
+// that matches the [DummyTraffic] structure.
+func newDummyTrafficJS(newDT *bindings.DummyTraffic) map[string]any {
 	dt := DummyTraffic{newDT}
-	dtMap := map[string]interface{}{
+	dtMap := map[string]any{
 		"SetStatus": js.FuncOf(dt.SetStatus),
 		"GetStatus": js.FuncOf(dt.GetStatus),
 	}
@@ -41,19 +41,19 @@ func newDummyTrafficJS(newDT *bindings.DummyTraffic) map[string]interface{} {
 // parameters below.
 //
 // Parameters:
-//  - args[0] - A [Cmix] object ID in the tracker (int).
-//  - args[1] - The maximum number of the random number of messages sent each
-//    sending cycle (int).
-//  - args[2] - The average duration, in milliseconds, to wait between sends
-//    (int).
-//  - args[3] - The upper bound of the interval between sending cycles, in
-//    milliseconds. Sends occur every average send (args[2]) +/- a random
-//    duration with an upper bound of args[3] (int).
+//   - args[0] - A [Cmix] object ID in the tracker (int).
+//   - args[1] - The maximum number of the random number of messages sent each
+//     sending cycle (int).
+//   - args[2] - The average duration, in milliseconds, to wait between sends
+//     (int).
+//   - args[3] - The upper bound of the interval between sending cycles, in
+//     milliseconds. Sends occur every average send (args[2]) +/- a random
+//     duration with an upper bound of args[3] (int).
 //
 // Returns:
-//  - Javascript representation of the DummyTraffic object.
-//  - Throws a TypeError if creating the manager fails.
-func NewDummyTrafficManager(_ js.Value, args []js.Value) interface{} {
+//   - Javascript representation of the DummyTraffic object.
+//   - Throws a TypeError if creating the manager fails.
+func NewDummyTrafficManager(_ js.Value, args []js.Value) any {
 	dt, err := bindings.NewDummyTrafficManager(
 		args[0].Int(), args[1].Int(), args[2].Int(), args[3].Int())
 	if err != nil {
@@ -72,13 +72,13 @@ func NewDummyTrafficManager(_ js.Value, args []js.Value) interface{} {
 // thread once that operation has completed.
 //
 // Parameters:
-//  - args[0] - Input should be true if you want to send dummy messages and
-//    false if you want to pause dummy messages (boolean).
+//   - args[0] - Input should be true if you want to send dummy messages and
+//     false if you want to pause dummy messages (boolean).
 //
 // Returns:
-//  - Throws a TypeError if the [DummyTraffic.SetStatus] is called too
-//    frequently, causing the internal status channel to fill.
-func (dt *DummyTraffic) SetStatus(_ js.Value, args []js.Value) interface{} {
+//   - Throws a TypeError if the [DummyTraffic.SetStatus] is called too
+//     frequently, causing the internal status channel to fill.
+func (dt *DummyTraffic) SetStatus(_ js.Value, args []js.Value) any {
 	err := dt.api.SetStatus(args[0].Bool())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -99,6 +99,6 @@ func (dt *DummyTraffic) SetStatus(_ js.Value, args []js.Value) interface{} {
 //   - Returns true if sending thread is sending dummy messages and false if
 //     sending thread is paused/stopped and is not sending dummy messages
 //     (boolean).
-func (dt *DummyTraffic) GetStatus(js.Value, []js.Value) interface{} {
+func (dt *DummyTraffic) GetStatus(js.Value, []js.Value) any {
 	return dt.api.GetStatus()
 }

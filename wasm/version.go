@@ -18,8 +18,8 @@ import (
 // GetVersion returns the current xxDK WASM semantic version.
 //
 // Returns:
-//  - Current version (string).
-func GetVersion(js.Value, []js.Value) interface{} {
+//   - Current version (string).
+func GetVersion(js.Value, []js.Value) any {
 	return storage.SEMVER
 }
 
@@ -27,8 +27,8 @@ func GetVersion(js.Value, []js.Value) interface{} {
 // ([xxdk.SEMVER]).
 //
 // Returns:
-//  - Current version (string).
-func GetClientVersion(js.Value, []js.Value) interface{} {
+//   - Current version (string).
+func GetClientVersion(js.Value, []js.Value) any {
 	return bindings.GetVersion()
 }
 
@@ -36,8 +36,8 @@ func GetClientVersion(js.Value, []js.Value) interface{} {
 // ([xxdk.GITVERSION]).
 //
 // Returns:
-//  - Git version (string).
-func GetClientGitVersion(js.Value, []js.Value) interface{} {
+//   - Git version (string).
+func GetClientGitVersion(js.Value, []js.Value) any {
 	return bindings.GetGitVersion()
 }
 
@@ -45,7 +45,7 @@ func GetClientGitVersion(js.Value, []js.Value) interface{} {
 // ([xxdk.DEPENDENCIES]).
 //
 // Returns:
-//  - Dependency list (string).
-func GetClientDependencies(js.Value, []js.Value) interface{} {
+//   - Dependency list (string).
+func GetClientDependencies(js.Value, []js.Value) any {
 	return bindings.GetDependencies()
 }

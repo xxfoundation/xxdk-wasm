@@ -44,7 +44,7 @@ import (
 
 // 		if session.Cmp(sessionExpected) != 0 {
 // 			t.Errorf("Session key generated on attempt %v incorrect;"+
-// 				"\n\tExpected: %s \n\tRecieved: %s \n\tPrivate key: %s", i,
+// 				"\n\tExpected: %s \n\tReceived: %s \n\tPrivate key: %s", i,
 // 				sessionExpected.TextVerbose(16, 0),
 // 				session.TextVerbose(16, 0),
 // 				privKey.TextVerbose(16, 0))
@@ -61,21 +61,21 @@ func BenchmarkCreateDHSessionKey(b *testing.B) {
 	g := large.NewInt(2)
 	grp := cyclic.NewGroup(p, g)
 
-	pubkeys := make([]*cyclic.Int, b.N)
-	privkeys := make([]*cyclic.Int, b.N)
+	pubKeys := make([]*cyclic.Int, b.N)
+	privKeys := make([]*cyclic.Int, b.N)
 
 	rng := csprng.NewSystemRNG()
 
 	for i := 0; i < b.N; i++ {
 		// Creation of two different DH Key Pairs with valid parameters
-		privkeys[i] = dh.GeneratePrivateKey(dh.DefaultPrivateKeyLength, grp, rng)
+		privKeys[i] = dh.GeneratePrivateKey(dh.DefaultPrivateKeyLength, grp, rng)
 		tmpPrivKey := dh.GeneratePrivateKey(dh.DefaultPrivateKeyLength, grp, rng)
-		pubkeys[i] = dh.GeneratePublicKey(tmpPrivKey, grp)
+		pubKeys[i] = dh.GeneratePublicKey(tmpPrivKey, grp)
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		dh.GenerateSessionKey(privkeys[i], pubkeys[i], grp)
+		dh.GenerateSessionKey(privKeys[i], pubKeys[i], grp)
 	}
 }
 

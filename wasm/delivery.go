@@ -22,9 +22,9 @@ import (
 // thread-safe, and as such should only be called on setup.
 //
 // Parameters:
-//  - args[0] - A valid URL that will be used for round look up on any send
-//    report (string).
-func SetDashboardURL(_ js.Value, args []js.Value) interface{} {
+//   - args[0] - A valid URL that will be used for round look up on any send
+//     report (string).
+func SetDashboardURL(_ js.Value, args []js.Value) any {
 	bindings.SetDashboardURL(args[0].String())
 
 	return nil
@@ -33,7 +33,7 @@ func SetDashboardURL(_ js.Value, args []js.Value) interface{} {
 // messageDeliveryCallback wraps Javascript callbacks to adhere to the
 // [bindings.MessageDeliveryCallback] interface.
 type messageDeliveryCallback struct {
-	eventCallback func(args ...interface{}) js.Value
+	eventCallback func(args ...any) js.Value
 }
 
 // EventCallback gets called on the determination if all events related to a
@@ -46,13 +46,13 @@ type messageDeliveryCallback struct {
 // If timedOut == true, delivered == false && roundResults == nil
 //
 // Parameters:
-//  - delivered - Returns false if any rounds in the round map were
-//    unsuccessful. Returns true if ALL rounds were successful (boolean).
-//  - timedOut - Returns true if any of the rounds timed out while being
-//    monitored. Returns false if all rounds statuses were returned (boolean).
-//  - roundResults - rounds contains a mapping of all previously requested
-//    rounds to their respective round results. Marshalled bytes of
-//    map[[id.Round]][cmix.RoundResult] (Uint8Array).
+//   - delivered - Returns false if any rounds in the round map were
+//     unsuccessful. Returns true if ALL rounds were successful (boolean).
+//   - timedOut - Returns true if any of the rounds timed out while being
+//     monitored. Returns false if all rounds statuses were returned (boolean).
+//   - roundResults - rounds contains a mapping of all previously requested
+//     rounds to their respective round results. Marshalled bytes of
+//     map[[id.Round]][cmix.RoundResult] (Uint8Array).
 func (mdc *messageDeliveryCallback) EventCallback(
 	delivered, timedOut bool, roundResults []byte) {
 	mdc.eventCallback(delivered, timedOut, utils.CopyBytesToJS(roundResults))
@@ -71,17 +71,17 @@ func (mdc *messageDeliveryCallback) EventCallback(
 // send report that inherits a [bindings.RoundsList] object.
 //
 // Parameters:
-//  - args[0] - JSON of [bindings.RoundsList] or JSON of any send report that
-//    inherits a [bindings.RoundsList] object (Uint8Array).
-//  - args[1] - Javascript object that has functions that implement the
-//    [bindings.MessageDeliveryCallback] interface.
-//  - args[2] - Timeout when the callback will return if no state update occurs,
-//    in milliseconds (int).
+//   - args[0] - JSON of [bindings.RoundsList] or JSON of any send report that
+//     inherits a [bindings.RoundsList] object (Uint8Array).
+//   - args[1] - Javascript object that has functions that implement the
+//     [bindings.MessageDeliveryCallback] interface.
+//   - args[2] - Timeout when the callback will return if no state update
+//     occurs, in milliseconds (int).
 //
 // Returns:
-//  - Throws a TypeError if the parameters are invalid or getting round results
-//    fails.
-func (c *Cmix) WaitForRoundResult(_ js.Value, args []js.Value) interface{} {
+//   - Throws a TypeError if the parameters are invalid or getting round results
+//     fails.
+func (c *Cmix) WaitForRoundResult(_ js.Value, args []js.Value) any {
 	roundList := utils.CopyBytesToGo(args[0])
 	mdc := &messageDeliveryCallback{utils.WrapCB(args[1], "EventCallback")}
 
