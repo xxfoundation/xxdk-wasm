@@ -1438,9 +1438,11 @@ type ChannelDbCipher struct {
 func newChannelDbCipherJS(api *bindings.ChannelDbCipher) map[string]any {
 	c := ChannelDbCipher{api}
 	channelDbCipherMap := map[string]any{
-		"GetID":   js.FuncOf(c.GetID),
-		"Encrypt": js.FuncOf(c.Encrypt),
-		"Decrypt": js.FuncOf(c.Decrypt),
+		"GetID":         js.FuncOf(c.GetID),
+		"Encrypt":       js.FuncOf(c.Encrypt),
+		"Decrypt":       js.FuncOf(c.Decrypt),
+		"MarshalJSON":   js.FuncOf(c.MarshalJSON),
+		"UnmarshalJSON": js.FuncOf(c.UnmarshalJSON),
 	}
 
 	return channelDbCipherMap
@@ -1495,7 +1497,6 @@ func (c *ChannelDbCipher) GetID(js.Value, []js.Value) any {
 //   - The ciphertext of the plaintext passed in (Uint8Array).
 //   - Throws a TypeError if it fails to encrypt the plaintext.
 func (c *ChannelDbCipher) Encrypt(_ js.Value, args []js.Value) any {
-
 	ciphertext, err := c.api.Encrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -1503,7 +1504,6 @@ func (c *ChannelDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 	}
 
 	return utils.CopyBytesToJS(ciphertext)
-
 }
 
 // Decrypt will decrypt the passed in encrypted value. The plaintext will be
@@ -1525,5 +1525,40 @@ func (c *ChannelDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 	}
 
 	return utils.CopyBytesToJS(plaintext)
+}
 
+// MarshalJSON marshals the cipher into valid JSON.
+//
+// Returns:
+//   - JSON of the cipher (Uint8Array).
+//   - Throws a TypeError if marshalling fails.
+func (c *ChannelDbCipher) MarshalJSON(js.Value, []js.Value) any {
+	data, err := c.api.MarshalJSON()
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(data)
+}
+
+// UnmarshalJSON unmarshalls JSON into the cipher. This function adheres to the
+// json.Unmarshaler interface.
+//
+// Note that this function does not transfer the internal RNG. Use
+// [channel.NewCipherFromJSON] to properly reconstruct a cipher from JSON.
+//
+// Parameters:
+//   - args[0] - JSON data to unmarshal (Uint8Array).
+//
+// Returns:
+//   - JSON of the cipher (Uint8Array).
+//   - Throws a TypeError if marshalling fails.
+func (c *ChannelDbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
+	err := c.api.UnmarshalJSON(utils.CopyBytesToGo(args[0]))
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+	return nil
 }
