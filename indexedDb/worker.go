@@ -231,6 +231,35 @@ func (wh *workerHandler) getHandler(tag Tag, id uint64) (handlerFn, error) {
 	return handler, nil
 }
 
+// addEventListeners adds the event listeners needed to receive a message from
+// the worker. Two listeners were added; one to receive messages from the worker
+// and the other to receive errors.
+func (wh *workerHandler) addEventListeners() {
+	// Create a listener for when the message event is fired on the worker. This
+	// occurs when a message is received from the worker.
+	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/message_event
+	messageEvent := js.FuncOf(func(this js.Value, args []js.Value) any {
+		err := wh.receiveMessage([]byte(args[0].Get("data").String()))
+		if err != nil {
+			jww.ERROR.Printf("Failed to receive message from worker: %+v", err)
+		}
+		return nil
+	})
+
+	// Create listener for when a messageerror event is fired on the worker.
+	// This occurs when it receives a message that can't be deserialized.
+	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/messageerror_event
+	messageError := js.FuncOf(func(this js.Value, args []js.Value) any {
+		event := args[0]
+		jww.ERROR.Printf(
+			"Error receiving message from worker: %s", utils.JsToJson(event))
+		return nil
+	})
+
+	wh.worker.Call("addEventListener", "message", messageEvent)
+	wh.worker.Call("addEventListener", "messageerror", messageError)
+}
+
 // postMessage sends a message to the worker.
 //
 // message is the object to deliver to the worker; this will be in the data
@@ -263,35 +292,6 @@ func (wh *workerHandler) postMessageTransferList(message, transferList any) {
 	wh.worker.Call("postMessage", message, transferList)
 }
 
-// addEventListeners adds the event listeners needed to receive a message from
-// the worker. Two listeners were added; one to receive messages from the worker
-// and the other to receive errors.
-func (wh *workerHandler) addEventListeners() {
-	// Create a listener for when the message event is fired on the worker. This
-	// occurs when a message is received from the worker.
-	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/message_event
-	messageEvent := js.FuncOf(func(this js.Value, args []js.Value) any {
-		err := wh.receiveMessage([]byte(args[0].Get("data").String()))
-		if err != nil {
-			jww.ERROR.Printf("Failed to receive message from worker: %+v", err)
-		}
-		return nil
-	})
-
-	// Create listener for when a messageerror event is fired on the worker.
-	// This occurs when it receives a message that can't be deserialized.
-	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/messageerror_event
-	messageError := js.FuncOf(func(this js.Value, args []js.Value) any {
-		event := args[0]
-		jww.ERROR.Printf(
-			"Error receiving message from worker: %s", utils.JsToJson(event))
-		return nil
-	})
-
-	wh.worker.Call("addEventListener", "message", messageEvent)
-	wh.worker.Call("addEventListener", "messageerror", messageError)
-}
-
 // newWorkerOptions creates a new Javascript object containing optional
 // properties that can be set when creating a new worker.
 //
@@ -308,15 +308,15 @@ func (wh *workerHandler) addEventListeners() {
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/Worker#options
 func newWorkerOptions(workerType, credentials, name string) js.Value {
-	options := js.Global().Get("Object").New()
+	options := make(map[string]any, 3)
 	if workerType != "" {
-		options.Set("type", workerType)
+		options["type"] = workerType
 	}
 	if credentials != "" {
-		options.Set("credentials", credentials)
+		options["credentials"] = credentials
 	}
 	if name != "" {
-		options.Set("name", name)
+		options["name"] = name
 	}
-	return options
+	return js.ValueOf(options)
 }

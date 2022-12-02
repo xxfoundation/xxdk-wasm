@@ -71,7 +71,7 @@ func (mh *messageHandler) sendResponse(tag indexedDb.Tag, id uint64, data []byte
 			"going to main thread: %+v", tag, id, err)
 	}
 
-	postMessage(string(payload))
+	go postMessage(string(payload))
 }
 
 // receiveMessage is registered with the Javascript event listener and is called
