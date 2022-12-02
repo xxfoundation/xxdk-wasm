@@ -343,12 +343,14 @@ func (w *wasmModel) UpdateFromMessageID(messageID cryptoChannel.MessageID,
 	return uuid
 }
 
-// messageID, timestamp, round, pinned, and hidden are all nillable and may
-// be updated based upon the UUID at a later date. If a nil value is passed,
-// then make no update.
-func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *cryptoChannel.MessageID,
-	timestamp *time.Time, round *rounds.Round, pinned, hidden *bool,
-	status *channels.SentStatus) {
+// UpdateFromUUID is called whenever a message at the UUID is modified.
+//
+// messageID, timestamp, round, pinned, and hidden are all nillable and may be
+// updated based upon the UUID at a later date. If a nil value is passed, then
+// make no update.
+func (w *wasmModel) UpdateFromUUID(uuid uint64,
+	messageID *cryptoChannel.MessageID, timestamp *time.Time,
+	round *rounds.Round, pinned, hidden *bool, status *channels.SentStatus) {
 	parentErr := errors.New("failed to UpdateFromUUID")
 
 	// FIXME: this is a bit of race condition without the mux.
