@@ -10,15 +10,10 @@
 package indexedDb
 
 import (
-	"context"
 	"crypto/ed25519"
-	"encoding/base64"
 	"encoding/json"
-	"sync"
-	"syscall/js"
 	"time"
 
-	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
@@ -26,175 +21,30 @@ import (
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
 )
-
-// dbTimeout is the global timeout for operations with the storage
-// [context.Context].
-const dbTimeout = time.Second
 
 // wasmModel implements [channels.EventModel] interface, which uses the channels
 // system passed an object that adheres to in order to get events on the
 // channel.
 type wasmModel struct {
-	db                *idb.Database
-	cipher            cryptoChannel.Cipher
-	receivedMessageCB MessageReceivedCallback
-	updateMux         sync.Mutex
-}
-
-// newContext builds a context for database operations.
-func newContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), dbTimeout)
+	wh *workerHandler
 }
 
 // JoinChannel is called whenever a channel is joined locally.
 func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
-	parentErr := errors.New("failed to JoinChannel")
-
-	// Build object
-	newChannel := Channel{
-		ID:          channel.ReceptionID.Marshal(),
-		Name:        channel.Name,
-		Description: channel.Description,
-	}
-
-	// Convert to jsObject
-	newChannelJson, err := json.Marshal(&newChannel)
+	data, err := json.Marshal(channel)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to marshal Channel: %+v", err))
-		return
-	}
-	channelObj, err := utils.JsonToJS(newChannelJson)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to marshal Channel: %+v", err))
+		jww.ERROR.Printf("Could not JSON marshal broadcast.Channel: %+v", err)
 		return
 	}
 
-	// Prepare the Transaction
-	txn, err := w.db.Transaction(idb.TransactionReadWrite, channelsStoreName)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to create Transaction: %+v", err))
-		return
-	}
-	store, err := txn.ObjectStore(channelsStoreName)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to get ObjectStore: %+v", err))
-		return
-	}
-
-	// Perform the operation
-	_, err = store.Put(channelObj)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to Add Channel: %+v", err))
-		return
-	}
-
-	// Wait for the operation to return
-	ctx, cancel := newContext()
-	err = txn.Await(ctx)
-	cancel()
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Adding Channel failed: %+v", err))
-		return
-	}
-	jww.DEBUG.Printf("Successfully added channel: %s", channel.ReceptionID)
+	w.wh.sendMessage(JoinChannelTag, data, nil)
 }
 
 // LeaveChannel is called whenever a channel is left locally.
 func (w *wasmModel) LeaveChannel(channelID *id.ID) {
-	parentErr := errors.New("failed to LeaveChannel")
-
-	// Prepare the Transaction
-	txn, err := w.db.Transaction(idb.TransactionReadWrite, channelsStoreName)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to create Transaction: %+v", err))
-		return
-	}
-	store, err := txn.ObjectStore(channelsStoreName)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to get ObjectStore: %+v", err))
-		return
-	}
-
-	// Perform the operation
-	_, err = store.Delete(js.ValueOf(channelID.String()))
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to Delete Channel: %+v", err))
-		return
-	}
-
-	// Wait for the operation to return
-	ctx, cancel := newContext()
-	err = txn.Await(ctx)
-	cancel()
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Deleting Channel failed: %+v", err))
-		return
-	}
-
-	// Clean up lingering data
-	err = w.deleteMsgByChannel(channelID)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Deleting Channel's Message data failed: %+v", err))
-		return
-	}
-	jww.DEBUG.Printf("Successfully deleted channel: %s", channelID)
-}
-
-// deleteMsgByChannel is a private helper that uses messageStoreChannelIndex
-// to delete all Message with the given Channel ID.
-func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
-	parentErr := errors.New("failed to deleteMsgByChannel")
-
-	// Prepare the Transaction
-	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
-	if err != nil {
-		return errors.WithMessagef(parentErr,
-			"Unable to create Transaction: %+v", err)
-	}
-	store, err := txn.ObjectStore(messageStoreName)
-	if err != nil {
-		return errors.WithMessagef(parentErr,
-			"Unable to get ObjectStore: %+v", err)
-	}
-	index, err := store.Index(messageStoreChannelIndex)
-	if err != nil {
-		return errors.WithMessagef(parentErr,
-			"Unable to get Index: %+v", err)
-	}
-
-	// Perform the operation
-	channelIdStr := base64.StdEncoding.EncodeToString(channelID.Marshal())
-	keyRange, err := idb.NewKeyRangeOnly(js.ValueOf(channelIdStr))
-	cursorRequest, err := index.OpenCursorRange(keyRange, idb.CursorNext)
-	if err != nil {
-		return errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
-	}
-	ctx, cancel := newContext()
-	err = cursorRequest.Iter(ctx,
-		func(cursor *idb.CursorWithValue) error {
-			_, err := cursor.Delete()
-			return err
-		})
-	cancel()
-	if err != nil {
-		return errors.WithMessagef(parentErr,
-			"Unable to delete Message data: %+v", err)
-	}
-	return nil
+	w.wh.sendMessage(LeaveChannelTag, channelID.Marshal(), nil)
 }
 
 // ReceiveMessage is called whenever a message is received on a given channel.
@@ -206,30 +56,49 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	pubKey ed25519.PublicKey, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus, hidden bool) uint64 {
-	textBytes := []byte(text)
-	var err error
-
-	// Handle encryption, if it is present
-	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt([]byte(text))
-		if err != nil {
-			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
-			return 0
-		}
+	message := channels.ModelMessage{
+		Nickname:       nickname,
+		MessageID:      messageID,
+		ChannelID:      channelID,
+		Timestamp:      timestamp,
+		Lease:          lease,
+		Status:         status,
+		Hidden:         hidden,
+		Pinned:         false,
+		Content:        []byte(text),
+		Type:           mType,
+		Round:          round.ID,
+		PubKey:         pubKey,
+		CodesetVersion: codeset,
 	}
 
-	msgToInsert := buildMessage(
-		channelID.Marshal(), messageID.Bytes(), nil, nickname,
-		textBytes, pubKey, codeset, timestamp, lease, round.ID, mType,
-		false, hidden, status)
-
-	uuid, err := w.receiveHelper(msgToInsert, false)
+	data, err := json.Marshal(message)
 	if err != nil {
-		jww.ERROR.Printf("Failed to receive Message: %+v", err)
+		jww.ERROR.Printf(
+			"Could not JSON marshal payload for ReceiveMessage: %+v", err)
+		return 0
 	}
 
-	go w.receivedMessageCB(uuid, channelID, false)
-	return uuid
+	uuidChan := make(chan uint64)
+	w.wh.sendMessage(ReceiveMessageTag, data, func(data []byte) {
+		var uuid uint64
+		err = json.Unmarshal(data, &uuid)
+		if err != nil {
+			jww.ERROR.Printf(
+				"Could not JSON unmarshal response to ReceiveMessage: %+v", err)
+			uuidChan <- 0
+		}
+		uuidChan <- uuid
+	})
+
+	return <-uuidChan
+}
+
+// ReceiveReplyMessage is JSON marshalled and sent to the worker for
+// [wasmModel.ReceiveReply].
+type ReceiveReplyMessage struct {
+	ReactionTo cryptoChannel.MessageID `json:"replyTo"`
+	Message    channels.ModelMessage   `json:"message"`
 }
 
 // ReceiveReply is called whenever a message is received that is a reply on a
@@ -243,29 +112,45 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 	nickname, text string, pubKey ed25519.PublicKey, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus, hidden bool) uint64 {
-	textBytes := []byte(text)
-	var err error
-
-	// Handle encryption, if it is present
-	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt([]byte(text))
-		if err != nil {
-			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
-			return 0
-		}
+	message := ReceiveReplyMessage{
+		ReactionTo: replyTo,
+		Message: channels.ModelMessage{
+			Nickname:       nickname,
+			MessageID:      messageID,
+			ChannelID:      channelID,
+			Timestamp:      timestamp,
+			Lease:          lease,
+			Status:         status,
+			Hidden:         hidden,
+			Pinned:         false,
+			Content:        []byte(text),
+			Type:           mType,
+			Round:          round.ID,
+			PubKey:         pubKey,
+			CodesetVersion: codeset,
+		},
 	}
 
-	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
-		replyTo.Bytes(), nickname, textBytes, pubKey, codeset, timestamp, lease,
-		round.ID, mType, false, hidden, status)
-
-	uuid, err := w.receiveHelper(msgToInsert, false)
-
+	data, err := json.Marshal(message)
 	if err != nil {
-		jww.ERROR.Printf("Failed to receive reply: %+v", err)
+		jww.ERROR.Printf(
+			"Could not JSON marshal payload for ReceiveReply: %+v", err)
+		return 0
 	}
-	go w.receivedMessageCB(uuid, channelID, false)
-	return uuid
+
+	uuidChan := make(chan uint64)
+	w.wh.sendMessage(ReceiveReplyTag, data, func(data []byte) {
+		var uuid uint64
+		err = json.Unmarshal(data, &uuid)
+		if err != nil {
+			jww.ERROR.Printf(
+				"Could not JSON unmarshal response to ReceiveReply: %+v", err)
+			uuidChan <- 0
+		}
+		uuidChan <- uuid
+	})
+
+	return <-uuidChan
 }
 
 // ReceiveReaction is called whenever a reaction to a message is received on a
@@ -279,29 +164,70 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 	nickname, reaction string, pubKey ed25519.PublicKey, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus, hidden bool) uint64 {
-	textBytes := []byte(reaction)
-	var err error
 
-	// Handle encryption, if it is present
-	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt([]byte(reaction))
-		if err != nil {
-			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
-			return 0
-		}
+	message := ReceiveReplyMessage{
+		ReactionTo: reactionTo,
+		Message: channels.ModelMessage{
+			Nickname:       nickname,
+			MessageID:      messageID,
+			ChannelID:      channelID,
+			Timestamp:      timestamp,
+			Lease:          lease,
+			Status:         status,
+			Hidden:         hidden,
+			Pinned:         false,
+			Content:        []byte(reaction),
+			Type:           mType,
+			Round:          round.ID,
+			PubKey:         pubKey,
+			CodesetVersion: codeset,
+		},
 	}
 
-	msgToInsert := buildMessage(
-		channelID.Marshal(), messageID.Bytes(), reactionTo.Bytes(), nickname,
-		textBytes, pubKey, codeset, timestamp, lease, round.ID, mType,
-		false, hidden, status)
-
-	uuid, err := w.receiveHelper(msgToInsert, false)
+	data, err := json.Marshal(message)
 	if err != nil {
-		jww.ERROR.Printf("Failed to receive reaction: %+v", err)
+		jww.ERROR.Printf(
+			"Could not JSON marshal payload for ReceiveReaction: %+v", err)
+		return 0
 	}
-	go w.receivedMessageCB(uuid, channelID, false)
-	return uuid
+
+	uuidChan := make(chan uint64)
+	w.wh.sendMessage(ReceiveReactionTag, data, func(data []byte) {
+		var uuid uint64
+		err = json.Unmarshal(data, &uuid)
+		if err != nil {
+			jww.ERROR.Printf(
+				"Could not JSON unmarshal response to ReceiveReaction: %+v", err)
+			uuidChan <- 0
+		}
+		uuidChan <- uuid
+	})
+
+	return <-uuidChan
+}
+
+// MessageUpdateInfo is JSON marshalled and sent to the worker for
+// [wasmModel.UpdateFromMessageID] and [wasmModel.UpdateFromUUID].
+type MessageUpdateInfo struct {
+	UUID uint64 `json:"uuid"`
+
+	MessageID    cryptoChannel.MessageID `json:"messageID"`
+	MessageIDSet bool                    `json:"messageIDSet"`
+
+	Timestamp    time.Time `json:"timestamp"`
+	TimestampSet bool      `json:"timestampSet"`
+
+	RoundID    id.Round `json:"round"`
+	RoundIDSet bool     `json:"roundIDSet"`
+
+	Pinned    bool `json:"pinned"`
+	PinnedSet bool `json:"pinnedSet"`
+
+	Hidden    bool `json:"hidden"`
+	HiddenSet bool `json:"hiddenSet"`
+
+	Status    channels.SentStatus `json:"status"`
+	StatusSet bool                `json:"statusSet"`
 }
 
 // UpdateFromMessageID is called whenever a message with the message ID is
@@ -316,393 +242,119 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 func (w *wasmModel) UpdateFromMessageID(messageID cryptoChannel.MessageID,
 	timestamp *time.Time, round *rounds.Round, pinned, hidden *bool,
 	status *channels.SentStatus) uint64 {
-	parentErr := errors.New("failed to UpdateFromMessageID")
+	message := MessageUpdateInfo{MessageID: messageID, MessageIDSet: true}
+	if timestamp != nil {
+		message.Timestamp = *timestamp
+		message.TimestampSet = true
+	}
+	if round != nil {
+		message.RoundID = round.ID
+		message.RoundIDSet = true
+	}
+	if pinned != nil {
+		message.Pinned = *pinned
+		message.PinnedSet = true
+	}
+	if hidden != nil {
+		message.Hidden = *hidden
+		message.HiddenSet = true
+	}
+	if status != nil {
+		message.Status = *status
+		message.StatusSet = true
+	}
 
-	// FIXME: this is a bit of race condition without the mux.
-	//        This should be done via the transactions (i.e., make a
-	//        special version of receiveHelper)
-	w.updateMux.Lock()
-	defer w.updateMux.Unlock()
-
-	msgIDStr := base64.StdEncoding.EncodeToString(messageID.Marshal())
-	currentMsgObj, err := w.getIndex(messageStoreName,
-		messageStoreMessageIndex, js.ValueOf(msgIDStr))
+	data, err := json.Marshal(message)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Failed to get message by index: %+v", err))
+		jww.ERROR.Printf(
+			"Could not JSON marshal payload for UpdateFromMessageID: %+v", err)
 		return 0
 	}
 
-	currentMsg := utils.JsToJson(currentMsgObj)
-	uuid, err := w.updateMessage(currentMsg, &messageID, timestamp,
-		round, pinned, hidden, status)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to updateMessage: %+v", err))
-	}
-	return uuid
+	uuidChan := make(chan uint64)
+	w.wh.sendMessage(UpdateFromMessageIDTag, data, func(data []byte) {
+		var uuid uint64
+		err = json.Unmarshal(data, &uuid)
+		if err != nil {
+			jww.ERROR.Printf(
+				"Could not JSON unmarshal response to UpdateFromMessageID: %+v", err)
+			uuidChan <- 0
+		}
+		uuidChan <- uuid
+	})
+
+	return <-uuidChan
 }
 
 // UpdateFromUUID is called whenever a message at the UUID is modified.
 //
-// messageID, timestamp, round, pinned, and hidden are all nillable and may be
-// updated based upon the UUID at a later date. If a nil value is passed, then
-// make no update.
+// messageID, timestamp, round, pinned, and hidden are all nillable and may
+// be updated based upon the UUID at a later date. If a nil value is passed,
+// then make no update.
 func (w *wasmModel) UpdateFromUUID(uuid uint64,
 	messageID *cryptoChannel.MessageID, timestamp *time.Time,
 	round *rounds.Round, pinned, hidden *bool, status *channels.SentStatus) {
-	parentErr := errors.New("failed to UpdateFromUUID")
+	message := MessageUpdateInfo{UUID: uuid}
+	if messageID != nil {
+		message.MessageID = *messageID
+		message.MessageIDSet = true
+	}
+	if timestamp != nil {
+		message.Timestamp = *timestamp
+		message.TimestampSet = true
+	}
+	if round != nil {
+		message.RoundID = round.ID
+		message.RoundIDSet = true
+	}
+	if pinned != nil {
+		message.Pinned = *pinned
+		message.PinnedSet = true
+	}
+	if hidden != nil {
+		message.Hidden = *hidden
+		message.HiddenSet = true
+	}
+	if status != nil {
+		message.Status = *status
+		message.StatusSet = true
+	}
 
-	// FIXME: this is a bit of race condition without the mux.
-	//        This should be done via the transactions (i.e., make a
-	//        special version of receiveHelper)
-	w.updateMux.Lock()
-	defer w.updateMux.Unlock()
-
-	// Convert messageID to the key generated by json.Marshal
-	key := js.ValueOf(uuid)
-
-	// Use the key to get the existing Message
-	currentMsg, err := w.get(messageStoreName, key)
+	data, err := json.Marshal(message)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Failed to get message: %+v", err))
+		jww.ERROR.Printf(
+			"Could not JSON marshal payload for UpdateFromUUID: %+v", err)
 		return
 	}
 
-	_, err = w.updateMessage(currentMsg, messageID, timestamp,
-		round, pinned, hidden, status)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to updateMessage: %+v", err))
-	}
+	w.wh.sendMessage(UpdateFromUUIDTag, data, nil)
 }
 
-// updateMessage is a helper for updating a stored message.
-func (w *wasmModel) updateMessage(currentMsgJson string,
-	messageID *cryptoChannel.MessageID, timestamp *time.Time,
-	round *rounds.Round, pinned, hidden *bool,
-	status *channels.SentStatus) (uint64, error) {
-
-	newMessage := &Message{}
-	err := json.Unmarshal([]byte(currentMsgJson), newMessage)
-	if err != nil {
-		return 0, nil
-	}
-
-	if status != nil {
-		newMessage.Status = uint8(*status)
-	}
-	if messageID != nil {
-		newMessage.MessageID = messageID.Marshal()
-	}
-
-	if round != nil {
-		newMessage.Round = uint64(round.ID)
-	}
-
-	if timestamp != nil {
-		newMessage.Timestamp = *timestamp
-	}
-
-	if pinned != nil {
-		newMessage.Pinned = *pinned
-	}
-
-	if hidden != nil {
-		newMessage.Hidden = *hidden
-	}
-
-	// Store the updated Message
-	uuid, err := w.receiveHelper(newMessage, true)
-	if err != nil {
-		return 0, err
-	}
-	channelID := &id.ID{}
-	copy(channelID[:], newMessage.ChannelID)
-	go w.receivedMessageCB(uuid, channelID, true)
-
-	return uuid, nil
-}
-
-// buildMessage is a private helper that converts typical [channels.EventModel]
-// inputs into a basic Message structure for insertion into storage.
-//
-// NOTE: ID is not set inside this function because we want to use the
-// autoincrement key by default. If you are trying to overwrite an existing
-// message, then you need to set it manually yourself.
-func buildMessage(channelID, messageID, parentID []byte, nickname string,
-	text []byte, pubKey ed25519.PublicKey, codeset uint8, timestamp time.Time,
-	lease time.Duration, round id.Round, mType channels.MessageType,
-	pinned, hidden bool, status channels.SentStatus) *Message {
-	return &Message{
-		MessageID:       messageID,
-		Nickname:        nickname,
-		ChannelID:       channelID,
-		ParentMessageID: parentID,
-		Timestamp:       timestamp,
-		Lease:           lease,
-		Status:          uint8(status),
-		Hidden:          hidden,
-		Pinned:          pinned,
-		Text:            text,
-		Type:            uint16(mType),
-		Round:           uint64(round),
-		// User Identity Info
-		Pubkey:         pubKey,
-		CodesetVersion: codeset,
-	}
-}
-
-// receiveHelper is a private helper for receiving any sort of message.
-func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
-	error) {
-	// Convert to jsObject
-	newMessageJson, err := json.Marshal(newMessage)
-	if err != nil {
-		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
-	}
-	messageObj, err := utils.JsonToJS(newMessageJson)
-	if err != nil {
-		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
-	}
-
-	// Unset the primaryKey for inserts so that it can be auto-populated and
-	// incremented
-	if !isUpdate {
-		messageObj.Delete("id")
-	}
-
-	// Prepare the Transaction
-	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
-	if err != nil {
-		return 0, errors.Errorf("Unable to create Transaction: %+v",
-			err)
-	}
-	store, err := txn.ObjectStore(messageStoreName)
-	if err != nil {
-		return 0, errors.Errorf("Unable to get ObjectStore: %+v", err)
-	}
-
-	// Perform the upsert (put) operation
-	addReq, err := store.Put(messageObj)
-	if err != nil {
-		return 0, errors.Errorf("Unable to upsert Message: %+v", err)
-	}
-
-	// Wait for the operation to return
-	ctx, cancel := newContext()
-	err = txn.Await(ctx)
-	cancel()
-	if err != nil {
-		return 0, errors.Errorf("Upserting Message failed: %+v", err)
-	}
-	res, err := addReq.Result()
-
-	// NOTE: Sometimes the insert fails to return an error but hits a duplicate
-	//  insert, so this fallthrough returns the UUID entry in that case.
-	if res.IsUndefined() {
-		msgID := cryptoChannel.MessageID{}
-		copy(msgID[:], newMessage.MessageID)
-		msg, errLookup := w.msgIDLookup(msgID)
-		if msg.ID != 0 && errLookup == nil {
-			return msg.ID, nil
-		}
-		return 0, errors.Errorf("uuid lookup failure: %+v", err)
-	}
-	uuid := uint64(res.Int())
-	jww.DEBUG.Printf("Successfully stored message %d", uuid)
-
-	return uuid, nil
+// GetMessageMessage is JSON marshalled and sent to the worker for
+// [wasmModel.GetMessage].
+type GetMessageMessage struct {
+	Message channels.ModelMessage `json:"message"`
+	Error   string                `json:"error"`
 }
 
 // GetMessage returns the message with the given [channel.MessageID].
-func (w *wasmModel) GetMessage(messageID cryptoChannel.MessageID) (channels.ModelMessage, error) {
-	lookupResult, err := w.msgIDLookup(messageID)
-	if err != nil {
-		return channels.ModelMessage{}, err
-	}
-
-	var channelId *id.ID
-	if lookupResult.ChannelID != nil {
-		channelId, err = id.Unmarshal(lookupResult.ChannelID)
+func (w *wasmModel) GetMessage(
+	messageID cryptoChannel.MessageID) (channels.ModelMessage, error) {
+	msgChan := make(chan GetMessageMessage)
+	w.wh.sendMessage(GetMessageTag, messageID.Marshal(), func(data []byte) {
+		var msg GetMessageMessage
+		err := json.Unmarshal(data, &msg)
 		if err != nil {
-			return channels.ModelMessage{}, err
+			jww.ERROR.Printf(
+				"Could not JSON unmarshal response to GetMessage: %+v", err)
 		}
+		msgChan <- msg
+	})
+
+	msg := <-msgChan
+	if msg.Error != "" {
+		return channels.ModelMessage{}, errors.New(msg.Error)
 	}
 
-	var parentMsgId cryptoChannel.MessageID
-	if lookupResult.ParentMessageID != nil {
-		parentMsgId, err = cryptoChannel.UnmarshalMessageID(lookupResult.ParentMessageID)
-		if err != nil {
-			return channels.ModelMessage{}, err
-		}
-	}
-
-	return channels.ModelMessage{
-		UUID:            lookupResult.ID,
-		Nickname:        lookupResult.Nickname,
-		MessageID:       messageID,
-		ChannelID:       channelId,
-		ParentMessageID: parentMsgId,
-		Timestamp:       lookupResult.Timestamp,
-		Lease:           lookupResult.Lease,
-		Status:          channels.SentStatus(lookupResult.Status),
-		Hidden:          lookupResult.Hidden,
-		Pinned:          lookupResult.Pinned,
-		Content:         lookupResult.Text,
-		Type:            channels.MessageType(lookupResult.Type),
-		Round:           id.Round(lookupResult.Round),
-		PubKey:          lookupResult.Pubkey,
-		CodesetVersion:  lookupResult.CodesetVersion,
-	}, nil
-}
-
-// get is a generic private helper for getting values from the given
-// [idb.ObjectStore].
-func (w *wasmModel) get(objectStoreName string, key js.Value) (string, error) {
-	parentErr := errors.Errorf("failed to get %s/%s", objectStoreName, key)
-
-	// Prepare the Transaction
-	txn, err := w.db.Transaction(idb.TransactionReadOnly, objectStoreName)
-	if err != nil {
-		return "", errors.WithMessagef(parentErr,
-			"Unable to create Transaction: %+v", err)
-	}
-	store, err := txn.ObjectStore(objectStoreName)
-	if err != nil {
-		return "", errors.WithMessagef(parentErr,
-			"Unable to get ObjectStore: %+v", err)
-	}
-
-	// Perform the operation
-	getRequest, err := store.Get(key)
-	if err != nil {
-		return "", errors.WithMessagef(parentErr,
-			"Unable to Get from ObjectStore: %+v", err)
-	}
-
-	// Wait for the operation to return
-	ctx, cancel := newContext()
-	resultObj, err := getRequest.Await(ctx)
-	cancel()
-	if err != nil {
-		return "", errors.WithMessagef(parentErr,
-			"Unable to get from ObjectStore: %+v", err)
-	}
-
-	// Process result into string
-	resultStr := utils.JsToJson(resultObj)
-	jww.DEBUG.Printf("Got from %s/%s: %s", objectStoreName, key, resultStr)
-	return resultStr, nil
-}
-
-// getIndex is a generic private helper for getting values from the given
-// [idb.ObjectStore] using a [idb.Index].
-func (w *wasmModel) getIndex(objectStoreName string,
-	indexName string, key js.Value) (js.Value, error) {
-
-	parentErr := errors.Errorf("failed to getIndex %s/%s/%s",
-		objectStoreName, indexName, key)
-
-	// Prepare the Transaction
-	txn, err := w.db.Transaction(idb.TransactionReadOnly, objectStoreName)
-	if err != nil {
-		return js.Null(), errors.WithMessagef(parentErr,
-			"Unable to create Transaction: %+v", err)
-	}
-	store, err := txn.ObjectStore(objectStoreName)
-	if err != nil {
-		return js.Null(), errors.WithMessagef(parentErr,
-			"Unable to get ObjectStore: %+v", err)
-	}
-	idx, err := store.Index(indexName)
-	if err != nil {
-		return js.Null(), errors.WithMessagef(parentErr,
-			"Unable to get index: %+v", err)
-	}
-
-	// Perform the operation
-	getRequest, err := idx.Get(key)
-	if err != nil {
-		return js.Null(), errors.WithMessagef(parentErr,
-			"Unable to Get from ObjectStore: %+v", err)
-	}
-
-	// Wait for the operation to return
-	ctx, cancel := newContext()
-	resultObj, err := getRequest.Await(ctx)
-	cancel()
-	if err != nil {
-		return js.Null(), errors.WithMessagef(parentErr,
-			"Unable to get from ObjectStore: %+v", err)
-	}
-
-	jww.DEBUG.Printf("Got via index from %s/%s/%s: %s",
-		objectStoreName, indexName, key, resultObj.String())
-	return resultObj, nil
-}
-
-func (w *wasmModel) msgIDLookup(messageID cryptoChannel.MessageID) (*Message,
-	error) {
-	msgIDStr := base64.StdEncoding.EncodeToString(messageID.Marshal())
-	keyObj, err := w.getIndex(messageStoreName,
-		messageStoreMessageIndex, js.ValueOf(msgIDStr))
-	if err != nil {
-		return nil, err
-	} else if keyObj.IsUndefined() {
-		return nil, errors.Errorf("no message for %s found", msgIDStr)
-	}
-
-	// Process result into string
-	resultMsg := &Message{}
-	err = json.Unmarshal([]byte(utils.JsToJson(keyObj)), resultMsg)
-	if err != nil {
-		return nil, err
-	}
-	return resultMsg, nil
-}
-
-// dump returns the given [idb.ObjectStore] contents to string slice for
-// debugging purposes.
-func (w *wasmModel) dump(objectStoreName string) ([]string, error) {
-	parentErr := errors.Errorf("failed to dump %s", objectStoreName)
-
-	txn, err := w.db.Transaction(idb.TransactionReadOnly, objectStoreName)
-	if err != nil {
-		return nil, errors.WithMessagef(parentErr,
-			"Unable to create Transaction: %+v", err)
-	}
-	store, err := txn.ObjectStore(objectStoreName)
-	if err != nil {
-		return nil, errors.WithMessagef(parentErr,
-			"Unable to get ObjectStore: %+v", err)
-	}
-	cursorRequest, err := store.OpenCursor(idb.CursorNext)
-	if err != nil {
-		return nil, errors.WithMessagef(parentErr,
-			"Unable to open Cursor: %+v", err)
-	}
-
-	// Run the query
-	jww.DEBUG.Printf("%s values:", objectStoreName)
-	results := make([]string, 0)
-	ctx, cancel := newContext()
-	err = cursorRequest.Iter(ctx,
-		func(cursor *idb.CursorWithValue) error {
-			value, err := cursor.Value()
-			if err != nil {
-				return err
-			}
-			valueStr := utils.JsToJson(value)
-			results = append(results, valueStr)
-			jww.DEBUG.Printf("- %v", valueStr)
-			return nil
-		})
-	cancel()
-	if err != nil {
-		return nil, errors.WithMessagef(parentErr,
-			"Unable to dump ObjectStore: %+v", err)
-	}
-	return results, nil
+	return msg.Message, nil
 }

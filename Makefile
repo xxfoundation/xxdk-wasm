@@ -1,4 +1,4 @@
-.PHONY: update master release update_master update_release build clean binary tests wasm_tests go_tests
+.PHONY: update master release update_master update_release build clean binaries main_binary indexedDbWorker_binary tests wasm_tests go_tests
 
 clean:
 	rm -rf vendor/
@@ -25,8 +25,14 @@ update_master:
 	GOFLAGS="" go get gitlab.com/xx_network/crypto@master
 	GOFLAGS="" go get gitlab.com/xx_network/primitives@master
 
-binary:
+
+main_binary:
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk.wasm main.go
+
+indexedDbWorker_binary:
+	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-indexedDkWorker.wasm ./indexedDbWorker/...
+
+binaries: main_binary indexedDbWorker_binary
 
 wasm_tests:
 	cp utils/utils_js.s utils/utils_js.s.bak
