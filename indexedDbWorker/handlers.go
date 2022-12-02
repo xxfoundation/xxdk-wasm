@@ -11,6 +11,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
@@ -46,25 +47,8 @@ func (mh *messageHandler) registerHandlers() {
 			return []byte{}
 		}
 
-		// Create a MessageReceivedCallback that sends all calls back to the
-		// main thread
-		cb := func(uuid uint64, channelID *id.ID, update bool) {
-			msg := &indexedDb.MessageReceivedCallbackMessage{
-				UUID:      uuid,
-				ChannelID: channelID,
-				Update:    update,
-			}
-			data2, err2 := json.Marshal(msg)
-			if err2 != nil {
-				jww.ERROR.Printf("Could not JSON marshal "+
-					"MessageReceivedCallbackMessage: %+v", err2)
-				return
-			}
-
-			mh.sendResponse(indexedDb.GetMessageTag, indexedDb.InitialID, data2)
-		}
-
-		mh.model, err = NewWASMEventModel(message.Path, encryption, cb)
+		mh.model, err = NewWASMEventModel(message.Path, encryption,
+			mh.messageReceivedCallback, mh.storeEncryptionStatus)
 		if err != nil {
 			return []byte(err.Error())
 		}
@@ -279,4 +263,77 @@ func (mh *messageHandler) registerHandlers() {
 		}
 		return messageData
 	})
+}
+
+// messageReceivedCallback sends calls to the indexedDb.MessageReceivedCallback
+// in the main thread.
+//
+// storeEncryptionStatus adhere to the indexedDb.MessageReceivedCallback type.
+func (mh *messageHandler) messageReceivedCallback(
+	uuid uint64, channelID *id.ID, update bool) {
+	// Package parameters for sending
+	msg := &indexedDb.MessageReceivedCallbackMessage{
+		UUID:      uuid,
+		ChannelID: channelID,
+		Update:    update,
+	}
+	data, err := json.Marshal(msg)
+	if err != nil {
+		jww.ERROR.Printf(
+			"Could not JSON marshal MessageReceivedCallbackMessage: %+v", err)
+		return
+	}
+
+	// Send it to the main thread
+	mh.sendResponse(indexedDb.GetMessageTag, indexedDb.InitID, data)
+}
+
+// storeEncryptionStatus augments the functionality of
+// storage.StoreIndexedDbEncryptionStatus. It takes the database name and
+// encryption status
+//
+// storeEncryptionStatus adhere to the storeEncryptionStatusFn type.
+func (mh *messageHandler) storeEncryptionStatus(
+	databaseName string, encryption bool) (bool, error) {
+	// Package parameters for sending
+	msg := &indexedDb.EncryptionStatusMessage{
+		DatabaseName:     databaseName,
+		EncryptionStatus: encryption,
+	}
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return false, err
+	}
+
+	// Register response handler with channel that will wait for the response
+	responseChan := make(chan []byte)
+	mh.registerHandler(indexedDb.EncryptionStatusTag,
+		func(data []byte) []byte {
+			responseChan <- data
+			return nil
+		})
+
+	// Send encryption status to main thread
+	mh.sendResponse(indexedDb.EncryptionStatusTag, indexedDb.InitID, data)
+
+	// Wait for response
+	var response indexedDb.EncryptionStatusReply
+	select {
+	case responseData := <-responseChan:
+		if err = json.Unmarshal(responseData, &response); err != nil {
+			return false, err
+		}
+	case <-time.After(indexedDb.ResponseTimeout):
+		return false, errors.Errorf("timed out after %s waiting for "+
+			"response about the database encryption status from local "+
+			"storage in the main thread", indexedDb.ResponseTimeout)
+	}
+
+	// If the response contain an error, return it
+	if response.Error != "" {
+		return false, errors.New(response.Error)
+	}
+
+	// Return the encryption status
+	return response.EncryptionStatus, nil
 }

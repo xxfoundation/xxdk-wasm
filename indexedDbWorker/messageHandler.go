@@ -54,7 +54,7 @@ func newMessageHandler() *messageHandler {
 // ready. Once the main thread receives this, it will initiate communication.
 // Therefore, this should only be run once all listeners are ready.
 func (mh *messageHandler) signalReady() {
-	mh.sendResponse(indexedDb.ReadyTag, indexedDb.InitialID, nil)
+	mh.sendResponse(indexedDb.ReadyTag, indexedDb.InitID, nil)
 }
 
 // sendResponse sends a reply to the main thread with the given tag and ID,
@@ -81,8 +81,7 @@ func (mh *messageHandler) receiveMessage(data []byte) error {
 	var message indexedDb.WorkerMessage
 	err := json.Unmarshal(data, &message)
 	if err != nil {
-		return errors.Errorf(
-			"could not unmarshal payload from worker: %+v", err)
+		return err
 	}
 
 	mh.mux.Lock()
@@ -105,6 +104,8 @@ func (mh *messageHandler) receiveMessage(data []byte) error {
 
 // registerHandler registers the handler with the given tag overwriting any
 // previous registered handler with the same tag. This function is thread safe.
+//
+// If the handler returns anything but nil, it will be returned as a response.
 func (mh *messageHandler) registerHandler(tag indexedDb.Tag, handler handlerFn) {
 	mh.mux.Lock()
 	mh.handlers[tag] = handler

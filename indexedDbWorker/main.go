@@ -18,7 +18,7 @@ func main() {
 
 	mh := newMessageHandler()
 	mh.registerHandlers()
-
+	registerDatabaseNameStore(mh)
 	mh.signalReady()
 	<-make(chan bool)
 }

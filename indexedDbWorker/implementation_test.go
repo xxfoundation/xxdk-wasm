@@ -35,13 +35,19 @@ func TestMain(m *testing.M) {
 
 func dummyCallback(uint64, *id.ID, bool) {}
 
+// dummyStoreEncryptionStatus returns the same encryption status passed into it.
+func dummyStoreEncryptionStatus(_ string, encryptionStatus bool) (bool, error) {
+	return encryptionStatus, nil
+}
+
 // Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
 func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 	testString := "test"
 	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
-	eventModel, err := newWASMModel(testString, nil, dummyCallback)
+	eventModel, err :=
+		newWASMModel(testString, nil, dummyCallback, dummyStoreEncryptionStatus)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 
 	// Store a test message
@@ -50,13 +56,13 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 		time.Second, 0, 0, false, false, channels.Sent)
 	uuid, err := eventModel.receiveHelper(testMsg, false)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 
 	// Ensure one message is stored
 	results, err := eventModel.dump(messageStoreName)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 	if len(results) != 1 {
 		t.Fatalf("Expected 1 message to exist")
@@ -70,7 +76,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 	// Check the resulting status
 	results, err = eventModel.dump(messageStoreName)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 	if len(results) != 1 {
 		t.Fatalf("Expected 1 message to exist")
@@ -78,7 +84,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 	resultMsg := &Message{}
 	err = json.Unmarshal([]byte(results[0]), resultMsg)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 	if resultMsg.Status != uint8(expectedStatus) {
 		t.Fatalf("Unexpected Status: %v", resultMsg.Status)
@@ -93,9 +99,10 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 // Smoke test wasmModel.JoinChannel/wasmModel.LeaveChannel happy paths.
 func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 	storage.GetLocalStorage().Clear()
-	eventModel, err := newWASMModel("test", nil, dummyCallback)
+	eventModel, err :=
+		newWASMModel("test", nil, dummyCallback, dummyStoreEncryptionStatus)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 
 	testChannel := &cryptoBroadcast.Channel{
@@ -114,7 +121,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 	eventModel.JoinChannel(testChannel2)
 	results, err := eventModel.dump(channelsStoreName)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 	if len(results) != 2 {
 		t.Fatalf("Expected 2 channels to exist")
@@ -122,7 +129,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 	eventModel.LeaveChannel(testChannel.ReceptionID)
 	results, err = eventModel.dump(channelsStoreName)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 	if len(results) != 1 {
 		t.Fatalf("Expected 1 channels to exist")
@@ -132,9 +139,10 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 // Test UUID gets returned when different messages are added.
 func Test_wasmModel_UUIDTest(t *testing.T) {
 	testString := "testHello"
-	eventModel, err := newWASMModel(testString, nil, dummyCallback)
+	eventModel, err :=
+		newWASMModel(testString, nil, dummyCallback, dummyStoreEncryptionStatus)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 
 	uuids := make([]uint64, 10)
@@ -167,9 +175,10 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 func Test_wasmModel_DuplicateReceives(t *testing.T) {
 	storage.GetLocalStorage().Clear()
 	testString := "testHello"
-	eventModel, err := newWASMModel(testString, nil, dummyCallback)
+	eventModel, err :=
+		newWASMModel(testString, nil, dummyCallback, dummyStoreEncryptionStatus)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 
 	uuids := make([]uint64, 10)
@@ -204,9 +213,10 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 	testString := "test_deleteMsgByChannel"
 	totalMessages := 10
 	expectedMessages := 5
-	eventModel, err := newWASMModel(testString, nil, dummyCallback)
+	eventModel, err :=
+		newWASMModel(testString, nil, dummyCallback, dummyStoreEncryptionStatus)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 
 	// Create a test channel id
@@ -232,7 +242,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 	// Check pre-results
 	result, err := eventModel.dump(messageStoreName)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 	if len(result) != totalMessages {
 		t.Errorf("Expected %d messages, got %d", totalMessages, len(result))
@@ -247,7 +257,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 	// Check final results
 	result, err = eventModel.dump(messageStoreName)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 	if len(result) != expectedMessages {
 		t.Errorf("Expected %d messages, got %d", expectedMessages, len(result))
@@ -258,7 +268,8 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 // Inserts will not fail, they simply will not happen.
 func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 	testString := "test_receiveHelper_UniqueIndex"
-	eventModel, err := newWASMModel(testString, nil, dummyCallback)
+	eventModel, err :=
+		newWASMModel(testString, nil, dummyCallback, dummyStoreEncryptionStatus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,11 +307,11 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 	// The duplicate entry won't fail, but it just silently shouldn't happen
 	_, err = eventModel.receiveHelper(testMsg, false)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 	results, err := eventModel.dump(messageStoreName)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 	if len(results) != 1 {
 		t.Fatalf("Expected only a single message, got %d", len(results))
@@ -329,7 +340,7 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 	// but it just silently shouldn't happen
 	results, err = eventModel.dump(messageStoreName)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 	// TODO: Convert JSON to Message, ensure Message ID fields differ
 }

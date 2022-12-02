@@ -91,7 +91,15 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 		uuidChan <- uuid
 	})
 
-	return <-uuidChan
+	select {
+	case uuid := <-uuidChan:
+		return uuid
+	case <-time.After(ResponseTimeout):
+		jww.ERROR.Printf("Timed out after %s waiting for "+
+			"response from the worker about ReceiveMessage", ResponseTimeout)
+	}
+
+	return 0
 }
 
 // ReceiveReplyMessage is JSON marshalled and sent to the worker for
@@ -150,7 +158,15 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 		uuidChan <- uuid
 	})
 
-	return <-uuidChan
+	select {
+	case uuid := <-uuidChan:
+		return uuid
+	case <-time.After(ResponseTimeout):
+		jww.ERROR.Printf("Timed out after %s waiting for "+
+			"response from the worker about ReceiveReply", ResponseTimeout)
+	}
+
+	return 0
 }
 
 // ReceiveReaction is called whenever a reaction to a message is received on a
@@ -203,7 +219,15 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 		uuidChan <- uuid
 	})
 
-	return <-uuidChan
+	select {
+	case uuid := <-uuidChan:
+		return uuid
+	case <-time.After(ResponseTimeout):
+		jww.ERROR.Printf("Timed out after %s waiting for "+
+			"response from the worker about ReceiveReply", ResponseTimeout)
+	}
+
+	return 0
 }
 
 // MessageUpdateInfo is JSON marshalled and sent to the worker for
@@ -283,7 +307,15 @@ func (w *wasmModel) UpdateFromMessageID(messageID cryptoChannel.MessageID,
 		uuidChan <- uuid
 	})
 
-	return <-uuidChan
+	select {
+	case uuid := <-uuidChan:
+		return uuid
+	case <-time.After(ResponseTimeout):
+		jww.ERROR.Printf("Timed out after %s waiting for "+
+			"response from the worker about ReceiveReply", ResponseTimeout)
+	}
+
+	return 0
 }
 
 // UpdateFromUUID is called whenever a message at the UUID is modified.
@@ -351,10 +383,15 @@ func (w *wasmModel) GetMessage(
 		msgChan <- msg
 	})
 
-	msg := <-msgChan
-	if msg.Error != "" {
-		return channels.ModelMessage{}, errors.New(msg.Error)
+	select {
+	case msg := <-msgChan:
+		if msg.Error != "" {
+			return channels.ModelMessage{}, errors.New(msg.Error)
+		}
+		return msg.Message, nil
+	case <-time.After(ResponseTimeout):
+		return channels.ModelMessage{}, errors.Errorf("timed out after %s "+
+			"waiting for response from the worker about GetMessage",
+			ResponseTimeout)
 	}
-
-	return msg.Message, nil
 }
