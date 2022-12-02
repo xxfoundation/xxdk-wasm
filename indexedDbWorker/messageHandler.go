@@ -96,7 +96,7 @@ func (mh *messageHandler) receiveMessage(data []byte) error {
 	go func() {
 		response := handler(message.Data)
 		if response != nil {
-			mh.sendResponse(indexedDb.WorkerResponseTag, message.ID, response)
+			mh.sendResponse(message.Tag, message.ID, response)
 		}
 	}()
 

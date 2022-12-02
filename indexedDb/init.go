@@ -55,7 +55,7 @@ type MessageReceivedCallbackMessage struct {
 func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) (channels.EventModel, error) {
 
-	wh, err := newWorkerHandler("indexedDbWorker.js", "indexedDbWorker")
+	wh, err := newWorkerHandler("/integrations/assets/indexedDbWorker.js", "indexedDbWorker")
 	if err != nil {
 		return nil, err
 	}

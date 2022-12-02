@@ -42,15 +42,21 @@ const (
 	UpdateFromUUIDTag      Tag = "UpdateFromUUID"
 	GetMessageTag          Tag = "GetMessage"
 	ReadyTag               Tag = "Ready"
-	WorkerResponseTag      Tag = "WorkerResponse"
 )
 
 // deleteAfterReceiving is a list of Tags that will have their handler deleted
 // after a message is received. This is mainly used for responses where the
 // handler will only handle it once and never again.
 var deleteAfterReceiving = map[Tag]struct{}{
-	ReadyTag:          {},
-	WorkerResponseTag: {},
+	NewWASMEventModelTag:   {},
+	JoinChannelTag:         {},
+	LeaveChannelTag:        {},
+	ReceiveMessageTag:      {},
+	ReceiveReplyTag:        {},
+	ReceiveReactionTag:     {},
+	UpdateFromMessageIDTag: {},
+	UpdateFromUUIDTag:      {},
+	ReadyTag:               {},
 }
 
 // handlerFn is the function that handles incoming data from the worker.
