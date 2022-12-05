@@ -10,6 +10,7 @@
 package wasm
 
 import (
+	"crypto/ed25519"
 	"github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/auth"
 	"gitlab.com/elixxir/client/v4/catalog"
@@ -67,4 +68,5 @@ var (
 	_ = broadcast.PrivacyLevel(0)
 	_ = broadcast.Channel{}
 	_ = netTime.Now
+	_ = ed25519.PublicKey{}
 )

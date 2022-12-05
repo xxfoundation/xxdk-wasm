@@ -64,6 +64,11 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]any {
 		"DeleteNickname":        js.FuncOf(cm.DeleteNickname),
 		"GetNickname":           js.FuncOf(cm.GetNickname),
 		"Muted":                 js.FuncOf(cm.Muted),
+		"IsChannelAdmin":        js.FuncOf(cm.IsChannelAdmin),
+		"ExportChannelAdminKey": js.FuncOf(cm.ExportChannelAdminKey),
+		"VerifyChannelAdminKey": js.FuncOf(cm.VerifyChannelAdminKey),
+		"ImportChannelAdminKey": js.FuncOf(cm.ImportChannelAdminKey),
+		"DeleteChannelAdminKey": js.FuncOf(cm.DeleteChannelAdminKey),
 
 		// Channel Receiving Logic and Callback Registration
 		"RegisterReceiveHandler": js.FuncOf(cm.RegisterReceiveHandler),
@@ -225,28 +230,6 @@ func GetPublicChannelIdentityFromPrivate(_ js.Value, args []js.Value) any {
 	}
 
 	return utils.CopyBytesToJS(identity)
-}
-
-// eventModelBuilder adheres to the [bindings.EventModelBuilder] interface.
-type eventModelBuilder struct {
-	build func(args ...any) js.Value
-}
-
-// Build initializes and returns the event model.  It wraps a Javascript object
-// that has all the methods in [bindings.EventModel] to make it adhere to the Go
-// interface [bindings.EventModel].
-func (emb *eventModelBuilder) Build(path string) bindings.EventModel {
-	emJs := emb.build(path)
-	return &eventModel{
-		joinChannel:         utils.WrapCB(emJs, "JoinChannel"),
-		leaveChannel:        utils.WrapCB(emJs, "LeaveChannel"),
-		receiveMessage:      utils.WrapCB(emJs, "ReceiveMessage"),
-		receiveReply:        utils.WrapCB(emJs, "ReceiveReply"),
-		receiveReaction:     utils.WrapCB(emJs, "ReceiveReaction"),
-		updateFromUUID:      utils.WrapCB(emJs, "UpdateFromUUID"),
-		updateFromMessageID: utils.WrapCB(emJs, "UpdateFromMessageID"),
-		getMessage:          utils.WrapCB(emJs, "GetMessage"),
-	}
 }
 
 // NewChannelsManager creates a new [ChannelsManager] from a new private
@@ -517,6 +500,10 @@ func loadChannelsManagerWithIndexedDb(cmixID int, storageTag string,
 	return utils.CreatePromise(promiseFn)
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Channel Actions                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
 // DecodePublicURL decodes the channel URL into a channel pretty print. This
 // function can only be used for public channel URLs. To get the privacy level
 // of a channel URL, use [GetShareUrlType].
@@ -628,9 +615,8 @@ func GetChannelInfo(_ js.Value, args []js.Value) any {
 //     optional but cannot be longer than 144 characters and can include all
 //     Unicode characters. It cannot be changed once a channel is created.
 //   - args[2] - The [broadcast.PrivacyLevel] of the channel (int). 0 = public,
-//
-// //     1 = private, and 2 = secret. Refer to the comment below for more
-// //     information.
+//     1 = private, and 2 = secret. Refer to the comment below for more
+//     information.
 //
 // Returns:
 //   - The pretty print of the channel (string).
@@ -681,28 +667,6 @@ func (cm *ChannelsManager) JoinChannel(_ js.Value, args []js.Value) any {
 	return utils.CopyBytesToJS(ci)
 }
 
-// GetChannels returns the IDs of all channels that have been joined.
-//
-// Returns:
-//   - JSON of an array of marshalled [id.ID] (Uint8Array).
-//   - Throws a TypeError if getting the channels fails.
-//
-// JSON Example:
-//
-//	{
-//	  "U4x/lrFkvxuXu59LtHLon1sUhPJSCcnZND6SugndnVID",
-//	  "15tNdkKbYXoMn58NO6VbDMDWFEyIhTWEGsvgcJsHWAgD"
-//	}
-func (cm *ChannelsManager) GetChannels(js.Value, []js.Value) any {
-	channelList, err := cm.api.GetChannels()
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
-	}
-
-	return utils.CopyBytesToJS(channelList)
-}
-
 // LeaveChannel leaves the given channel. It will return an error if the channel
 // was not previously joined.
 //
@@ -741,6 +705,28 @@ func (cm *ChannelsManager) ReplayChannel(_ js.Value, args []js.Value) any {
 	}
 
 	return nil
+}
+
+// GetChannels returns the IDs of all channels that have been joined.
+//
+// Returns:
+//   - JSON of an array of marshalled [id.ID] (Uint8Array).
+//   - Throws a TypeError if getting the channels fails.
+//
+// JSON Example:
+//
+//	{
+//	  "U4x/lrFkvxuXu59LtHLon1sUhPJSCcnZND6SugndnVID",
+//	  "15tNdkKbYXoMn58NO6VbDMDWFEyIhTWEGsvgcJsHWAgD"
+//	}
+func (cm *ChannelsManager) GetChannels(js.Value, []js.Value) any {
+	channelList, err := cm.api.GetChannels()
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(channelList)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -859,50 +845,6 @@ func (cm *ChannelsManager) SendGeneric(_ js.Value, args []js.Value) any {
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := cm.api.SendGeneric(
-			marshalledChanId, messageType, message, leaseTimeMS, cmixParamsJSON)
-		if err != nil {
-			reject(utils.JsTrace(err))
-		} else {
-			resolve(utils.CopyBytesToJS(sendReport))
-		}
-	}
-
-	return utils.CreatePromise(promiseFn)
-}
-
-// SendAdminGeneric is used to send a raw message over a channel encrypted with
-// admin keys, identifying it as sent by the admin. In general, it should be
-// wrapped in a function that defines the wire protocol. If the final message,
-// before being sent over the wire, is too long, this will return an error. The
-// message must be at most 510 bytes long.
-//
-// Parameters:
-//   - args[0] - The PEM-encode admin RSA private key (Uint8Array).
-//   - args[1] - Marshalled bytes of the channel [id.ID] (Uint8Array).
-//   - args[2] - The message type of the message. This will be a valid
-//     [channels.MessageType] (int).
-//   - args[3] - The contents of the message (Uint8Array).
-//   - args[4] - The lease of the message. This will be how long the message is
-//     valid until, in milliseconds. As per the [channels.Manager]
-//     documentation, this has different meanings depending on the use case.
-//     These use cases may be generic enough that they will not be enumerated
-//     here (int).
-//   - args[5] - JSON of [xxdk.CMIXParams]. If left empty
-//     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
-//
-// Returns a promise:
-//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
-//   - Rejected with an error if sending fails.
-func (cm *ChannelsManager) SendAdminGeneric(_ js.Value, args []js.Value) any {
-	adminPrivateKey := utils.CopyBytesToGo(args[0])
-	marshalledChanId := utils.CopyBytesToGo(args[1])
-	messageType := args[2].Int()
-	message := utils.CopyBytesToGo(args[3])
-	leaseTimeMS := int64(args[4].Int())
-	cmixParamsJSON := utils.CopyBytesToGo(args[5])
-
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := cm.api.SendAdminGeneric(adminPrivateKey,
 			marshalledChanId, messageType, message, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
@@ -1045,38 +987,48 @@ func (cm *ChannelsManager) SendReaction(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
-// DeleteMessage deletes the targeted message from user's view. Users may delete
-// their own messages (by leaving the private key as nil) but only the channel
-// admin can delete other user's messages.
+////////////////////////////////////////////////////////////////////////////////
+// Admin Sending                                                              //
+////////////////////////////////////////////////////////////////////////////////
+
+// SendAdminGeneric is used to send a raw message over a channel encrypted with
+// admin keys, identifying it as sent by the admin. In general, it should be
+// wrapped in a function that defines the wire protocol.
 //
-// If undoAction is true, then the targeted message is un-deleted.
+// If the final message, before being sent over the wire, is too long, this will
+// return an error. The message must be at most 510 bytes long.
 //
-// Clients will drop the deletion if they do not recognize the target message.
+// If the user is not an admin of the channel (i.e. does not have a private key
+// for the channel saved to storage), then the error [channels.NotAnAdminErr] is
+// returned.
 //
 // Parameters:
-//   - args[0] - The PEM-encoded admin RSA private key for the channel
-//     (Uint8Array). If a user is trying to delete their own message, make this
-//     empty.
-//   - args[1] - Marshalled bytes of channel [id.ID] (Uint8Array).
-//   - args[2] - The marshalled [channel.MessageID] of the message you want to
-//     delete (Uint8Array).
-//   - args[3] - Set to true to un-delete the message (boolean).
-//   - args[4] - JSON of [xxdk.CMIXParams]. This may be empty, and
-//     [GetDefaultCMixParams] will be used internally (Uint8Array).
+//   - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
+//   - args[1] - The message type of the message. This will be a valid
+//     [channels.MessageType] (int).
+//   - args[2] - The contents of the message (Uint8Array). The message should be
+//     at most 510 bytes.
+//   - args[3] - The lease of the message. This will be how long the message is
+//     valid until, in milliseconds. As per the [channels.Manager]
+//     documentation, this has different meanings depending on the use case.
+//     These use cases may be generic enough that they will not be enumerated
+//     here (int).
+//   - args[4] - JSON of [xxdk.CMIXParams]. If left empty
+//     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
 //
-// Returns:
+// Returns a promise:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
-func (cm *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) any {
-	adminPrivateKey := utils.CopyBytesToGo(args[0])
-	channelIdBytes := utils.CopyBytesToGo(args[1])
-	targetMessageIdBytes := utils.CopyBytesToGo(args[2])
-	undoAction := args[3].Bool()
+func (cm *ChannelsManager) SendAdminGeneric(_ js.Value, args []js.Value) any {
+	marshalledChanId := utils.CopyBytesToGo(args[0])
+	messageType := args[1].Int()
+	message := utils.CopyBytesToGo(args[2])
+	leaseTimeMS := int64(args[3].Int())
 	cmixParamsJSON := utils.CopyBytesToGo(args[4])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := cm.api.DeleteMessage(adminPrivateKey, channelIdBytes,
-			targetMessageIdBytes, undoAction, cmixParamsJSON)
+		sendReport, err := cm.api.SendAdminGeneric(
+			marshalledChanId, messageType, message, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -1087,35 +1039,76 @@ func (cm *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
-// PinMessage pins the target message to the top of a channel view for all users
-// in the specified channel. Only the channel admin can pin user messages.
+// DeleteMessage deletes the targeted message from user's view. Users may delete
+// their own messages but only the channel admin can delete other user's
+// messages. If the user is not an admin of the channel or if they are not the
+// sender of the targetMessage, then the error [channels.NotAnAdminErr] is
+// returned.
+//
+// If undoAction is true, then the targeted message is un-deleted.
+//
+// Clients will drop the deletion if they do not recognize the target
+// message.
+//
+// Parameters:
+//   - args[0] - Marshalled bytes of channel [id.ID] (Uint8Array).
+//   - args[1] - The marshalled [channel.MessageID] of the message you want to
+//     delete (Uint8Array).
+//   - args[2] - Set to true to un-delete the message (boolean).
+//   - args[3] - JSON of [xxdk.CMIXParams]. This may be empty, and
+//     [GetDefaultCMixParams] will be used internally (Uint8Array).
+//
+// Returns:
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
+func (cm *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) any {
+	channelIdBytes := utils.CopyBytesToGo(args[0])
+	targetMessageIdBytes := utils.CopyBytesToGo(args[1])
+	undoAction := args[2].Bool()
+	cmixParamsJSON := utils.CopyBytesToGo(args[3])
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		sendReport, err := cm.api.DeleteMessage(
+			channelIdBytes, targetMessageIdBytes, undoAction, cmixParamsJSON)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// PinMessage pins the target message to the top of a channel view for all
+// users in the specified channel. Only the channel admin can pin user
+// messages; if the user is not an admin of the channel, then the error
+// [channels.NotAnAdminErr] is returned.
 //
 // If undoAction is true, then the targeted message is unpinned.
 //
 // Clients will drop the pin if they do not recognize the target message.
 //
 // Parameters:
-//   - args[0] - The PEM-encoded admin RSA private key for the channel
-//     (Uint8Array).
-//   - args[1] - Marshalled bytes of channel [id.ID] (Uint8Array).
-//   - args[2] - The marshalled [channel.MessageID] of the message you want to
+//   - args[0] - Marshalled bytes of channel [id.ID] (Uint8Array).
+//   - args[1] - The marshalled [channel.MessageID] of the message you want to
 //     pin (Uint8Array).
-//   - args[3] - Set to true to unpin the message (boolean).
-//   - args[4] - JSON of [xxdk.CMIXParams]. This may be empty, and
+//   - args[2] - Set to true to unpin the message (boolean).
+//   - args[3] - JSON of [xxdk.CMIXParams]. This may be empty, and
 //     [GetDefaultCMixParams] will be used internally (Uint8Array).
 //
 // Returns:
-//   - []byte - JSON of [ChannelSendReport].
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
 func (cm *ChannelsManager) PinMessage(_ js.Value, args []js.Value) any {
-	adminPrivateKey := utils.CopyBytesToGo(args[0])
-	channelIdBytes := utils.CopyBytesToGo(args[1])
-	targetMessageIdBytes := utils.CopyBytesToGo(args[2])
-	undoAction := args[3].Bool()
-	cmixParamsJSON := utils.CopyBytesToGo(args[4])
+	channelIdBytes := utils.CopyBytesToGo(args[0])
+	targetMessageIdBytes := utils.CopyBytesToGo(args[1])
+	undoAction := args[2].Bool()
+	cmixParamsJSON := utils.CopyBytesToGo(args[3])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := cm.api.PinMessage(adminPrivateKey, channelIdBytes,
-			targetMessageIdBytes, undoAction, cmixParamsJSON)
+		sendReport, err := cm.api.PinMessage(
+			channelIdBytes, targetMessageIdBytes, undoAction, cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -1128,32 +1121,32 @@ func (cm *ChannelsManager) PinMessage(_ js.Value, args []js.Value) any {
 
 // MuteUser is used to mute a user in a channel. Muting a user will cause all
 // future messages from the user being hidden from view. Muted users are also
-// unable to send messages. Only the channel admin can mute a user.
+// unable to send messages. Only the channel admin can mute a user; if the user
+// is not an admin of the channel, then the error [channels.NotAnAdminErr] is
+// returned.
 //
 // If undoAction is true, then the targeted user will be unmuted.
 //
 // Parameters:
-//   - args[0] - The PEM-encoded admin RSA private key for the channel
+//   - args[0] - Marshalled bytes of channel [id.ID] (Uint8Array).
+//   - args[1] - The [ed25519.PublicKey] of the user you want to mute
 //     (Uint8Array).
-//   - args[1] - Marshalled bytes of channel [id.ID] (Uint8Array).
-//   - mutedUserPubKeyBytes - The [ed25519.PublicKey] of the user you want to
-//     mute.
-//   - args[3] - Set to true to unmute the message (boolean).
-//   - args[4] - JSON of [xxdk.CMIXParams]. This may be empty, and
+//   - args[2] - Set to true to unmute the message (boolean).
+//   - args[3] - JSON of [xxdk.CMIXParams]. This may be empty, and
 //     [GetDefaultCMixParams] will be used internally (Uint8Array).
 //
 // Returns:
-//   - []byte - JSON of [ChannelSendReport].
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
 func (cm *ChannelsManager) MuteUser(_ js.Value, args []js.Value) any {
-	adminPrivateKey := utils.CopyBytesToGo(args[0])
-	channelIdBytes := utils.CopyBytesToGo(args[1])
-	mutedUserPubKeyBytes := utils.CopyBytesToGo(args[2])
-	undoAction := args[3].Bool()
-	cmixParamsJSON := utils.CopyBytesToGo(args[4])
+	channelIdBytes := utils.CopyBytesToGo(args[0])
+	mutedUserPubKeyBytes := utils.CopyBytesToGo(args[1])
+	undoAction := args[2].Bool()
+	cmixParamsJSON := utils.CopyBytesToGo(args[3])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := cm.api.MuteUser(adminPrivateKey, channelIdBytes,
-			mutedUserPubKeyBytes, undoAction, cmixParamsJSON)
+		sendReport, err := cm.api.MuteUser(
+			channelIdBytes, mutedUserPubKeyBytes, undoAction, cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -1163,6 +1156,10 @@ func (cm *ChannelsManager) MuteUser(_ js.Value, args []js.Value) any {
 
 	return utils.CreatePromise(promiseFn)
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Other Channel Actions                                                      //
+////////////////////////////////////////////////////////////////////////////////
 
 // GetIdentity returns the marshaled public identity ([channel.Identity]) that
 // the channel is using.
@@ -1499,6 +1496,28 @@ func (cm *ChannelsManager) RegisterReceiveHandler(_ js.Value, args []js.Value) a
 ////////////////////////////////////////////////////////////////////////////////
 // Event Model Logic                                                          //
 ////////////////////////////////////////////////////////////////////////////////
+
+// eventModelBuilder adheres to the [bindings.EventModelBuilder] interface.
+type eventModelBuilder struct {
+	build func(args ...any) js.Value
+}
+
+// Build initializes and returns the event model.  It wraps a Javascript object
+// that has all the methods in [bindings.EventModel] to make it adhere to the Go
+// interface [bindings.EventModel].
+func (emb *eventModelBuilder) Build(path string) bindings.EventModel {
+	emJs := emb.build(path)
+	return &eventModel{
+		joinChannel:         utils.WrapCB(emJs, "JoinChannel"),
+		leaveChannel:        utils.WrapCB(emJs, "LeaveChannel"),
+		receiveMessage:      utils.WrapCB(emJs, "ReceiveMessage"),
+		receiveReply:        utils.WrapCB(emJs, "ReceiveReply"),
+		receiveReaction:     utils.WrapCB(emJs, "ReceiveReaction"),
+		updateFromUUID:      utils.WrapCB(emJs, "UpdateFromUUID"),
+		updateFromMessageID: utils.WrapCB(emJs, "UpdateFromMessageID"),
+		getMessage:          utils.WrapCB(emJs, "GetMessage"),
+	}
+}
 
 // eventModel wraps Javascript callbacks to adhere to the [bindings.EventModel]
 // interface.
@@ -1862,8 +1881,7 @@ func (c *ChannelDbCipher) MarshalJSON(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(data)
 }
 
-// UnmarshalJSON unmarshalls JSON into the cipher. This function adheres to the
-// json.Unmarshaler interface.
+// UnmarshalJSON unmarshalls JSON into the cipher.
 //
 // Note that this function does not transfer the internal RNG. Use
 // [channel.NewCipherFromJSON] to properly reconstruct a cipher from JSON.
