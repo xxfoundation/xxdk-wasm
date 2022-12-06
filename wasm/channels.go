@@ -1357,7 +1357,7 @@ func (cm *ChannelsManager) IsChannelAdmin(_ js.Value, args []js.Value) any {
 // format. Returns an error if the user is not an admin of the channel.
 //
 // This key can be provided to other users in a channel to grant them admin
-// access using ImportChannelAdminKey.
+// access using [ChannelsManager.ImportChannelAdminKey].
 //
 // The private key is encrypted using a key generated from the password using
 // Argon2. Each call to ExportChannelAdminKey produces a different encrypted
@@ -1389,7 +1389,8 @@ func (cm *ChannelsManager) ExportChannelAdminKey(_ js.Value, args []js.Value) an
 }
 
 // VerifyChannelAdminKey verifies that the encrypted private key can be
-// decrypted and that it matches the expected channel.
+// decrypted and that it matches the expected channel. Returns false if private
+// key does not belong to the given channel.
 //
 // Parameters:
 //   - args[0] - Marshalled bytes of the channel's [id.ID] (Uint8Array).
@@ -1400,6 +1401,14 @@ func (cm *ChannelsManager) ExportChannelAdminKey(_ js.Value, args []js.Value) an
 //   - Returns false if private key does not belong to the given channel ID
 //     (boolean).
 //   - Throws a TypeError if the password is invalid.
+//
+// Returns:
+//   - bool - True if the private key belongs to the channel and false
+//     otherwise.
+//   - Throws a TypeError with the message [Channels.WrongPasswordErr] for an
+//     invalid password.
+//   - Throws a TypeError with the message [Channels.ChannelDoesNotExistsErr] i
+//     the channel has not already been joined.
 func (cm *ChannelsManager) VerifyChannelAdminKey(_ js.Value, args []js.Value) any {
 	channelID := utils.CopyBytesToGo(args[0])
 	encryptionPassword := args[1].String()
@@ -1427,6 +1436,12 @@ func (cm *ChannelsManager) VerifyChannelAdminKey(_ js.Value, args []js.Value) an
 // Returns:
 //   - Throws a TypeError if the password is invalid or the private key does
 //     not match the channel ID.
+//   - Throws a TypeError with the message [Channels.WrongPasswordErr] for an
+//     invalid password.
+//   - Throws a TypeError with the message [Channels.ChannelDoesNotExistsErr] if
+//     the channel has not already been joined.
+//   - Throws a TypeError with the message [Channels.WrongPrivateKeyErr] if the
+//     private key does not belong to the channel.
 func (cm *ChannelsManager) ImportChannelAdminKey(_ js.Value, args []js.Value) any {
 	channelID := utils.CopyBytesToGo(args[0])
 	encryptionPassword := args[1].String()
