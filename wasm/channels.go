@@ -1518,6 +1518,14 @@ func (cmrCB *channelMessageReceptionCallback) Callback(
 //   - args[1] - Javascript object that has functions that implement the
 //     [bindings.ChannelMessageReceptionCallback] interface. This callback will
 //     be executed when a channel message of the messageType is received.
+//   - args[2] - A name describing what type of messages the listener picks up.
+//     This is used for debugging and logging (string).
+//   - args[3] - Set to true if this listener can receive messages from normal
+//     users (boolean).
+//   - args[4] - Set to true if this listener can receive messages from admins
+//     (boolean).
+//   - args[5] - Set to true if this listener can receive messages from muted
+//     users (boolean).
 //
 // Returns:
 //   - Throws a TypeError if registering the handler fails.
@@ -1525,8 +1533,13 @@ func (cm *ChannelsManager) RegisterReceiveHandler(_ js.Value, args []js.Value) a
 	messageType := args[0].Int()
 	listenerCb := &channelMessageReceptionCallback{
 		utils.WrapCB(args[1], "Callback")}
+	name := args[2].String()
+	userSpace := args[3].Bool()
+	adminSpace := args[4].Bool()
+	mutedSpace := args[5].Bool()
 
-	err := cm.api.RegisterReceiveHandler(messageType, listenerCb)
+	err := cm.api.RegisterReceiveHandler(
+		messageType, listenerCb, name, userSpace, adminSpace, mutedSpace)
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
