@@ -64,6 +64,7 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]any {
 		"DeleteNickname":        js.FuncOf(cm.DeleteNickname),
 		"GetNickname":           js.FuncOf(cm.GetNickname),
 		"Muted":                 js.FuncOf(cm.Muted),
+		"GetMutedUsers":         js.FuncOf(cm.GetMutedUsers),
 		"IsChannelAdmin":        js.FuncOf(cm.IsChannelAdmin),
 		"ExportChannelAdminKey": js.FuncOf(cm.ExportChannelAdminKey),
 		"VerifyChannelAdminKey": js.FuncOf(cm.VerifyChannelAdminKey),
@@ -1300,6 +1301,32 @@ func (cm *ChannelsManager) Muted(_ js.Value, args []js.Value) any {
 	}
 
 	return muted
+}
+
+// GetMutedUsers returns the list of the public keys for each muted user in
+// the channel. If there are no muted user or if the channel does not exist,
+// an empty list is returned.
+//
+// Parameters:
+//   - args[0] - Marshalled bytes if the channel's [id.ID] (Uint8Array).
+//
+// Returns:
+//   - []byte - JSON of []ed25519.PublicKey (Uint8Array). Look below for an
+//     example.
+//   - Throws a TypeError if the channel ID cannot be unmarshalled.
+//
+// Example return:
+//
+//	["k2IrybDXjJtqxjS6Tx/6m3bXvT/4zFYOJnACNWTvESE=","ocELv7KyeCskLz4cm0klLWhmFLYvQL2FMDco79GTXYw=","mmxoDgoTEYwaRyEzq5Npa24IIs+3B5LXhll/8K5yCv0="]
+func (cm *ChannelsManager) GetMutedUsers(_ js.Value, args []js.Value) any {
+	channelIDBytes := utils.CopyBytesToGo(args[0])
+	mutedUsers, err := cm.api.GetMutedUsers(channelIDBytes)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(mutedUsers)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
