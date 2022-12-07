@@ -12,6 +12,7 @@ package wasm
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/xx_network/primitives/id"
 	"sync"
@@ -1055,8 +1056,7 @@ func (cm *ChannelsManager) SendAdminGeneric(_ js.Value, args []js.Value) any {
 //   - args[0] - Marshalled bytes of channel [id.ID] (Uint8Array).
 //   - args[1] - The marshalled [channel.MessageID] of the message you want to
 //     delete (Uint8Array).
-//   - args[2] - Set to true to un-delete the message (boolean).
-//   - args[3] - JSON of [xxdk.CMIXParams]. This may be empty, and
+//   - args[2] - JSON of [xxdk.CMIXParams]. This may be empty, and
 //     [GetDefaultCMixParams] will be used internally (Uint8Array).
 //
 // Returns:
@@ -1065,12 +1065,11 @@ func (cm *ChannelsManager) SendAdminGeneric(_ js.Value, args []js.Value) any {
 func (cm *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) any {
 	channelIdBytes := utils.CopyBytesToGo(args[0])
 	targetMessageIdBytes := utils.CopyBytesToGo(args[1])
-	undoAction := args[2].Bool()
-	cmixParamsJSON := utils.CopyBytesToGo(args[3])
+	cmixParamsJSON := utils.CopyBytesToGo(args[2])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := cm.api.DeleteMessage(
-			channelIdBytes, targetMessageIdBytes, undoAction, cmixParamsJSON)
+			channelIdBytes, targetMessageIdBytes, cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -1121,10 +1120,10 @@ func (cm *ChannelsManager) PinMessage(_ js.Value, args []js.Value) any {
 }
 
 // MuteUser is used to mute a user in a channel. Muting a user will cause all
-// future messages from the user being hidden from view. Muted users are also
-// unable to send messages. Only the channel admin can mute a user; if the user
-// is not an admin of the channel, then the error [channels.NotAnAdminErr] is
-// returned.
+// future messages from the user being dropped on reception. Muted users are
+// also unable to send messages. Only the channel admin can mute a user; if the
+// user is not an admin of the channel, then the error [channels.NotAnAdminErr]
+// is returned.
 //
 // If undoAction is true, then the targeted user will be unmuted.
 //
@@ -1571,6 +1570,7 @@ func (emb *eventModelBuilder) Build(path string) bindings.EventModel {
 		updateFromUUID:      utils.WrapCB(emJs, "UpdateFromUUID"),
 		updateFromMessageID: utils.WrapCB(emJs, "UpdateFromMessageID"),
 		getMessage:          utils.WrapCB(emJs, "GetMessage"),
+		deleteMessage:       utils.WrapCB(emJs, "DeleteMessage"),
 	}
 }
 
@@ -1585,6 +1585,7 @@ type eventModel struct {
 	updateFromUUID      func(args ...any) js.Value
 	updateFromMessageID func(args ...any) js.Value
 	getMessage          func(args ...any) js.Value
+	deleteMessage       func(args ...any) js.Value
 }
 
 // JoinChannel is called whenever a channel is joined locally.
@@ -1780,7 +1781,25 @@ func (em *eventModel) GetMessage(messageID []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return utils.CopyBytesToGo(em.getMessage(utils.CopyBytesToJS(messageID))), nil
+	if mae.Error != "" {
+		return nil, errors.New(mae.Error)
+	}
+
+	return json.Marshal(mae.ModelMessage)
+}
+
+// DeleteMessage deletes the message with the given [channel.MessageID] from
+// the database.
+//
+// Parameters:
+//  - messageID - The bytes of the [channel.MessageID] of the message.
+func (em *eventModel) DeleteMessage(messageID []byte) error {
+	err := em.deleteMessage(utils.CopyBytesToJS(messageID))
+	if !err.IsUndefined() {
+		return js.Error{Value: err}
+	}
+
+	return nil
 }
 
 // MessageAndError contains a message returned by eventModel.GetMessage or any
