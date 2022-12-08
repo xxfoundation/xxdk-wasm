@@ -33,17 +33,17 @@ import (
 // will be auto resent by the cMix client.
 //
 // Parameters:
-//  - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
-//  - args[1] - JSON of [fact.FactList] (Uint8Array).
+//   - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
+//   - args[1] - JSON of [fact.FactList] (Uint8Array).
 //
 // Returns a promise:
-//  - Resolves to the ID of the round (int).
-//  - Rejected with an error if sending the request fails.
-func (e *E2e) Request(_ js.Value, args []js.Value) interface{} {
+//   - Resolves to the ID of the round (int).
+//   - Rejected with an error if sending the request fails.
+func (e *E2e) Request(_ js.Value, args []js.Value) any {
 	partnerContact := utils.CopyBytesToGo(args[0])
 	factsListJson := utils.CopyBytesToGo(args[1])
 
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		rid, err := e.api.Request(partnerContact, factsListJson)
 		if err != nil {
 			reject(utils.JsTrace(err))
@@ -72,15 +72,15 @@ func (e *E2e) Request(_ js.Value, args []js.Value) interface{} {
 // If the confirmation must be resent, use [E2e.ReplayConfirm].
 //
 // Parameters:
-//  - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
+//   - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
 // Returns a promise:
-//  - Resolves to the ID of the round (int).
-//  - Rejected with an error if sending the confirmation fails.
-func (e *E2e) Confirm(_ js.Value, args []js.Value) interface{} {
+//   - Resolves to the ID of the round (int).
+//   - Rejected with an error if sending the confirmation fails.
+func (e *E2e) Confirm(_ js.Value, args []js.Value) any {
 	partnerContact := utils.CopyBytesToGo(args[0])
 
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		rid, err := e.api.Confirm(partnerContact)
 		if err != nil {
 			reject(utils.JsTrace(err))
@@ -107,15 +107,15 @@ func (e *E2e) Confirm(_ js.Value, args []js.Value) interface{} {
 // who is already a partner.
 //
 // Parameters:
-//  - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
+//   - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
 // Returns a promise:
-//  - Resolves to the ID of the round (int).
-//  - Rejected with an error if sending the reset fails.
-func (e *E2e) Reset(_ js.Value, args []js.Value) interface{} {
+//   - Resolves to the ID of the round (int).
+//   - Rejected with an error if sending the reset fails.
+func (e *E2e) Reset(_ js.Value, args []js.Value) any {
 	partnerContact := utils.CopyBytesToGo(args[0])
 
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		rid, err := e.api.Reset(partnerContact)
 		if err != nil {
 			reject(utils.JsTrace(err))
@@ -136,15 +136,15 @@ func (e *E2e) Reset(_ js.Value, args []js.Value) interface{} {
 // This will not be useful if either side has ratcheted.
 //
 // Parameters:
-//  - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
+//   - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
 // Returns a promise:
-//  - Resolves to the ID of the round (int).
-//  - Rejected with an error if resending the confirmation fails.
-func (e *E2e) ReplayConfirm(_ js.Value, args []js.Value) interface{} {
+//   - Resolves to the ID of the round (int).
+//   - Rejected with an error if resending the confirmation fails.
+func (e *E2e) ReplayConfirm(_ js.Value, args []js.Value) any {
 	partnerContact := utils.CopyBytesToGo(args[0])
 
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		rid, err := e.api.ReplayConfirm(partnerContact)
 		if err != nil {
 			reject(utils.JsTrace(err))
@@ -158,7 +158,7 @@ func (e *E2e) ReplayConfirm(_ js.Value, args []js.Value) interface{} {
 
 // CallAllReceivedRequests will iterate through all pending contact requests and
 // replay them on the callbacks.
-func (e *E2e) CallAllReceivedRequests(js.Value, []js.Value) interface{} {
+func (e *E2e) CallAllReceivedRequests(js.Value, []js.Value) any {
 	e.api.CallAllReceivedRequests()
 	return nil
 }
@@ -166,11 +166,11 @@ func (e *E2e) CallAllReceivedRequests(js.Value, []js.Value) interface{} {
 // DeleteRequest deletes sent or received requests for a specific partner ID.
 //
 // Parameters:
-//  - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
+//   - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
 // Returns:
-//  - Throws TypeError if the deletion fails.
-func (e *E2e) DeleteRequest(_ js.Value, args []js.Value) interface{} {
+//   - Throws TypeError if the deletion fails.
+func (e *E2e) DeleteRequest(_ js.Value, args []js.Value) any {
 	partnerContact := utils.CopyBytesToGo(args[0])
 	err := e.api.DeleteRequest(partnerContact)
 	if err != nil {
@@ -184,8 +184,8 @@ func (e *E2e) DeleteRequest(_ js.Value, args []js.Value) interface{} {
 // DeleteAllRequests clears all requests from auth storage.
 //
 // Returns:
-//  - Throws TypeError if the deletion fails.
-func (e *E2e) DeleteAllRequests(js.Value, []js.Value) interface{} {
+//   - Throws TypeError if the deletion fails.
+func (e *E2e) DeleteAllRequests(js.Value, []js.Value) any {
 	err := e.api.DeleteAllRequests()
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -198,8 +198,8 @@ func (e *E2e) DeleteAllRequests(js.Value, []js.Value) interface{} {
 // DeleteSentRequests clears all sent requests from auth storage.
 //
 // Returns:
-//  - Throws TypeError if the deletion fails.
-func (e *E2e) DeleteSentRequests(js.Value, []js.Value) interface{} {
+//   - Throws TypeError if the deletion fails.
+func (e *E2e) DeleteSentRequests(js.Value, []js.Value) any {
 	err := e.api.DeleteSentRequests()
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -212,8 +212,8 @@ func (e *E2e) DeleteSentRequests(js.Value, []js.Value) interface{} {
 // DeleteReceiveRequests clears all received requests from auth storage.
 //
 // Returns:
-//  - Throws TypeError if the deletion fails.
-func (e *E2e) DeleteReceiveRequests(js.Value, []js.Value) interface{} {
+//   - Throws TypeError if the deletion fails.
+func (e *E2e) DeleteReceiveRequests(js.Value, []js.Value) any {
 	err := e.api.DeleteReceiveRequests()
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -226,12 +226,12 @@ func (e *E2e) DeleteReceiveRequests(js.Value, []js.Value) interface{} {
 // GetReceivedRequest returns a contact if there is a received request for it.
 //
 // Parameters:
-//  - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
+//   - args[0] - Marshalled bytes of the partner [contact.Contact] (Uint8Array).
 //
 // Returns:
-//  - Marshalled bytes of [contact.Contact] (Uint8Array).
-//  - Throws TypeError if getting the received request fails.
-func (e *E2e) GetReceivedRequest(_ js.Value, args []js.Value) interface{} {
+//   - Marshalled bytes of [contact.Contact] (Uint8Array).
+//   - Throws TypeError if getting the received request fails.
+func (e *E2e) GetReceivedRequest(_ js.Value, args []js.Value) any {
 	partnerContact := utils.CopyBytesToGo(args[0])
 	c, err := e.api.GetReceivedRequest(partnerContact)
 	if err != nil {
@@ -245,14 +245,16 @@ func (e *E2e) GetReceivedRequest(_ js.Value, args []js.Value) interface{} {
 // VerifyOwnership checks if the received ownership proof is valid.
 //
 // Parameters:
-//  - args[0] - Marshalled bytes of the received [contact.Contact] (Uint8Array).
-//  - args[1] - Marshalled bytes of the verified [contact.Contact] (Uint8Array).
-//  - args[2] - ID of [E2e] object in tracker (int).
+//   - args[0] - Marshalled bytes of the received [contact.Contact]
+//     (Uint8Array).
+//   - args[1] - Marshalled bytes of the verified [contact.Contact]
+//     (Uint8Array).
+//   - args[2] - ID of [E2e] object in tracker (int).
 //
 // Returns:
-//  - Returns true if the ownership is valid (boolean).
-//  - Throws TypeError if loading the parameters fails.
-func (e *E2e) VerifyOwnership(_ js.Value, args []js.Value) interface{} {
+//   - Returns true if the ownership is valid (boolean).
+//   - Throws TypeError if loading the parameters fails.
+func (e *E2e) VerifyOwnership(_ js.Value, args []js.Value) any {
 	receivedContact := utils.CopyBytesToGo(args[0])
 	verifiedContact := utils.CopyBytesToGo(args[1])
 	isValid, err := e.api.VerifyOwnership(
@@ -269,13 +271,13 @@ func (e *E2e) VerifyOwnership(_ js.Value, args []js.Value) interface{} {
 // callback for the given partner ID.
 //
 // Parameters:
-//  - args[0] - Marshalled bytes of the partner [id.ID] (Uint8Array).
-//  - args[1] - Javascript object that has functions that implement the
-//    [bindings.AuthCallbacks] interface.
+//   - args[0] - Marshalled bytes of the partner [id.ID] (Uint8Array).
+//   - args[1] - Javascript object that has functions that implement the
+//     [bindings.AuthCallbacks] interface.
 //
 // Returns:
-//  - Throws TypeError if the [id.ID] cannot be unmarshalled.
-func (e *E2e) AddPartnerCallback(_ js.Value, args []js.Value) interface{} {
+//   - Throws TypeError if the [id.ID] cannot be unmarshalled.
+func (e *E2e) AddPartnerCallback(_ js.Value, args []js.Value) any {
 	partnerID := utils.CopyBytesToGo(args[0])
 	callbacks := newAuthCallbacks(args[1])
 	err := e.api.AddPartnerCallback(partnerID, callbacks)
@@ -291,11 +293,11 @@ func (e *E2e) AddPartnerCallback(_ js.Value, args []js.Value) interface{} {
 // auth callback for the given partner ID.
 //
 // Parameters:
-//  - args[0] - Marshalled bytes of the partner [id.ID] (Uint8Array).
+//   - args[0] - Marshalled bytes of the partner [id.ID] (Uint8Array).
 //
 // Returns:
-//  - Throws TypeError if the [id.ID] cannot be unmarshalled.
-func (e *E2e) DeletePartnerCallback(_ js.Value, args []js.Value) interface{} {
+//   - Throws TypeError if the [id.ID] cannot be unmarshalled.
+func (e *E2e) DeletePartnerCallback(_ js.Value, args []js.Value) any {
 	partnerID := utils.CopyBytesToGo(args[0])
 	err := e.api.DeletePartnerCallback(partnerID)
 	if err != nil {

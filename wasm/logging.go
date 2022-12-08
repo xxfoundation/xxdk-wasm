@@ -30,6 +30,7 @@ var logListeners []jww.LogListener
 // messages will be printed).
 //
 // Log level options:
+//
 //	TRACE    - 0
 //	DEBUG    - 1
 //	INFO     - 2
@@ -41,11 +42,11 @@ var logListeners []jww.LogListener
 // The default log level without updates is INFO.
 //
 // Parameters:
-//  - args[0] - Log level (int).
+//   - args[0] - Log level (int).
 //
 // Returns:
-//  - Throws TypeError if the log level is invalid.
-func LogLevel(_ js.Value, args []js.Value) interface{} {
+//   - Throws TypeError if the log level is invalid.
+func LogLevel(_ js.Value, args []js.Value) any {
 	threshold := jww.Threshold(args[0].Int())
 	if threshold < jww.LevelTrace || threshold > jww.LevelFatal {
 		err := errors.Errorf("log level is not valid: log level: %d", threshold)
@@ -85,14 +86,14 @@ func LogLevel(_ js.Value, args []js.Value) interface{} {
 // LogToFile enables logging to a file that can be downloaded.
 //
 // Parameters:
-//  - args[0] - Log level (int).
-//  - args[1] - Log file name (string).
-//  - args[2] - Max log file size, in bytes (int).
+//   - args[0] - Log level (int).
+//   - args[1] - Log file name (string).
+//   - args[2] - Max log file size, in bytes (int).
 //
 // Returns:
-//  - A Javascript representation of the [LogFile] object, which allows
-//    accessing the contents of the log file and other metadata.
-func LogToFile(_ js.Value, args []js.Value) interface{} {
+//   - A Javascript representation of the [LogFile] object, which allows
+//     accessing the contents of the log file and other metadata.
+func LogToFile(_ js.Value, args []js.Value) any {
 	threshold := jww.Threshold(args[0].Int())
 	if threshold < jww.LevelTrace || threshold > jww.LevelFatal {
 		err := errors.Errorf("log level is not valid: log level: %d", threshold)
@@ -135,21 +136,21 @@ func LogToFile(_ js.Value, args []js.Value) interface{} {
 // logWriter wraps Javascript callbacks to adhere to the [bindings.LogWriter]
 // interface.
 type logWriter struct {
-	log func(args ...interface{}) js.Value
+	log func(args ...any) js.Value
 }
 
 // Log returns a log message to pass to the log writer.
 //
 // Parameters:
-//  - s - Log message (string).
+//   - s - Log message (string).
 func (lw *logWriter) Log(s string) { lw.log(s) }
 
 // RegisterLogWriter registers a callback on which logs are written.
 //
 // Parameters:
-//  - args[0] - a function that accepts a string and writes to a log. It must be
-//    of the form func(string).
-func RegisterLogWriter(_ js.Value, args []js.Value) interface{} {
+//   - args[0] - a function that accepts a string and writes to a log. It must
+//     be of the form func(string).
+func RegisterLogWriter(_ js.Value, args []js.Value) any {
 	bindings.RegisterLogWriter(&logWriter{args[0].Invoke})
 	return nil
 }
@@ -157,9 +158,9 @@ func RegisterLogWriter(_ js.Value, args []js.Value) interface{} {
 // EnableGrpcLogs sets GRPC trace logging.
 //
 // Parameters:
-//  - args[0] - a function that accepts a string and writes to a log. It must be
-//    of the form func(string).
-func EnableGrpcLogs(_ js.Value, args []js.Value) interface{} {
+//   - args[0] - a function that accepts a string and writes to a log. It must
+//     be of the form func(string).
+func EnableGrpcLogs(_ js.Value, args []js.Value) any {
 	bindings.EnableGrpcLogs(&logWriter{args[0].Invoke})
 	return nil
 }
@@ -271,10 +272,10 @@ func NewLogFile(
 	}, nil
 }
 
-// newLogFileJS creates a new Javascript compatible object
-// (map[string]interface{}) that matches the [LogFile] structure.
-func newLogFileJS(lf *LogFile) map[string]interface{} {
-	logFile := map[string]interface{}{
+// newLogFileJS creates a new Javascript compatible object (map[string]any) that
+// matches the [LogFile] structure.
+func newLogFileJS(lf *LogFile) map[string]any {
+	logFile := map[string]any{
 		"Name":      js.FuncOf(lf.Name),
 		"Threshold": js.FuncOf(lf.Threshold),
 		"GetFile":   js.FuncOf(lf.GetFile),
@@ -298,39 +299,39 @@ func (lf *LogFile) Listen(t jww.Threshold) io.Writer {
 // Name returns the name of the log file.
 //
 // Returns:
-//  - File name (string).
-func (lf *LogFile) Name(js.Value, []js.Value) interface{} {
+//   - File name (string).
+func (lf *LogFile) Name(js.Value, []js.Value) any {
 	return lf.name
 }
 
 // Threshold returns the log level threshold used in the file.
 //
 // Returns:
-//  - Log level (string).
-func (lf *LogFile) Threshold(js.Value, []js.Value) interface{} {
+//   - Log level (string).
+func (lf *LogFile) Threshold(js.Value, []js.Value) any {
 	return lf.threshold.String()
 }
 
 // GetFile returns the entire log file.
 //
 // Returns:
-//  - Log file contents (string).
-func (lf *LogFile) GetFile(js.Value, []js.Value) interface{} {
+//   - Log file contents (string).
+func (lf *LogFile) GetFile(js.Value, []js.Value) any {
 	return string(lf.b.Bytes())
 }
 
 // MaxSize returns the max size, in bytes, that the log file is allowed to be.
 //
 // Returns:
-//  - Max file size (int).
-func (lf *LogFile) MaxSize(js.Value, []js.Value) interface{} {
+//   - Max file size (int).
+func (lf *LogFile) MaxSize(js.Value, []js.Value) any {
 	return lf.b.Size()
 }
 
 // Size returns the current size, in bytes, written to the log file.
 //
 // Returns:
-//  - Current file size (int).
-func (lf *LogFile) Size(js.Value, []js.Value) interface{} {
+//   - Current file size (int).
+func (lf *LogFile) Size(js.Value, []js.Value) any {
 	return lf.b.TotalWritten()
 }

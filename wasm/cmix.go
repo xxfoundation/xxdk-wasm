@@ -21,11 +21,11 @@ type Cmix struct {
 	api *bindings.Cmix
 }
 
-// newCmixJS creates a new Javascript compatible object (map[string]interface{})
-// that matches the [Cmix] structure.
-func newCmixJS(api *bindings.Cmix) map[string]interface{} {
+// newCmixJS creates a new Javascript compatible object (map[string]any) that
+// matches the [Cmix] structure.
+func newCmixJS(api *bindings.Cmix) map[string]any {
 	c := Cmix{api}
-	cmix := map[string]interface{}{
+	cmix := map[string]any{
 		// cmix.go
 		"GetID": js.FuncOf(c.GetID),
 
@@ -53,6 +53,7 @@ func newCmixJS(api *bindings.Cmix) map[string]interface{} {
 		"AddHealthCallback":               js.FuncOf(c.AddHealthCallback),
 		"RemoveHealthCallback":            js.FuncOf(c.RemoveHealthCallback),
 		"RegisterClientErrorCallback":     js.FuncOf(c.RegisterClientErrorCallback),
+		"TrackServicesWithIdentity":       js.FuncOf(c.TrackServicesWithIdentity),
 		"TrackServices":                   js.FuncOf(c.TrackServices),
 
 		// connect.go
@@ -76,14 +77,14 @@ func newCmixJS(api *bindings.Cmix) map[string]interface{} {
 // Users of this function should delete the storage directory on error.
 //
 // Parameters:
-//  - args[0] - NDF JSON ([ndf.NetworkDefinition]) (string).
-//  - args[1] - Storage directory path (string).
-//  - args[2] - Password used for storage (Uint8Array).
-//  - args[3] - Registration code (string).
+//   - args[0] - NDF JSON ([ndf.NetworkDefinition]) (string).
+//   - args[1] - Storage directory path (string).
+//   - args[2] - Password used for storage (Uint8Array).
+//   - args[3] - Registration code (string).
 //
 // Returns:
-//  - Throws a TypeError if creating new [Cmix] fails.
-func NewCmix(_ js.Value, args []js.Value) interface{} {
+//   - Throws a TypeError if creating new [Cmix] fails.
+func NewCmix(_ js.Value, args []js.Value) any {
 	password := utils.CopyBytesToGo(args[2])
 
 	err := bindings.NewCmix(
@@ -107,19 +108,19 @@ func NewCmix(_ js.Value, args []js.Value) interface{} {
 // subprocesses to perform network operations.
 //
 // Parameters:
-//  - args[0] - Storage directory path (string).
-//  - args[1] - Password used for storage (Uint8Array).
-//  - args[2] - JSON of [xxdk.CMIXParams] (Uint8Array).
+//   - args[0] - Storage directory path (string).
+//   - args[1] - Password used for storage (Uint8Array).
+//   - args[2] - JSON of [xxdk.CMIXParams] (Uint8Array).
 //
 // Returns a promise:
-//  - Resolves to a Javascript representation of the [Cmix] object.
-//  - Rejected with an error if loading [Cmix] fails.
-func LoadCmix(_ js.Value, args []js.Value) interface{} {
+//   - Resolves to a Javascript representation of the [Cmix] object.
+//   - Rejected with an error if loading [Cmix] fails.
+func LoadCmix(_ js.Value, args []js.Value) any {
 	storageDir := args[0].String()
 	password := utils.CopyBytesToGo(args[1])
 	cmixParamsJSON := utils.CopyBytesToGo(args[2])
 
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		net, err := bindings.LoadCmix(storageDir, password, cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
@@ -134,7 +135,7 @@ func LoadCmix(_ js.Value, args []js.Value) interface{} {
 // GetID returns the ID for this [bindings.Cmix] in the cmixTracker.
 //
 // Returns:
-//  - Tracker ID (int).
-func (c *Cmix) GetID(js.Value, []js.Value) interface{} {
+//   - Tracker ID (int).
+func (c *Cmix) GetID(js.Value, []js.Value) any {
 	return c.api.GetID()
 }

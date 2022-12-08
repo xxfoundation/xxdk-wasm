@@ -26,13 +26,13 @@ import (
 // than the keying material.
 //
 // Parameters:
-//  - args[0] - Storage key (string).
-//  - args[1] - JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
-//  - args[2] - ID of [Cmix] object in tracker (int).
+//   - args[0] - Storage key (string).
+//   - args[1] - JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
+//   - args[2] - ID of [Cmix] object in tracker (int).
 //
 // Returns:
-//  - Throws a TypeError if the identity cannot be stored in storage.
-func StoreReceptionIdentity(_ js.Value, args []js.Value) interface{} {
+//   - Throws a TypeError if the identity cannot be stored in storage.
+func StoreReceptionIdentity(_ js.Value, args []js.Value) any {
 	identity := utils.CopyBytesToGo(args[1])
 	err := bindings.StoreReceptionIdentity(
 		args[0].String(), identity, args[2].Int())
@@ -49,13 +49,13 @@ func StoreReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 // given key.
 //
 // Parameters:
-//  - args[0] - Storage key (string).
-//  - args[1] - ID of [Cmix] object in tracker (int).
+//   - args[0] - Storage key (string).
+//   - args[1] - ID of [Cmix] object in tracker (int).
 //
 // Returns:
-//  - JSON of the stored [xxdk.ReceptionIdentity] object (Uint8Array).
-//  - Throws a TypeError if the identity cannot be retrieved from storage.
-func LoadReceptionIdentity(_ js.Value, args []js.Value) interface{} {
+//   - JSON of the stored [xxdk.ReceptionIdentity] object (Uint8Array).
+//   - Throws a TypeError if the identity cannot be retrieved from storage.
+func LoadReceptionIdentity(_ js.Value, args []js.Value) any {
 	ri, err := bindings.LoadReceptionIdentity(args[0].String(), args[1].Int())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -69,10 +69,10 @@ func LoadReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 // messages.
 //
 // Returns a promise:
-//  - Resolves to the JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
-//  - Rejected with an error if creating a new identity fails.
-func (c *Cmix) MakeReceptionIdentity(js.Value, []js.Value) interface{} {
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+//   - Resolves to the JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
+//   - Rejected with an error if creating a new identity fails.
+func (c *Cmix) MakeReceptionIdentity(js.Value, []js.Value) any {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		ri, err := c.api.MakeReceptionIdentity()
 		if err != nil {
 			reject(utils.JsTrace(err))
@@ -88,10 +88,10 @@ func (c *Cmix) MakeReceptionIdentity(js.Value, []js.Value) interface{} {
 // messages.
 //
 // Returns a promise:
-//  - Resolves to the JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
-//  - Rejected with an error if creating a new legacy identity fails.
-func (c *Cmix) MakeLegacyReceptionIdentity(js.Value, []js.Value) interface{} {
-	promiseFn := func(resolve, reject func(args ...interface{}) js.Value) {
+//   - Resolves to the JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
+//   - Rejected with an error if creating a new legacy identity fails.
+func (c *Cmix) MakeLegacyReceptionIdentity(js.Value, []js.Value) any {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		ri, err := c.api.MakeLegacyReceptionIdentity()
 		if err != nil {
 			reject(utils.JsTrace(err))
@@ -107,9 +107,9 @@ func (c *Cmix) MakeLegacyReceptionIdentity(js.Value, []js.Value) interface{} {
 // the xx network.
 //
 // Returns:
-//  - Reception registration validation signature (Uint8Array).
+//   - Reception registration validation signature (Uint8Array).
 func (c *Cmix) GetReceptionRegistrationValidationSignature(
-	js.Value, []js.Value) interface{} {
+	js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(
 		c.api.GetReceptionRegistrationValidationSignature())
 }
@@ -122,12 +122,12 @@ func (c *Cmix) GetReceptionRegistrationValidationSignature(
 // [xxdk.ReceptionIdentity].
 //
 // Parameters:
-//  - args[0] - JSON of [xxdk.ReceptionIdentity] (Uint8Array).
+//   - args[0] - JSON of [xxdk.ReceptionIdentity] (Uint8Array).
 //
 // Returns:
-//  - Marshalled bytes of [contact.Contact] (string).
-//  - Throws a TypeError if unmarshalling the identity fails.
-func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) interface{} {
+//   - Marshalled bytes of [contact.Contact] (string).
+//   - Throws a TypeError if unmarshalling the identity fails.
+func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) any {
 	// Note that this function does not appear in normal bindings
 	identityJSON := utils.CopyBytesToGo(args[0])
 	identity, err := xxdk.UnmarshalReceptionIdentity(identityJSON)
@@ -142,12 +142,12 @@ func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) interface{} {
 // GetIDFromContact returns the ID in the [contact.Contact] object.
 //
 // Parameters:
-//  - args[0] - Marshalled bytes of [contact.Contact] (Uint8Array).
+//   - args[0] - Marshalled bytes of [contact.Contact] (Uint8Array).
 //
 // Returns:
-//  - Marshalled bytes of [id.ID] (Uint8Array).
-//  - Throws a TypeError if loading the ID from the contact file fails.
-func GetIDFromContact(_ js.Value, args []js.Value) interface{} {
+//   - Marshalled bytes of [id.ID] (Uint8Array).
+//   - Throws a TypeError if loading the ID from the contact file fails.
+func GetIDFromContact(_ js.Value, args []js.Value) any {
 	cID, err := bindings.GetIDFromContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -161,12 +161,12 @@ func GetIDFromContact(_ js.Value, args []js.Value) interface{} {
 // object.
 //
 // Parameters:
-//  - args[0] - Marshalled [contact.Contact] (string).
+//   - args[0] - Marshalled [contact.Contact] (string).
 //
 // Returns:
-//  - Bytes of the [cyclic.Int] object (Uint8Array).
-//  - Throws a TypeError if loading the public key from the contact file fails.
-func GetPubkeyFromContact(_ js.Value, args []js.Value) interface{} {
+//   - Bytes of the [cyclic.Int] object (Uint8Array).
+//   - Throws a TypeError if loading the public key from the contact file fails.
+func GetPubkeyFromContact(_ js.Value, args []js.Value) any {
 	key, err := bindings.GetPubkeyFromContact([]byte(args[0].String()))
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -184,13 +184,13 @@ func GetPubkeyFromContact(_ js.Value, args []js.Value) interface{} {
 // pass in empty facts in order to clear the facts.
 //
 // Parameters:
-//  - args[0] - Marshalled bytes of [contact.Contact] (Uint8Array).
-//  - args[1] - JSON of [fact.FactList] (Uint8Array).
+//   - args[0] - Marshalled bytes of [contact.Contact] (Uint8Array).
+//   - args[1] - JSON of [fact.FactList] (Uint8Array).
 //
 // Returns:
-//  - Marshalled bytes of the modified [contact.Contact] (string).
-//  - Throws a TypeError if loading or modifying the contact fails.
-func SetFactsOnContact(_ js.Value, args []js.Value) interface{} {
+//   - Marshalled bytes of the modified [contact.Contact] (string).
+//   - Throws a TypeError if loading or modifying the contact fails.
+func SetFactsOnContact(_ js.Value, args []js.Value) any {
 	marshaledContact := utils.CopyBytesToGo(args[0])
 	factListJSON := utils.CopyBytesToGo(args[1])
 	c, err := bindings.SetFactsOnContact(marshaledContact, factListJSON)
@@ -205,12 +205,12 @@ func SetFactsOnContact(_ js.Value, args []js.Value) interface{} {
 // GetFactsFromContact returns the fact list in the [contact.Contact] object.
 //
 // Parameters:
-//  - args[0] - Marshalled bytes of [contact.Contact] (Uint8Array).
+//   - args[0] - Marshalled bytes of [contact.Contact] (Uint8Array).
 //
 // Returns:
-//  - JSON of [fact.FactList] (Uint8Array).
-//  - Throws a TypeError if loading the contact fails.
-func GetFactsFromContact(_ js.Value, args []js.Value) interface{} {
+//   - JSON of [fact.FactList] (Uint8Array).
+//   - Throws a TypeError if loading the contact fails.
+func GetFactsFromContact(_ js.Value, args []js.Value) any {
 	fl, err := bindings.GetFactsFromContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
 		utils.Throw(utils.TypeError, err)

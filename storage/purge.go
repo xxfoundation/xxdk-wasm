@@ -42,15 +42,15 @@ func DecrementNumClientsRunning() {
 // password is required.
 //
 // Parameters:
-//   - args[0] - Storage directory path (string). This is the same directory path
-//     passed into [wasm.NewCmix].
+//   - args[0] - Storage directory path (string). This is the same directory
+//     path passed into [wasm.NewCmix].
 //   - args[1] - The user-supplied password (string). This is the same password
 //     passed into [wasm.NewCmix].
 //
 // Returns:
 //   - Throws a TypeError if the password is incorrect or if not all cMix
 //     followers have been stopped.
-func Purge(_ js.Value, args []js.Value) interface{} {
+func Purge(_ js.Value, args []js.Value) any {
 	storageDirectory := args[0].String()
 	userPassword := args[1].String()
 
