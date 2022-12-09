@@ -498,6 +498,9 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 		return 0, errors.Errorf("Upserting Message failed: %+v", err)
 	}
 	res, err := addReq.Result()
+	if err != nil {
+		return 0, errors.Errorf("Getting result from request failed: %+v", err)
+	}
 
 	// NOTE: Sometimes the insert fails to return an error but hits a duplicate
 	//  insert, so this fallthrough returns the UUID entry in that case.
