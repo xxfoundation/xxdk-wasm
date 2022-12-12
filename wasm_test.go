@@ -48,6 +48,11 @@ func TestPublicFunctions(t *testing.T) {
 		// client versions
 		"GetGitVersion":   {},
 		"GetDependencies": {},
+
+		// DM Functions -- temporarily not implemented
+		"NewDMReceiver":               {},
+		"NewDMClient":                 {},
+		"NewDMClientWithGoEventModel": {},
 	}
 	wasmFuncs := getPublicFunctions("wasm", t)
 	bindingsFuncs := getPublicFunctions(
