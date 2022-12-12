@@ -7,13 +7,13 @@
 
 //go:build js && wasm
 
-package indexedDb
+package channels
 
 import (
-	"context"
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"sync"
 	"syscall/js"
 	"time"
@@ -30,10 +30,6 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 )
 
-// dbTimeout is the global timeout for operations with the storage
-// [context.Context].
-const dbTimeout = time.Second
-
 // wasmModel implements [channels.EventModel] interface, which uses the channels
 // system passed an object that adheres to in order to get events on the
 // channel.
@@ -42,11 +38,6 @@ type wasmModel struct {
 	cipher            cryptoChannel.Cipher
 	receivedMessageCB MessageReceivedCallback
 	updateMux         sync.Mutex
-}
-
-// newContext builds a context for database operations.
-func newContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), dbTimeout)
 }
 
 // JoinChannel is called whenever a channel is joined locally.
@@ -74,38 +65,11 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 		return
 	}
 
-	// Prepare the Transaction
-	txn, err := w.db.Transaction(idb.TransactionReadWrite, channelsStoreName)
+	_, err = indexedDb.Put(w.db, channelsStoreName, channelObj)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to create Transaction: %+v", err))
-		return
+			"Unable to put Channel: %+v", err))
 	}
-	store, err := txn.ObjectStore(channelsStoreName)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to get ObjectStore: %+v", err))
-		return
-	}
-
-	// Perform the operation
-	_, err = store.Put(channelObj)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to Add Channel: %+v", err))
-		return
-	}
-
-	// Wait for the operation to return
-	ctx, cancel := newContext()
-	err = txn.Await(ctx)
-	cancel()
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Adding Channel failed: %+v", err))
-		return
-	}
-	jww.DEBUG.Printf("Successfully added channel: %s", channel.ReceptionID)
 }
 
 // LeaveChannel is called whenever a channel is left locally.
@@ -135,7 +99,7 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 	}
 
 	// Wait for the operation to return
-	ctx, cancel := newContext()
+	ctx, cancel := indexedDb.NewContext()
 	err = txn.Await(ctx)
 	cancel()
 	if err != nil {
@@ -183,7 +147,7 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 	if err != nil {
 		return errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
 	}
-	ctx, cancel := newContext()
+	ctx, cancel := indexedDb.NewContext()
 	err = cursorRequest.Iter(ctx,
 		func(cursor *idb.CursorWithValue) error {
 			_, err := cursor.Delete()
@@ -203,7 +167,7 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 // user of the API to filter such called by message ID.
 func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	messageID cryptoChannel.MessageID, nickname, text string,
-	pubKey ed25519.PublicKey, dmToken []byte, codeset uint8,
+	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
 	textBytes := []byte(text)
@@ -239,7 +203,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 // the initial message. As a result, it may be important to buffer replies.
 func (w *wasmModel) ReceiveReply(channelID *id.ID,
 	messageID cryptoChannel.MessageID, replyTo cryptoChannel.MessageID,
-	nickname, text string, pubKey ed25519.PublicKey, dmToken []byte, codeset uint8,
+	nickname, text string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
 	textBytes := []byte(text)
@@ -275,7 +239,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 // the initial message. As a result, it may be important to buffer reactions.
 func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 	messageID cryptoChannel.MessageID, reactionTo cryptoChannel.MessageID,
-	nickname, reaction string, pubKey ed25519.PublicKey, dmToken []byte, codeset uint8,
+	nickname, reaction string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
 	textBytes := []byte(reaction)
@@ -322,7 +286,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64,
 	key := js.ValueOf(uuid)
 
 	// Use the key to get the existing Message
-	currentMsg, err := w.get(messageStoreName, key)
+	currentMsg, err := indexedDb.Get(w.db, messageStoreName, key)
 	if err != nil {
 		return
 	}
@@ -363,7 +327,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64,
 // autoincrement key by default. If you are trying to overwrite an existing
 // message, then you need to set it manually yourself.
 func buildMessage(channelID, messageID, parentID []byte, nickname string,
-	text []byte, pubKey ed25519.PublicKey, dmToken []byte, codeset uint8, timestamp time.Time,
+	text []byte, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
 	lease time.Duration, round id.Round, mType channels.MessageType,
 	status channels.SentStatus) *Message {
 	return &Message{
@@ -405,31 +369,15 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 		messageObj.Delete("id")
 	}
 
-	// Prepare the Transaction
-	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
+	// Store message to database
+	addReq, err := indexedDb.Put(w.db, messageStoreName, messageObj)
 	if err != nil {
-		return 0, errors.Errorf("Unable to create Transaction: %+v",
-			err)
-	}
-	store, err := txn.ObjectStore(messageStoreName)
-	if err != nil {
-		return 0, errors.Errorf("Unable to get ObjectStore: %+v", err)
-	}
-
-	// Perform the upsert (put) operation
-	addReq, err := store.Put(messageObj)
-	if err != nil {
-		return 0, errors.Errorf("Unable to upsert Message: %+v", err)
-	}
-
-	// Wait for the operation to return
-	ctx, cancel := newContext()
-	err = txn.Await(ctx)
-	cancel()
-	if err != nil {
-		return 0, errors.Errorf("Upserting Message failed: %+v", err)
+		return 0, errors.Errorf("Unable to put Message: %+v", err)
 	}
 	res, err := addReq.Result()
+	if err != nil {
+		return 0, errors.Errorf("Unable to get Message result: %+v", err)
+	}
 
 	// NOTE: Sometimes the insert fails to return an error but hits a duplicate
 	//  insert, so this fallthrough returns the UUID entry in that case.
@@ -448,135 +396,19 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 	return uuid, nil
 }
 
-// get is a generic private helper for getting values from the given
-// [idb.ObjectStore].
-func (w *wasmModel) get(objectStoreName string, key js.Value) (string, error) {
-	parentErr := errors.Errorf("failed to get %s/%s", objectStoreName, key)
-
-	// Prepare the Transaction
-	txn, err := w.db.Transaction(idb.TransactionReadOnly, objectStoreName)
-	if err != nil {
-		return "", errors.WithMessagef(parentErr,
-			"Unable to create Transaction: %+v", err)
-	}
-	store, err := txn.ObjectStore(objectStoreName)
-	if err != nil {
-		return "", errors.WithMessagef(parentErr,
-			"Unable to get ObjectStore: %+v", err)
-	}
-
-	// Perform the operation
-	getRequest, err := store.Get(key)
-	if err != nil {
-		return "", errors.WithMessagef(parentErr,
-			"Unable to Get from ObjectStore: %+v", err)
-	}
-
-	// Wait for the operation to return
-	ctx, cancel := newContext()
-	resultObj, err := getRequest.Await(ctx)
-	cancel()
-	if err != nil {
-		return "", errors.WithMessagef(parentErr,
-			"Unable to get from ObjectStore: %+v", err)
-	}
-
-	// Process result into string
-	resultStr := utils.JsToJson(resultObj)
-	jww.DEBUG.Printf("Got from %s/%s: %s", objectStoreName, key, resultStr)
-	return resultStr, nil
-}
-
+// msgIDLookup gets the UUID of the Message with the given messageID.
 func (w *wasmModel) msgIDLookup(messageID cryptoChannel.MessageID) (uint64,
 	error) {
-	parentErr := errors.Errorf("failed to get %s/%s", messageStoreName,
-		messageID)
-
-	// Prepare the Transaction
-	txn, err := w.db.Transaction(idb.TransactionReadOnly, messageStoreName)
+	msgIDStr := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
+	resultObj, err := indexedDb.GetIndex(w.db, messageStoreName,
+		messageStoreMessageIndex, msgIDStr)
 	if err != nil {
-		return 0, errors.WithMessagef(parentErr,
-			"Unable to create Transaction: %+v", err)
+		return 0, err
 	}
-	store, err := txn.ObjectStore(messageStoreName)
-	if err != nil {
-		return 0, errors.WithMessagef(parentErr,
-			"Unable to get ObjectStore: %+v", err)
-	}
-	idx, err := store.Index(messageStoreMessageIndex)
-	if err != nil {
-		return 0, errors.WithMessagef(parentErr,
-			"Unable to get index: %+v", err)
-	}
-
-	msgIDStr := base64.StdEncoding.EncodeToString(messageID.Bytes())
-
-	keyReq, err := idx.Get(js.ValueOf(msgIDStr))
-	if err != nil {
-		return 0, errors.WithMessagef(parentErr,
-			"Unable to get keyReq: %+v", err)
-	}
-	// Wait for the operation to return
-	ctx, cancel := newContext()
-	keyObj, err := keyReq.Await(ctx)
-	cancel()
-	if err != nil {
-		return 0, errors.WithMessagef(parentErr,
-			"Unable to get from ObjectStore: %+v", err)
-	}
-
-	// Process result into string
-	resultStr := utils.JsToJson(keyObj)
-	jww.DEBUG.Printf("Index lookup of %s/%s/%s: %s", messageStoreName,
-		messageStoreMessageIndex, msgIDStr, resultStr)
 
 	uuid := uint64(0)
-	if !keyObj.IsUndefined() {
-		uuid = uint64(keyObj.Get("id").Int())
+	if !resultObj.IsUndefined() {
+		uuid = uint64(resultObj.Get("id").Int())
 	}
 	return uuid, nil
-}
-
-// dump returns the given [idb.ObjectStore] contents to string slice for
-// debugging purposes.
-func (w *wasmModel) dump(objectStoreName string) ([]string, error) {
-	parentErr := errors.Errorf("failed to dump %s", objectStoreName)
-
-	txn, err := w.db.Transaction(idb.TransactionReadOnly, objectStoreName)
-	if err != nil {
-		return nil, errors.WithMessagef(parentErr,
-			"Unable to create Transaction: %+v", err)
-	}
-	store, err := txn.ObjectStore(objectStoreName)
-	if err != nil {
-		return nil, errors.WithMessagef(parentErr,
-			"Unable to get ObjectStore: %+v", err)
-	}
-	cursorRequest, err := store.OpenCursor(idb.CursorNext)
-	if err != nil {
-		return nil, errors.WithMessagef(parentErr,
-			"Unable to open Cursor: %+v", err)
-	}
-
-	// Run the query
-	jww.DEBUG.Printf("%s values:", objectStoreName)
-	results := make([]string, 0)
-	ctx, cancel := newContext()
-	err = cursorRequest.Iter(ctx,
-		func(cursor *idb.CursorWithValue) error {
-			value, err := cursor.Value()
-			if err != nil {
-				return err
-			}
-			valueStr := utils.JsToJson(value)
-			results = append(results, valueStr)
-			jww.DEBUG.Printf("- %v", valueStr)
-			return nil
-		})
-	cancel()
-	if err != nil {
-		return nil, errors.WithMessagef(parentErr,
-			"Unable to dump ObjectStore: %+v", err)
-	}
-	return results, nil
 }
