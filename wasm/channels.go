@@ -1059,7 +1059,7 @@ func (cm *ChannelsManager) SendAdminGeneric(_ js.Value, args []js.Value) any {
 //   - args[3] - JSON of [xxdk.CMIXParams]. This may be empty, and
 //     [GetDefaultCMixParams] will be used internally (Uint8Array).
 //
-// Returns:
+// Returns a promise:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
 func (cm *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) any {
@@ -1098,7 +1098,7 @@ func (cm *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) any {
 //   - args[3] - JSON of [xxdk.CMIXParams]. This may be empty, and
 //     [GetDefaultCMixParams] will be used internally (Uint8Array).
 //
-// Returns:
+// Returns a promise:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
 func (cm *ChannelsManager) PinMessage(_ js.Value, args []js.Value) any {
@@ -1136,7 +1136,7 @@ func (cm *ChannelsManager) PinMessage(_ js.Value, args []js.Value) any {
 //   - args[3] - JSON of [xxdk.CMIXParams]. This may be empty, and
 //     [GetDefaultCMixParams] will be used internally (Uint8Array).
 //
-// Returns:
+// Returns a promise:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
 func (cm *ChannelsManager) MuteUser(_ js.Value, args []js.Value) any {
