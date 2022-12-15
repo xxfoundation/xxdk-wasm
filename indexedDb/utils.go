@@ -147,6 +147,40 @@ func Put(db *idb.Database, objectStoreName string, value js.Value) (*idb.Request
 	return request, nil
 }
 
+// Delete is a generic helper for removing values from the given [idb.ObjectStore].
+func Delete(db *idb.Database, objectStoreName string, key js.Value) error {
+	parentErr := errors.Errorf("failed to Delete %s/%s", objectStoreName, key)
+
+	// Prepare the Transaction
+	txn, err := db.Transaction(idb.TransactionReadOnly, objectStoreName)
+	if err != nil {
+		return errors.WithMessagef(parentErr,
+			"Unable to create Transaction: %+v", err)
+	}
+	store, err := txn.ObjectStore(objectStoreName)
+	if err != nil {
+		return errors.WithMessagef(parentErr,
+			"Unable to get ObjectStore: %+v", err)
+	}
+
+	// Perform the operation
+	deleteRequest, err := store.Delete(key)
+	if err != nil {
+		return errors.WithMessagef(parentErr,
+			"Unable to Get from ObjectStore: %+v", err)
+	}
+
+	// Wait for the operation to return
+	ctx, cancel := NewContext()
+	err = deleteRequest.Await(ctx)
+	cancel()
+	if err != nil {
+		return errors.WithMessagef(parentErr,
+			"Unable to delete from ObjectStore: %+v", err)
+	}
+	return nil
+}
+
 // Dump returns the given [idb.ObjectStore] contents to string slice for
 // testing and debugging purposes.
 func Dump(db *idb.Database, objectStoreName string) ([]string, error) {
