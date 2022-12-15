@@ -36,6 +36,32 @@ func TestMain(m *testing.M) {
 
 func dummyCallback(uint64, *id.ID, bool) {}
 
+// Happy path, insert message and look it up
+func TestWasmModel_msgIDLookup(t *testing.T) {
+	testString := "test"
+	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
+	eventModel, err := newWASMModel(testString, nil, dummyCallback)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
+		testString, []byte(testString), []byte{8, 6, 7, 5}, 0, netTime.Now(),
+		time.Second, 0, 0, channels.Sent)
+	_, err = eventModel.receiveHelper(testMsg, false)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	uuid, err := eventModel.msgIDLookup(testMsgId)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if uuid == 0 {
+		t.Fatalf("Expected to get a UUID!")
+	}
+}
+
 // Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
 func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 	testString := "test"

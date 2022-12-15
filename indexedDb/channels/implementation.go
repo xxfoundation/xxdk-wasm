@@ -167,9 +167,9 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 // user of the API to filter such called by message ID.
 func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	messageID cryptoChannel.MessageID, nickname, text string,
-	pubKey ed25519.PublicKey, codeset uint8,
-	timestamp time.Time, lease time.Duration, round rounds.Round,
-	mType channels.MessageType, status channels.SentStatus, hidden bool) uint64 {
+	pubKey ed25519.PublicKey, codeset uint8, timestamp time.Time,
+	lease time.Duration, round rounds.Round, mType channels.MessageType,
+	status channels.SentStatus, hidden bool) uint64 {
 	textBytes := []byte(text)
 	var err error
 
@@ -183,9 +183,9 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	}
 
 	msgToInsert := buildMessage(
-		channelID.Marshal(), messageID.Bytes(), nil, nickname,
-		textBytes, pubKey, codeset, timestamp, lease, round.ID, mType,
-		false, hidden, status)
+		channelID.Marshal(), messageID.Bytes(), nil, nickname, textBytes,
+		pubKey, codeset, timestamp, lease, round.ID, mType, false, hidden,
+		status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -219,9 +219,10 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 		}
 	}
 
-	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
-		replyTo.Bytes(), nickname, textBytes, pubKey, codeset, timestamp, lease,
-		round.ID, mType, false, hidden, status)
+	msgToInsert := buildMessage(
+		channelID.Marshal(), messageID.Bytes(), replyTo.Bytes(), nickname,
+		textBytes, pubKey, codeset, timestamp, lease, round.ID, mType, false,
+		hidden, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 
