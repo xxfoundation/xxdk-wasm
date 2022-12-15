@@ -1165,8 +1165,8 @@ func (cm *ChannelsManager) PinMessage(_ js.Value, args []js.Value) any {
 //   - args[1] - The [ed25519.PublicKey] of the user you want to mute
 //     (Uint8Array).
 //   - args[2] - Set to true to unmute the message (boolean).
-//   - args[3] - The time, in milliseconds, that the message should be pinned
-//     (int). To remain pinned indefinitely, use [ValidForever].
+//   - args[3] - The time, in milliseconds, that the user should be muted (int).
+//     To remain muted indefinitely, use [ValidForever].
 //   - args[4] - JSON of [xxdk.CMIXParams]. This may be empty, and
 //     [GetDefaultCMixParams] will be used internally (Uint8Array).
 //
