@@ -293,7 +293,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64,
 
 	// Extract the existing Message and update the Status
 	newMessage := &Message{}
-	err = json.Unmarshal([]byte(currentMsg), newMessage)
+	err = json.Unmarshal([]byte(utils.JsToJson(currentMsg)), newMessage)
 	if err != nil {
 		return
 	}
