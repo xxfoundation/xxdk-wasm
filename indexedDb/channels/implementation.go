@@ -288,6 +288,8 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64,
 	// Use the key to get the existing Message
 	currentMsg, err := indexedDb.Get(w.db, messageStoreName, key)
 	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Unable to get message: %+v", err))
 		return
 	}
 
@@ -295,8 +297,11 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64,
 	newMessage := &Message{}
 	err = json.Unmarshal([]byte(utils.JsToJson(currentMsg)), newMessage)
 	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Could not JSON unmarshal message: %+v", err))
 		return
 	}
+
 	newMessage.Status = uint8(status)
 	if !messageID.Equals(cryptoChannel.MessageID{}) {
 		newMessage.MessageID = messageID.Bytes()
