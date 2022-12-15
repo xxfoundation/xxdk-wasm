@@ -764,7 +764,7 @@ type ShareURL struct {
 // uses is set as a URL parameter using the key [broadcast.MaxUsesKey]. Note
 // that this number is also encoded in the secret data for private and secret
 // URLs, so if the number is changed in the URL, it will be verified when
-// calling [ChannelsManager.JoinChannelFromURL]. There is no enforcement for
+// calling [DecodePublicURL] and [DecodePrivateURL]. There is no enforcement for
 // public URLs.
 //
 // Parameters:
@@ -1348,7 +1348,7 @@ func (cm *ChannelsManager) Muted(_ js.Value, args []js.Value) any {
 //   - args[0] - Marshalled bytes if the channel's [id.ID] (Uint8Array).
 //
 // Returns:
-//   - []byte - JSON of []ed25519.PublicKey (Uint8Array). Look below for an
+//   - JSON of an array of ed25519.PublicKey (Uint8Array). Look below for an
 //     example.
 //   - Throws a TypeError if the channel ID cannot be unmarshalled.
 //
@@ -1442,9 +1442,9 @@ func (cm *ChannelsManager) ExportChannelAdminKey(_ js.Value, args []js.Value) an
 // Returns:
 //   - bool - True if the private key belongs to the channel and false
 //     otherwise.
-//   - Throws a TypeError with the message [Channels.WrongPasswordErr] for an
+//   - Throws a TypeError with the message [channels.WrongPasswordErr] for an
 //     invalid password.
-//   - Throws a TypeError with the message [Channels.ChannelDoesNotExistsErr] i
+//   - Throws a TypeError with the message [channels.ChannelDoesNotExistsErr] i
 //     the channel has not already been joined.
 func (cm *ChannelsManager) VerifyChannelAdminKey(_ js.Value, args []js.Value) any {
 	channelID := utils.CopyBytesToGo(args[0])
@@ -1473,11 +1473,11 @@ func (cm *ChannelsManager) VerifyChannelAdminKey(_ js.Value, args []js.Value) an
 // Returns:
 //   - Throws a TypeError if the password is invalid or the private key does
 //     not match the channel ID.
-//   - Throws a TypeError with the message [Channels.WrongPasswordErr] for an
+//   - Throws a TypeError with the message [channels.WrongPasswordErr] for an
 //     invalid password.
-//   - Throws a TypeError with the message [Channels.ChannelDoesNotExistsErr] if
+//   - Throws a TypeError with the message [channels.ChannelDoesNotExistsErr] if
 //     the channel has not already been joined.
-//   - Throws a TypeError with the message [Channels.WrongPrivateKeyErr] if the
+//   - Throws a TypeError with the message [channels.WrongPrivateKeyErr] if the
 //     private key does not belong to the channel.
 func (cm *ChannelsManager) ImportChannelAdminKey(_ js.Value, args []js.Value) any {
 	channelID := utils.CopyBytesToGo(args[0])
@@ -1847,7 +1847,7 @@ func (em *eventModel) GetMessage(messageID []byte) ([]byte, error) {
 //	  "Error": ""
 //	}
 type MessageAndError struct {
-	// MessageJSON should contain the JSON of [channels.ModelMessage].
+	// MessageJSON should contain the JSON of channels.ModelMessage.
 	ModelMessage channels.ModelMessage
 
 	// Error should only be filled when an error occurs on message lookup.
