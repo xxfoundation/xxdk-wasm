@@ -352,7 +352,7 @@ func (w *wasmModel) updateMessage(currentMsgJson string,
 	newMessage := &Message{}
 	err := json.Unmarshal([]byte(currentMsgJson), newMessage)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 
 	if status != nil {

@@ -47,23 +47,24 @@ func TestWasmModel_msgIDLookup(t *testing.T) {
 
 	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 		testString, []byte(testString), []byte{8, 6, 7, 5}, 0, netTime.Now(),
-		time.Second, 0, 0, channels.Sent)
+		time.Second, 0, 0, false, false, channels.Sent)
 	_, err = eventModel.receiveHelper(testMsg, false)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 
-	uuid, err := eventModel.msgIDLookup(testMsgId)
+	msg, err := eventModel.msgIDLookup(testMsgId)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	if uuid == 0 {
+	if msg.ID == 0 {
 		t.Fatalf("Expected to get a UUID!")
 	}
 }
 
 // Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
 func Test_wasmModel_UpdateSentStatus(t *testing.T) {
+	storage.GetLocalStorage().Clear()
 	testString := "test"
 	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
 	eventModel, err := newWASMModel(testString, nil, dummyCallback)
