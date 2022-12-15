@@ -289,7 +289,7 @@ func (w *wasmModel) UpdateFromMessageID(messageID cryptoChannel.MessageID,
 	defer w.updateMux.Unlock()
 
 	msgIDStr := base64.StdEncoding.EncodeToString(messageID.Marshal())
-	currentMsgObj, err := w.getIndex(messageStoreName,
+	currentMsgObj, err := indexedDb.GetIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, js.ValueOf(msgIDStr))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
@@ -506,20 +506,24 @@ func (w *wasmModel) GetMessage(messageID cryptoChannel.MessageID) (channels.Mode
 	}, nil
 }
 
-
 // msgIDLookup gets the UUID of the Message with the given messageID.
-func (w *wasmModel) msgIDLookup(messageID cryptoChannel.MessageID) (uint64,
+func (w *wasmModel) msgIDLookup(messageID cryptoChannel.MessageID) (*Message,
 	error) {
 	msgIDStr := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
 	resultObj, err := indexedDb.GetIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, msgIDStr)
 	if err != nil {
-		return 0, err
+		return nil, err
+	} else if resultObj.IsUndefined() {
+		return nil, errors.Errorf("no message for %s found", msgIDStr)
 	}
 
-	uuid := uint64(0)
-	if !resultObj.IsUndefined() {
-		uuid = uint64(resultObj.Get("id").Int())
+	// Process result into string
+	resultMsg := &Message{}
+	err = json.Unmarshal([]byte(utils.JsToJson(resultObj)), resultMsg)
+	if err != nil {
+		return nil, err
 	}
 	return resultMsg, nil
+
 }
