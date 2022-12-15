@@ -13,12 +13,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"gitlab.com/elixxir/client/v4/channels"
+	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/channels"
 	"gitlab.com/xx_network/primitives/id"
 	"sync"
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 )
 
@@ -392,7 +392,7 @@ func newChannelsManagerWithIndexedDb(cmixID int, privateIdentity []byte,
 		cb.Invoke(uuid, utils.CopyBytesToJS(channelID.Marshal()), update)
 	}
 
-	model := indexedDb.NewWASMEventModelBuilder(cipher, messageReceivedCB)
+	model := channelsDb.NewWASMEventModelBuilder(cipher, messageReceivedCB)
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		cm, err := bindings.NewChannelsManagerGoEventModel(
@@ -491,7 +491,7 @@ func loadChannelsManagerWithIndexedDb(cmixID int, storageTag string,
 		cb.Invoke(uuid, utils.CopyBytesToJS(channelID.Marshal()), updated)
 	}
 
-	model := indexedDb.NewWASMEventModelBuilder(cipher, messageReceivedCB)
+	model := channelsDb.NewWASMEventModelBuilder(cipher, messageReceivedCB)
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		cm, err := bindings.LoadChannelsManagerGoEventModel(
