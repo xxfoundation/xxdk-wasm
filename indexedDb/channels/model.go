@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package indexedDb
+package channels
 
 import (
 	"time"
@@ -60,7 +60,7 @@ type Message struct {
 	Round           uint64        `json:"round"`
 
 	// User cryptographic Identity struct -- could be pulled out
-	Pubkey         []byte `json:"pubkey"` // Index
+	Pubkey         []byte `json:"pubkey"`
 	CodesetVersion uint8  `json:"codeset_version"`
 }
 
