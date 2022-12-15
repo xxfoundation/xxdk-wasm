@@ -335,7 +335,7 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64,
 		return
 	}
 
-	_, err = w.updateMessage(currentMsg, messageID, timestamp,
+	_, err = w.updateMessage(utils.JsToJson(currentMsg), messageID, timestamp,
 		round, pinned, hidden, status)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
