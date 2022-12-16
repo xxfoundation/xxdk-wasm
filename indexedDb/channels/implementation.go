@@ -331,7 +331,7 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64,
 	currentMsg, err := indexedDb.Get(w.db, messageStoreName, key)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Failed to get message: %+v", err))
+			"Unable to get message: %+v", err))
 		return
 	}
 
