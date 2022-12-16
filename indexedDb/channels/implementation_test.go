@@ -44,8 +44,12 @@ func TestWasmModel_msgIDLookup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for i, c := range []cryptoChannel.Cipher{nil, cipher} {
-		t.Run(fmt.Sprintf("Test-%d", i), func(t *testing.T) {
+	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+		cs := ""
+		if cipher != nil {
+			cs = "_withCipher"
+		}
+		t.Run(fmt.Sprintf("TestWasmModel_msgIDLookup%s", cs), func(t *testing.T) {
 
 			storage.GetLocalStorage().Clear()
 			testString := "test"
@@ -80,8 +84,12 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for i, c := range []cryptoChannel.Cipher{nil, cipher} {
-		t.Run(fmt.Sprintf("Test-%d", i), func(t *testing.T) {
+	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+		cs := ""
+		if cipher != nil {
+			cs = "_withCipher"
+		}
+		t.Run(fmt.Sprintf("Test_wasmModel_UpdateSentStatus%s", cs), func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := "test"
 			testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
@@ -144,8 +152,12 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for i, c := range []cryptoChannel.Cipher{nil, cipher} {
-		t.Run(fmt.Sprintf("Test-%d", i), func(t *testing.T) {
+	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+		cs := ""
+		if cipher != nil {
+			cs = "_withCipher"
+		}
+		t.Run(fmt.Sprintf("Test_wasmModel_JoinChannel_LeaveChannel%s", cs), func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			eventModel, err := newWASMModel("test", c, dummyCallback)
 			if err != nil {
@@ -191,8 +203,12 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for i, c := range []cryptoChannel.Cipher{nil, cipher} {
-		t.Run(fmt.Sprintf("Test-%d", i), func(t *testing.T) {
+	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+		cs := ""
+		if cipher != nil {
+			cs = "_withCipher"
+		}
+		t.Run(fmt.Sprintf("Test_wasmModel_UUIDTest%s", cs), func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := "testHello"
 			eventModel, err := newWASMModel(testString, c, dummyCallback)
@@ -232,8 +248,12 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for i, c := range []cryptoChannel.Cipher{nil, cipher} {
-		t.Run(fmt.Sprintf("Test-%d", i), func(t *testing.T) {
+	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+		cs := ""
+		if cipher != nil {
+			cs = "_withCipher"
+		}
+		t.Run(fmt.Sprintf("Test_wasmModel_DuplicateReceives%s", cs), func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := "testHello"
 			eventModel, err := newWASMModel(testString, c, dummyCallback)
@@ -275,8 +295,12 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for i, c := range []cryptoChannel.Cipher{nil, cipher} {
-		t.Run(fmt.Sprintf("Test-%d", i), func(t *testing.T) {
+	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+		cs := ""
+		if cipher != nil {
+			cs = "_withCipher"
+		}
+		t.Run(fmt.Sprintf("Test_wasmModel_deleteMsgByChannel%s", cs), func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := "test_deleteMsgByChannel"
 			totalMessages := 10
@@ -341,7 +365,11 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 		t.Fatalf("Failed to create cipher")
 	}
 	for i, c := range []cryptoChannel.Cipher{nil, cipher} {
-		t.Run(fmt.Sprintf("Test-%d", i), func(t *testing.T) {
+		cs := ""
+		if cipher != nil {
+			cs = "_withCipher"
+		}
+		t.Run(fmt.Sprintf("TestWasmModel_receiveHelper_UniqueIndex%s", cs), func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := fmt.Sprintf("test_receiveHelper_UniqueIndex_%d", i)
 			eventModel, err := newWASMModel(testString, c, dummyCallback)
