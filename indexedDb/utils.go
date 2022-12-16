@@ -157,7 +157,7 @@ func Delete(db *idb.Database, objectStoreName string, key js.Value) error {
 	parentErr := errors.Errorf("failed to Delete %s/%s", objectStoreName, key)
 
 	// Prepare the Transaction
-	txn, err := db.Transaction(idb.TransactionReadOnly, objectStoreName)
+	txn, err := db.Transaction(idb.TransactionReadWrite, objectStoreName)
 	if err != nil {
 		return errors.WithMessagef(parentErr,
 			"Unable to create Transaction: %+v", err)
@@ -169,19 +169,19 @@ func Delete(db *idb.Database, objectStoreName string, key js.Value) error {
 	}
 
 	// Perform the operation
-	deleteRequest, err := store.Delete(key)
+	_, err = store.Delete(key)
 	if err != nil {
 		return errors.WithMessagef(parentErr,
-			"Unable to Get from ObjectStore: %+v", err)
+			"Unable to Delete from ObjectStore: %+v", err)
 	}
 
 	// Wait for the operation to return
 	ctx, cancel := NewContext()
-	err = deleteRequest.Await(ctx)
+	err = txn.Await(ctx)
 	cancel()
 	if err != nil {
 		return errors.WithMessagef(parentErr,
-			"Unable to delete from ObjectStore: %+v", err)
+			"Unable to Delete from ObjectStore: %+v", err)
 	}
 	return nil
 }

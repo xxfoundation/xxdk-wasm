@@ -40,6 +40,12 @@ type wasmModel struct {
 	updateMux         sync.Mutex
 }
 
+// DeleteMessage removes a message with the given messageID from storage.
+func (w *wasmModel) DeleteMessage(messageID cryptoChannel.MessageID) error {
+	msgId := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
+	return indexedDb.Delete(w.db, messageStoreName, msgId)
+}
+
 // JoinChannel is called whenever a channel is joined locally.
 func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 	parentErr := errors.New("failed to JoinChannel")
@@ -76,35 +82,12 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 	parentErr := errors.New("failed to LeaveChannel")
 
-	// Prepare the Transaction
-	txn, err := w.db.Transaction(idb.TransactionReadWrite, channelsStoreName)
+	// Delete the channel from storage
+	err := indexedDb.Delete(w.db, channelsStoreName,
+		js.ValueOf(channelID.String()))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to create Transaction: %+v", err))
-		return
-	}
-	store, err := txn.ObjectStore(channelsStoreName)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to get ObjectStore: %+v", err))
-		return
-	}
-
-	// Perform the operation
-	_, err = store.Delete(js.ValueOf(channelID.String()))
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to Delete Channel: %+v", err))
-		return
-	}
-
-	// Wait for the operation to return
-	ctx, cancel := indexedDb.NewContext()
-	err = txn.Await(ctx)
-	cancel()
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Deleting Channel failed: %+v", err))
+			"Unable to delete Channel: %+v", err))
 		return
 	}
 
