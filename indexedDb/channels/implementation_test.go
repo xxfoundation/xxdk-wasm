@@ -38,6 +38,7 @@ func dummyCallback(uint64, *id.ID, bool) {}
 
 // Happy path, insert message and look it up
 func TestWasmModel_msgIDLookup(t *testing.T) {
+	storage.GetLocalStorage().Clear()
 	testString := "test"
 	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
 	eventModel, err := newWASMModel(testString, nil, dummyCallback)
@@ -64,6 +65,7 @@ func TestWasmModel_msgIDLookup(t *testing.T) {
 
 // Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
 func Test_wasmModel_UpdateSentStatus(t *testing.T) {
+	storage.GetLocalStorage().Clear()
 	testString := "test"
 	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
 	eventModel, err := newWASMModel(testString, nil, dummyCallback)
@@ -158,6 +160,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 
 // Test UUID gets returned when different messages are added.
 func Test_wasmModel_UUIDTest(t *testing.T) {
+	storage.GetLocalStorage().Clear()
 	testString := "testHello"
 	eventModel, err := newWASMModel(testString, nil, dummyCallback)
 	if err != nil {
@@ -224,6 +227,7 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 // Happy path: Inserts many messages, deletes some, and checks that the final
 // result is as expected.
 func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
+	storage.GetLocalStorage().Clear()
 	testString := "test_deleteMsgByChannel"
 	totalMessages := 10
 	expectedMessages := 5
@@ -280,6 +284,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 // This test is designed to prove the behavior of unique indexes.
 // Inserts will not fail, they simply will not happen.
 func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
+	storage.GetLocalStorage().Clear()
 	testString := "test_receiveHelper_UniqueIndex"
 	eventModel, err := newWASMModel(testString, nil, dummyCallback)
 	if err != nil {
