@@ -14,12 +14,12 @@ import (
 	"encoding/json"
 	"errors"
 	"gitlab.com/elixxir/client/v4/channels"
+	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/channels"
 	"gitlab.com/xx_network/primitives/id"
 	"sync"
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 )
 
@@ -388,7 +388,7 @@ func newChannelsManagerWithIndexedDb(cmixID int, privateIdentity []byte,
 		cb.Invoke(uuid, utils.CopyBytesToJS(channelID.Marshal()), update)
 	}
 
-	model := indexedDb.NewWASMEventModelBuilder(cipher, messageReceivedCB)
+	model := channelsDb.NewWASMEventModelBuilder(cipher, messageReceivedCB)
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		cm, err := bindings.NewChannelsManagerGoEventModel(
@@ -487,7 +487,7 @@ func loadChannelsManagerWithIndexedDb(cmixID int, storageTag string,
 		cb.Invoke(uuid, utils.CopyBytesToJS(channelID.Marshal()), updated)
 	}
 
-	model := indexedDb.NewWASMEventModelBuilder(cipher, messageReceivedCB)
+	model := channelsDb.NewWASMEventModelBuilder(cipher, messageReceivedCB)
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		cm, err := bindings.LoadChannelsManagerGoEventModel(
@@ -832,7 +832,11 @@ func GetShareUrlType(_ js.Value, args []js.Value) any {
 //     documentation, this has different meanings depending on the use case.
 //     These use cases may be generic enough that they will not be enumerated
 //     here (int).
-//   - args[4] - JSON of [xxdk.CMIXParams]. If left empty
+//   - args[4] - Set tracked to true if the message should be tracked in the
+//     sendTracker, which allows messages to be shown locally before they are
+//     received on the network. In general, all messages that will be displayed
+//     to the user should be tracked while all actions should not be (boolean).
+//   - args[5] - JSON of [xxdk.CMIXParams]. If left empty
 //     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
 //
 // Returns a promise:
@@ -843,11 +847,12 @@ func (cm *ChannelsManager) SendGeneric(_ js.Value, args []js.Value) any {
 	messageType := args[1].Int()
 	message := utils.CopyBytesToGo(args[2])
 	leaseTimeMS := int64(args[3].Int())
-	cmixParamsJSON := utils.CopyBytesToGo(args[4])
+	tracked := args[4].Bool()
+	cmixParamsJSON := utils.CopyBytesToGo(args[5])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := cm.api.SendGeneric(
-			marshalledChanId, messageType, message, leaseTimeMS, cmixParamsJSON)
+		sendReport, err := cm.api.SendGeneric(marshalledChanId, messageType,
+			message, leaseTimeMS, tracked, cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -1015,7 +1020,11 @@ func (cm *ChannelsManager) SendReaction(_ js.Value, args []js.Value) any {
 //     documentation, this has different meanings depending on the use case.
 //     These use cases may be generic enough that they will not be enumerated
 //     here (int).
-//   - args[4] - JSON of [xxdk.CMIXParams]. If left empty
+//   - args[4] - Set tracked to true if the message should be tracked in the
+//     sendTracker, which allows messages to be shown locally before they are
+//     received on the network. In general, all messages that will be displayed
+//     to the user should be tracked while all actions should not be (boolean).
+//   - args[5] - JSON of [xxdk.CMIXParams]. If left empty
 //     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
 //
 // Returns a promise:
@@ -1026,11 +1035,12 @@ func (cm *ChannelsManager) SendAdminGeneric(_ js.Value, args []js.Value) any {
 	messageType := args[1].Int()
 	message := utils.CopyBytesToGo(args[2])
 	leaseTimeMS := int64(args[3].Int())
-	cmixParamsJSON := utils.CopyBytesToGo(args[4])
+	tracked := args[4].Bool()
+	cmixParamsJSON := utils.CopyBytesToGo(args[5])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := cm.api.SendAdminGeneric(
-			marshalledChanId, messageType, message, leaseTimeMS, cmixParamsJSON)
+		sendReport, err := cm.api.SendAdminGeneric(marshalledChanId,
+			messageType, message, leaseTimeMS, tracked, cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -1059,7 +1069,7 @@ func (cm *ChannelsManager) SendAdminGeneric(_ js.Value, args []js.Value) any {
 //   - args[2] - JSON of [xxdk.CMIXParams]. This may be empty, and
 //     [GetDefaultCMixParams] will be used internally (Uint8Array).
 //
-// Returns:
+// Returns a promise:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
 func (cm *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) any {
@@ -1097,7 +1107,7 @@ func (cm *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) any {
 //   - args[3] - JSON of [xxdk.CMIXParams]. This may be empty, and
 //     [GetDefaultCMixParams] will be used internally (Uint8Array).
 //
-// Returns:
+// Returns a promise:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
 func (cm *ChannelsManager) PinMessage(_ js.Value, args []js.Value) any {
@@ -1135,7 +1145,7 @@ func (cm *ChannelsManager) PinMessage(_ js.Value, args []js.Value) any {
 //   - args[3] - JSON of [xxdk.CMIXParams]. This may be empty, and
 //     [GetDefaultCMixParams] will be used internally (Uint8Array).
 //
-// Returns:
+// Returns a promise:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
 func (cm *ChannelsManager) MuteUser(_ js.Value, args []js.Value) any {

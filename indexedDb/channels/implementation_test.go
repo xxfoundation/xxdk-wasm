@@ -7,12 +7,13 @@
 
 //go:build js && wasm
 
-package indexedDb
+package channels
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/hack-pad/go-indexeddb/idb"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/xx_network/primitives/netTime"
 	"os"
@@ -35,8 +36,36 @@ func TestMain(m *testing.M) {
 
 func dummyCallback(uint64, *id.ID, bool) {}
 
+// Happy path, insert message and look it up
+func TestWasmModel_msgIDLookup(t *testing.T) {
+	storage.GetLocalStorage().Clear()
+	testString := "test"
+	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
+	eventModel, err := newWASMModel(testString, nil, dummyCallback)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
+		testString, []byte(testString), []byte{8, 6, 7, 5}, 0, netTime.Now(),
+		time.Second, 0, 0, false, false, channels.Sent)
+	_, err = eventModel.receiveHelper(testMsg, false)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	msg, err := eventModel.msgIDLookup(testMsgId)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if msg.ID == 0 {
+		t.Fatalf("Expected to get a UUID!")
+	}
+}
+
 // Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
 func Test_wasmModel_UpdateSentStatus(t *testing.T) {
+	storage.GetLocalStorage().Clear()
 	testString := "test"
 	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
 	eventModel, err := newWASMModel(testString, nil, dummyCallback)
@@ -54,7 +83,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 	}
 
 	// Ensure one message is stored
-	results, err := eventModel.dump(messageStoreName)
+	results, err := indexedDb.Dump(eventModel.db, messageStoreName)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -68,7 +97,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 		nil, nil, nil, &expectedStatus)
 
 	// Check the resulting status
-	results, err = eventModel.dump(messageStoreName)
+	results, err = indexedDb.Dump(eventModel.db, messageStoreName)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -112,7 +141,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 	}
 	eventModel.JoinChannel(testChannel)
 	eventModel.JoinChannel(testChannel2)
-	results, err := eventModel.dump(channelsStoreName)
+	results, err := indexedDb.Dump(eventModel.db, channelsStoreName)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -120,7 +149,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 		t.Fatalf("Expected 2 channels to exist")
 	}
 	eventModel.LeaveChannel(testChannel.ReceptionID)
-	results, err = eventModel.dump(channelsStoreName)
+	results, err = indexedDb.Dump(eventModel.db, channelsStoreName)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -131,6 +160,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 
 // Test UUID gets returned when different messages are added.
 func Test_wasmModel_UUIDTest(t *testing.T) {
+	storage.GetLocalStorage().Clear()
 	testString := "testHello"
 	eventModel, err := newWASMModel(testString, nil, dummyCallback)
 	if err != nil {
@@ -150,8 +180,6 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 			netTime.Now(), time.Hour, rnd, 0, channels.Sent, false)
 		uuids[i] = uuid
 	}
-
-	_, _ = eventModel.dump(messageStoreName)
 
 	for i := 0; i < 10; i++ {
 		for j := i + 1; j < 10; j++ {
@@ -186,8 +214,6 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 		uuids[i] = uuid
 	}
 
-	_, _ = eventModel.dump(messageStoreName)
-
 	for i := 0; i < 10; i++ {
 		for j := i + 1; j < 10; j++ {
 			if uuids[i] != uuids[j] {
@@ -201,6 +227,7 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 // Happy path: Inserts many messages, deletes some, and checks that the final
 // result is as expected.
 func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
+	storage.GetLocalStorage().Clear()
 	testString := "test_deleteMsgByChannel"
 	totalMessages := 10
 	expectedMessages := 5
@@ -230,7 +257,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 	}
 
 	// Check pre-results
-	result, err := eventModel.dump(messageStoreName)
+	result, err := indexedDb.Dump(eventModel.db, messageStoreName)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -245,7 +272,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 	}
 
 	// Check final results
-	result, err = eventModel.dump(messageStoreName)
+	result, err = indexedDb.Dump(eventModel.db, messageStoreName)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -257,6 +284,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 // This test is designed to prove the behavior of unique indexes.
 // Inserts will not fail, they simply will not happen.
 func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
+	storage.GetLocalStorage().Clear()
 	testString := "test_receiveHelper_UniqueIndex"
 	eventModel, err := newWASMModel(testString, nil, dummyCallback)
 	if err != nil {
@@ -298,7 +326,7 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	results, err := eventModel.dump(messageStoreName)
+	results, err := indexedDb.Dump(eventModel.db, messageStoreName)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -327,7 +355,7 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 
 	// The update to duplicate message ID won't fail,
 	// but it just silently shouldn't happen
-	results, err = eventModel.dump(messageStoreName)
+	results, err = indexedDb.Dump(eventModel.db, messageStoreName)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
