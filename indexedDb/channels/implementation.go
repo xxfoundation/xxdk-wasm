@@ -43,7 +43,8 @@ type wasmModel struct {
 // DeleteMessage removes a message with the given messageID from storage.
 func (w *wasmModel) DeleteMessage(messageID cryptoChannel.MessageID) error {
 	msgId := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
-	return indexedDb.Delete(w.db, messageStoreName, msgId)
+	return indexedDb.DeleteIndex(w.db, messageStoreName,
+		messageStoreMessageIndex, pkeyName, msgId)
 }
 
 // JoinChannel is called whenever a channel is joined locally.
