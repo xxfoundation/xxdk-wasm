@@ -110,6 +110,9 @@ func GetIndex(db *idb.Database, objectStoreName string,
 	if err != nil {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
+	} else if resultObj.IsUndefined() {
+		return js.Undefined(), errors.WithMessage(parentErr,
+			"Unable to get from ObjectStore: result is undefined")
 	}
 
 	// Process result into string

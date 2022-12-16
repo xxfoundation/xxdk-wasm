@@ -19,7 +19,7 @@ import (
 // Error path: Tests that Get returns an error when trying to get a message that
 // does not exist.
 func TestGet_NoMessageError(t *testing.T) {
-	db := newTestDB("messages", t)
+	db := newTestDB("messages", "index", t)
 
 	_, err := Get(db, "messages", js.ValueOf(5))
 	if err == nil || !strings.Contains(err.Error(), "undefined") {
@@ -28,8 +28,20 @@ func TestGet_NoMessageError(t *testing.T) {
 	}
 }
 
+// Error path: Tests that GetIndex returns an error when trying to get a message
+// that does not exist.
+func TestGetIndex_NoMessageError(t *testing.T) {
+	db := newTestDB("messages", "index", t)
+
+	_, err := GetIndex(db, "messages", "index", js.ValueOf(5))
+	if err == nil || !strings.Contains(err.Error(), "undefined") {
+		t.Errorf("Did not get expected error when getting a message that "+
+			"does not exist: %+v", err)
+	}
+}
+
 // newTestDB creates a new idb.Database for testing.
-func newTestDB(messageStoreName string, t *testing.T) *idb.Database {
+func newTestDB(name, index string, t *testing.T) *idb.Database {
 	// Attempt to open database object
 	ctx, cancel := NewContext()
 	defer cancel()
@@ -41,10 +53,17 @@ func newTestDB(messageStoreName string, t *testing.T) *idb.Database {
 			}
 
 			// Build Message ObjectStore and Indexes
-			_, err := db.CreateObjectStore(messageStoreName, storeOpts)
+			messageStore, err := db.CreateObjectStore(name, storeOpts)
 			if err != nil {
 				return err
 			}
+
+			_, err = messageStore.CreateIndex(
+				index, js.ValueOf("id"), idb.IndexOptions{})
+			if err != nil {
+				return err
+			}
+
 			return nil
 		})
 	if err != nil {
