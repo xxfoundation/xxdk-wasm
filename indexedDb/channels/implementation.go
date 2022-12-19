@@ -13,10 +13,11 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"sync"
 	"syscall/js"
 	"time"
+
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
@@ -26,6 +27,7 @@ import (
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
+	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
 )
@@ -166,7 +168,7 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 // It may be called multiple times on the same message; it is incumbent on the
 // user of the API to filter such called by message ID.
 func (w *wasmModel) ReceiveMessage(channelID *id.ID,
-	messageID cryptoChannel.MessageID, nickname, text string,
+	messageID message.ID, nickname, text string,
 	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
@@ -202,7 +204,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 // Messages may arrive our of order, so a reply, in theory, can arrive before
 // the initial message. As a result, it may be important to buffer replies.
 func (w *wasmModel) ReceiveReply(channelID *id.ID,
-	messageID cryptoChannel.MessageID, replyTo cryptoChannel.MessageID,
+	messageID message.ID, replyTo message.ID,
 	nickname, text string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
@@ -238,7 +240,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 // Messages may arrive our of order, so a reply, in theory, can arrive before
 // the initial message. As a result, it may be important to buffer reactions.
 func (w *wasmModel) ReceiveReaction(channelID *id.ID,
-	messageID cryptoChannel.MessageID, reactionTo cryptoChannel.MessageID,
+	messageID message.ID, reactionTo message.ID,
 	nickname, reaction string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
@@ -272,7 +274,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 //
 // TODO: Potential race condition due to separate get/update operations.
 func (w *wasmModel) UpdateSentStatus(uuid uint64,
-	messageID cryptoChannel.MessageID, timestamp time.Time, round rounds.Round,
+	messageID message.ID, timestamp time.Time, round rounds.Round,
 	status channels.SentStatus) {
 	parentErr := errors.New("failed to UpdateSentStatus")
 
@@ -303,7 +305,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64,
 	}
 
 	newMessage.Status = uint8(status)
-	if !messageID.Equals(cryptoChannel.MessageID{}) {
+	if !messageID.Equals(message.ID{}) {
 		newMessage.MessageID = messageID.Bytes()
 	}
 
@@ -387,7 +389,7 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 	// NOTE: Sometimes the insert fails to return an error but hits a duplicate
 	//  insert, so this fallthrough returns the UUID entry in that case.
 	if res.IsUndefined() {
-		msgID := cryptoChannel.MessageID{}
+		msgID := message.ID{}
 		copy(msgID[:], newMessage.MessageID)
 		uuid, errLookup := w.msgIDLookup(msgID)
 		if uuid != 0 && errLookup == nil {
@@ -402,7 +404,7 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 }
 
 // msgIDLookup gets the UUID of the Message with the given messageID.
-func (w *wasmModel) msgIDLookup(messageID cryptoChannel.MessageID) (uint64,
+func (w *wasmModel) msgIDLookup(messageID message.ID) (uint64,
 	error) {
 	msgIDStr := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
 	resultObj, err := indexedDb.GetIndex(w.db, messageStoreName,

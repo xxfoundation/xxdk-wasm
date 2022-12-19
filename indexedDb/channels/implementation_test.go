@@ -12,20 +12,21 @@ package channels
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hack-pad/go-indexeddb/idb"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
-	"gitlab.com/elixxir/xxdk-wasm/storage"
-	"gitlab.com/xx_network/primitives/netTime"
 	"os"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/hack-pad/go-indexeddb/idb"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/storage"
+	"gitlab.com/xx_network/primitives/netTime"
+
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
-	"gitlab.com/elixxir/crypto/channel"
+	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/xx_network/primitives/id"
 )
 
@@ -40,14 +41,15 @@ func dummyCallback(uint64, *id.ID, bool) {}
 func TestWasmModel_msgIDLookup(t *testing.T) {
 	storage.GetLocalStorage().Clear()
 	testString := "test"
-	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
+	testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0,
+		[]byte(testString))
 	eventModel, err := newWASMModel(testString, nil, dummyCallback)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 
 	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
-		testString, []byte(testString), []byte{8, 6, 7, 5}, 0, netTime.Now(),
+		testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
 		time.Second, 0, 0, channels.Sent)
 	_, err = eventModel.receiveHelper(testMsg, false)
 	if err != nil {
@@ -67,7 +69,8 @@ func TestWasmModel_msgIDLookup(t *testing.T) {
 func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 	storage.GetLocalStorage().Clear()
 	testString := "test"
-	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
+	testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0,
+		[]byte(testString))
 	eventModel, err := newWASMModel(testString, nil, dummyCallback)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -172,7 +175,7 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		// Store a test message
 		channelID := id.NewIdFromBytes([]byte(testString), t)
-		msgID := channel.MessageID{}
+		msgID := message.ID{}
 		copy(msgID[:], testString+fmt.Sprintf("%d", i))
 		rnd := rounds.Round{ID: id.Round(42)}
 		uuid := eventModel.ReceiveMessage(channelID, msgID, "test",
@@ -202,7 +205,7 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 
 	uuids := make([]uint64, 10)
 
-	msgID := channel.MessageID{}
+	msgID := message.ID{}
 	copy(msgID[:], testString)
 	for i := 0; i < 10; i++ {
 		// Store a test message
@@ -250,7 +253,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 			thisChannel = keepChannel
 		}
 
-		testMsgId := channel.MakeMessageID([]byte(testStr), &id.ID{1})
+		testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testStr))
 		eventModel.ReceiveMessage(thisChannel, testMsgId, testStr, testStr,
 			[]byte{8, 6, 7, 5}, 0, 0, netTime.Now(), time.Second,
 			rounds.Round{ID: id.Round(0)}, 0, channels.Sent)
@@ -312,7 +315,8 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 	}
 
 	// First message insert should succeed
-	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
+	testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0,
+		[]byte(testString))
 	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 		testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
 		time.Second, 0, 0, channels.Sent)
@@ -335,7 +339,8 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 	}
 
 	// Now insert a message with a different message ID from the first
-	testMsgId2 := channel.MakeMessageID([]byte(testString), &id.ID{2})
+	testMsgId2 := message.DeriveChannelMessageID(&id.ID{2}, 0,
+		[]byte(testString))
 	testMsg = buildMessage([]byte(testString), testMsgId2.Bytes(), nil,
 		testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
 		time.Second, 0, 0, channels.Sent)
