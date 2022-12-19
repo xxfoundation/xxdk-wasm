@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package indexedDb
+package channels
 
 import (
 	"github.com/hack-pad/go-indexeddb/idb"
@@ -15,6 +15,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/channels"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/xx_network/primitives/id"
 	"syscall/js"
@@ -58,7 +59,7 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) (*wasmModel, error) {
 	// Attempt to open database object
-	ctx, cancel := newContext()
+	ctx, cancel := indexedDb.NewContext()
 	defer cancel()
 	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
@@ -109,9 +110,6 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	}
 
 	// Attempt to ensure the database has been properly initialized
-	if err != nil {
-		return nil, err
-	}
 	openRequest, err = idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			return nil
@@ -209,11 +207,11 @@ func (w *wasmModel) hackTestDb() error {
 	if helper != nil {
 		return helper
 	}
-	result, err := w.get(messageStoreName, js.ValueOf(msgId))
+	result, err := indexedDb.Get(w.db, messageStoreName, js.ValueOf(msgId))
 	if err != nil {
 		return err
 	}
-	if len(result) == 0 {
+	if result.IsUndefined() {
 		return errors.Errorf("Failed to test db, record not present")
 	}
 	return nil

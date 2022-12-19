@@ -25,6 +25,8 @@ stages:
 
 build:
   stage: build
+  except:
+    - tags
   script:
     - go mod vendor -v
     - mkdir -p release
@@ -36,6 +38,8 @@ build:
 
 wasm-test:
   stage: test
+  except:
+    - tags
   script:
     - export PATH=/root/go/bin:$PATH
     - echo > utils/utils_js.s
@@ -44,23 +48,29 @@ wasm-test:
 
 go-test:
   stage: test
+  except:
+    - tags
   script:
     - go mod vendor -v
     - go test ./... -v
 
 version_check:
   stage: version_check
+  except:
+    - tags
   only:
     - master
     - release
   image: $DOCKER_IMAGE
   script:
     - GITTAG=$(git describe --tags)
-    - CODEVERS=$(cat utils/version.go | grep "const SEMVER =" | cut -d ' ' -f4 | tr -d '"')
+    - CODEVERS=$(cat storage/version.go | grep "const SEMVER =" | cut -d ' ' -f4 | tr -d '"')
     - if [[ $GITTAG != $CODEVERS ]]; then echo "VERSION NUMBER BAD $GITTAG != $CODEVER"; exit -1; fi
 
 tag:
   stage: build
+  except:
+    - tags
   image: $DOCKER_IMAGE
   script:
     - git remote add origin_tags git@$GITLAB_SERVER:elixxir/xxdk-wasm.git || true
@@ -76,6 +86,8 @@ tag:
 # master/release, this will fail to pull the latest client, and the docs will not update.
 doc-update:
   stage: doc-update
+  except:
+    - tags
   image: $DOCKER_IMAGE
   script:
     # We use GOPRIVATE blank because not want to directly pull client, we want to use the public cache.
