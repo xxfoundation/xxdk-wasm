@@ -170,16 +170,11 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	pubKey ed25519.PublicKey, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
-	textBytes := []byte(text)
-	var err error
 
 	// Handle encryption, if it is present
-	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt([]byte(text))
-		if err != nil {
-			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
-			return 0
-		}
+	textBytes, err := w.handleMessageEncryption(text)
+	if err != nil {
+		return 0
 	}
 
 	msgToInsert := buildMessage(
@@ -206,16 +201,11 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 	nickname, text string, pubKey ed25519.PublicKey, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
-	textBytes := []byte(text)
-	var err error
 
 	// Handle encryption, if it is present
-	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt([]byte(text))
-		if err != nil {
-			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
-			return 0
-		}
+	textBytes, err := w.handleMessageEncryption(text)
+	if err != nil {
+		return 0
 	}
 
 	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
@@ -242,16 +232,11 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 	nickname, reaction string, pubKey ed25519.PublicKey, codeset uint8,
 	timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus) uint64 {
-	textBytes := []byte(reaction)
-	var err error
 
 	// Handle encryption, if it is present
-	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt([]byte(reaction))
-		if err != nil {
-			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
-			return 0
-		}
+	textBytes, err := w.handleMessageEncryption(reaction)
+	if err != nil {
+		return 0
 	}
 
 	msgToInsert := buildMessage(
@@ -323,6 +308,28 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64,
 	channelID := &id.ID{}
 	copy(channelID[:], newMessage.ChannelID)
 	go w.receivedMessageCB(uuid, channelID, true)
+}
+
+// DecryptMessageEntry accepts a message and returns the raw text
+func (w *wasmModel) DecryptMessageEntry(msg *Message) ([]byte, error) {
+	toDecrypt := msg.Text
+	if w.cipher == nil {
+		return toDecrypt, nil
+	}
+	return w.cipher.Decrypt(toDecrypt)
+}
+
+// handleMessageEncryption is a helper for encrypting the contents of messages
+// stored in the indexdb
+func (w *wasmModel) handleMessageEncryption(text string) ([]byte, error) {
+	if w.cipher != nil {
+		textBytes, err := w.cipher.Encrypt([]byte(text))
+		if err != nil {
+			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
+		}
+		return textBytes, err
+	}
+	return []byte(text), nil
 }
 
 // buildMessage is a private helper that converts typical [channels.EventModel]
