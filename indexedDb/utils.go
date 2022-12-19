@@ -32,25 +32,25 @@ func NewContext() (context.Context, context.CancelFunc) {
 }
 
 // Get is a generic helper for getting values from the given [idb.ObjectStore].
-func Get(db *idb.Database, objectStoreName string, key js.Value) (string, error) {
+func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, error) {
 	parentErr := errors.Errorf("failed to Get %s/%s", objectStoreName, key)
 
 	// Prepare the Transaction
 	txn, err := db.Transaction(idb.TransactionReadOnly, objectStoreName)
 	if err != nil {
-		return "", errors.WithMessagef(parentErr,
+		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to create Transaction: %+v", err)
 	}
 	store, err := txn.ObjectStore(objectStoreName)
 	if err != nil {
-		return "", errors.WithMessagef(parentErr,
+		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get ObjectStore: %+v", err)
 	}
 
 	// Perform the operation
 	getRequest, err := store.Get(key)
 	if err != nil {
-		return "", errors.WithMessagef(parentErr,
+		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to Get from ObjectStore: %+v", err)
 	}
 
@@ -59,14 +59,17 @@ func Get(db *idb.Database, objectStoreName string, key js.Value) (string, error)
 	resultObj, err := getRequest.Await(ctx)
 	cancel()
 	if err != nil {
-		return "", errors.WithMessagef(parentErr,
+		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
+	} else if resultObj.IsUndefined() {
+		return js.Undefined(), errors.WithMessage(parentErr,
+			"Unable to get from ObjectStore: result is undefined")
 	}
 
 	// Process result into string
-	resultStr := utils.JsToJson(resultObj)
-	jww.DEBUG.Printf("Got from %s/%s: %s", objectStoreName, key, resultStr)
-	return resultStr, nil
+	jww.DEBUG.Printf("Got from %s/%s: %s",
+		objectStoreName, key, utils.JsToJson(resultObj))
+	return resultObj, nil
 }
 
 // GetIndex is a generic helper for getting values from the given
@@ -79,24 +82,24 @@ func GetIndex(db *idb.Database, objectStoreName string,
 	// Prepare the Transaction
 	txn, err := db.Transaction(idb.TransactionReadOnly, objectStoreName)
 	if err != nil {
-		return js.Value{}, errors.WithMessagef(parentErr,
+		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to create Transaction: %+v", err)
 	}
 	store, err := txn.ObjectStore(objectStoreName)
 	if err != nil {
-		return js.Value{}, errors.WithMessagef(parentErr,
+		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get ObjectStore: %+v", err)
 	}
 	idx, err := store.Index(indexName)
 	if err != nil {
-		return js.Value{}, errors.WithMessagef(parentErr,
+		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get Index: %+v", err)
 	}
 
 	// Perform the operation
 	getRequest, err := idx.Get(key)
 	if err != nil {
-		return js.Value{}, errors.WithMessagef(parentErr,
+		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to Get from ObjectStore: %+v", err)
 	}
 
@@ -105,14 +108,16 @@ func GetIndex(db *idb.Database, objectStoreName string,
 	resultObj, err := getRequest.Await(ctx)
 	cancel()
 	if err != nil {
-		return js.Value{}, errors.WithMessagef(parentErr,
+		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
+	} else if resultObj.IsUndefined() {
+		return js.Undefined(), errors.WithMessage(parentErr,
+			"Unable to get from ObjectStore: result is undefined")
 	}
 
 	// Process result into string
-	resultStr := utils.JsToJson(resultObj)
 	jww.DEBUG.Printf("Got from %s/%s/%s: %s",
-		objectStoreName, indexName, key, resultStr)
+		objectStoreName, indexName, key, utils.JsToJson(resultObj))
 	return resultObj, nil
 }
 
@@ -143,7 +148,7 @@ func Put(db *idb.Database, objectStoreName string, value js.Value) (*idb.Request
 		return nil, errors.Errorf("Putting value failed: %+v", err)
 	}
 	jww.DEBUG.Printf("Successfully put value in %s: %v",
-		objectStoreName, value.String())
+		objectStoreName, utils.JsToJson(value))
 	return request, nil
 }
 

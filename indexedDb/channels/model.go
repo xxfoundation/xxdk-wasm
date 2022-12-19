@@ -61,7 +61,7 @@ type Message struct {
 
 	// User cryptographic Identity struct -- could be pulled out
 	Pubkey         []byte `json:"pubkey"`
-	DmToken        uint32 `json:"dm_token"`
+	DmToken        []byte `json:"dm_token"`
 	CodesetVersion uint8  `json:"codeset_version"`
 }
 

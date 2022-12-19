@@ -211,7 +211,7 @@ func (w *wasmModel) hackTestDb() error {
 	if err != nil {
 		return err
 	}
-	if len(result) == 0 {
+	if result.IsUndefined() {
 		return errors.Errorf("Failed to test db, record not present")
 	}
 	return nil
