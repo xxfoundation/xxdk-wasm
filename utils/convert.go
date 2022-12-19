@@ -32,6 +32,10 @@ func CopyBytesToJS(src []byte) js.Value {
 
 // JsToJson converts the Javascript value to JSON.
 func JsToJson(value js.Value) string {
+	if value.IsUndefined() {
+		return "null"
+	}
+
 	return JSON.Call("stringify", value).String()
 }
 
