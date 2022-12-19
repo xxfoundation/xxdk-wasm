@@ -11,13 +11,14 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"syscall/js"
+
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
-	"os"
-	"syscall/js"
 )
 
 func init() {
@@ -88,6 +89,15 @@ func main() {
 	js.Global().Set("IsNicknameValid", js.FuncOf(wasm.IsNicknameValid))
 	js.Global().Set("NewChannelsDatabaseCipher",
 		js.FuncOf(wasm.NewChannelsDatabaseCipher))
+
+	// wasm/dm.go
+	js.Global().Set("NewDMClient", js.FuncOf(wasm.NewDMClient))
+	js.Global().Set("NewDMClientWithIndexedDb",
+		js.FuncOf(wasm.NewDMClientWithIndexedDb))
+	js.Global().Set("NewDMClientWithIndexedDbUnsafe",
+		js.FuncOf(wasm.NewDMClientWithIndexedDbUnsafe))
+	js.Global().Set("NewDMsDatabaseCipher",
+		js.FuncOf(wasm.NewDMsDatabaseCipher))
 
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))

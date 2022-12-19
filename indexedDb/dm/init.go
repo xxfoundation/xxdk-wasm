@@ -39,7 +39,7 @@ type MessageReceivedCallback func(uuid uint64, pubKey ed25519.PublicKey, update 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
 func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback) (dm.Receiver, error) {
+	cb MessageReceivedCallback) (dm.EventModel, error) {
 	databaseName := path + databaseSuffix
 	return newWASMModel(databaseName, encryption, cb)
 }
