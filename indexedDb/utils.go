@@ -32,6 +32,7 @@ func NewContext() (context.Context, context.CancelFunc) {
 }
 
 // Get is a generic helper for getting values from the given [idb.ObjectStore].
+// Only usable by primary key.
 func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, error) {
 	parentErr := errors.Errorf("failed to Get %s/%s", objectStoreName, key)
 
@@ -74,7 +75,7 @@ func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, erro
 
 // GetIndex is a generic helper for getting values from the given
 // [idb.ObjectStore] using the given [idb.Index].
-func GetIndex(db *idb.Database, objectStoreName string,
+func GetIndex(db *idb.Database, objectStoreName,
 	indexName string, key js.Value) (js.Value, error) {
 	parentErr := errors.Errorf("failed to GetIndex %s/%s/%s",
 		objectStoreName, indexName, key)
@@ -147,17 +148,18 @@ func Put(db *idb.Database, objectStoreName string, value js.Value) (*idb.Request
 	if err != nil {
 		return nil, errors.Errorf("Putting value failed: %+v", err)
 	}
-	jww.DEBUG.Printf("Successfully put value in %s: %v",
+	jww.DEBUG.Printf("Successfully put value in %s: %s",
 		objectStoreName, utils.JsToJson(value))
 	return request, nil
 }
 
 // Delete is a generic helper for removing values from the given [idb.ObjectStore].
+// Only usable by primary key.
 func Delete(db *idb.Database, objectStoreName string, key js.Value) error {
 	parentErr := errors.Errorf("failed to Delete %s/%s", objectStoreName, key)
 
 	// Prepare the Transaction
-	txn, err := db.Transaction(idb.TransactionReadOnly, objectStoreName)
+	txn, err := db.Transaction(idb.TransactionReadWrite, objectStoreName)
 	if err != nil {
 		return errors.WithMessagef(parentErr,
 			"Unable to create Transaction: %+v", err)
@@ -169,20 +171,44 @@ func Delete(db *idb.Database, objectStoreName string, key js.Value) error {
 	}
 
 	// Perform the operation
-	deleteRequest, err := store.Delete(key)
+	_, err = store.Delete(key)
 	if err != nil {
 		return errors.WithMessagef(parentErr,
-			"Unable to Get from ObjectStore: %+v", err)
+			"Unable to Delete from ObjectStore: %+v", err)
 	}
 
 	// Wait for the operation to return
 	ctx, cancel := NewContext()
-	err = deleteRequest.Await(ctx)
+	err = txn.Await(ctx)
 	cancel()
 	if err != nil {
 		return errors.WithMessagef(parentErr,
-			"Unable to delete from ObjectStore: %+v", err)
+			"Unable to Delete from ObjectStore: %+v", err)
 	}
+	jww.DEBUG.Printf("Successfully deleted value at %s/%s",
+		objectStoreName, utils.JsToJson(key))
+	return nil
+}
+
+// DeleteIndex is a generic helper for removing values from the
+// given [idb.ObjectStore] using the given [idb.Index]. Requires passing
+// in the name of the primary key for the store.
+func DeleteIndex(db *idb.Database, objectStoreName,
+	indexName, pkeyName string, key js.Value) error {
+	parentErr := errors.Errorf("failed to DeleteIndex %s/%s", objectStoreName, key)
+
+	value, err := GetIndex(db, objectStoreName, indexName, key)
+	if err != nil {
+		return errors.WithMessagef(parentErr, "%+v", err)
+	}
+
+	err = Delete(db, objectStoreName, value.Get(pkeyName))
+	if err != nil {
+		return errors.WithMessagef(parentErr, "%+v", err)
+	}
+
+	jww.DEBUG.Printf("Successfully deleted value at %s/%s/%s",
+		objectStoreName, indexName, utils.JsToJson(key))
 	return nil
 }
 
