@@ -12,6 +12,11 @@ package channelEventModel
 import (
 	"crypto/ed25519"
 	"encoding/json"
+	"strings"
+	"sync"
+	"syscall/js"
+	"time"
+
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
@@ -19,13 +24,10 @@ import (
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
-	"strings"
-	"sync"
-	"syscall/js"
-	"time"
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
+	"gitlab.com/elixxir/crypto/message"
 )
 
 // wasmModel implements [dm.Receiver] interface, which uses the channels
@@ -93,7 +95,7 @@ func buildMessage(messageID, parentID []byte, text []byte,
 	}
 }
 
-func (w *wasmModel) Receive(messageID dm.MessageID, nickname string, text []byte,
+func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
 	round rounds.Round, mType dm.MessageType, status dm.Status) uint64 {
 	parentErr := errors.New("failed to Receive")
@@ -135,7 +137,7 @@ func (w *wasmModel) Receive(messageID dm.MessageID, nickname string, text []byte
 	return uuid
 }
 
-func (w *wasmModel) ReceiveText(messageID dm.MessageID, nickname, text string,
+func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
 	round rounds.Round, status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveText")
@@ -179,7 +181,7 @@ func (w *wasmModel) ReceiveText(messageID dm.MessageID, nickname, text string,
 	return uuid
 }
 
-func (w *wasmModel) ReceiveReply(messageID dm.MessageID, reactionTo dm.MessageID,
+func (w *wasmModel) ReceiveReply(messageID message.ID, reactionTo message.ID,
 	nickname, text string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveReply")
@@ -223,7 +225,7 @@ func (w *wasmModel) ReceiveReply(messageID dm.MessageID, reactionTo dm.MessageID
 	return uuid
 }
 
-func (w *wasmModel) ReceiveReaction(messageID dm.MessageID, reactionTo dm.MessageID,
+func (w *wasmModel) ReceiveReaction(messageID message.ID, reactionTo message.ID,
 	nickname, reaction string, pubKey ed25519.PublicKey, dmToken uint32,
 	codeset uint8, timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveText")
@@ -268,7 +270,7 @@ func (w *wasmModel) ReceiveReaction(messageID dm.MessageID, reactionTo dm.Messag
 }
 
 func (w *wasmModel) UpdateSentStatus(uuid uint64,
-	messageID dm.MessageID, timestamp time.Time, round rounds.Round,
+	messageID message.ID, timestamp time.Time, round rounds.Round,
 	status dm.Status) {
 	parentErr := errors.New("failed to UpdateSentStatus")
 
@@ -299,7 +301,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64,
 	}
 
 	newMessage.Status = uint8(status)
-	if !messageID.Equals(dm.MessageID{}) {
+	if !messageID.Equals(message.ID{}) {
 		newMessage.MessageID = messageID.Bytes()
 	}
 
@@ -351,7 +353,7 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 	// NOTE: Sometimes the insert fails to return an error but hits a duplicate
 	//  insert, so this fallthrough returns the UUID entry in that case.
 	if res.IsUndefined() {
-		msgID := cryptoChannel.MessageID{}
+		msgID := message.ID{}
 		copy(msgID[:], newMessage.MessageID)
 		uuid, errLookup := w.msgIDLookup(msgID)
 		if uuid != 0 && errLookup == nil {
@@ -366,7 +368,7 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 }
 
 // msgIDLookup gets the UUID of the Message with the given messageID.
-func (w *wasmModel) msgIDLookup(messageID cryptoChannel.MessageID) (uint64,
+func (w *wasmModel) msgIDLookup(messageID message.ID) (uint64,
 	error) {
 	resultObj, err := indexedDb.GetIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, utils.CopyBytesToJS(messageID.Marshal()))
