@@ -12,6 +12,7 @@ package channelEventModel
 import (
 	"crypto/ed25519"
 	"encoding/json"
+	"strings"
 	"sync"
 	"syscall/js"
 	"time"
@@ -101,14 +102,16 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	var err error
 
 	// If there is no extant Conversation, create one.
-	if result, err := indexedDb.Get(w.db, conversationStoreName,
-		utils.CopyBytesToJS(pubKey)); err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to get Conversation: %+v", err))
-		return 0
-	} else if len(result.String()) == 0 {
-		err = w.joinConversation(nickname, pubKey, dmToken, codeset)
-		jww.ERROR.Printf("%+v", err)
+	if _, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey)); err != nil {
+		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
+			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
+			if err != nil {
+				jww.ERROR.Printf("%+v", err)
+			}
+		} else {
+			jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+				"Unable to get Conversation: %+v", err))
+		}
 		return 0
 	} else {
 		jww.DEBUG.Printf("Conversation with %s already joined", nickname)
@@ -141,14 +144,16 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	var err error
 
 	// If there is no extant Conversation, create one.
-	if result, err := indexedDb.Get(w.db, conversationStoreName,
-		utils.CopyBytesToJS(pubKey)); err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to get Conversation: %+v", err))
-		return 0
-	} else if len(result.String()) == 0 {
-		err = w.joinConversation(nickname, pubKey, dmToken, codeset)
-		jww.ERROR.Printf("%+v", err)
+	if _, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey)); err != nil {
+		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
+			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
+			if err != nil {
+				jww.ERROR.Printf("%+v", err)
+			}
+		} else {
+			jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+				"Unable to get Conversation: %+v", err))
+		}
 		return 0
 	} else {
 		jww.DEBUG.Printf("Conversation with %s already joined", nickname)
@@ -183,14 +188,16 @@ func (w *wasmModel) ReceiveReply(messageID message.ID, reactionTo message.ID,
 	var err error
 
 	// If there is no extant Conversation, create one.
-	if result, err := indexedDb.Get(w.db, conversationStoreName,
-		utils.CopyBytesToJS(pubKey)); err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to get Conversation: %+v", err))
-		return 0
-	} else if len(result.String()) == 0 {
-		err = w.joinConversation(nickname, pubKey, dmToken, codeset)
-		jww.ERROR.Printf("%+v", err)
+	if _, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey)); err != nil {
+		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
+			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
+			if err != nil {
+				jww.ERROR.Printf("%+v", err)
+			}
+		} else {
+			jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+				"Unable to get Conversation: %+v", err))
+		}
 		return 0
 	} else {
 		jww.DEBUG.Printf("Conversation with %s already joined", nickname)
@@ -225,14 +232,16 @@ func (w *wasmModel) ReceiveReaction(messageID message.ID, reactionTo message.ID,
 	var err error
 
 	// If there is no extant Conversation, create one.
-	if result, err := indexedDb.Get(w.db, conversationStoreName,
-		utils.CopyBytesToJS(pubKey)); err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to get Conversation: %+v", err))
-		return 0
-	} else if len(result.String()) == 0 {
-		err = w.joinConversation(nickname, pubKey, dmToken, codeset)
-		jww.ERROR.Printf("%+v", err)
+	if _, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey)); err != nil {
+		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
+			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
+			if err != nil {
+				jww.ERROR.Printf("%+v", err)
+			}
+		} else {
+			jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+				"Unable to get Conversation: %+v", err))
+		}
 		return 0
 	} else {
 		jww.DEBUG.Printf("Conversation with %s already joined", nickname)
@@ -260,8 +269,9 @@ func (w *wasmModel) ReceiveReaction(messageID message.ID, reactionTo message.ID,
 	return uuid
 }
 
-func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
-	timestamp time.Time, round rounds.Round, status dm.Status) {
+func (w *wasmModel) UpdateSentStatus(uuid uint64,
+	messageID message.ID, timestamp time.Time, round rounds.Round,
+	status dm.Status) {
 	parentErr := errors.New("failed to UpdateSentStatus")
 
 	// FIXME: this is a bit of race condition without the mux.
@@ -276,15 +286,20 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	// Use the key to get the existing Message
 	currentMsg, err := indexedDb.Get(w.db, messageStoreName, key)
 	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Unable to get message: %+v", err))
 		return
 	}
 
 	// Extract the existing Message and update the Status
 	newMessage := &Message{}
-	err = json.Unmarshal([]byte(currentMsg.String()), newMessage)
+	err = json.Unmarshal([]byte(utils.JsToJson(currentMsg)), newMessage)
 	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Could not JSON unmarshal message: %+v", err))
 		return
 	}
+
 	newMessage.Status = uint8(status)
 	if !messageID.Equals(message.ID{}) {
 		newMessage.MessageID = messageID.Bytes()

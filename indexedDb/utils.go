@@ -22,9 +22,13 @@ import (
 	"time"
 )
 
-// dbTimeout is the global timeout for operations with the storage
-// [context.Context].
-const dbTimeout = time.Second
+const (
+	// dbTimeout is the global timeout for operations with the storage
+	// [context.Context].
+	dbTimeout = time.Second
+	// ErrDoesNotExist is an error string for got undefined on Get operations.
+	ErrDoesNotExist = "result is undefined"
+)
 
 // NewContext builds a context for indexedDb operations.
 func NewContext() (context.Context, context.CancelFunc) {
@@ -62,8 +66,8 @@ func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, erro
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
 	} else if resultObj.IsUndefined() {
-		return js.Undefined(), errors.WithMessage(parentErr,
-			"Unable to get from ObjectStore: result is undefined")
+		return js.Undefined(), errors.WithMessagef(parentErr,
+			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
 	}
 
 	// Process result into string
@@ -111,8 +115,8 @@ func GetIndex(db *idb.Database, objectStoreName string,
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
 	} else if resultObj.IsUndefined() {
-		return js.Undefined(), errors.WithMessage(parentErr,
-			"Unable to get from ObjectStore: result is undefined")
+		return js.Undefined(), errors.WithMessagef(parentErr,
+			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
 	}
 
 	// Process result into string
