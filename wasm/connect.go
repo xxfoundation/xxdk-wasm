@@ -80,10 +80,6 @@ func (c *Cmix) Connect(_ js.Value, args []js.Value) any {
 // SendE2E is a wrapper for sending specifically to the [Connection]'s
 // [partner.Manager].
 //
-// Returns:
-//   - []byte - the JSON marshalled bytes of the E2ESendReport object, which can
-//     be passed into [Cmix.WaitForRoundResult] to see if the send succeeded.
-//
 // Parameters:
 //   - args[0] - Message type from [catalog.MessageType] (int).
 //   - args[1] - Message payload (Uint8Array).

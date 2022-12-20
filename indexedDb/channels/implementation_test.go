@@ -63,8 +63,52 @@ func TestWasmModel_msgIDLookup(t *testing.T) {
 	}
 }
 
-// Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
-func Test_wasmModel_UpdateSentStatus(t *testing.T) {
+// Happy path, insert message and delete it
+func TestWasmModel_DeleteMessage(t *testing.T) {
+	storage.GetLocalStorage().Clear()
+	testString := "test"
+	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
+	eventModel, err := newWASMModel(testString, nil, dummyCallback)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Insert a message
+	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
+		testString, []byte(testString), []byte{8, 6, 7, 5}, 0, netTime.Now(),
+		time.Second, 0, 0, false, false, channels.Sent)
+	_, err = eventModel.receiveHelper(testMsg, false)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Check the resulting status
+	results, err := indexedDb.Dump(eventModel.db, messageStoreName)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Expected 1 message to exist")
+	}
+
+	// Delete the message
+	err = eventModel.DeleteMessage(testMsgId)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Check the resulting status
+	results, err = indexedDb.Dump(eventModel.db, messageStoreName)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if len(results) != 0 {
+		t.Fatalf("Expected no messages to exist")
+	}
+}
+
+// Test wasmModel.UpdateFromUUID happy path and ensure fields don't change.
+func Test_wasmModel_UpdateFromUUID(t *testing.T) {
 	storage.GetLocalStorage().Clear()
 	testString := "test"
 	testMsgId := channel.MakeMessageID([]byte(testString), &id.ID{1})
