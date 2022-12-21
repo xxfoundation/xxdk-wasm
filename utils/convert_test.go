@@ -113,6 +113,22 @@ func TestJsToJson(t *testing.T) {
 	}
 }
 
+// Tests that JsToJson return a null object when the Javascript object is
+// undefined.
+func TestJsToJson_Undefined(t *testing.T) {
+	expected, err := json.Marshal(nil)
+	if err != nil {
+		t.Errorf("Failed to JSON marshal test object: %+v", err)
+	}
+
+	jsJson := JsToJson(js.Undefined())
+
+	if string(expected) != jsJson {
+		t.Errorf("Recieved incorrect JSON from Javascript object."+
+			"\nexpected: %s\nreceived: %s", expected, jsJson)
+	}
+}
+
 // Tests that JsonToJS can convert a JSON object with multiple types to a
 // Javascript object and that all values match.
 func TestJsonToJS(t *testing.T) {
