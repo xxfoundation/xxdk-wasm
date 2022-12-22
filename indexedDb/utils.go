@@ -127,33 +127,33 @@ func GetIndex(db *idb.Database, objectStoreName string,
 
 // Put is a generic helper for putting values into the given [idb.ObjectStore].
 // Equivalent to insert if not exists else update.
-func Put(db *idb.Database, objectStoreName string, value js.Value) (*idb.Request, error) {
+func Put(db *idb.Database, objectStoreName string, value js.Value) (js.Value, error) {
 	// Prepare the Transaction
 	txn, err := db.Transaction(idb.TransactionReadWrite, objectStoreName)
 	if err != nil {
-		return nil, errors.Errorf("Unable to create Transaction: %+v", err)
+		return js.Undefined(), errors.Errorf("Unable to create Transaction: %+v", err)
 	}
 	store, err := txn.ObjectStore(objectStoreName)
 	if err != nil {
-		return nil, errors.Errorf("Unable to get ObjectStore: %+v", err)
+		return js.Undefined(), errors.Errorf("Unable to get ObjectStore: %+v", err)
 	}
 
 	// Perform the operation
 	request, err := store.Put(value)
 	if err != nil {
-		return nil, errors.Errorf("Unable to Put: %+v", err)
+		return js.Undefined(), errors.Errorf("Unable to Put: %+v", err)
 	}
 
 	// Wait for the operation to return
 	ctx, cancel := NewContext()
-	err = txn.Await(ctx)
+	result, err := request.Await(ctx)
 	cancel()
 	if err != nil {
-		return nil, errors.Errorf("Putting value failed: %+v", err)
+		return js.Undefined(), errors.Errorf("Putting value failed: %+v", err)
 	}
 	jww.DEBUG.Printf("Successfully put value in %s: %v",
 		objectStoreName, utils.JsToJson(value))
-	return request, nil
+	return result, nil
 }
 
 // Delete is a generic helper for removing values from the given [idb.ObjectStore].

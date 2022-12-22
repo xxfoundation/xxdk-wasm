@@ -377,18 +377,14 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 	}
 
 	// Store message to database
-	addReq, err := indexedDb.Put(w.db, messageStoreName, messageObj)
+	result, err := indexedDb.Put(w.db, messageStoreName, messageObj)
 	if err != nil {
 		return 0, errors.Errorf("Unable to put Message: %+v", err)
-	}
-	res, err := addReq.Result()
-	if err != nil {
-		return 0, errors.Errorf("Unable to get Message result: %+v", err)
 	}
 
 	// NOTE: Sometimes the insert fails to return an error but hits a duplicate
 	//  insert, so this fallthrough returns the UUID entry in that case.
-	if res.IsUndefined() {
+	if result.IsUndefined() {
 		msgID := message.ID{}
 		copy(msgID[:], newMessage.MessageID)
 		uuid, errLookup := w.msgIDLookup(msgID)
@@ -397,7 +393,7 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 		}
 		return 0, errors.Errorf("uuid lookup failure: %+v", err)
 	}
-	uuid := uint64(res.Int())
+	uuid := uint64(result.Int())
 	jww.DEBUG.Printf("Successfully stored message %d", uuid)
 
 	return uuid, nil
