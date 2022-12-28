@@ -78,14 +78,12 @@ func main() {
 		js.FuncOf(wasm.LoadChannelsManagerWithIndexedDbUnsafe))
 	js.Global().Set("NewChannelsManagerWithIndexedDbUnsafe",
 		js.FuncOf(wasm.NewChannelsManagerWithIndexedDbUnsafe))
-	js.Global().Set("GenerateChannel", js.FuncOf(wasm.GenerateChannel))
-	js.Global().Set("GetSavedChannelPrivateKeyUNSAFE",
-		js.FuncOf(wasm.GetSavedChannelPrivateKeyUNSAFE))
 	js.Global().Set("DecodePublicURL", js.FuncOf(wasm.DecodePublicURL))
 	js.Global().Set("DecodePrivateURL", js.FuncOf(wasm.DecodePrivateURL))
 	js.Global().Set("GetChannelJSON", js.FuncOf(wasm.GetChannelJSON))
 	js.Global().Set("GetChannelInfo", js.FuncOf(wasm.GetChannelInfo))
 	js.Global().Set("GetShareUrlType", js.FuncOf(wasm.GetShareUrlType))
+	js.Global().Set("ValidForever", js.FuncOf(wasm.ValidForever))
 	js.Global().Set("IsNicknameValid", js.FuncOf(wasm.IsNicknameValid))
 	js.Global().Set("NewChannelsDatabaseCipher",
 		js.FuncOf(wasm.NewChannelsDatabaseCipher))
