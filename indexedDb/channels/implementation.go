@@ -43,7 +43,7 @@ type wasmModel struct {
 }
 
 // DeleteMessage removes a message with the given messageID from storage.
-func (w *wasmModel) DeleteMessage(messageID cryptoChannel.MessageID) error {
+func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 	msgId := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
 	return indexedDb.DeleteIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, pkeyName, msgId)
@@ -171,7 +171,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 	msgToInsert := buildMessage(
 		channelID.Marshal(), messageID.Bytes(), nil, nickname,
 		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
-		hidden, status)
+		false, hidden, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -207,7 +207,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 
 	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
 		replyTo.Bytes(), nickname, textBytes, pubKey, dmToken, codeset,
-		timestamp, lease, round.ID, mType, hidden, status)
+		timestamp, lease, round.ID, mType, hidden, false, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 
@@ -244,7 +244,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 	msgToInsert := buildMessage(
 		channelID.Marshal(), messageID.Bytes(), reactionTo.Bytes(), nickname,
 		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
-		hidden, status)
+		false, hidden, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -260,7 +260,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 // timestamp, round, pinned, and hidden are all nillable and may be updated
 // based upon the UUID at a later date. If a nil value is passed, then make
 // no update.
-func (w *wasmModel) UpdateFromMessageID(messageID cryptoChannel.MessageID,
+func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	timestamp *time.Time, round *rounds.Round, pinned, hidden *bool,
 	status *channels.SentStatus) uint64 {
 	parentErr := errors.New("failed to UpdateFromMessageID")
@@ -296,7 +296,7 @@ func (w *wasmModel) UpdateFromMessageID(messageID cryptoChannel.MessageID,
 // updated based upon the UUID at a later date. If a nil value is passed, then
 // make no update.
 func (w *wasmModel) UpdateFromUUID(uuid uint64,
-	messageID *cryptoChannel.MessageID, timestamp *time.Time,
+	messageID *message.ID, timestamp *time.Time,
 	round *rounds.Round, pinned, hidden *bool, status *channels.SentStatus) {
 	parentErr := errors.New("failed to UpdateFromUUID")
 
@@ -327,7 +327,7 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64,
 
 // updateMessage is a helper for updating a stored message.
 func (w *wasmModel) updateMessage(currentMsgJson string,
-	messageID *cryptoChannel.MessageID, timestamp *time.Time,
+	messageID *message.ID, timestamp *time.Time,
 	round *rounds.Round, pinned, hidden *bool,
 	status *channels.SentStatus) (uint64, error) {
 
@@ -445,7 +445,7 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 }
 
 // GetMessage returns the message with the given [channel.MessageID].
-func (w *wasmModel) GetMessage(messageID cryptoChannel.MessageID) (channels.ModelMessage, error) {
+func (w *wasmModel) GetMessage(messageID message.ID) (channels.ModelMessage, error) {
 	lookupResult, err := w.msgIDLookup(messageID)
 	if err != nil {
 		return channels.ModelMessage{}, err
@@ -459,9 +459,9 @@ func (w *wasmModel) GetMessage(messageID cryptoChannel.MessageID) (channels.Mode
 		}
 	}
 
-	var parentMsgId cryptoChannel.MessageID
+	var parentMsgId message.ID
 	if lookupResult.ParentMessageID != nil {
-		parentMsgId, err = cryptoChannel.UnmarshalMessageID(lookupResult.ParentMessageID)
+		parentMsgId, err = message.UnmarshalID(lookupResult.ParentMessageID)
 		if err != nil {
 			return channels.ModelMessage{}, err
 		}
