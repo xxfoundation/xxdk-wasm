@@ -65,7 +65,7 @@ version_check:
   script:
     - GITTAG=$(git describe --tags)
     - CODEVERS=$(cat storage/version.go | grep "const SEMVER =" | cut -d ' ' -f4 | tr -d '"')
-    - if [[ $GITTAG != $CODEVERS ]]; then echo "VERSION NUMBER BAD $GITTAG != $CODEVER"; exit -1; fi
+    - if [[ $GITTAG != $CODEVERS ]]; then echo "VERSION NUMBER BAD $GITTAG != $CODEVERS"; exit -1; fi
 
 tag:
   stage: build
