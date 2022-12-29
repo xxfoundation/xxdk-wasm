@@ -368,7 +368,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 					thisChannel = keepChannel
 				}
 
-				testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testStr))
+				testMsgId := message.DeriveChannelMessageID(&id.ID{byte(i)}, 0, []byte(testStr))
 				eventModel.ReceiveMessage(thisChannel, testMsgId, testStr, testStr,
 					[]byte{8, 6, 7, 5}, 0, 0, netTime.Now(), time.Second,
 					rounds.Round{ID: id.Round(0)}, 0, channels.Sent, false)
@@ -451,17 +451,10 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			// The duplicate entry won't fail, but it just silently shouldn't happen
+			// The duplicate entry should fail
 			_, err = eventModel.receiveHelper(testMsg, false)
-			if err != nil {
-				t.Fatalf("%+v", err)
-			}
-			results, err := indexedDb.Dump(eventModel.db, messageStoreName)
-			if err != nil {
-				t.Fatalf("%+v", err)
-			}
-			if len(results) != 1 {
-				t.Fatalf("Expected only a single message, got %d", len(results))
+			if err == nil {
+				t.Fatalf("Expected duplicate insert to fail!")
 			}
 
 			// Now insert a message with a different message ID from the first
@@ -475,22 +468,13 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 			}
 
 			// Except this time, we update the second entry to have the same
-			// message ID as the first
+			// message ID as the first, which needs to fail
 			testMsg.ID = primaryKey
 			testMsg.MessageID = testMsgId.Bytes()
 			_, err = eventModel.receiveHelper(testMsg, true)
-			if err != nil {
-				t.Fatal(err)
+			if err == nil {
+				t.Fatal("Expected duplicate update to fail!")
 			}
-
-			// The update to duplicate message ID won't fail,
-			// but it just silently shouldn't happen
-			results, err = indexedDb.Dump(eventModel.db, messageStoreName)
-			if err != nil {
-				t.Fatalf("%+v", err)
-			}
-			// TODO: Convert JSON to Message, ensure Message ID fields differ
-
 		})
 	}
 }
