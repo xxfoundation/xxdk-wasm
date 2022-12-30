@@ -446,15 +446,18 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
-			_, err = eventModel.receiveHelper(testMsg, false)
+			uuid, err := eventModel.receiveHelper(testMsg, false)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			// The duplicate entry should fail
-			_, err = eventModel.receiveHelper(testMsg, false)
-			if err == nil {
-				t.Fatalf("Expected duplicate insert to fail!")
+			// The duplicate entry should return the same UUID
+			duplicateUuid, err := eventModel.receiveHelper(testMsg, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if uuid != duplicateUuid {
+				t.Fatalf("Expected UUID %d to match %d", uuid, duplicateUuid)
 			}
 
 			// Now insert a message with a different message ID from the first
@@ -462,18 +465,24 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 			testMsg = buildMessage([]byte(testString), testMsgId2.Bytes(), nil,
 				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
-			primaryKey, err := eventModel.receiveHelper(testMsg, false)
+			uuid2, err := eventModel.receiveHelper(testMsg, false)
 			if err != nil {
 				t.Fatal(err)
 			}
+			if uuid2 == uuid {
+				t.Fatalf("Expected UUID %d to NOT match %d", uuid, duplicateUuid)
+			}
 
 			// Except this time, we update the second entry to have the same
-			// message ID as the first, which needs to fail
-			testMsg.ID = primaryKey
+			// message ID as the first
+			testMsg.ID = uuid
 			testMsg.MessageID = testMsgId.Bytes()
-			_, err = eventModel.receiveHelper(testMsg, true)
-			if err == nil {
-				t.Fatal("Expected duplicate update to fail!")
+			duplicateUuid2, err := eventModel.receiveHelper(testMsg, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if duplicateUuid2 != duplicateUuid {
+				t.Fatalf("Expected UUID %d to match %d", uuid, duplicateUuid)
 			}
 		})
 	}
