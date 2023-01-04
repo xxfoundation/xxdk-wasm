@@ -24,11 +24,11 @@ import (
 	"gitlab.com/elixxir/client/v4/restlike"
 	"gitlab.com/elixxir/client/v4/single"
 	"gitlab.com/elixxir/crypto/broadcast"
-	"gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/contact"
 	"gitlab.com/elixxir/crypto/cyclic"
 	"gitlab.com/elixxir/crypto/fileTransfer"
 	"gitlab.com/elixxir/crypto/group"
+	cryptoMessage "gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/primitives/fact"
 	"gitlab.com/elixxir/primitives/format"
 	"gitlab.com/xx_network/primitives/id"
@@ -51,7 +51,7 @@ var (
 	_ = connect.Callback(nil)
 	_ = partner.Manager(nil)
 	_ = ndf.NetworkDefinition{}
-	_ = channel.MessageID{}
+	_ = cryptoMessage.ID{}
 	_ = channels.SentStatus(0)
 	_ = ftE2e.Params{}
 	_ = fileTransfer.TransferID{}
