@@ -152,10 +152,9 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 //
 // It may be called multiple times on the same message; it is incumbent on the
 // user of the API to filter such called by message ID.
-func (w *wasmModel) ReceiveMessage(channelID *id.ID,
-	messageID message.ID, nickname, text string,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
-	timestamp time.Time, lease time.Duration, round rounds.Round,
+func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
+	nickname, text string, pubKey ed25519.PublicKey, dmToken uint32,
+	codeset uint8, timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus, hidden bool) uint64 {
 	textBytes := []byte(text)
 	var err error
@@ -189,11 +188,11 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID,
 //
 // Messages may arrive our of order, so a reply, in theory, can arrive before
 // the initial message. As a result, it may be important to buffer replies.
-func (w *wasmModel) ReceiveReply(channelID *id.ID,
-	messageID message.ID, replyTo message.ID,
-	nickname, text string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
-	timestamp time.Time, lease time.Duration, round rounds.Round,
-	mType channels.MessageType, status channels.SentStatus, hidden bool) uint64 {
+func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
+	replyTo message.ID, nickname, text string, pubKey ed25519.PublicKey,
+	dmToken uint32, codeset uint8, timestamp time.Time, lease time.Duration,
+	round rounds.Round, mType channels.MessageType, status channels.SentStatus,
+	hidden bool) uint64 {
 	textBytes := []byte(text)
 	var err error
 
@@ -225,11 +224,11 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID,
 //
 // Messages may arrive our of order, so a reply, in theory, can arrive before
 // the initial message. As a result, it may be important to buffer reactions.
-func (w *wasmModel) ReceiveReaction(channelID *id.ID,
-	messageID message.ID, reactionTo message.ID,
-	nickname, reaction string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
-	timestamp time.Time, lease time.Duration, round rounds.Round,
-	mType channels.MessageType, status channels.SentStatus, hidden bool) uint64 {
+func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
+	reactionTo message.ID, nickname, reaction string, pubKey ed25519.PublicKey,
+	dmToken uint32, codeset uint8, timestamp time.Time, lease time.Duration,
+	round rounds.Round, mType channels.MessageType, status channels.SentStatus,
+	hidden bool) uint64 {
 	textBytes := []byte(reaction)
 	var err error
 
@@ -255,6 +254,9 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID,
 	return uuid
 }
 
+// UpdateFromMessageID is called whenever a message with the message ID is
+// modified.
+//
 // The API needs to return the UUID of the modified message that can be
 // referenced at a later time.
 //
@@ -296,9 +298,9 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 // messageID, timestamp, round, pinned, and hidden are all nillable and may be
 // updated based upon the UUID at a later date. If a nil value is passed, then
 // make no update.
-func (w *wasmModel) UpdateFromUUID(uuid uint64,
-	messageID *message.ID, timestamp *time.Time,
-	round *rounds.Round, pinned, hidden *bool, status *channels.SentStatus) {
+func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
+	timestamp *time.Time, round *rounds.Round, pinned, hidden *bool,
+	status *channels.SentStatus) {
 	parentErr := errors.New("failed to UpdateFromUUID")
 
 	// FIXME: this is a bit of race condition without the mux.
@@ -327,9 +329,8 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64,
 }
 
 // updateMessage is a helper for updating a stored message.
-func (w *wasmModel) updateMessage(currentMsgJson string,
-	messageID *message.ID, timestamp *time.Time,
-	round *rounds.Round, pinned, hidden *bool,
+func (w *wasmModel) updateMessage(currentMsgJson string, messageID *message.ID,
+	timestamp *time.Time, round *rounds.Round, pinned, hidden *bool,
 	status *channels.SentStatus) (uint64, error) {
 
 	newMessage := &Message{}
@@ -380,9 +381,10 @@ func (w *wasmModel) updateMessage(currentMsgJson string,
 // autoincrement key by default. If you are trying to overwrite an existing
 // message, then you need to set it manually yourself.
 func buildMessage(channelID, messageID, parentID []byte, nickname string,
-	text []byte, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
-	lease time.Duration, round id.Round, mType channels.MessageType,
-	pinned, hidden bool, status channels.SentStatus) *Message {
+	text []byte, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	timestamp time.Time, lease time.Duration, round id.Round,
+	mType channels.MessageType, pinned, hidden bool,
+	status channels.SentStatus) *Message {
 	return &Message{
 		MessageID:       messageID,
 		Nickname:        nickname,
@@ -404,8 +406,8 @@ func buildMessage(channelID, messageID, parentID []byte, nickname string,
 }
 
 // receiveHelper is a private helper for receiving any sort of message.
-func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
-	error) {
+func (w *wasmModel) receiveHelper(
+	newMessage *Message, isUpdate bool) (uint64, error) {
 	// Convert to jsObject
 	newMessageJson, err := json.Marshal(newMessage)
 	if err != nil {
@@ -437,7 +439,7 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 		msgID := message.ID{}
 		copy(msgID[:], newMessage.MessageID)
 		msg, errLookup := w.msgIDLookup(msgID)
-		if msg.ID != 0 && errLookup == nil {
+		if errLookup == nil && msg.ID != 0 {
 			return msg.ID, nil
 		}
 		return 0, errors.Errorf("uuid lookup failure: %+v", err)
@@ -449,7 +451,8 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 }
 
 // GetMessage returns the message with the given [channel.MessageID].
-func (w *wasmModel) GetMessage(messageID message.ID) (channels.ModelMessage, error) {
+func (w *wasmModel) GetMessage(
+	messageID message.ID) (channels.ModelMessage, error) {
 	lookupResult, err := w.msgIDLookup(messageID)
 	if err != nil {
 		return channels.ModelMessage{}, err
@@ -491,8 +494,7 @@ func (w *wasmModel) GetMessage(messageID message.ID) (channels.ModelMessage, err
 }
 
 // msgIDLookup gets the UUID of the Message with the given messageID.
-func (w *wasmModel) msgIDLookup(messageID message.ID) (*Message,
-	error) {
+func (w *wasmModel) msgIDLookup(messageID message.ID) (*Message, error) {
 	msgIDStr := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
 	resultObj, err := indexedDb.GetIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, msgIDStr)

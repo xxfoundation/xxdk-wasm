@@ -99,10 +99,10 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
 	round rounds.Round, mType dm.MessageType, status dm.Status) uint64 {
 	parentErr := errors.New("failed to Receive")
-	var err error
 
 	// If there is no extant Conversation, create one.
-	if _, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey)); err != nil {
+	_, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	if err != nil {
 		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
 			if err != nil {
@@ -141,10 +141,10 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
 	round rounds.Round, status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveText")
-	var err error
 
 	// If there is no extant Conversation, create one.
-	if _, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey)); err != nil {
+	_, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	if  err != nil {
 		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
 			if err != nil {
@@ -182,13 +182,14 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 }
 
 func (w *wasmModel) ReceiveReply(messageID message.ID, reactionTo message.ID,
-	nickname, text string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
-	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
+	nickname, text string, pubKey ed25519.PublicKey, dmToken uint32,
+	codeset uint8, timestamp time.Time, round rounds.Round,
+	status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveReply")
-	var err error
 
 	// If there is no extant Conversation, create one.
-	if _, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey)); err != nil {
+	_, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	if err != nil {
 		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
 			if err != nil {
@@ -229,10 +230,10 @@ func (w *wasmModel) ReceiveReaction(messageID message.ID, reactionTo message.ID,
 	nickname, reaction string, pubKey ed25519.PublicKey, dmToken uint32,
 	codeset uint8, timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveText")
-	var err error
 
 	// If there is no extant Conversation, create one.
-	if _, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey)); err != nil {
+	_, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	if err != nil {
 		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
 			if err != nil {

@@ -40,7 +40,8 @@ func dummyCallback(uint64, *id.ID, bool) {}
 
 // Happy path, insert message and look it up
 func TestWasmModel_msgIDLookup(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher([]byte("testpass"), []byte("testsalt"), 128, csprng.NewSystemRNG())
+	cipher, err := cryptoChannel.NewCipher(
+		[]byte("testpass"), []byte("testsalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
@@ -125,7 +126,8 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 
 // Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
 func Test_wasmModel_UpdateSentStatus(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher([]byte("testpass"), []byte("testsalt"), 128, csprng.NewSystemRNG())
+	cipher, err := cryptoChannel.NewCipher(
+		[]byte("testpass"), []byte("testsalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
@@ -134,10 +136,11 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 		if c != nil {
 			cs = "_withCipher"
 		}
-		t.Run(fmt.Sprintf("Test_wasmModel_UpdateSentStatus%s", cs), func(t *testing.T) {
+		t.Run("Test_wasmModel_UpdateSentStatus"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := "Test_wasmModel_UpdateSentStatus" + cs
-			testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
+			testMsgId := message.DeriveChannelMessageID(
+				&id.ID{1}, 0, []byte(testString))
 			eventModel, err := newWASMModel(testString, c, dummyCallback)
 			if err != nil {
 				t.Fatalf("%+v", err)
@@ -193,7 +196,8 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 
 // Smoke test wasmModel.JoinChannel/wasmModel.LeaveChannel happy paths.
 func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher([]byte("testpass"), []byte("testsalt"), 128, csprng.NewSystemRNG())
+	cipher, err := cryptoChannel.NewCipher(
+		[]byte("testpass"), []byte("testsalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}

@@ -12,8 +12,8 @@ build:
 	go mod tidy
 
 update_release:
-	GOFLAGS="" go get -d gitlab.com/elixxir/client/v4@release
-	GOFLAGS="" go get gitlab.com/elixxir/crypto@release
+	GOFLAGS="" go get -d gitlab.com/elixxir/client/v4@project/adminCommands
+	GOFLAGS="" go get gitlab.com/elixxir/crypto@project/adminCommands
 	GOFLAGS="" go get gitlab.com/elixxir/primitives@release
 	GOFLAGS="" go get gitlab.com/xx_network/crypto@release
 	GOFLAGS="" go get gitlab.com/xx_network/primitives@release
