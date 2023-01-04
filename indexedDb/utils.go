@@ -22,9 +22,13 @@ import (
 	"time"
 )
 
-// dbTimeout is the global timeout for operations with the storage
-// [context.Context].
-const dbTimeout = time.Second
+const (
+	// dbTimeout is the global timeout for operations with the storage
+	// [context.Context].
+	dbTimeout = time.Second
+	// ErrDoesNotExist is an error string for got undefined on Get operations.
+	ErrDoesNotExist = "result is undefined"
+)
 
 // NewContext builds a context for indexedDb operations.
 func NewContext() (context.Context, context.CancelFunc) {
@@ -32,6 +36,7 @@ func NewContext() (context.Context, context.CancelFunc) {
 }
 
 // Get is a generic helper for getting values from the given [idb.ObjectStore].
+// Only usable by primary key.
 func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, error) {
 	parentErr := errors.Errorf("failed to Get %s/%s", objectStoreName, key)
 
@@ -62,8 +67,8 @@ func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, erro
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
 	} else if resultObj.IsUndefined() {
-		return js.Undefined(), errors.WithMessage(parentErr,
-			"Unable to get from ObjectStore: result is undefined")
+		return js.Undefined(), errors.WithMessagef(parentErr,
+			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
 	}
 
 	// Process result into string
@@ -74,7 +79,7 @@ func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, erro
 
 // GetIndex is a generic helper for getting values from the given
 // [idb.ObjectStore] using the given [idb.Index].
-func GetIndex(db *idb.Database, objectStoreName string,
+func GetIndex(db *idb.Database, objectStoreName,
 	indexName string, key js.Value) (js.Value, error) {
 	parentErr := errors.Errorf("failed to GetIndex %s/%s/%s",
 		objectStoreName, indexName, key)
@@ -111,8 +116,8 @@ func GetIndex(db *idb.Database, objectStoreName string,
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
 	} else if resultObj.IsUndefined() {
-		return js.Undefined(), errors.WithMessage(parentErr,
-			"Unable to get from ObjectStore: result is undefined")
+		return js.Undefined(), errors.WithMessagef(parentErr,
+			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
 	}
 
 	// Process result into string
@@ -123,41 +128,42 @@ func GetIndex(db *idb.Database, objectStoreName string,
 
 // Put is a generic helper for putting values into the given [idb.ObjectStore].
 // Equivalent to insert if not exists else update.
-func Put(db *idb.Database, objectStoreName string, value js.Value) (*idb.Request, error) {
+func Put(db *idb.Database, objectStoreName string, value js.Value) (js.Value, error) {
 	// Prepare the Transaction
 	txn, err := db.Transaction(idb.TransactionReadWrite, objectStoreName)
 	if err != nil {
-		return nil, errors.Errorf("Unable to create Transaction: %+v", err)
+		return js.Undefined(), errors.Errorf("Unable to create Transaction: %+v", err)
 	}
 	store, err := txn.ObjectStore(objectStoreName)
 	if err != nil {
-		return nil, errors.Errorf("Unable to get ObjectStore: %+v", err)
+		return js.Undefined(), errors.Errorf("Unable to get ObjectStore: %+v", err)
 	}
 
 	// Perform the operation
 	request, err := store.Put(value)
 	if err != nil {
-		return nil, errors.Errorf("Unable to Put: %+v", err)
+		return js.Undefined(), errors.Errorf("Unable to Put: %+v", err)
 	}
 
 	// Wait for the operation to return
 	ctx, cancel := NewContext()
-	err = txn.Await(ctx)
+	result, err := request.Await(ctx)
 	cancel()
 	if err != nil {
-		return nil, errors.Errorf("Putting value failed: %+v", err)
+		return js.Undefined(), errors.Errorf("Putting value failed: %+v", err)
 	}
-	jww.DEBUG.Printf("Successfully put value in %s: %v",
+	jww.DEBUG.Printf("Successfully put value in %s: %s",
 		objectStoreName, utils.JsToJson(value))
-	return request, nil
+	return result, nil
 }
 
-// Delete is a generic helper for removing values from the given [idb.ObjectStore].
+// Delete is a generic helper for removing values from the given
+// [idb.ObjectStore]. Only usable by primary key.
 func Delete(db *idb.Database, objectStoreName string, key js.Value) error {
 	parentErr := errors.Errorf("failed to Delete %s/%s", objectStoreName, key)
 
 	// Prepare the Transaction
-	txn, err := db.Transaction(idb.TransactionReadOnly, objectStoreName)
+	txn, err := db.Transaction(idb.TransactionReadWrite, objectStoreName)
 	if err != nil {
 		return errors.WithMessagef(parentErr,
 			"Unable to create Transaction: %+v", err)
@@ -169,20 +175,44 @@ func Delete(db *idb.Database, objectStoreName string, key js.Value) error {
 	}
 
 	// Perform the operation
-	deleteRequest, err := store.Delete(key)
+	_, err = store.Delete(key)
 	if err != nil {
 		return errors.WithMessagef(parentErr,
-			"Unable to Get from ObjectStore: %+v", err)
+			"Unable to Delete from ObjectStore: %+v", err)
 	}
 
 	// Wait for the operation to return
 	ctx, cancel := NewContext()
-	err = deleteRequest.Await(ctx)
+	err = txn.Await(ctx)
 	cancel()
 	if err != nil {
 		return errors.WithMessagef(parentErr,
-			"Unable to delete from ObjectStore: %+v", err)
+			"Unable to Delete from ObjectStore: %+v", err)
 	}
+	jww.DEBUG.Printf("Successfully deleted value at %s/%s",
+		objectStoreName, utils.JsToJson(key))
+	return nil
+}
+
+// DeleteIndex is a generic helper for removing values from the
+// given [idb.ObjectStore] using the given [idb.Index]. Requires passing
+// in the name of the primary key for the store.
+func DeleteIndex(db *idb.Database, objectStoreName,
+	indexName, pkeyName string, key js.Value) error {
+	parentErr := errors.Errorf("failed to DeleteIndex %s/%s", objectStoreName, key)
+
+	value, err := GetIndex(db, objectStoreName, indexName, key)
+	if err != nil {
+		return errors.WithMessagef(parentErr, "%+v", err)
+	}
+
+	err = Delete(db, objectStoreName, value.Get(pkeyName))
+	if err != nil {
+		return errors.WithMessagef(parentErr, "%+v", err)
+	}
+
+	jww.DEBUG.Printf("Successfully deleted value at %s/%s/%s",
+		objectStoreName, indexName, utils.JsToJson(key))
 	return nil
 }
 

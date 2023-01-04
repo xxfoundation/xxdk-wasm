@@ -48,6 +48,12 @@ func TestPublicFunctions(t *testing.T) {
 		// client versions
 		"GetGitVersion":   {},
 		"GetDependencies": {},
+
+		// DM Functions these are used but not exported by
+		// WASM bindins, so are not exposed.
+		"NewDMReceiver":               {},
+		"NewDMClientWithGoEventModel": {},
+		"GetDMDbCipherTrackerFromID":  {},
 	}
 	wasmFuncs := getPublicFunctions("wasm", t)
 	bindingsFuncs := getPublicFunctions(

@@ -74,9 +74,11 @@ func CreatePromise(f PromiseFn) any {
 	return Promise.New(handler)
 }
 
-// Await waits on a Javascript value. It returns the results of the then and
-// catch functions once it resolves.
-func Await(awaitable js.Value) ([]js.Value, []js.Value) {
+// Await waits on a Javascript value. It blocks until the awaitable successfully
+// resolves to the result or rejects to err.
+//
+// If there is a result, err will be nil and vice versa.
+func Await(awaitable js.Value) (result []js.Value, err []js.Value) {
 	then := make(chan []js.Value)
 	defer close(then)
 	thenFunc := js.FuncOf(func(this js.Value, args []js.Value) any {
@@ -96,9 +98,9 @@ func Await(awaitable js.Value) ([]js.Value, []js.Value) {
 	awaitable.Call("then", thenFunc).Call("catch", catchFunc)
 
 	select {
-	case result := <-then:
+	case result = <-then:
 		return result, nil
-	case err := <-catch:
+	case err = <-catch:
 		return nil, err
 	}
 }
