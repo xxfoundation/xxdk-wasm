@@ -30,9 +30,8 @@ import (
 	"gitlab.com/elixxir/crypto/message"
 )
 
-// wasmModel implements [dm.Receiver] interface, which uses the channels
-// system passed an object that adheres to in order to get events on the
-// channel.
+// wasmModel implements dm.EventModel interface, which uses the channels system
+// passed an object that adheres to in order to get events on the channel.
 type wasmModel struct {
 	db                *idb.Database
 	cipher            cryptoChannel.Cipher
@@ -74,15 +73,15 @@ func (w *wasmModel) joinConversation(nickname string,
 	return nil
 }
 
-// buildMessage is a private helper that converts typical [dm.Receiver]
-// inputs into a basic Message structure for insertion into storage.
+// buildMessage is a private helper that converts typical dm.EventModel inputs
+// into a basic Message structure for insertion into storage.
 //
 // NOTE: ID is not set inside this function because we want to use the
 // autoincrement key by default. If you are trying to overwrite an existing
 // message, then you need to set it manually yourself.
-func buildMessage(messageID, parentID []byte, text []byte,
-	pubKey ed25519.PublicKey, timestamp time.Time, round id.Round,
-	mType dm.MessageType, status dm.Status) *Message {
+func buildMessage(messageID, parentID, text []byte, pubKey ed25519.PublicKey,
+	timestamp time.Time, round id.Round, mType dm.MessageType,
+	status dm.Status) *Message {
 	return &Message{
 		MessageID:          messageID,
 		ConversationPubKey: pubKey,
@@ -96,13 +95,13 @@ func buildMessage(messageID, parentID []byte, text []byte,
 }
 
 func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
-	timestamp time.Time, round rounds.Round, mType dm.MessageType,
-	status dm.Status) uint64 {
+	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
+	round rounds.Round, mType dm.MessageType, status dm.Status) uint64 {
 	parentErr := errors.New("failed to Receive")
 
 	// If there is no extant Conversation, create one.
-	_, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := indexedDb.Get(
+		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
@@ -127,8 +126,8 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 		}
 	}
 
-	msgToInsert := buildMessage(messageID.Bytes(), nil, text,
-		pubKey, timestamp, round.ID, mType, status)
+	msgToInsert := buildMessage(messageID.Bytes(), nil, text, pubKey, timestamp,
+		round.ID, mType, status)
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
 		jww.ERROR.Printf("Failed to receive Message: %+v", err)
@@ -144,7 +143,8 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	parentErr := errors.New("failed to ReceiveText")
 
 	// If there is no extant Conversation, create one.
-	_, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := indexedDb.Get(
+		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
@@ -188,7 +188,8 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	parentErr := errors.New("failed to ReceiveReply")
 
 	// If there is no extant Conversation, create one.
-	_, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := indexedDb.Get(
+		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
@@ -226,13 +227,14 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	return uuid
 }
 
-func (w *wasmModel) ReceiveReaction(messageID, reactionTo message.ID, nickname,
+func (w *wasmModel) ReceiveReaction(messageID, _ message.ID, nickname,
 	reaction string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveText")
 
 	// If there is no extant Conversation, create one.
-	_, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := indexedDb.Get(
+		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)

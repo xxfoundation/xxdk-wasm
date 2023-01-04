@@ -26,6 +26,7 @@ const (
 	// dbTimeout is the global timeout for operations with the storage
 	// [context.Context].
 	dbTimeout = time.Second
+
 	// ErrDoesNotExist is an error string for got undefined on Get operations.
 	ErrDoesNotExist = "result is undefined"
 )

@@ -18,23 +18,23 @@ import (
 func TestStoreIndexedDbEncryptionStatus(t *testing.T) {
 	databaseName := "databaseA"
 
-	encrypted, err := StoreIndexedDbEncryptionStatus(databaseName, true)
+	encryptionStatus, err := StoreIndexedDbEncryptionStatus(databaseName, true)
 	if err != nil {
 		t.Errorf("Failed to store/get encryption status: %+v", err)
 	}
 
-	if encrypted != true {
+	if encryptionStatus != true {
 		t.Errorf("Incorrect encryption values.\nexpected: %t\nreceived: %t",
-			true, encrypted)
+			true, encryptionStatus)
 	}
 
-	encrypted, err = StoreIndexedDbEncryptionStatus(databaseName, false)
+	encryptionStatus, err = StoreIndexedDbEncryptionStatus(databaseName, false)
 	if err != nil {
 		t.Errorf("Failed to store/get encryption status: %+v", err)
 	}
 
-	if encrypted != true {
+	if encryptionStatus != true {
 		t.Errorf("Incorrect encryption values.\nexpected: %t\nreceived: %t",
-			true, encrypted)
+			true, encryptionStatus)
 	}
 }
