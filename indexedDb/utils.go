@@ -22,9 +22,13 @@ import (
 	"time"
 )
 
-// dbTimeout is the global timeout for operations with the storage
-// [context.Context].
-const dbTimeout = time.Second
+const (
+	// dbTimeout is the global timeout for operations with the storage
+	// [context.Context].
+	dbTimeout = time.Second
+	// ErrDoesNotExist is an error string for got undefined on Get operations.
+	ErrDoesNotExist = "result is undefined"
+)
 
 // NewContext builds a context for indexedDb operations.
 func NewContext() (context.Context, context.CancelFunc) {
@@ -63,8 +67,8 @@ func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, erro
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
 	} else if resultObj.IsUndefined() {
-		return js.Undefined(), errors.WithMessage(parentErr,
-			"Unable to get from ObjectStore: result is undefined")
+		return js.Undefined(), errors.WithMessagef(parentErr,
+			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
 	}
 
 	// Process result into string
@@ -112,8 +116,8 @@ func GetIndex(db *idb.Database, objectStoreName,
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
 	} else if resultObj.IsUndefined() {
-		return js.Undefined(), errors.WithMessage(parentErr,
-			"Unable to get from ObjectStore: result is undefined")
+		return js.Undefined(), errors.WithMessagef(parentErr,
+			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
 	}
 
 	// Process result into string
@@ -124,33 +128,33 @@ func GetIndex(db *idb.Database, objectStoreName,
 
 // Put is a generic helper for putting values into the given [idb.ObjectStore].
 // Equivalent to insert if not exists else update.
-func Put(db *idb.Database, objectStoreName string, value js.Value) (*idb.Request, error) {
+func Put(db *idb.Database, objectStoreName string, value js.Value) (js.Value, error) {
 	// Prepare the Transaction
 	txn, err := db.Transaction(idb.TransactionReadWrite, objectStoreName)
 	if err != nil {
-		return nil, errors.Errorf("Unable to create Transaction: %+v", err)
+		return js.Undefined(), errors.Errorf("Unable to create Transaction: %+v", err)
 	}
 	store, err := txn.ObjectStore(objectStoreName)
 	if err != nil {
-		return nil, errors.Errorf("Unable to get ObjectStore: %+v", err)
+		return js.Undefined(), errors.Errorf("Unable to get ObjectStore: %+v", err)
 	}
 
 	// Perform the operation
 	request, err := store.Put(value)
 	if err != nil {
-		return nil, errors.Errorf("Unable to Put: %+v", err)
+		return js.Undefined(), errors.Errorf("Unable to Put: %+v", err)
 	}
 
 	// Wait for the operation to return
 	ctx, cancel := NewContext()
-	err = txn.Await(ctx)
+	result, err := request.Await(ctx)
 	cancel()
 	if err != nil {
-		return nil, errors.Errorf("Putting value failed: %+v", err)
+		return js.Undefined(), errors.Errorf("Putting value failed: %+v", err)
 	}
 	jww.DEBUG.Printf("Successfully put value in %s: %s",
 		objectStoreName, utils.JsToJson(value))
-	return request, nil
+	return result, nil
 }
 
 // Delete is a generic helper for removing values from the given [idb.ObjectStore].
