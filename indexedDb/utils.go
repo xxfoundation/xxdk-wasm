@@ -157,8 +157,8 @@ func Put(db *idb.Database, objectStoreName string, value js.Value) (js.Value, er
 	return result, nil
 }
 
-// Delete is a generic helper for removing values from the given [idb.ObjectStore].
-// Only usable by primary key.
+// Delete is a generic helper for removing values from the given
+// [idb.ObjectStore]. Only usable by primary key.
 func Delete(db *idb.Database, objectStoreName string, key js.Value) error {
 	parentErr := errors.Errorf("failed to Delete %s/%s", objectStoreName, key)
 

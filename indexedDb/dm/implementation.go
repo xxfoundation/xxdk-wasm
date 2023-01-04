@@ -96,8 +96,9 @@ func buildMessage(messageID, parentID []byte, text []byte,
 }
 
 func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
-	round rounds.Round, mType dm.MessageType, status dm.Status) uint64 {
+	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	timestamp time.Time, round rounds.Round, mType dm.MessageType,
+	status dm.Status) uint64 {
 	parentErr := errors.New("failed to Receive")
 
 	// If there is no extant Conversation, create one.
@@ -138,13 +139,13 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 }
 
 func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
-	round rounds.Round, status dm.Status) uint64 {
+	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveText")
 
 	// If there is no extant Conversation, create one.
 	_, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
-	if  err != nil {
+	if err != nil {
 		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
 			if err != nil {
@@ -181,10 +182,9 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	return uuid
 }
 
-func (w *wasmModel) ReceiveReply(messageID message.ID, reactionTo message.ID,
-	nickname, text string, pubKey ed25519.PublicKey, dmToken uint32,
-	codeset uint8, timestamp time.Time, round rounds.Round,
-	status dm.Status) uint64 {
+func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
+	text string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveReply")
 
 	// If there is no extant Conversation, create one.
@@ -226,9 +226,9 @@ func (w *wasmModel) ReceiveReply(messageID message.ID, reactionTo message.ID,
 	return uuid
 }
 
-func (w *wasmModel) ReceiveReaction(messageID message.ID, reactionTo message.ID,
-	nickname, reaction string, pubKey ed25519.PublicKey, dmToken uint32,
-	codeset uint8, timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
+func (w *wasmModel) ReceiveReaction(messageID, reactionTo message.ID, nickname,
+	reaction string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveText")
 
 	// If there is no extant Conversation, create one.
@@ -270,9 +270,8 @@ func (w *wasmModel) ReceiveReaction(messageID message.ID, reactionTo message.ID,
 	return uuid
 }
 
-func (w *wasmModel) UpdateSentStatus(uuid uint64,
-	messageID message.ID, timestamp time.Time, round rounds.Round,
-	status dm.Status) {
+func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
+	timestamp time.Time, round rounds.Round, status dm.Status) {
 	parentErr := errors.New("failed to UpdateSentStatus")
 
 	// FIXME: this is a bit of race condition without the mux.
@@ -323,8 +322,8 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64,
 }
 
 // receiveHelper is a private helper for receiving any sort of message.
-func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
-	error) {
+func (w *wasmModel) receiveHelper(
+	newMessage *Message, isUpdate bool) (uint64, error) {
 	// Convert to jsObject
 	newMessageJson, err := json.Marshal(newMessage)
 	if err != nil {
@@ -365,8 +364,7 @@ func (w *wasmModel) receiveHelper(newMessage *Message, isUpdate bool) (uint64,
 }
 
 // msgIDLookup gets the UUID of the Message with the given messageID.
-func (w *wasmModel) msgIDLookup(messageID message.ID) (uint64,
-	error) {
+func (w *wasmModel) msgIDLookup(messageID message.ID) (uint64, error) {
 	resultObj, err := indexedDb.GetIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, utils.CopyBytesToJS(messageID.Marshal()))
 	if err != nil {
