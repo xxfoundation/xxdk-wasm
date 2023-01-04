@@ -40,6 +40,7 @@ func newCmixJS(api *bindings.Cmix) map[string]any {
 		// follow.go
 		"StartNetworkFollower":            js.FuncOf(c.StartNetworkFollower),
 		"StopNetworkFollower":             js.FuncOf(c.StopNetworkFollower),
+		"SetTrackNetworkPeriod":           js.FuncOf(c.SetTrackNetworkPeriod),
 		"WaitForNetwork":                  js.FuncOf(c.WaitForNetwork),
 		"ReadyToSend":                     js.FuncOf(c.ReadyToSend),
 		"NetworkFollowerStatus":           js.FuncOf(c.NetworkFollowerStatus),

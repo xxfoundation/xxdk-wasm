@@ -7,8 +7,8 @@ require (
 	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client/v4 v4.3.12-0.20230104175249-e265a4ca4e58
-	gitlab.com/elixxir/crypto v0.0.7-0.20230104175234-604a6cd56b98
+	gitlab.com/elixxir/client/v4 v4.3.12-0.20230104200236-8a07780fc65f
+	gitlab.com/elixxir/crypto v0.0.7-0.20230104191842-814e756a51f2
 	gitlab.com/elixxir/primitives v0.0.3-0.20221214192222-988b44a6958a
 	gitlab.com/xx_network/crypto v0.0.5-0.20221121220724-8eefdbb0eb46
 	gitlab.com/xx_network/primitives v0.0.4-0.20221219230308-4b5550a9247d
@@ -17,7 +17,7 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect
-	git.xx.network/elixxir/grpc-web-go-client v0.0.0-20221215181401-0b8a26d47532 // indirect
+	git.xx.network/elixxir/grpc-web-go-client v0.0.0-20221221203224-436c7ab720af // indirect
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/badoux/checkmail v1.2.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
@@ -45,9 +45,9 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	gitlab.com/elixxir/bloomfilter v0.0.0-20211222005329-7d931ceead6f // indirect
-	gitlab.com/elixxir/comms v0.0.4-0.20221215214627-7807bfdde33a // indirect
+	gitlab.com/elixxir/comms v0.0.4-0.20230104190642-585e834d2a73 // indirect
 	gitlab.com/elixxir/ekv v0.2.1 // indirect
-	gitlab.com/xx_network/comms v0.0.4-0.20221215214252-1275cef8760e // indirect
+	gitlab.com/xx_network/comms v0.0.4-0.20221229210111-3cf0b9df563d // indirect
 	gitlab.com/xx_network/ring v0.0.3-0.20220902183151-a7d3b15bc981 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
 	gitlab.com/yawning/nyquist.git v0.0.0-20221003103146-de5645224a22 // indirect
