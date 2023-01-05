@@ -176,31 +176,6 @@ func v1Upgrade(db *idb.Database) error {
 	return nil
 }
 
-// hackTestDb is a horrible function that exists as the result of an extremely
-// long discussion about why initializing the IndexedDb sometimes silently
-// fails. It ultimately tries to prevent an unrecoverable situation by actually
-// inserting some nonsense data and then checking to see if it persists.
-// If this function still exists in 2023, god help us all. Amen.
-func (w *wasmModel) hackTestDb() error {
-	testMessage := &Message{
-		ID:        0,
-		Nickname:  "test",
-		MessageID: id.DummyUser.Marshal(),
-	}
-	msgId, helper := w.receiveHelper(testMessage, false)
-	if helper != nil {
-		return helper
-	}
-	result, err := indexedDb.Get(w.db, messageStoreName, js.ValueOf(msgId))
-	if err != nil {
-		return err
-	}
-	if result.IsUndefined() {
-		return errors.Errorf("Failed to test db, record not present")
-	}
-	return nil
-}
-
 // storeDatabaseName sends the database name to storage.StoreIndexedDb in the
 // main thread to be stored in localstorage and waits for the error to be
 // returned.
