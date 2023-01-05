@@ -5,6 +5,8 @@
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
+//go:build js && wasm
+
 package indexedDb
 
 // Tag describes how a message sent to or from the worker should be handled.

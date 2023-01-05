@@ -55,7 +55,7 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 
 	// TODO: bring in URL and name from caller
 	wh, err := indexedDb.NewWorkerHandler(
-		WorkerJavascriptFileURL, "indexedDbWorker")
+		WorkerJavascriptFileURL, "channelsIndexedDb")
 	if err != nil {
 		return nil, err
 	}
