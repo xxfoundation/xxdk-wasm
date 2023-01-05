@@ -12,7 +12,6 @@ package main
 import (
 	"crypto/ed25519"
 	"encoding/json"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"strings"
 	"sync"
 	"syscall/js"
@@ -22,6 +21,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	"gitlab.com/elixxir/client/v4/dm"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
 

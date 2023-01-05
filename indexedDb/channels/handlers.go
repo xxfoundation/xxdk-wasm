@@ -50,14 +50,15 @@ func (m *manager) RegisterHandlers() {
 	m.mh.RegisterHandler(indexedDbWorker.DeleteMessageTag, m.deleteMessageHandler)
 }
 
-// newWASMEventModelHandler is the handler for NewWASMEventModel.
+// newWASMEventModelHandler is the handler for NewWASMEventModel. Returns nil on
+// success or an error message on failure.
 func (m *manager) newWASMEventModelHandler(data []byte) []byte {
 	var msg mChannels.NewWASMEventModelMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		jww.ERROR.Printf("Could not JSON unmarshal "+
 			"NewWASMEventModelMessage from main thread: %+v", err)
-		return []byte{}
+		return nil
 	}
 
 	// Create new encryption cipher
@@ -67,7 +68,7 @@ func (m *manager) newWASMEventModelHandler(data []byte) []byte {
 	if err != nil {
 		jww.ERROR.Printf("Could not JSON unmarshal channel cipher from "+
 			"main thread: %+v", err)
-		return []byte{}
+		return nil
 	}
 
 	m.model, err = NewWASMEventModel(msg.Path, encryption,
@@ -75,7 +76,7 @@ func (m *manager) newWASMEventModelHandler(data []byte) []byte {
 	if err != nil {
 		return []byte(err.Error())
 	}
-	return []byte{}
+	return nil
 }
 
 // messageReceivedCallback sends calls to the MessageReceivedCallback in the
@@ -98,7 +99,8 @@ func (m *manager) messageReceivedCallback(
 	}
 
 	// Send it to the main thread
-	m.mh.SendResponse(indexedDbWorker.GetMessageTag, indexedDbWorker.InitID, data)
+	m.mh.SendResponse(
+		indexedDbWorker.GetMessageTag, indexedDbWorker.InitID, data)
 }
 
 // storeEncryptionStatus augments the functionality of
@@ -152,7 +154,8 @@ func (m *manager) storeEncryptionStatus(
 	return response.EncryptionStatus, nil
 }
 
-// joinChannelHandler is the handler for wasmModel.JoinChannel.
+// joinChannelHandler is the handler for wasmModel.JoinChannel. Always returns
+// nil; meaning, no response is supplied (or expected).
 func (m *manager) joinChannelHandler(data []byte) []byte {
 	var channel cryptoBroadcast.Channel
 	err := json.Unmarshal(data, &channel)
@@ -166,7 +169,8 @@ func (m *manager) joinChannelHandler(data []byte) []byte {
 	return nil
 }
 
-// leaveChannelHandler is the handler for wasmModel.LeaveChannel.
+// leaveChannelHandler is the handler for wasmModel.LeaveChannel. Always returns
+// nil; meaning, no response is supplied (or expected).
 func (m *manager) leaveChannelHandler(data []byte) []byte {
 	channelID, err := id.Unmarshal(data)
 	if err != nil {
@@ -179,7 +183,8 @@ func (m *manager) leaveChannelHandler(data []byte) []byte {
 	return nil
 }
 
-// receiveMessageHandler is the handler for wasmModel.ReceiveMessage.
+// receiveMessageHandler is the handler for wasmModel.ReceiveMessage. Returns
+// nil on error or the JSON marshalled UUID (uint64) on success.
 func (m *manager) receiveMessageHandler(data []byte) []byte {
 	var msg channels.ModelMessage
 	err := json.Unmarshal(data, &msg)
@@ -203,7 +208,8 @@ func (m *manager) receiveMessageHandler(data []byte) []byte {
 	return uuidData
 }
 
-// receiveReplyHandler is the handler for wasmModel.ReceiveReply.
+// receiveReplyHandler is the handler for wasmModel.ReceiveReply. Returns
+// nil on error or the JSON marshalled UUID (uint64) on success.
 func (m *manager) receiveReplyHandler(data []byte) []byte {
 	var msg mChannels.ReceiveReplyMessage
 	err := json.Unmarshal(data, &msg)
@@ -227,7 +233,8 @@ func (m *manager) receiveReplyHandler(data []byte) []byte {
 	return uuidData
 }
 
-// receiveReactionHandler is the handler for wasmModel.ReceiveReaction.
+// receiveReactionHandler is the handler for wasmModel.ReceiveReaction. Returns
+// nil on error or the JSON marshalled UUID (uint64) on success.
 func (m *manager) receiveReactionHandler(data []byte) []byte {
 	var msg mChannels.ReceiveReplyMessage
 	err := json.Unmarshal(data, &msg)
@@ -251,7 +258,8 @@ func (m *manager) receiveReactionHandler(data []byte) []byte {
 	return uuidData
 }
 
-// updateFromUUIDHandler is the handler for wasmModel.UpdateFromUUID.
+// updateFromUUIDHandler is the handler for wasmModel.UpdateFromUUID. Always
+// returns nil; meaning, no response is supplied (or expected).
 func (m *manager) updateFromUUIDHandler(data []byte) []byte {
 	var msg mChannels.MessageUpdateInfo
 	err := json.Unmarshal(data, &msg)
@@ -290,6 +298,7 @@ func (m *manager) updateFromUUIDHandler(data []byte) []byte {
 }
 
 // updateFromMessageIDHandler is the handler for wasmModel.UpdateFromMessageID.
+// Always returns nil; meaning, no response is supplied (or expected).
 func (m *manager) updateFromMessageIDHandler(data []byte) []byte {
 	var msg mChannels.MessageUpdateInfo
 	err := json.Unmarshal(data, &msg)
@@ -330,7 +339,10 @@ func (m *manager) updateFromMessageIDHandler(data []byte) []byte {
 	return uuidData
 }
 
-// getMessageHandler is the handler for wasmModel.GetMessage.
+// getMessageHandler is the handler for wasmModel.GetMessage. Returns JSON
+// marshalled channels.GetMessageMessage. If an error occurs, then Error will
+// be set with the error message. Otherwise, Message will be set. Only one field
+// will be set.
 func (m *manager) getMessageHandler(data []byte) []byte {
 	messageID, err := message.UnmarshalID(data)
 	if err != nil {
@@ -348,16 +360,17 @@ func (m *manager) getMessageHandler(data []byte) []byte {
 		reply.Message = msg
 	}
 
-	messageData, err := json.Marshal(msg)
+	messageData, err := json.Marshal(reply)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal UUID from ReceiveReaction: %+v", err)
+		jww.ERROR.Printf("Could not JSON marshal GetMessageMessage for "+
+			"GetMessage reply: %+v", err)
 		return nil
 	}
 	return messageData
 }
 
-// deleteMessageHandler is the handler for wasmModel.DeleteMessage.
+// deleteMessageHandler is the handler for wasmModel.DeleteMessage. Always
+// returns nil; meaning, no response is supplied (or expected).
 func (m *manager) deleteMessageHandler(data []byte) []byte {
 	messageID, err := message.UnmarshalID(data)
 	if err != nil {

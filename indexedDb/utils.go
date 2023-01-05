@@ -31,7 +31,7 @@ const (
 	ErrDoesNotExist = "result is undefined"
 )
 
-// NewContext builds a context for indexedDbWorker operations.
+// NewContext builds a context for indexedDb operations.
 func NewContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), dbTimeout)
 }

@@ -106,19 +106,6 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 		jww.WARN.Printf("IndexedDb encryption disabled!")
 	}
 
-	// Attempt to ensure the database has been properly initialized
-	openRequest, err = idb.Global().Open(ctx, databaseName, currentVersion,
-		func(db *idb.Database, oldVersion, newVersion uint) error {
-			return nil
-		})
-	if err != nil {
-		return nil, err
-	}
-	// Wait for database open to finish
-	db, err = openRequest.Await(ctx)
-	if err != nil {
-		return nil, err
-	}
 	wrapper := &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}
 
 	return wrapper, nil

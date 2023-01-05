@@ -76,9 +76,7 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 
 	errChan := make(chan string)
 	wh.SendMessage(indexedDbWorker.NewWASMEventModelTag, payload,
-		func(data []byte) {
-			errChan <- string(data)
-		})
+		func(data []byte) { errChan <- string(data) })
 
 	select {
 	case workerErr := <-errChan:

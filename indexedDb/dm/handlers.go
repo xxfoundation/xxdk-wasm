@@ -44,14 +44,15 @@ func (m *manager) RegisterHandlers() {
 	m.mh.RegisterHandler(indexedDbWorker.UpdateSentStatusTag, m.updateSentStatusHandler)
 }
 
-// newWASMEventModelHandler is the handler for NewWASMEventModel.
+// newWASMEventModelHandler is the handler for NewWASMEventModel. Returns nil on
+// success or an error message on failure.
 func (m *manager) newWASMEventModelHandler(data []byte) []byte {
 	var msg mChannels.NewWASMEventModelMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		jww.ERROR.Printf("Could not JSON unmarshal NewWASMEventModelMessage "+
 			"from NewWASMEventModel in main thread: %+v", err)
-		return []byte{}
+		return nil
 	}
 
 	// Create new encryption cipher
@@ -61,7 +62,7 @@ func (m *manager) newWASMEventModelHandler(data []byte) []byte {
 	if err != nil {
 		jww.ERROR.Printf("Could not JSON unmarshal channel cipher from "+
 			"main thread: %+v", err)
-		return []byte{}
+		return nil
 	}
 
 	m.model, err = NewWASMEventModel(msg.Path, encryption,
@@ -69,7 +70,7 @@ func (m *manager) newWASMEventModelHandler(data []byte) []byte {
 	if err != nil {
 		return []byte(err.Error())
 	}
-	return []byte{}
+	return nil
 }
 
 // messageReceivedCallback sends calls to the MessageReceivedCallback in the
@@ -92,7 +93,8 @@ func (m *manager) messageReceivedCallback(
 	}
 
 	// Send it to the main thread
-	m.mh.SendResponse(indexedDbWorker.GetMessageTag, indexedDbWorker.InitID, data)
+	m.mh.SendResponse(
+		indexedDbWorker.GetMessageTag, indexedDbWorker.InitID, data)
 }
 
 // storeEncryptionStatus augments the functionality of
@@ -121,7 +123,8 @@ func (m *manager) storeEncryptionStatus(
 		})
 
 	// Send encryption status to main thread
-	m.mh.SendResponse(indexedDbWorker.EncryptionStatusTag, indexedDbWorker.InitID, data)
+	m.mh.SendResponse(
+		indexedDbWorker.EncryptionStatusTag, indexedDbWorker.InitID, data)
 
 	// Wait for response
 	var response mChannels.EncryptionStatusReply
@@ -145,7 +148,8 @@ func (m *manager) storeEncryptionStatus(
 	return response.EncryptionStatus, nil
 }
 
-// receiveHandler is the handler for wasmModel.Receive.
+// receiveHandler is the handler for wasmModel.Receive. Returns nil on error or
+// the JSON marshalled UUID (uint64) on success.
 func (m *manager) receiveHandler(data []byte) []byte {
 	var msg mDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
@@ -168,7 +172,8 @@ func (m *manager) receiveHandler(data []byte) []byte {
 	return uuidData
 }
 
-// receiveTextHandler is the handler for wasmModel.ReceiveText.
+// receiveTextHandler is the handler for wasmModel.ReceiveText. Returns nil on
+// error or the JSON marshalled UUID (uint64) on success.
 func (m *manager) receiveTextHandler(data []byte) []byte {
 	var msg mDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
@@ -191,7 +196,8 @@ func (m *manager) receiveTextHandler(data []byte) []byte {
 	return uuidData
 }
 
-// receiveReplyHandler is the handler for wasmModel.ReceiveReply.
+// receiveReplyHandler is the handler for wasmModel.ReceiveReply. Returns nil on
+// error or the JSON marshalled UUID (uint64) on success.
 func (m *manager) receiveReplyHandler(data []byte) []byte {
 	var msg mDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
@@ -214,7 +220,8 @@ func (m *manager) receiveReplyHandler(data []byte) []byte {
 	return uuidData
 }
 
-// receiveReactionHandler is the handler for wasmModel.ReceiveReaction.
+// receiveReactionHandler is the handler for wasmModel.ReceiveReaction. Returns
+// nil on error or the JSON marshalled UUID (uint64) on success.
 func (m *manager) receiveReactionHandler(data []byte) []byte {
 	var msg mDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
@@ -237,7 +244,8 @@ func (m *manager) receiveReactionHandler(data []byte) []byte {
 	return uuidData
 }
 
-// updateSentStatusHandler is the handler for wasmModel.UpdateSentStatus.
+// updateSentStatusHandler is the handler for wasmModel.UpdateSentStatus. Always
+// returns nil; meaning, no response is supplied (or expected).
 func (m *manager) updateSentStatusHandler(data []byte) []byte {
 	var msg mDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
