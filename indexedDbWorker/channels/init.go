@@ -54,19 +54,19 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) (channels.EventModel, error) {
 
 	// TODO: bring in URL and name from caller
-	wh, err := indexedDb.NewWorkerHandler(
+	wh, err := indexedDbWorker.NewWorkerHandler(
 		WorkerJavascriptFileURL, "channelsIndexedDb")
 	if err != nil {
 		return nil, err
 	}
 
 	// Register handler to manage messages for the MessageReceivedCallback
-	wh.RegisterHandler(indexedDb.GetMessageTag, indexedDb.InitID, false,
-		messageReceivedCallbackHandler(cb))
+	wh.RegisterHandler(indexedDbWorker.GetMessageTag, indexedDbWorker.InitID,
+		false, messageReceivedCallbackHandler(cb))
 
 	// Register handler to manage checking encryption status from local storage
-	wh.RegisterHandler(indexedDb.EncryptionStatusTag, indexedDb.InitID, false,
-		checkDbEncryptionStatusHandler(wh))
+	wh.RegisterHandler(indexedDbWorker.EncryptionStatusTag,
+		indexedDbWorker.InitID, false, checkDbEncryptionStatusHandler(wh))
 
 	encryptionJSON, err := json.Marshal(encryption)
 	if err != nil {
@@ -84,18 +84,19 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 	}
 
 	errChan := make(chan string)
-	wh.SendMessage(indexedDb.NewWASMEventModelTag, payload, func(data []byte) {
-		errChan <- string(data)
-	})
+	wh.SendMessage(indexedDbWorker.NewWASMEventModelTag, payload,
+		func(data []byte) {
+			errChan <- string(data)
+		})
 
 	select {
 	case workerErr := <-errChan:
 		if workerErr != "" {
 			return nil, errors.New(workerErr)
 		}
-	case <-time.After(indexedDb.ResponseTimeout):
+	case <-time.After(indexedDbWorker.ResponseTimeout):
 		return nil, errors.Errorf("timed out after %s waiting for indexedDB "+
-			"database in worker to intialize", indexedDb.ResponseTimeout)
+			"database in worker to intialize", indexedDbWorker.ResponseTimeout)
 	}
 
 	return &wasmModel{wh}, nil
@@ -140,7 +141,8 @@ type EncryptionStatusReply struct {
 
 // checkDbEncryptionStatusHandler returns a handler to manage checking
 // encryption status from local storage.
-func checkDbEncryptionStatusHandler(wh *indexedDb.WorkerHandler) func(data []byte) {
+func checkDbEncryptionStatusHandler(
+	wh *indexedDbWorker.WorkerHandler) func(data []byte) {
 	return func(data []byte) {
 		// Unmarshal received message
 		var msg EncryptionStatusMessage
@@ -169,6 +171,6 @@ func checkDbEncryptionStatusHandler(wh *indexedDb.WorkerHandler) func(data []byt
 			return
 		}
 
-		wh.SendMessage(indexedDb.EncryptionStatusTag, statusData, nil)
+		wh.SendMessage(indexedDbWorker.EncryptionStatusTag, statusData, nil)
 	}
 }

@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package indexedDb
+package indexedDbWorker
 
 // Tag describes how a message sent to or from the worker should be handled.
 type Tag string

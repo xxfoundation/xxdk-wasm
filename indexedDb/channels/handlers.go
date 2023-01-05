@@ -30,7 +30,7 @@ import (
 // manager handles the event model and the message handler, which is used to
 // send information between the event model and the main thread.
 type manager struct {
-	mh    *indexedDb2.MessageHandler
+	mh    *indexedDb.MessageHandler
 	model channels.EventModel
 }
 
@@ -38,16 +38,16 @@ type manager struct {
 // the main thread for the channels.EventModel.
 func (m *manager) RegisterHandlers() {
 
-	m.mh.RegisterHandler(indexedDb.NewWASMEventModelTag, m.newWASMEventModelHandler)
-	m.mh.RegisterHandler(indexedDb.JoinChannelTag, m.joinChannelHandler)
-	m.mh.RegisterHandler(indexedDb.LeaveChannelTag, m.leaveChannelHandler)
-	m.mh.RegisterHandler(indexedDb.ReceiveMessageTag, m.receiveMessageHandler)
-	m.mh.RegisterHandler(indexedDb.ReceiveReplyTag, m.receiveReplyHandler)
-	m.mh.RegisterHandler(indexedDb.ReceiveReactionTag, m.receiveReactionHandler)
-	m.mh.RegisterHandler(indexedDb.UpdateFromUUIDTag, m.updateFromUUIDHandler)
-	m.mh.RegisterHandler(indexedDb.UpdateFromMessageIDTag, m.updateFromMessageIDHandler)
-	m.mh.RegisterHandler(indexedDb.GetMessageTag, m.getMessageHandler)
-	m.mh.RegisterHandler(indexedDb.DeleteMessageTag, m.deleteMessageHandler)
+	m.mh.RegisterHandler(indexedDbWorker.NewWASMEventModelTag, m.newWASMEventModelHandler)
+	m.mh.RegisterHandler(indexedDbWorker.JoinChannelTag, m.joinChannelHandler)
+	m.mh.RegisterHandler(indexedDbWorker.LeaveChannelTag, m.leaveChannelHandler)
+	m.mh.RegisterHandler(indexedDbWorker.ReceiveMessageTag, m.receiveMessageHandler)
+	m.mh.RegisterHandler(indexedDbWorker.ReceiveReplyTag, m.receiveReplyHandler)
+	m.mh.RegisterHandler(indexedDbWorker.ReceiveReactionTag, m.receiveReactionHandler)
+	m.mh.RegisterHandler(indexedDbWorker.UpdateFromUUIDTag, m.updateFromUUIDHandler)
+	m.mh.RegisterHandler(indexedDbWorker.UpdateFromMessageIDTag, m.updateFromMessageIDHandler)
+	m.mh.RegisterHandler(indexedDbWorker.GetMessageTag, m.getMessageHandler)
+	m.mh.RegisterHandler(indexedDbWorker.DeleteMessageTag, m.deleteMessageHandler)
 }
 
 // newWASMEventModelHandler is the handler for NewWASMEventModel.
@@ -81,7 +81,7 @@ func (m *manager) newWASMEventModelHandler(data []byte) []byte {
 // messageReceivedCallback sends calls to the MessageReceivedCallback in the
 // main thread.
 //
-// storeEncryptionStatus adhere to the indexedDbWorker.MessageReceivedCallback type.
+// storeEncryptionStatus adhere to the MessageReceivedCallback type.
 func (m *manager) messageReceivedCallback(
 	uuid uint64, channelID *id.ID, update bool) {
 	// Package parameters for sending
@@ -98,7 +98,7 @@ func (m *manager) messageReceivedCallback(
 	}
 
 	// Send it to the main thread
-	m.mh.SendResponse(indexedDb.GetMessageTag, indexedDb.InitID, data)
+	m.mh.SendResponse(indexedDbWorker.GetMessageTag, indexedDbWorker.InitID, data)
 }
 
 // storeEncryptionStatus augments the functionality of
@@ -120,14 +120,15 @@ func (m *manager) storeEncryptionStatus(
 
 	// Register response handler with channel that will wait for the response
 	responseChan := make(chan []byte)
-	m.mh.RegisterHandler(indexedDb.EncryptionStatusTag,
+	m.mh.RegisterHandler(indexedDbWorker.EncryptionStatusTag,
 		func(data []byte) []byte {
 			responseChan <- data
 			return nil
 		})
 
 	// Send encryption status to main thread
-	m.mh.SendResponse(indexedDb.EncryptionStatusTag, indexedDb.InitID, data)
+	m.mh.SendResponse(
+		indexedDbWorker.EncryptionStatusTag, indexedDbWorker.InitID, data)
 
 	// Wait for response
 	var response mChannels.EncryptionStatusReply
@@ -136,10 +137,10 @@ func (m *manager) storeEncryptionStatus(
 		if err = json.Unmarshal(responseData, &response); err != nil {
 			return false, err
 		}
-	case <-time.After(indexedDb.ResponseTimeout):
+	case <-time.After(indexedDbWorker.ResponseTimeout):
 		return false, errors.Errorf("timed out after %s waiting for "+
 			"response about the database encryption status from local "+
-			"storage in the main thread", indexedDb.ResponseTimeout)
+			"storage in the main thread", indexedDbWorker.ResponseTimeout)
 	}
 
 	// If the response contain an error, return it

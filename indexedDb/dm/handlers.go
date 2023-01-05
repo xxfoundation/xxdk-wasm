@@ -17,10 +17,10 @@ import (
 	"gitlab.com/elixxir/client/v4/dm"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/fastRNG"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
 	mChannels "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker/channels"
 	mDm "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker/dm"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/xx_network/crypto/csprng"
 	"time"
 )
@@ -28,7 +28,7 @@ import (
 // manager handles the event model and the message handler, which is used to
 // send information between the event model and the main thread.
 type manager struct {
-	mh    *indexedDb2.MessageHandler
+	mh    *indexedDb.MessageHandler
 	model dm.EventModel
 }
 
@@ -36,12 +36,12 @@ type manager struct {
 // the main thread for the channels.EventModel.
 func (m *manager) RegisterHandlers() {
 
-	m.mh.RegisterHandler(indexedDb.NewWASMEventModelTag, m.newWASMEventModelHandler)
-	m.mh.RegisterHandler(indexedDb.ReceiveTag, m.receiveHandler)
-	m.mh.RegisterHandler(indexedDb.ReceiveTextTag, m.receiveTextHandler)
-	m.mh.RegisterHandler(indexedDb.ReceiveReplyTag, m.receiveReplyHandler)
-	m.mh.RegisterHandler(indexedDb.ReceiveReactionTag, m.receiveReactionHandler)
-	m.mh.RegisterHandler(indexedDb.UpdateSentStatusTag, m.updateSentStatusHandler)
+	m.mh.RegisterHandler(indexedDbWorker.NewWASMEventModelTag, m.newWASMEventModelHandler)
+	m.mh.RegisterHandler(indexedDbWorker.ReceiveTag, m.receiveHandler)
+	m.mh.RegisterHandler(indexedDbWorker.ReceiveTextTag, m.receiveTextHandler)
+	m.mh.RegisterHandler(indexedDbWorker.ReceiveReplyTag, m.receiveReplyHandler)
+	m.mh.RegisterHandler(indexedDbWorker.ReceiveReactionTag, m.receiveReactionHandler)
+	m.mh.RegisterHandler(indexedDbWorker.UpdateSentStatusTag, m.updateSentStatusHandler)
 }
 
 // newWASMEventModelHandler is the handler for NewWASMEventModel.
@@ -92,7 +92,7 @@ func (m *manager) messageReceivedCallback(
 	}
 
 	// Send it to the main thread
-	m.mh.SendResponse(indexedDb.GetMessageTag, indexedDb.InitID, data)
+	m.mh.SendResponse(indexedDbWorker.GetMessageTag, indexedDbWorker.InitID, data)
 }
 
 // storeEncryptionStatus augments the functionality of
@@ -114,14 +114,14 @@ func (m *manager) storeEncryptionStatus(
 
 	// Register response handler with channel that will wait for the response
 	responseChan := make(chan []byte)
-	m.mh.RegisterHandler(indexedDb.EncryptionStatusTag,
+	m.mh.RegisterHandler(indexedDbWorker.EncryptionStatusTag,
 		func(data []byte) []byte {
 			responseChan <- data
 			return nil
 		})
 
 	// Send encryption status to main thread
-	m.mh.SendResponse(indexedDb.EncryptionStatusTag, indexedDb.InitID, data)
+	m.mh.SendResponse(indexedDbWorker.EncryptionStatusTag, indexedDbWorker.InitID, data)
 
 	// Wait for response
 	var response mChannels.EncryptionStatusReply
@@ -130,10 +130,10 @@ func (m *manager) storeEncryptionStatus(
 		if err = json.Unmarshal(responseData, &response); err != nil {
 			return false, err
 		}
-	case <-time.After(indexedDb.ResponseTimeout):
+	case <-time.After(indexedDbWorker.ResponseTimeout):
 		return false, errors.Errorf("timed out after %s waiting for "+
 			"response about the database encryption status from local "+
-			"storage in the main thread", indexedDb.ResponseTimeout)
+			"storage in the main thread", indexedDbWorker.ResponseTimeout)
 	}
 
 	// If the response contain an error, return it

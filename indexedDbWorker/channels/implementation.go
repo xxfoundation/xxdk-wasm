@@ -30,7 +30,7 @@ import (
 // system passed an object that adheres to in order to get events on the
 // channel.
 type wasmModel struct {
-	wh *indexedDb.WorkerHandler
+	wh *indexedDbWorker.WorkerHandler
 }
 
 // JoinChannel is called whenever a channel is joined locally.
@@ -41,12 +41,12 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 		return
 	}
 
-	w.wh.SendMessage(indexedDb.JoinChannelTag, data, nil)
+	w.wh.SendMessage(indexedDbWorker.JoinChannelTag, data, nil)
 }
 
 // LeaveChannel is called whenever a channel is left locally.
 func (w *wasmModel) LeaveChannel(channelID *id.ID) {
-	w.wh.SendMessage(indexedDb.LeaveChannelTag, channelID.Marshal(), nil)
+	w.wh.SendMessage(indexedDbWorker.LeaveChannelTag, channelID.Marshal(), nil)
 }
 
 // ReceiveMessage is called whenever a message is received on a given channel.
@@ -82,7 +82,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDb.ReceiveMessageTag, data, func(data []byte) {
+	w.wh.SendMessage(indexedDbWorker.ReceiveMessageTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -96,9 +96,9 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 	select {
 	case uuid := <-uuidChan:
 		return uuid
-	case <-time.After(indexedDb.ResponseTimeout):
+	case <-time.After(indexedDbWorker.ResponseTimeout):
 		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveMessage", indexedDb.ResponseTimeout)
+			"worker about ReceiveMessage", indexedDbWorker.ResponseTimeout)
 	}
 
 	return 0
@@ -150,7 +150,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDb.ReceiveReplyTag, data, func(data []byte) {
+	w.wh.SendMessage(indexedDbWorker.ReceiveReplyTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -164,9 +164,9 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 	select {
 	case uuid := <-uuidChan:
 		return uuid
-	case <-time.After(indexedDb.ResponseTimeout):
+	case <-time.After(indexedDbWorker.ResponseTimeout):
 		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReply", indexedDb.ResponseTimeout)
+			"worker about ReceiveReply", indexedDbWorker.ResponseTimeout)
 	}
 
 	return 0
@@ -212,7 +212,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDb.ReceiveReactionTag, data, func(data []byte) {
+	w.wh.SendMessage(indexedDbWorker.ReceiveReactionTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -226,9 +226,9 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 	select {
 	case uuid := <-uuidChan:
 		return uuid
-	case <-time.After(indexedDb.ResponseTimeout):
+	case <-time.After(indexedDbWorker.ResponseTimeout):
 		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReply", indexedDb.ResponseTimeout)
+			"worker about ReceiveReply", indexedDbWorker.ResponseTimeout)
 	}
 
 	return 0
@@ -299,7 +299,7 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 		return
 	}
 
-	w.wh.SendMessage(indexedDb.UpdateFromUUIDTag, data, nil)
+	w.wh.SendMessage(indexedDbWorker.UpdateFromUUIDTag, data, nil)
 }
 
 // UpdateFromMessageID is called whenever a message with the message ID is
@@ -345,23 +345,24 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDb.UpdateFromMessageIDTag, data, func(data []byte) {
-		var uuid uint64
-		err = json.Unmarshal(data, &uuid)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to UpdateFromMessageID: %+v", err)
-			uuidChan <- 0
-		}
-		uuidChan <- uuid
-	})
+	w.wh.SendMessage(indexedDbWorker.UpdateFromMessageIDTag, data,
+		func(data []byte) {
+			var uuid uint64
+			err = json.Unmarshal(data, &uuid)
+			if err != nil {
+				jww.ERROR.Printf("Could not JSON unmarshal response to "+
+					"UpdateFromMessageID: %+v", err)
+				uuidChan <- 0
+			}
+			uuidChan <- uuid
+		})
 
 	select {
 	case uuid := <-uuidChan:
 		return uuid
-	case <-time.After(indexedDb.ResponseTimeout):
+	case <-time.After(indexedDbWorker.ResponseTimeout):
 		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReply", indexedDb.ResponseTimeout)
+			"worker about ReceiveReply", indexedDbWorker.ResponseTimeout)
 	}
 
 	return 0
@@ -378,15 +379,16 @@ type GetMessageMessage struct {
 func (w *wasmModel) GetMessage(
 	messageID message.ID) (channels.ModelMessage, error) {
 	msgChan := make(chan GetMessageMessage)
-	w.wh.SendMessage(indexedDb.GetMessageTag, messageID.Marshal(), func(data []byte) {
-		var msg GetMessageMessage
-		err := json.Unmarshal(data, &msg)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to GetMessage: %+v", err)
-		}
-		msgChan <- msg
-	})
+	w.wh.SendMessage(indexedDbWorker.GetMessageTag, messageID.Marshal(),
+		func(data []byte) {
+			var msg GetMessageMessage
+			err := json.Unmarshal(data, &msg)
+			if err != nil {
+				jww.ERROR.Printf(
+					"Could not JSON unmarshal response to GetMessage: %+v", err)
+			}
+			msgChan <- msg
+		})
 
 	select {
 	case msg := <-msgChan:
@@ -394,29 +396,30 @@ func (w *wasmModel) GetMessage(
 			return channels.ModelMessage{}, errors.New(msg.Error)
 		}
 		return msg.Message, nil
-	case <-time.After(indexedDb.ResponseTimeout):
+	case <-time.After(indexedDbWorker.ResponseTimeout):
 		return channels.ModelMessage{}, errors.Errorf("timed out after %s "+
 			"waiting for response from the worker about GetMessage",
-			indexedDb.ResponseTimeout)
+			indexedDbWorker.ResponseTimeout)
 	}
 }
 
 // DeleteMessage removes a message with the given messageID from storage.
 func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 	errChan := make(chan error)
-	w.wh.SendMessage(indexedDb.DeleteMessageTag, messageID.Marshal(), func(data []byte) {
-		if data != nil {
-			errChan <- errors.New(string(data))
-		} else {
-			errChan <- nil
-		}
-	})
+	w.wh.SendMessage(indexedDbWorker.DeleteMessageTag, messageID.Marshal(),
+		func(data []byte) {
+			if data != nil {
+				errChan <- errors.New(string(data))
+			} else {
+				errChan <- nil
+			}
+		})
 
 	select {
 	case err := <-errChan:
 		return err
-	case <-time.After(indexedDb.ResponseTimeout):
+	case <-time.After(indexedDbWorker.ResponseTimeout):
 		return errors.Errorf("timed out after %s waiting for response from "+
-			"the worker about DeleteMessage", indexedDb.ResponseTimeout)
+			"the worker about DeleteMessage", indexedDbWorker.ResponseTimeout)
 	}
 }

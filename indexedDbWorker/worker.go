@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package indexedDb
+package indexedDbWorker
 
 import (
 	"encoding/json"

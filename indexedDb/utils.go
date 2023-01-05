@@ -10,7 +10,7 @@
 // This file contains several generic IndexedDB helper functions that
 // may be useful for any IndexedDB implementations.
 
-package indexedDb2
+package indexedDb
 
 import (
 	"context"

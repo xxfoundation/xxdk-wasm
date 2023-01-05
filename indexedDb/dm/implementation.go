@@ -65,7 +65,7 @@ func (w *wasmModel) joinConversation(nickname string,
 			"Unable to marshal Conversation: %+v", err)
 	}
 
-	_, err = indexedDb2.Put(w.db, conversationStoreName, convoObj)
+	_, err = indexedDb.Put(w.db, conversationStoreName, convoObj)
 	if err != nil {
 		return errors.WithMessagef(parentErr,
 			"Unable to put Conversation: %+v", err)
@@ -100,10 +100,10 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	parentErr := errors.New("failed to Receive")
 
 	// If there is no extant Conversation, create one.
-	_, err := indexedDb2.Get(
+	_, err := indexedDb.Get(
 		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
-		if strings.Contains(err.Error(), indexedDb2.ErrDoesNotExist) {
+		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
 			if err != nil {
 				jww.ERROR.Printf("%+v", err)
@@ -143,10 +143,10 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	parentErr := errors.New("failed to ReceiveText")
 
 	// If there is no extant Conversation, create one.
-	_, err := indexedDb2.Get(
+	_, err := indexedDb.Get(
 		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
-		if strings.Contains(err.Error(), indexedDb2.ErrDoesNotExist) {
+		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
 			if err != nil {
 				jww.ERROR.Printf("%+v", err)
@@ -188,10 +188,10 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	parentErr := errors.New("failed to ReceiveReply")
 
 	// If there is no extant Conversation, create one.
-	_, err := indexedDb2.Get(
+	_, err := indexedDb.Get(
 		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
-		if strings.Contains(err.Error(), indexedDb2.ErrDoesNotExist) {
+		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
 			if err != nil {
 				jww.ERROR.Printf("%+v", err)
@@ -233,10 +233,10 @@ func (w *wasmModel) ReceiveReaction(messageID, _ message.ID, nickname,
 	parentErr := errors.New("failed to ReceiveText")
 
 	// If there is no extant Conversation, create one.
-	_, err := indexedDb2.Get(
+	_, err := indexedDb.Get(
 		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
-		if strings.Contains(err.Error(), indexedDb2.ErrDoesNotExist) {
+		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
 			if err != nil {
 				jww.ERROR.Printf("%+v", err)
@@ -286,7 +286,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	key := js.ValueOf(uuid)
 
 	// Use the key to get the existing Message
-	currentMsg, err := indexedDb2.Get(w.db, messageStoreName, key)
+	currentMsg, err := indexedDb.Get(w.db, messageStoreName, key)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to get message: %+v", err))
@@ -343,7 +343,7 @@ func (w *wasmModel) receiveHelper(
 	}
 
 	// Store message to database
-	result, err := indexedDb2.Put(w.db, messageStoreName, messageObj)
+	result, err := indexedDb.Put(w.db, messageStoreName, messageObj)
 	if err != nil {
 		return 0, errors.Errorf("Unable to put Message: %+v", err)
 	}
@@ -367,7 +367,7 @@ func (w *wasmModel) receiveHelper(
 
 // msgIDLookup gets the UUID of the Message with the given messageID.
 func (w *wasmModel) msgIDLookup(messageID message.ID) (uint64, error) {
-	resultObj, err := indexedDb2.GetIndex(w.db, messageStoreName,
+	resultObj, err := indexedDb.GetIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, utils.CopyBytesToJS(messageID.Marshal()))
 	if err != nil {
 		return 0, err

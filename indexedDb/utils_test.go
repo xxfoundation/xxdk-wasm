@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package indexedDb2
+package indexedDb
 
 import (
 	"github.com/hack-pad/go-indexeddb/idb"

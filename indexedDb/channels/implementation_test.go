@@ -107,7 +107,7 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 	}
 
 	// Check the resulting status
-	results, err := indexedDb2.Dump(eventModel.db, messageStoreName)
+	results, err := indexedDb.Dump(eventModel.db, messageStoreName)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -122,7 +122,7 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 	}
 
 	// Check the resulting status
-	results, err = indexedDb2.Dump(eventModel.db, messageStoreName)
+	results, err = indexedDb.Dump(eventModel.db, messageStoreName)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -164,7 +164,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 			}
 
 			// Ensure one message is stored
-			results, err := indexedDb2.Dump(eventModel.db, messageStoreName)
+			results, err := indexedDb.Dump(eventModel.db, messageStoreName)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -178,7 +178,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 				uuid, nil, nil, nil, nil, nil, &expectedStatus)
 
 			// Check the resulting status
-			results, err = indexedDb2.Dump(eventModel.db, messageStoreName)
+			results, err = indexedDb.Dump(eventModel.db, messageStoreName)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -236,7 +236,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 			}
 			eventModel.JoinChannel(testChannel)
 			eventModel.JoinChannel(testChannel2)
-			results, err := indexedDb2.Dump(eventModel.db, channelsStoreName)
+			results, err := indexedDb.Dump(eventModel.db, channelsStoreName)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -244,7 +244,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 				t.Fatalf("Expected 2 channels to exist")
 			}
 			eventModel.LeaveChannel(testChannel.ReceptionID)
-			results, err = indexedDb2.Dump(eventModel.db, channelsStoreName)
+			results, err = indexedDb.Dump(eventModel.db, channelsStoreName)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -396,7 +396,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 			}
 
 			// Check pre-results
-			result, err := indexedDb2.Dump(eventModel.db, messageStoreName)
+			result, err := indexedDb.Dump(eventModel.db, messageStoreName)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -411,7 +411,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 			}
 
 			// Check final results
-			result, err = indexedDb2.Dump(eventModel.db, messageStoreName)
+			result, err = indexedDb.Dump(eventModel.db, messageStoreName)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}

@@ -11,8 +11,8 @@ package main
 
 import (
 	"crypto/ed25519"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
 	"syscall/js"
 	"time"
 
@@ -58,7 +58,7 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback, storeEncryptionStatus storeEncryptionStatusFn) (
 	*wasmModel, error) {
 	// Attempt to open database object
-	ctx, cancel := indexedDb2.NewContext()
+	ctx, cancel := indexedDb.NewContext()
 	defer cancel()
 	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
@@ -205,14 +205,15 @@ var storeDatabaseName = func(databaseName string) error { return nil }
 func RegisterDatabaseNameStore(m *manager) {
 	storeDatabaseNameResponseChan := make(chan []byte)
 	// Register handler
-	m.mh.RegisterHandler(indexedDb.StoreDatabaseNameTag, func(data []byte) []byte {
-		storeDatabaseNameResponseChan <- data
-		return nil
-	})
+	m.mh.RegisterHandler(indexedDbWorker.StoreDatabaseNameTag,
+		func(data []byte) []byte {
+			storeDatabaseNameResponseChan <- data
+			return nil
+		})
 
 	storeDatabaseName = func(databaseName string) error {
-		m.mh.SendResponse(indexedDb.StoreDatabaseNameTag, indexedDb.InitID,
-			[]byte(databaseName))
+		m.mh.SendResponse(indexedDbWorker.StoreDatabaseNameTag,
+			indexedDbWorker.InitID, []byte(databaseName))
 
 		// Wait for response
 		select {
@@ -220,10 +221,10 @@ func RegisterDatabaseNameStore(m *manager) {
 			if len(response) > 0 {
 				return errors.New(string(response))
 			}
-		case <-time.After(indexedDb.ResponseTimeout):
+		case <-time.After(indexedDbWorker.ResponseTimeout):
 			return errors.Errorf("timed out after %s waiting for "+
 				"response about storing the database name in local "+
-				"storage in the main thread", indexedDb.ResponseTimeout)
+				"storage in the main thread", indexedDbWorker.ResponseTimeout)
 		}
 		return nil
 	}

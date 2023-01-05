@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package indexedDb2
+package indexedDb
 
 import (
 	"encoding/json"
@@ -30,7 +30,7 @@ type MessageHandler struct {
 
 	// handlers is a list of functions to handle messages that come from the
 	// main thread keyed on the handler tag.
-	handlers map[indexedDb.Tag]HandlerFn
+	handlers map[indexedDbWorker.Tag]HandlerFn
 
 	mux sync.Mutex
 }
@@ -39,7 +39,7 @@ type MessageHandler struct {
 func NewMessageHandler() *MessageHandler {
 	mh := &MessageHandler{
 		messages: make(chan js.Value, 100),
-		handlers: make(map[indexedDb.Tag]HandlerFn),
+		handlers: make(map[indexedDbWorker.Tag]HandlerFn),
 	}
 
 	mh.addEventListeners()
@@ -51,12 +51,13 @@ func NewMessageHandler() *MessageHandler {
 // ready. Once the main thread receives this, it will initiate communication.
 // Therefore, this should only be run once all listeners are ready.
 func (mh *MessageHandler) SignalReady() {
-	mh.SendResponse(indexedDb.ReadyTag, indexedDb.InitID, nil)
+	mh.SendResponse(indexedDbWorker.ReadyTag, indexedDbWorker.InitID, nil)
 }
 
 // SendResponse sends a reply to the main thread with the given tag and ID,
-func (mh *MessageHandler) SendResponse(tag indexedDb.Tag, id uint64, data []byte) {
-	message := indexedDb.WorkerMessage{
+func (mh *MessageHandler) SendResponse(
+	tag indexedDbWorker.Tag, id uint64, data []byte) {
+	message := indexedDbWorker.WorkerMessage{
 		Tag:  tag,
 		ID:   id,
 		Data: data,
@@ -75,7 +76,7 @@ func (mh *MessageHandler) SendResponse(tag indexedDb.Tag, id uint64, data []byte
 // everytime a message from the main thread is received. If the registered
 // handler returns a response, it is sent to the main thread.
 func (mh *MessageHandler) receiveMessage(data []byte) error {
-	var message indexedDb.WorkerMessage
+	var message indexedDbWorker.WorkerMessage
 	err := json.Unmarshal(data, &message)
 	if err != nil {
 		return err
@@ -103,7 +104,7 @@ func (mh *MessageHandler) receiveMessage(data []byte) error {
 // previous registered handler with the same tag. This function is thread safe.
 //
 // If the handler returns anything but nil, it will be returned as a response.
-func (mh *MessageHandler) RegisterHandler(tag indexedDb.Tag, handler HandlerFn) {
+func (mh *MessageHandler) RegisterHandler(tag indexedDbWorker.Tag, handler HandlerFn) {
 	mh.mux.Lock()
 	mh.handlers[tag] = handler
 	mh.mux.Unlock()

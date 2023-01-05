@@ -67,7 +67,7 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 		return
 	}
 
-	_, err = indexedDb2.Put(w.db, channelsStoreName, channelObj)
+	_, err = indexedDb.Put(w.db, channelsStoreName, channelObj)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to put Channel: %+v", err))
@@ -79,7 +79,7 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 	parentErr := errors.New("failed to LeaveChannel")
 
 	// Delete the channel from storage
-	err := indexedDb2.Delete(w.db, channelsStoreName,
+	err := indexedDb.Delete(w.db, channelsStoreName,
 		js.ValueOf(channelID.String()))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
@@ -126,7 +126,7 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 	if err != nil {
 		return errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
 	}
-	ctx, cancel := indexedDb2.NewContext()
+	ctx, cancel := indexedDb.NewContext()
 	err = cursorRequest.Iter(ctx,
 		func(cursor *idb.CursorWithValue) error {
 			_, err := cursor.Delete()
@@ -266,7 +266,7 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 	key := js.ValueOf(uuid)
 
 	// Use the key to get the existing Message
-	currentMsg, err := indexedDb2.Get(w.db, messageStoreName, key)
+	currentMsg, err := indexedDb.Get(w.db, messageStoreName, key)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to get message: %+v", err))
@@ -302,7 +302,7 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	defer w.updateMux.Unlock()
 
 	msgIDStr := base64.StdEncoding.EncodeToString(messageID.Marshal())
-	currentMsgObj, err := indexedDb2.GetIndex(w.db, messageStoreName,
+	currentMsgObj, err := indexedDb.GetIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, js.ValueOf(msgIDStr))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
@@ -417,7 +417,7 @@ func (w *wasmModel) receiveHelper(
 	}
 
 	// Store message to database
-	result, err := indexedDb2.Put(w.db, messageStoreName, messageObj)
+	result, err := indexedDb.Put(w.db, messageStoreName, messageObj)
 	if err != nil && !strings.Contains(err.Error(),
 		"at least one key does not satisfy the uniqueness requirements") {
 		// Only return non-unique constraint errors so that the case
@@ -488,14 +488,14 @@ func (w *wasmModel) GetMessage(
 // DeleteMessage removes a message with the given messageID from storage.
 func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 	msgId := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
-	return indexedDb2.DeleteIndex(w.db, messageStoreName,
+	return indexedDb.DeleteIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, pkeyName, msgId)
 }
 
 // msgIDLookup gets the UUID of the Message with the given messageID.
 func (w *wasmModel) msgIDLookup(messageID message.ID) (*Message, error) {
 	msgIDStr := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
-	resultObj, err := indexedDb2.GetIndex(w.db, messageStoreName,
+	resultObj, err := indexedDb.GetIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, msgIDStr)
 	if err != nil {
 		return nil, err
