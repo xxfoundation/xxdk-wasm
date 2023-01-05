@@ -23,7 +23,7 @@ import (
 
 // WorkerJavascriptFileURL is the URL of the script the worker will execute to
 // launch the worker WASM binary. It must obey the same-origin policy.
-const WorkerJavascriptFileURL = "/integrations/assets/indexedDbWorker.js"
+const WorkerJavascriptFileURL = "/integrations/assets/dmIndexedDbWorker.js"
 
 // MessageReceivedCallback is called any time a message is received or updated.
 //
