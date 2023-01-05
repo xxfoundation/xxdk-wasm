@@ -10,6 +10,9 @@ package indexedDb
 // Tag describes how a message sent to or from the worker should be handled.
 type Tag string
 
+// FIXME: This system of tagging does not work so well when using the
+//  WorkerHandler for more than one database. This should bed fixed.
+
 // List of tags that can be used when sending a message or registering a handler
 // to receive a message.
 const (
@@ -28,6 +31,10 @@ const (
 	UpdateFromMessageIDTag Tag = "UpdateFromMessageID"
 	GetMessageTag          Tag = "GetMessage"
 	DeleteMessageTag       Tag = "DeleteMessage"
+
+	ReceiveTag          Tag = "Receive"
+	ReceiveTextTag      Tag = "ReceiveText"
+	UpdateSentStatusTag Tag = "UpdateSentStatusTag"
 )
 
 // deleteAfterReceiving is a list of Tags that will have their handler deleted

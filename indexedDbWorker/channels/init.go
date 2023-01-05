@@ -16,6 +16,7 @@ import (
 	"gitlab.com/elixxir/client/v4/channels"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
 	"gitlab.com/xx_network/primitives/id"
 	"syscall/js"
 	"time"
@@ -55,7 +56,7 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback, storeEncryptionStatus storeEncryptionStatusFn) (
 	*wasmModel, error) {
 	// Attempt to open database object
-	ctx, cancel := indexedDb.NewContext()
+	ctx, cancel := indexedDbWorker.NewContext()
 	defer cancel()
 	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
@@ -91,10 +92,10 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 
 	// Save the encryption status to storage
 	encryptionStatus := encryption != nil
-	loadedEncryptionStatus, err2 :=
+	loadedEncryptionStatus, err :=
 		storeEncryptionStatus(databaseName, encryptionStatus)
-	if err2 != nil {
-		return nil, err2
+	if err != nil {
+		return nil, err
 	}
 
 	// Verify encryption status does not change
@@ -203,7 +204,7 @@ func (w *wasmModel) hackTestDb() error {
 	if helper != nil {
 		return helper
 	}
-	result, err := indexedDb.Get(w.db, messageStoreName, js.ValueOf(msgId))
+	result, err := indexedDbWorker.Get(w.db, messageStoreName, js.ValueOf(msgId))
 	if err != nil {
 		return err
 	}

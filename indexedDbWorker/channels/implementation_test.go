@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"github.com/hack-pad/go-indexeddb/idb"
 	"gitlab.com/elixxir/crypto/message"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/xx_network/crypto/csprng"
 	"gitlab.com/xx_network/primitives/netTime"
@@ -107,7 +107,7 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 	}
 
 	// Check the resulting status
-	results, err := indexedDb.Dump(eventModel.db, messageStoreName)
+	results, err := indexedDbWorker.Dump(eventModel.db, messageStoreName)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -122,7 +122,7 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 	}
 
 	// Check the resulting status
-	results, err = indexedDb.Dump(eventModel.db, messageStoreName)
+	results, err = indexedDbWorker.Dump(eventModel.db, messageStoreName)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -149,7 +149,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 			testMsgId := message.DeriveChannelMessageID(
 				&id.ID{1}, 0, []byte(testString))
 			eventModel, err := newWASMModel(
-				testString, c, dummyCallback,dummyStoreEncryptionStatus)
+				testString, c, dummyCallback, dummyStoreEncryptionStatus)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -164,7 +164,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 			}
 
 			// Ensure one message is stored
-			results, err := indexedDb.Dump(eventModel.db, messageStoreName)
+			results, err := indexedDbWorker.Dump(eventModel.db, messageStoreName)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -178,7 +178,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 				uuid, nil, nil, nil, nil, nil, &expectedStatus)
 
 			// Check the resulting status
-			results, err = indexedDb.Dump(eventModel.db, messageStoreName)
+			results, err = indexedDbWorker.Dump(eventModel.db, messageStoreName)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -236,7 +236,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 			}
 			eventModel.JoinChannel(testChannel)
 			eventModel.JoinChannel(testChannel2)
-			results, err := indexedDb.Dump(eventModel.db, channelsStoreName)
+			results, err := indexedDbWorker.Dump(eventModel.db, channelsStoreName)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -244,7 +244,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 				t.Fatalf("Expected 2 channels to exist")
 			}
 			eventModel.LeaveChannel(testChannel.ReceptionID)
-			results, err = indexedDb.Dump(eventModel.db, channelsStoreName)
+			results, err = indexedDbWorker.Dump(eventModel.db, channelsStoreName)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -396,7 +396,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 			}
 
 			// Check pre-results
-			result, err := indexedDb.Dump(eventModel.db, messageStoreName)
+			result, err := indexedDbWorker.Dump(eventModel.db, messageStoreName)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -411,7 +411,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 			}
 
 			// Check final results
-			result, err = indexedDb.Dump(eventModel.db, messageStoreName)
+			result, err = indexedDbWorker.Dump(eventModel.db, messageStoreName)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
