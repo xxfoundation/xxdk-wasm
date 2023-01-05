@@ -7,13 +7,13 @@
 
 //go:build js && wasm
 
-package indexedDbWorker
+package indexedDb2
 
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"sync"
 	"syscall/js"

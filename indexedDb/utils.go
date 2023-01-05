@@ -10,7 +10,7 @@
 // This file contains several generic IndexedDB helper functions that
 // may be useful for any IndexedDB implementations.
 
-package indexedDbWorker
+package indexedDb2
 
 import (
 	"context"
@@ -31,7 +31,7 @@ const (
 	ErrDoesNotExist = "result is undefined"
 )
 
-// NewContext builds a context for indexedDb operations.
+// NewContext builds a context for indexedDbWorker operations.
 func NewContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), dbTimeout)
 }

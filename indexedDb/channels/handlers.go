@@ -20,8 +20,8 @@ import (
 	"gitlab.com/elixxir/crypto/fastRNG"
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
-	mChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/channels"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
+	mChannels "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker/channels"
 	"gitlab.com/xx_network/crypto/csprng"
 	"gitlab.com/xx_network/primitives/id"
 	"time"
@@ -30,7 +30,7 @@ import (
 // manager handles the event model and the message handler, which is used to
 // send information between the event model and the main thread.
 type manager struct {
-	mh    *indexedDbWorker.MessageHandler
+	mh    *indexedDb2.MessageHandler
 	model channels.EventModel
 }
 
@@ -81,7 +81,7 @@ func (m *manager) newWASMEventModelHandler(data []byte) []byte {
 // messageReceivedCallback sends calls to the MessageReceivedCallback in the
 // main thread.
 //
-// storeEncryptionStatus adhere to the indexedDb.MessageReceivedCallback type.
+// storeEncryptionStatus adhere to the indexedDbWorker.MessageReceivedCallback type.
 func (m *manager) messageReceivedCallback(
 	uuid uint64, channelID *id.ID, update bool) {
 	// Package parameters for sending

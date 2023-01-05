@@ -7,22 +7,28 @@
 
 //go:build js && wasm
 
-package channels
+package main
 
 import (
 	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
+	"strings"
+	"sync"
+	"syscall/js"
 	"time"
 
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
-
+	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
+	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
 )
 
@@ -30,23 +36,108 @@ import (
 // system passed an object that adheres to in order to get events on the
 // channel.
 type wasmModel struct {
-	wh *indexedDb.WorkerHandler
+	db                *idb.Database
+	cipher            cryptoChannel.Cipher
+	receivedMessageCB MessageReceivedCallback
+	updateMux         sync.Mutex
 }
 
 // JoinChannel is called whenever a channel is joined locally.
 func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
-	data, err := json.Marshal(channel)
+	parentErr := errors.New("failed to JoinChannel")
+
+	// Build object
+	newChannel := Channel{
+		ID:          channel.ReceptionID.Marshal(),
+		Name:        channel.Name,
+		Description: channel.Description,
+	}
+
+	// Convert to jsObject
+	newChannelJson, err := json.Marshal(&newChannel)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON marshal broadcast.Channel: %+v", err)
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Unable to marshal Channel: %+v", err))
+		return
+	}
+	channelObj, err := utils.JsonToJS(newChannelJson)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Unable to marshal Channel: %+v", err))
 		return
 	}
 
-	w.wh.SendMessage(indexedDb.JoinChannelTag, data, nil)
+	_, err = indexedDb2.Put(w.db, channelsStoreName, channelObj)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Unable to put Channel: %+v", err))
+	}
 }
 
 // LeaveChannel is called whenever a channel is left locally.
 func (w *wasmModel) LeaveChannel(channelID *id.ID) {
-	w.wh.SendMessage(indexedDb.LeaveChannelTag, channelID.Marshal(), nil)
+	parentErr := errors.New("failed to LeaveChannel")
+
+	// Delete the channel from storage
+	err := indexedDb2.Delete(w.db, channelsStoreName,
+		js.ValueOf(channelID.String()))
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Unable to delete Channel: %+v", err))
+		return
+	}
+
+	// Clean up lingering data
+	err = w.deleteMsgByChannel(channelID)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Deleting Channel's Message data failed: %+v", err))
+		return
+	}
+	jww.DEBUG.Printf("Successfully deleted channel: %s", channelID)
+}
+
+// deleteMsgByChannel is a private helper that uses messageStoreChannelIndex
+// to delete all Message with the given Channel ID.
+func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
+	parentErr := errors.New("failed to deleteMsgByChannel")
+
+	// Prepare the Transaction
+	txn, err := w.db.Transaction(idb.TransactionReadWrite, messageStoreName)
+	if err != nil {
+		return errors.WithMessagef(parentErr,
+			"Unable to create Transaction: %+v", err)
+	}
+	store, err := txn.ObjectStore(messageStoreName)
+	if err != nil {
+		return errors.WithMessagef(parentErr,
+			"Unable to get ObjectStore: %+v", err)
+	}
+	index, err := store.Index(messageStoreChannelIndex)
+	if err != nil {
+		return errors.WithMessagef(parentErr,
+			"Unable to get Index: %+v", err)
+	}
+
+	// Perform the operation
+	channelIdStr := base64.StdEncoding.EncodeToString(channelID.Marshal())
+	keyRange, err := idb.NewKeyRangeOnly(js.ValueOf(channelIdStr))
+	cursorRequest, err := index.OpenCursorRange(keyRange, idb.CursorNext)
+	if err != nil {
+		return errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
+	}
+	ctx, cancel := indexedDb2.NewContext()
+	err = cursorRequest.Iter(ctx,
+		func(cursor *idb.CursorWithValue) error {
+			_, err := cursor.Delete()
+			return err
+		})
+	cancel()
+	if err != nil {
+		return errors.WithMessagef(parentErr,
+			"Unable to delete Message data: %+v", err)
+	}
+	return nil
 }
 
 // ReceiveMessage is called whenever a message is received on a given channel.
@@ -57,58 +148,30 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 	nickname, text string, pubKey ed25519.PublicKey, dmToken uint32,
 	codeset uint8, timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus, hidden bool) uint64 {
-	msg := channels.ModelMessage{
-		Nickname:       nickname,
-		MessageID:      messageID,
-		ChannelID:      channelID,
-		Timestamp:      timestamp,
-		Lease:          lease,
-		Status:         status,
-		Hidden:         hidden,
-		Pinned:         false,
-		Content:        []byte(text),
-		Type:           mType,
-		Round:          round.ID,
-		PubKey:         pubKey,
-		CodesetVersion: codeset,
-		DmToken:        dmToken,
-	}
+	textBytes := []byte(text)
+	var err error
 
-	data, err := json.Marshal(msg)
-	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal payload for ReceiveMessage: %+v", err)
-		return 0
-	}
-
-	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDb.ReceiveMessageTag, data, func(data []byte) {
-		var uuid uint64
-		err = json.Unmarshal(data, &uuid)
+	// Handle encryption, if it is present
+	if w.cipher != nil {
+		textBytes, err = w.cipher.Encrypt([]byte(text))
 		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to ReceiveMessage: %+v", err)
-			uuidChan <- 0
+			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
+			return 0
 		}
-		uuidChan <- uuid
-	})
-
-	select {
-	case uuid := <-uuidChan:
-		return uuid
-	case <-time.After(indexedDb.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveMessage", indexedDb.ResponseTimeout)
 	}
 
-	return 0
-}
+	msgToInsert := buildMessage(
+		channelID.Marshal(), messageID.Bytes(), nil, nickname,
+		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
+		false, hidden, status)
 
-// ReceiveReplyMessage is JSON marshalled and sent to the worker for
-// [wasmModel.ReceiveReply].
-type ReceiveReplyMessage struct {
-	ReactionTo            message.ID `json:"replyTo"`
-	channels.ModelMessage `json:"message"`
+	uuid, err := w.receiveHelper(msgToInsert, false)
+	if err != nil {
+		jww.ERROR.Printf("Failed to receive Message: %+v", err)
+	}
+
+	go w.receivedMessageCB(uuid, channelID, false)
+	return uuid
 }
 
 // ReceiveReply is called whenever a message is received that is a reply on a
@@ -122,54 +185,29 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 	dmToken uint32, codeset uint8, timestamp time.Time, lease time.Duration,
 	round rounds.Round, mType channels.MessageType, status channels.SentStatus,
 	hidden bool) uint64 {
-	msg := ReceiveReplyMessage{
-		ReactionTo: replyTo,
-		ModelMessage: channels.ModelMessage{
-			Nickname:       nickname,
-			MessageID:      messageID,
-			ChannelID:      channelID,
-			Timestamp:      timestamp,
-			Lease:          lease,
-			Status:         status,
-			Hidden:         hidden,
-			Pinned:         false,
-			Content:        []byte(text),
-			Type:           mType,
-			Round:          round.ID,
-			PubKey:         pubKey,
-			CodesetVersion: codeset,
-			DmToken:        dmToken,
-		},
-	}
+	textBytes := []byte(text)
+	var err error
 
-	data, err := json.Marshal(msg)
-	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal payload for ReceiveReply: %+v", err)
-		return 0
-	}
-
-	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDb.ReceiveReplyTag, data, func(data []byte) {
-		var uuid uint64
-		err = json.Unmarshal(data, &uuid)
+	// Handle encryption, if it is present
+	if w.cipher != nil {
+		textBytes, err = w.cipher.Encrypt([]byte(text))
 		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to ReceiveReply: %+v", err)
-			uuidChan <- 0
+			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
+			return 0
 		}
-		uuidChan <- uuid
-	})
-
-	select {
-	case uuid := <-uuidChan:
-		return uuid
-	case <-time.After(indexedDb.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReply", indexedDb.ResponseTimeout)
 	}
 
-	return 0
+	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
+		replyTo.Bytes(), nickname, textBytes, pubKey, dmToken, codeset,
+		timestamp, lease, round.ID, mType, hidden, false, status)
+
+	uuid, err := w.receiveHelper(msgToInsert, false)
+
+	if err != nil {
+		jww.ERROR.Printf("Failed to receive reply: %+v", err)
+	}
+	go w.receivedMessageCB(uuid, channelID, false)
+	return uuid
 }
 
 // ReceiveReaction is called whenever a reaction to a message is received on a
@@ -183,79 +221,29 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 	dmToken uint32, codeset uint8, timestamp time.Time, lease time.Duration,
 	round rounds.Round, mType channels.MessageType, status channels.SentStatus,
 	hidden bool) uint64 {
+	textBytes := []byte(reaction)
+	var err error
 
-	msg := ReceiveReplyMessage{
-		ReactionTo: reactionTo,
-		ModelMessage: channels.ModelMessage{
-			Nickname:       nickname,
-			MessageID:      messageID,
-			ChannelID:      channelID,
-			Timestamp:      timestamp,
-			Lease:          lease,
-			Status:         status,
-			Hidden:         hidden,
-			Pinned:         false,
-			Content:        []byte(reaction),
-			Type:           mType,
-			Round:          round.ID,
-			PubKey:         pubKey,
-			CodesetVersion: codeset,
-			DmToken:        dmToken,
-		},
-	}
-
-	data, err := json.Marshal(msg)
-	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal payload for ReceiveReaction: %+v", err)
-		return 0
-	}
-
-	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDb.ReceiveReactionTag, data, func(data []byte) {
-		var uuid uint64
-		err = json.Unmarshal(data, &uuid)
+	// Handle encryption, if it is present
+	if w.cipher != nil {
+		textBytes, err = w.cipher.Encrypt([]byte(reaction))
 		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to ReceiveReaction: %+v", err)
-			uuidChan <- 0
+			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
+			return 0
 		}
-		uuidChan <- uuid
-	})
-
-	select {
-	case uuid := <-uuidChan:
-		return uuid
-	case <-time.After(indexedDb.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReply", indexedDb.ResponseTimeout)
 	}
 
-	return 0
-}
+	msgToInsert := buildMessage(
+		channelID.Marshal(), messageID.Bytes(), reactionTo.Bytes(), nickname,
+		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
+		false, hidden, status)
 
-// MessageUpdateInfo is JSON marshalled and sent to the worker for
-// [wasmModel.UpdateFromMessageID] and [wasmModel.UpdateFromUUID].
-type MessageUpdateInfo struct {
-	UUID uint64 `json:"uuid"`
-
-	MessageID    message.ID `json:"messageID"`
-	MessageIDSet bool       `json:"messageIDSet"`
-
-	Timestamp    time.Time `json:"timestamp"`
-	TimestampSet bool      `json:"timestampSet"`
-
-	RoundID    id.Round `json:"round"`
-	RoundIDSet bool     `json:"roundIDSet"`
-
-	Pinned    bool `json:"pinned"`
-	PinnedSet bool `json:"pinnedSet"`
-
-	Hidden    bool `json:"hidden"`
-	HiddenSet bool `json:"hiddenSet"`
-
-	Status    channels.SentStatus `json:"status"`
-	StatusSet bool                `json:"statusSet"`
+	uuid, err := w.receiveHelper(msgToInsert, false)
+	if err != nil {
+		jww.ERROR.Printf("Failed to receive reaction: %+v", err)
+	}
+	go w.receivedMessageCB(uuid, channelID, false)
+	return uuid
 }
 
 // UpdateFromUUID is called whenever a message at the UUID is modified.
@@ -266,40 +254,31 @@ type MessageUpdateInfo struct {
 func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 	timestamp *time.Time, round *rounds.Round, pinned, hidden *bool,
 	status *channels.SentStatus) {
-	msg := MessageUpdateInfo{UUID: uuid}
-	if messageID != nil {
-		msg.MessageID = *messageID
-		msg.MessageIDSet = true
-	}
-	if timestamp != nil {
-		msg.Timestamp = *timestamp
-		msg.TimestampSet = true
-	}
-	if round != nil {
-		msg.RoundID = round.ID
-		msg.RoundIDSet = true
-	}
-	if pinned != nil {
-		msg.Pinned = *pinned
-		msg.PinnedSet = true
-	}
-	if hidden != nil {
-		msg.Hidden = *hidden
-		msg.HiddenSet = true
-	}
-	if status != nil {
-		msg.Status = *status
-		msg.StatusSet = true
-	}
+	parentErr := errors.New("failed to UpdateFromUUID")
 
-	data, err := json.Marshal(msg)
+	// FIXME: this is a bit of race condition without the mux.
+	//        This should be done via the transactions (i.e., make a
+	//        special version of receiveHelper)
+	w.updateMux.Lock()
+	defer w.updateMux.Unlock()
+
+	// Convert messageID to the key generated by json.Marshal
+	key := js.ValueOf(uuid)
+
+	// Use the key to get the existing Message
+	currentMsg, err := indexedDb2.Get(w.db, messageStoreName, key)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal payload for UpdateFromUUID: %+v", err)
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Unable to get message: %+v", err))
 		return
 	}
 
-	w.wh.SendMessage(indexedDb.UpdateFromUUIDTag, data, nil)
+	_, err = w.updateMessage(utils.JsToJson(currentMsg), messageID, timestamp,
+		round, pinned, hidden, status)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Unable to updateMessage: %+v", err))
+	}
 }
 
 // UpdateFromMessageID is called whenever a message with the message ID is
@@ -314,109 +293,222 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	timestamp *time.Time, round *rounds.Round, pinned, hidden *bool,
 	status *channels.SentStatus) uint64 {
+	parentErr := errors.New("failed to UpdateFromMessageID")
 
-	msg := MessageUpdateInfo{MessageID: messageID, MessageIDSet: true}
-	if timestamp != nil {
-		msg.Timestamp = *timestamp
-		msg.TimestampSet = true
-	}
-	if round != nil {
-		msg.RoundID = round.ID
-		msg.RoundIDSet = true
-	}
-	if pinned != nil {
-		msg.Pinned = *pinned
-		msg.PinnedSet = true
-	}
-	if hidden != nil {
-		msg.Hidden = *hidden
-		msg.HiddenSet = true
-	}
-	if status != nil {
-		msg.Status = *status
-		msg.StatusSet = true
-	}
+	// FIXME: this is a bit of race condition without the mux.
+	//        This should be done via the transactions (i.e., make a
+	//        special version of receiveHelper)
+	w.updateMux.Lock()
+	defer w.updateMux.Unlock()
 
-	data, err := json.Marshal(msg)
+	msgIDStr := base64.StdEncoding.EncodeToString(messageID.Marshal())
+	currentMsgObj, err := indexedDb2.GetIndex(w.db, messageStoreName,
+		messageStoreMessageIndex, js.ValueOf(msgIDStr))
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal payload for UpdateFromMessageID: %+v", err)
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Failed to get message by index: %+v", err))
 		return 0
 	}
 
-	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDb.UpdateFromMessageIDTag, data, func(data []byte) {
-		var uuid uint64
-		err = json.Unmarshal(data, &uuid)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to UpdateFromMessageID: %+v", err)
-			uuidChan <- 0
-		}
-		uuidChan <- uuid
-	})
-
-	select {
-	case uuid := <-uuidChan:
-		return uuid
-	case <-time.After(indexedDb.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReply", indexedDb.ResponseTimeout)
+	currentMsg := utils.JsToJson(currentMsgObj)
+	uuid, err := w.updateMessage(currentMsg, &messageID, timestamp,
+		round, pinned, hidden, status)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+			"Unable to updateMessage: %+v", err))
 	}
-
-	return 0
+	return uuid
 }
 
-// GetMessageMessage is JSON marshalled and sent to the worker for
-// [wasmModel.GetMessage].
-type GetMessageMessage struct {
-	Message channels.ModelMessage `json:"message"`
-	Error   string                `json:"error"`
+// updateMessage is a helper for updating a stored message.
+func (w *wasmModel) updateMessage(currentMsgJson string, messageID *message.ID,
+	timestamp *time.Time, round *rounds.Round, pinned, hidden *bool,
+	status *channels.SentStatus) (uint64, error) {
+
+	newMessage := &Message{}
+	err := json.Unmarshal([]byte(currentMsgJson), newMessage)
+	if err != nil {
+		return 0, err
+	}
+
+	if status != nil {
+		newMessage.Status = uint8(*status)
+	}
+	if messageID != nil {
+		newMessage.MessageID = messageID.Bytes()
+	}
+
+	if round != nil {
+		newMessage.Round = uint64(round.ID)
+	}
+
+	if timestamp != nil {
+		newMessage.Timestamp = *timestamp
+	}
+
+	if pinned != nil {
+		newMessage.Pinned = *pinned
+	}
+
+	if hidden != nil {
+		newMessage.Hidden = *hidden
+	}
+
+	// Store the updated Message
+	uuid, err := w.receiveHelper(newMessage, true)
+	if err != nil {
+		return 0, err
+	}
+	channelID := &id.ID{}
+	copy(channelID[:], newMessage.ChannelID)
+	go w.receivedMessageCB(uuid, channelID, true)
+
+	return uuid, nil
+}
+
+// buildMessage is a private helper that converts typical [channels.EventModel]
+// inputs into a basic Message structure for insertion into storage.
+//
+// NOTE: ID is not set inside this function because we want to use the
+// autoincrement key by default. If you are trying to overwrite an existing
+// message, then you need to set it manually yourself.
+func buildMessage(channelID, messageID, parentID []byte, nickname string,
+	text []byte, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	timestamp time.Time, lease time.Duration, round id.Round,
+	mType channels.MessageType, pinned, hidden bool,
+	status channels.SentStatus) *Message {
+	return &Message{
+		MessageID:       messageID,
+		Nickname:        nickname,
+		ChannelID:       channelID,
+		ParentMessageID: parentID,
+		Timestamp:       timestamp,
+		Lease:           lease,
+		Status:          uint8(status),
+		Hidden:          hidden,
+		Pinned:          pinned,
+		Text:            text,
+		Type:            uint16(mType),
+		Round:           uint64(round),
+		// User Identity Info
+		Pubkey:         pubKey,
+		DmToken:        dmToken,
+		CodesetVersion: codeset,
+	}
+}
+
+// receiveHelper is a private helper for receiving any sort of message.
+func (w *wasmModel) receiveHelper(
+	newMessage *Message, isUpdate bool) (uint64, error) {
+	// Convert to jsObject
+	newMessageJson, err := json.Marshal(newMessage)
+	if err != nil {
+		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
+	}
+	messageObj, err := utils.JsonToJS(newMessageJson)
+	if err != nil {
+		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
+	}
+
+	// Unset the primaryKey for inserts so that it can be auto-populated and
+	// incremented
+	if !isUpdate {
+		messageObj.Delete("id")
+	}
+
+	// Store message to database
+	result, err := indexedDb2.Put(w.db, messageStoreName, messageObj)
+	if err != nil && !strings.Contains(err.Error(),
+		"at least one key does not satisfy the uniqueness requirements") {
+		// Only return non-unique constraint errors so that the case
+		// below this one can be hit and handle duplicate entries properly.
+		return 0, errors.Errorf("Unable to put Message: %+v", err)
+	}
+
+	// NOTE: Sometimes the insert fails to return an error but hits a duplicate
+	//  insert, so this fallthrough returns the UUID entry in that case.
+	if result.IsUndefined() {
+		msgID := message.ID{}
+		copy(msgID[:], newMessage.MessageID)
+		msg, errLookup := w.msgIDLookup(msgID)
+		if errLookup == nil && msg.ID != 0 {
+			return msg.ID, nil
+		}
+		return 0, errors.Errorf("uuid lookup failure: %+v", err)
+	}
+	uuid := uint64(result.Int())
+	jww.DEBUG.Printf("Successfully stored message %d", uuid)
+
+	return uuid, nil
 }
 
 // GetMessage returns the message with the given [channel.MessageID].
 func (w *wasmModel) GetMessage(
 	messageID message.ID) (channels.ModelMessage, error) {
-	msgChan := make(chan GetMessageMessage)
-	w.wh.SendMessage(indexedDb.GetMessageTag, messageID.Marshal(), func(data []byte) {
-		var msg GetMessageMessage
-		err := json.Unmarshal(data, &msg)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to GetMessage: %+v", err)
-		}
-		msgChan <- msg
-	})
-
-	select {
-	case msg := <-msgChan:
-		if msg.Error != "" {
-			return channels.ModelMessage{}, errors.New(msg.Error)
-		}
-		return msg.Message, nil
-	case <-time.After(indexedDb.ResponseTimeout):
-		return channels.ModelMessage{}, errors.Errorf("timed out after %s "+
-			"waiting for response from the worker about GetMessage",
-			indexedDb.ResponseTimeout)
+	lookupResult, err := w.msgIDLookup(messageID)
+	if err != nil {
+		return channels.ModelMessage{}, err
 	}
+
+	var channelId *id.ID
+	if lookupResult.ChannelID != nil {
+		channelId, err = id.Unmarshal(lookupResult.ChannelID)
+		if err != nil {
+			return channels.ModelMessage{}, err
+		}
+	}
+
+	var parentMsgId message.ID
+	if lookupResult.ParentMessageID != nil {
+		parentMsgId, err = message.UnmarshalID(lookupResult.ParentMessageID)
+		if err != nil {
+			return channels.ModelMessage{}, err
+		}
+	}
+
+	return channels.ModelMessage{
+		UUID:            lookupResult.ID,
+		Nickname:        lookupResult.Nickname,
+		MessageID:       messageID,
+		ChannelID:       channelId,
+		ParentMessageID: parentMsgId,
+		Timestamp:       lookupResult.Timestamp,
+		Lease:           lookupResult.Lease,
+		Status:          channels.SentStatus(lookupResult.Status),
+		Hidden:          lookupResult.Hidden,
+		Pinned:          lookupResult.Pinned,
+		Content:         lookupResult.Text,
+		Type:            channels.MessageType(lookupResult.Type),
+		Round:           id.Round(lookupResult.Round),
+		PubKey:          lookupResult.Pubkey,
+		CodesetVersion:  lookupResult.CodesetVersion,
+	}, nil
 }
 
 // DeleteMessage removes a message with the given messageID from storage.
 func (w *wasmModel) DeleteMessage(messageID message.ID) error {
-	errChan := make(chan error)
-	w.wh.SendMessage(indexedDb.DeleteMessageTag, messageID.Marshal(), func(data []byte) {
-		if data != nil {
-			errChan <- errors.New(string(data))
-		} else {
-			errChan <- nil
-		}
-	})
+	msgId := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
+	return indexedDb2.DeleteIndex(w.db, messageStoreName,
+		messageStoreMessageIndex, pkeyName, msgId)
+}
 
-	select {
-	case err := <-errChan:
-		return err
-	case <-time.After(indexedDb.ResponseTimeout):
-		return errors.Errorf("timed out after %s waiting for response from "+
-			"the worker about DeleteMessage", indexedDb.ResponseTimeout)
+// msgIDLookup gets the UUID of the Message with the given messageID.
+func (w *wasmModel) msgIDLookup(messageID message.ID) (*Message, error) {
+	msgIDStr := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
+	resultObj, err := indexedDb2.GetIndex(w.db, messageStoreName,
+		messageStoreMessageIndex, msgIDStr)
+	if err != nil {
+		return nil, err
+	} else if resultObj.IsUndefined() {
+		return nil, errors.Errorf("no message for %s found", msgIDStr)
 	}
+
+	// Process result into string
+	resultMsg := &Message{}
+	err = json.Unmarshal([]byte(utils.JsToJson(resultObj)), resultMsg)
+	if err != nil {
+		return nil, err
+	}
+	return resultMsg, nil
+
 }

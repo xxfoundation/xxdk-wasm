@@ -11,13 +11,13 @@ package main
 
 import (
 	"fmt"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 )
 
 func main() {
 	fmt.Println("Starting xxDK WebAssembly Database Worker.")
 
-	m := &manager{mh: indexedDbWorker.NewMessageHandler()}
+	m := &manager{mh: indexedDb2.NewMessageHandler()}
 	m.RegisterHandlers()
 	RegisterDatabaseNameStore(m)
 	m.mh.SignalReady()

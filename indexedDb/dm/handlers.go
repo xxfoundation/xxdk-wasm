@@ -17,10 +17,10 @@ import (
 	"gitlab.com/elixxir/client/v4/dm"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/fastRNG"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
-	mChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/channels"
-	mDm "gitlab.com/elixxir/xxdk-wasm/indexedDb/dm"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
+	mChannels "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker/channels"
+	mDm "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker/dm"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/xx_network/crypto/csprng"
 	"time"
 )
@@ -28,7 +28,7 @@ import (
 // manager handles the event model and the message handler, which is used to
 // send information between the event model and the main thread.
 type manager struct {
-	mh    *indexedDbWorker.MessageHandler
+	mh    *indexedDb2.MessageHandler
 	model dm.EventModel
 }
 

@@ -8,7 +8,7 @@
 importScripts('wasm_exec.js');
 
 const go = new Go();
-const binPath = 'xxdk-indexedDkWorker.wasm'
+const binPath = 'dmIndexedDbWorker.wasm'
 WebAssembly.instantiateStreaming(fetch(binPath), go.importObject).then((result) => {
     go.run(result.instance);
 }).catch((err) => {

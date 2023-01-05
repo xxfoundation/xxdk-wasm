@@ -14,7 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"gitlab.com/elixxir/client/v4/channels"
-	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/channels"
+	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker/channels"
 	"gitlab.com/xx_network/primitives/id"
 	"sync"
 	"syscall/js"
@@ -1832,7 +1832,7 @@ func (em *eventModel) GetMessage(messageID []byte) ([]byte, error) {
 // the database.
 //
 // Parameters:
-//  - messageID - The bytes of the [channel.MessageID] of the message.
+//   - messageID - The bytes of the [channel.MessageID] of the message.
 func (em *eventModel) DeleteMessage(messageID []byte) error {
 	err := em.deleteMessage(utils.CopyBytesToJS(messageID))
 	if !err.IsUndefined() {
