@@ -10,7 +10,7 @@
 package channels
 
 import (
-	"github.com/hack-pad/go-indexeddb/idb"
+	"encoding/json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/channels"
@@ -18,18 +18,12 @@ import (
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/xx_network/primitives/id"
-	"syscall/js"
+	"time"
 )
 
-const (
-	// databaseSuffix is the suffix to be appended to the name of
-	// the database.
-	databaseSuffix = "_speakeasy"
-
-	// currentVersion is the current version of the IndexDb
-	// runtime. Used for migration purposes.
-	currentVersion uint = 1
-)
+// WorkerJavascriptFileURL is the URL of the script the worker will execute to
+// launch the worker WASM binary. It must obey the same-origin policy.
+const WorkerJavascriptFileURL = "/integrations/assets/indexedDbWorker.js"
 
 // MessageReceivedCallback is called any time a message is received or updated.
 //
@@ -47,172 +41,134 @@ func NewWASMEventModelBuilder(encryption cryptoChannel.Cipher,
 	return fn
 }
 
+// NewWASMEventModelMessage is JSON marshalled and sent to the worker for
+// [NewWASMEventModel].
+type NewWASMEventModelMessage struct {
+	Path           string `json:"path"`
+	EncryptionJSON string `json:"encryptionJSON"`
+}
+
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
 func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) (channels.EventModel, error) {
-	databaseName := path + databaseSuffix
-	return newWASMModel(databaseName, encryption, cb)
+
+	// TODO: bring in URL and name from caller
+	wh, err := indexedDb.NewWorkerHandler(
+		WorkerJavascriptFileURL, "indexedDbWorker")
+	if err != nil {
+		return nil, err
+	}
+
+	// Register handler to manage messages for the MessageReceivedCallback
+	wh.RegisterHandler(indexedDb.GetMessageTag, indexedDb.InitID, false,
+		messageReceivedCallbackHandler(cb))
+
+	// Register handler to manage checking encryption status from local storage
+	wh.RegisterHandler(indexedDb.EncryptionStatusTag, indexedDb.InitID, false,
+		checkDbEncryptionStatusHandler(wh))
+
+	encryptionJSON, err := json.Marshal(encryption)
+	if err != nil {
+		return nil, err
+	}
+
+	message := NewWASMEventModelMessage{
+		Path:           path,
+		EncryptionJSON: string(encryptionJSON),
+	}
+
+	payload, err := json.Marshal(message)
+	if err != nil {
+		return nil, err
+	}
+
+	errChan := make(chan string)
+	wh.SendMessage(indexedDb.NewWASMEventModelTag, payload, func(data []byte) {
+		errChan <- string(data)
+	})
+
+	select {
+	case workerErr := <-errChan:
+		if workerErr != "" {
+			return nil, errors.New(workerErr)
+		}
+	case <-time.After(indexedDb.ResponseTimeout):
+		return nil, errors.Errorf("timed out after %s waiting for indexedDB "+
+			"database in worker to intialize", indexedDb.ResponseTimeout)
+	}
+
+	return &wasmModel{wh}, nil
 }
 
-// newWASMModel creates the given [idb.Database] and returns a wasmModel.
-func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback) (*wasmModel, error) {
-	// Attempt to open database object
-	ctx, cancel := indexedDb.NewContext()
-	defer cancel()
-	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
-		func(db *idb.Database, oldVersion, newVersion uint) error {
-			if oldVersion == newVersion {
-				jww.INFO.Printf("IndexDb version is current: v%d",
-					newVersion)
-				return nil
-			}
-
-			jww.INFO.Printf("IndexDb upgrade required: v%d -> v%d",
-				oldVersion, newVersion)
-
-			if oldVersion == 0 && newVersion >= 1 {
-				err := v1Upgrade(db)
-				if err != nil {
-					return err
-				}
-				oldVersion = 1
-			}
-
-			// if oldVersion == 1 && newVersion >= 2 { v2Upgrade(), oldVersion = 2 }
-			return nil
-		})
-	if err != nil {
-		return nil, err
-	}
-
-	// Wait for database open to finish
-	db, err := openRequest.Await(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Save the encryption status to storage
-	encryptionStatus := encryption != nil
-	loadedEncryptionStatus, err := storage.StoreIndexedDbEncryptionStatus(
-		databaseName, encryptionStatus)
-	if err != nil {
-		return nil, err
-	}
-
-	// Verify encryption status does not change
-	if encryptionStatus != loadedEncryptionStatus {
-		return nil, errors.New(
-			"Cannot load database with different encryption status.")
-	} else if !encryptionStatus {
-		jww.WARN.Printf("IndexedDb encryption disabled!")
-	}
-
-	// Attempt to ensure the database has been properly initialized
-	openRequest, err = idb.Global().Open(ctx, databaseName, currentVersion,
-		func(db *idb.Database, oldVersion, newVersion uint) error {
-			return nil
-		})
-	if err != nil {
-		return nil, err
-	}
-	// Wait for database open to finish
-	db, err = openRequest.Await(ctx)
-	if err != nil {
-		return nil, err
-	}
-	wrapper := &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}
-
-	return wrapper, nil
+// MessageReceivedCallbackMessage is JSON marshalled and received from the
+// worker for the [MessageReceivedCallback] callback.
+type MessageReceivedCallbackMessage struct {
+	UUID      uint64 `json:"uuid"`
+	ChannelID *id.ID `json:"channelID"`
+	Update    bool   `json:"update"`
 }
 
-// v1Upgrade performs the v0 -> v1 database upgrade.
-//
-// This can never be changed without permanently breaking backwards
-// compatibility.
-func v1Upgrade(db *idb.Database) error {
-	storeOpts := idb.ObjectStoreOptions{
-		KeyPath:       js.ValueOf(pkeyName),
-		AutoIncrement: true,
+// messageReceivedCallbackHandler returns a handler to manage messages for the
+// MessageReceivedCallback.
+func messageReceivedCallbackHandler(cb MessageReceivedCallback) func(data []byte) {
+	return func(data []byte) {
+		var msg MessageReceivedCallbackMessage
+		err := json.Unmarshal(data, &msg)
+		if err != nil {
+			jww.ERROR.Printf("Failed to JSON unmarshal "+
+				"MessageReceivedCallback message from worker: %+v", err)
+			return
+		}
+		cb(msg.UUID, msg.ChannelID, msg.Update)
 	}
-	indexOpts := idb.IndexOptions{
-		Unique:     false,
-		MultiEntry: false,
-	}
-
-	// Build Message ObjectStore and Indexes
-	messageStore, err := db.CreateObjectStore(messageStoreName, storeOpts)
-	if err != nil {
-		return err
-	}
-	_, err = messageStore.CreateIndex(messageStoreMessageIndex,
-		js.ValueOf(messageStoreMessage),
-		idb.IndexOptions{
-			Unique:     true,
-			MultiEntry: false,
-		})
-	if err != nil {
-		return err
-	}
-	_, err = messageStore.CreateIndex(messageStoreChannelIndex,
-		js.ValueOf(messageStoreChannel), indexOpts)
-	if err != nil {
-		return err
-	}
-	_, err = messageStore.CreateIndex(messageStoreParentIndex,
-		js.ValueOf(messageStoreParent), indexOpts)
-	if err != nil {
-		return err
-	}
-	_, err = messageStore.CreateIndex(messageStoreTimestampIndex,
-		js.ValueOf(messageStoreTimestamp), indexOpts)
-	if err != nil {
-		return err
-	}
-	_, err = messageStore.CreateIndex(messageStorePinnedIndex,
-		js.ValueOf(messageStorePinned), indexOpts)
-	if err != nil {
-		return err
-	}
-
-	// Build Channel ObjectStore
-	_, err = db.CreateObjectStore(channelsStoreName, storeOpts)
-	if err != nil {
-		return err
-	}
-
-	// Get the database name and save it to storage
-	if databaseName, err := db.Name(); err != nil {
-		return err
-	} else if err = storage.StoreIndexedDb(databaseName); err != nil {
-		return err
-	}
-
-	return nil
 }
 
-// hackTestDb is a horrible function that exists as the result of an extremely
-// long discussion about why initializing the IndexedDb sometimes silently
-// fails. It ultimately tries to prevent an unrecoverable situation by actually
-// inserting some nonsense data and then checking to see if it persists.
-// If this function still exists in 2023, god help us all. Amen.
-func (w *wasmModel) hackTestDb() error {
-	testMessage := &Message{
-		ID:        0,
-		Nickname:  "test",
-		MessageID: id.DummyUser.Marshal(),
+// EncryptionStatusMessage is JSON marshalled and received from the worker when
+// the database checks if it is encrypted.
+type EncryptionStatusMessage struct {
+	DatabaseName     string `json:"databaseName"`
+	EncryptionStatus bool   `json:"encryptionStatus"`
+}
+
+// EncryptionStatusReply is JSON marshalled and sent to the worker is response
+// to the [EncryptionStatusMessage].
+type EncryptionStatusReply struct {
+	EncryptionStatus bool   `json:"encryptionStatus"`
+	Error            string `json:"error"`
+}
+
+// checkDbEncryptionStatusHandler returns a handler to manage checking
+// encryption status from local storage.
+func checkDbEncryptionStatusHandler(wh *indexedDb.WorkerHandler) func(data []byte) {
+	return func(data []byte) {
+		// Unmarshal received message
+		var msg EncryptionStatusMessage
+		err := json.Unmarshal(data, &msg)
+		if err != nil {
+			jww.ERROR.Printf("Failed to JSON unmarshal "+
+				"EncryptionStatusMessage message from worker: %+v", err)
+			return
+		}
+
+		// Pass message values to storage
+		loadedEncryptionStatus, err := storage.StoreIndexedDbEncryptionStatus(
+			msg.DatabaseName, msg.EncryptionStatus)
+		var reply EncryptionStatusReply
+		if err != nil {
+			reply.Error = err.Error()
+		} else {
+			reply.EncryptionStatus = loadedEncryptionStatus
+		}
+
+		// Return response
+		statusData, err := json.Marshal(reply)
+		if err != nil {
+			jww.ERROR.Printf(
+				"Failed to JSON marshal EncryptionStatusReply: %+v", err)
+			return
+		}
+
+		wh.SendMessage(indexedDb.EncryptionStatusTag, statusData, nil)
 	}
-	msgId, helper := w.receiveHelper(testMessage, false)
-	if helper != nil {
-		return helper
-	}
-	result, err := indexedDb.Get(w.db, messageStoreName, js.ValueOf(msgId))
-	if err != nil {
-		return err
-	}
-	if result.IsUndefined() {
-		return errors.Errorf("Failed to test db, record not present")
-	}
-	return nil
 }

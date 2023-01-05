@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package channels
+package main
 
 import (
 	"encoding/json"
@@ -38,6 +38,11 @@ func TestMain(m *testing.M) {
 
 func dummyCallback(uint64, *id.ID, bool) {}
 
+// dummyStoreEncryptionStatus returns the same encryption status passed into it.
+func dummyStoreEncryptionStatus(_ string, encryptionStatus bool) (bool, error) {
+	return encryptionStatus, nil
+}
+
 // Happy path, insert message and look it up
 func TestWasmModel_msgIDLookup(t *testing.T) {
 	cipher, err := cryptoChannel.NewCipher(
@@ -56,7 +61,8 @@ func TestWasmModel_msgIDLookup(t *testing.T) {
 			testString := "TestWasmModel_msgIDLookup" + cs
 			testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
 
-			eventModel, err := newWASMModel(testString, c, dummyCallback)
+			eventModel, err := newWASMModel(
+				testString, c, dummyCallback, dummyStoreEncryptionStatus)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -85,7 +91,8 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 	storage.GetLocalStorage().Clear()
 	testString := "TestWasmModel_DeleteMessage"
 	testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
-	eventModel, err := newWASMModel(testString, nil, dummyCallback)
+	eventModel, err := newWASMModel(
+		testString, nil, dummyCallback, dummyStoreEncryptionStatus)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -141,7 +148,8 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 			testString := "Test_wasmModel_UpdateSentStatus" + cs
 			testMsgId := message.DeriveChannelMessageID(
 				&id.ID{1}, 0, []byte(testString))
-			eventModel, err := newWASMModel(testString, c, dummyCallback)
+			eventModel, err := newWASMModel(
+				testString, c, dummyCallback,dummyStoreEncryptionStatus)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -208,7 +216,8 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 		}
 		t.Run("Test_wasmModel_JoinChannel_LeaveChannel"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
-			eventModel, err := newWASMModel("test", c, dummyCallback)
+			eventModel, err := newWASMModel(
+				"test", c, dummyCallback, dummyStoreEncryptionStatus)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -261,7 +270,8 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 		t.Run("Test_wasmModel_UUIDTest"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := "testHello" + cs
-			eventModel, err := newWASMModel(testString, c, dummyCallback)
+			eventModel, err := newWASMModel(
+				testString, c, dummyCallback, dummyStoreEncryptionStatus)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -307,7 +317,8 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 		t.Run("Test_wasmModel_DuplicateReceives"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := "testHello"
-			eventModel, err := newWASMModel(testString, c, dummyCallback)
+			eventModel, err := newWASMModel(
+				testString, c, dummyCallback, dummyStoreEncryptionStatus)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -356,7 +367,8 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 			testString := "test_deleteMsgByChannel"
 			totalMessages := 10
 			expectedMessages := 5
-			eventModel, err := newWASMModel(testString, c, dummyCallback)
+			eventModel, err := newWASMModel(
+				testString, c, dummyCallback, dummyStoreEncryptionStatus)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -426,7 +438,8 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 		t.Run("TestWasmModel_receiveHelper_UniqueIndex"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := fmt.Sprintf("test_receiveHelper_UniqueIndex_%d", i)
-			eventModel, err := newWASMModel(testString, c, dummyCallback)
+			eventModel, err := newWASMModel(
+				testString, c, dummyCallback, dummyStoreEncryptionStatus)
 			if err != nil {
 				t.Fatal(err)
 			}
