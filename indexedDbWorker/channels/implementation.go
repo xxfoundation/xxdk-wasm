@@ -362,7 +362,7 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 		return uuid
 	case <-time.After(indexedDbWorker.ResponseTimeout):
 		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReply", indexedDbWorker.ResponseTimeout)
+			"worker about UpdateFromMessageID", indexedDbWorker.ResponseTimeout)
 	}
 
 	return 0

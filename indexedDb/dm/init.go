@@ -12,7 +12,6 @@ package main
 import (
 	"crypto/ed25519"
 	"syscall/js"
-	"time"
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
@@ -20,7 +19,6 @@ import (
 	"gitlab.com/elixxir/client/v4/dm"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
 )
 
 const (
@@ -39,24 +37,29 @@ const (
 type MessageReceivedCallback func(
 	uuid uint64, pubKey ed25519.PublicKey, update bool)
 
-// NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
-// The name should be a base64 encoding of the users public key.
-func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback, storeEncryptionStatus storeEncryptionStatusFn) (
-	dm.EventModel, error) {
-	databaseName := path + databaseSuffix
-	return newWASMModel(databaseName, encryption, cb, storeEncryptionStatus)
-}
+// storeDatabaseNameFn matches storage.StoreIndexedDb so that the data can be
+// sent between the worker and main thread.
+type storeDatabaseNameFn func(databaseName string) error
 
 // storeEncryptionStatusFn matches storage.StoreIndexedDbEncryptionStatus so
 // that the data can be sent between the worker and main thread.
 type storeEncryptionStatusFn func(
 	databaseName string, encryptionStatus bool) (bool, error)
 
+// NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
+// The name should be a base64 encoding of the users public key.
+func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
+	cb MessageReceivedCallback, storeDatabaseName storeDatabaseNameFn,
+	storeEncryptionStatus storeEncryptionStatusFn) (dm.EventModel, error) {
+	databaseName := path + databaseSuffix
+	return newWASMModel(
+		databaseName, encryption, cb, storeDatabaseName, storeEncryptionStatus)
+}
+
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback, storeEncryptionStatus storeEncryptionStatusFn) (
-	*wasmModel, error) {
+	cb MessageReceivedCallback, storeDatabaseName storeDatabaseNameFn,
+	storeEncryptionStatus storeEncryptionStatusFn) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := indexedDb.NewContext()
 	defer cancel()
@@ -174,45 +177,4 @@ func v1Upgrade(db *idb.Database) error {
 	}
 
 	return nil
-}
-
-// storeDatabaseName sends the database name to storage.StoreIndexedDb in the
-// main thread to be stored in localstorage and waits for the error to be
-// returned.
-//
-// The function specified below is a placeholder until set by
-// registerDatabaseNameStore. registerDatabaseNameStore must be called before
-// storeDatabaseName.
-var storeDatabaseName = func(databaseName string) error { return nil }
-
-// RegisterDatabaseNameStore sets storeDatabaseName to send the database to
-// storage.StoreIndexedDb in the main thread when called and registers a handler
-// to listen for the response.
-func RegisterDatabaseNameStore(m *manager) {
-	storeDatabaseNameResponseChan := make(chan []byte)
-	// Register handler
-	m.mh.RegisterHandler(indexedDbWorker.StoreDatabaseNameTag,
-		func(data []byte) ([]byte, error) {
-			storeDatabaseNameResponseChan <- data
-			return nil, nil
-		})
-
-	storeDatabaseName = func(databaseName string) error {
-		m.mh.SendResponse(indexedDbWorker.StoreDatabaseNameTag,
-			indexedDbWorker.InitID, []byte(databaseName))
-
-		// Wait for response
-		select {
-		case response := <-storeDatabaseNameResponseChan:
-			if len(response) > 0 {
-				return errors.New(string(response))
-			}
-		case <-time.After(indexedDbWorker.ResponseTimeout):
-			return errors.Errorf("timed out after %s waiting for "+
-				"response about storing the database name in local "+
-				"storage in the main thread", indexedDbWorker.ResponseTimeout)
-		}
-
-		return nil
-	}
 }

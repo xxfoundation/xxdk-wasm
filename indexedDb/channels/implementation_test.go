@@ -38,7 +38,12 @@ func TestMain(m *testing.M) {
 
 func dummyCallback(uint64, *id.ID, bool) {}
 
-// dummyStoreEncryptionStatus returns the same encryption status passed into it.
+// dummyStoreDatabaseName always returns nil error and adheres to the
+// storeDatabaseNameFn type.
+func dummyStoreDatabaseName(string) error { return nil }
+
+// dummyStoreEncryptionStatus returns the same encryption status passed into it
+// and adheres to the storeEncryptionStatusFn type.
 func dummyStoreEncryptionStatus(_ string, encryptionStatus bool) (bool, error) {
 	return encryptionStatus, nil
 }
@@ -61,10 +66,10 @@ func TestWasmModel_msgIDLookup(t *testing.T) {
 			testString := "TestWasmModel_msgIDLookup" + cs
 			testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
 
-			eventModel, err := newWASMModel(
-				testString, c, dummyCallback, dummyStoreEncryptionStatus)
-			if err != nil {
-				t.Fatalf("%+v", err)
+			eventModel, err2 := newWASMModel(testString, c, dummyCallback,
+				dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 
 			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
@@ -72,12 +77,12 @@ func TestWasmModel_msgIDLookup(t *testing.T) {
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
 			_, err = eventModel.receiveHelper(testMsg, false)
 			if err != nil {
-				t.Fatalf("%+v", err)
+				t.Fatal(err)
 			}
 
-			msg, err := eventModel.msgIDLookup(testMsgId)
-			if err != nil {
-				t.Fatalf("%+v", err)
+			msg, err2 := eventModel.msgIDLookup(testMsgId)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 			if msg.ID == 0 {
 				t.Fatalf("Expected to get a UUID!")
@@ -91,10 +96,10 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 	storage.GetLocalStorage().Clear()
 	testString := "TestWasmModel_DeleteMessage"
 	testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
-	eventModel, err := newWASMModel(
-		testString, nil, dummyCallback, dummyStoreEncryptionStatus)
+	eventModel, err := newWASMModel(testString, nil, dummyCallback,
+		dummyStoreDatabaseName, dummyStoreEncryptionStatus)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 
 	// Insert a message
@@ -103,13 +108,13 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 		time.Second, 0, 0, false, false, channels.Sent)
 	_, err = eventModel.receiveHelper(testMsg, false)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 
 	// Check the resulting status
 	results, err := indexedDb.Dump(eventModel.db, messageStoreName)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 	if len(results) != 1 {
 		t.Fatalf("Expected 1 message to exist")
@@ -118,13 +123,13 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 	// Delete the message
 	err = eventModel.DeleteMessage(testMsgId)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 
 	// Check the resulting status
 	results, err = indexedDb.Dump(eventModel.db, messageStoreName)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 	if len(results) != 0 {
 		t.Fatalf("Expected no messages to exist")
@@ -148,25 +153,25 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 			testString := "Test_wasmModel_UpdateSentStatus" + cs
 			testMsgId := message.DeriveChannelMessageID(
 				&id.ID{1}, 0, []byte(testString))
-			eventModel, err := newWASMModel(
-				testString, c, dummyCallback, dummyStoreEncryptionStatus)
-			if err != nil {
-				t.Fatalf("%+v", err)
+			eventModel, err2 := newWASMModel(testString, c, dummyCallback,
+				dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+			if err2 != nil {
+				t.Fatal(err)
 			}
 
 			// Store a test message
 			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
 				time.Second, 0, 0, false, false, channels.Sent)
-			uuid, err := eventModel.receiveHelper(testMsg, false)
-			if err != nil {
-				t.Fatalf("%+v", err)
+			uuid, err2 := eventModel.receiveHelper(testMsg, false)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 
 			// Ensure one message is stored
-			results, err := indexedDb.Dump(eventModel.db, messageStoreName)
-			if err != nil {
-				t.Fatalf("%+v", err)
+			results, err2 := indexedDb.Dump(eventModel.db, messageStoreName)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 			if len(results) != 1 {
 				t.Fatalf("Expected 1 message to exist")
@@ -180,7 +185,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 			// Check the resulting status
 			results, err = indexedDb.Dump(eventModel.db, messageStoreName)
 			if err != nil {
-				t.Fatalf("%+v", err)
+				t.Fatal(err)
 			}
 			if len(results) != 1 {
 				t.Fatalf("Expected 1 message to exist")
@@ -188,7 +193,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 			resultMsg := &Message{}
 			err = json.Unmarshal([]byte(results[0]), resultMsg)
 			if err != nil {
-				t.Fatalf("%+v", err)
+				t.Fatal(err)
 			}
 			if resultMsg.Status != uint8(expectedStatus) {
 				t.Fatalf("Unexpected Status: %v", resultMsg.Status)
@@ -216,10 +221,10 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 		}
 		t.Run("Test_wasmModel_JoinChannel_LeaveChannel"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
-			eventModel, err := newWASMModel(
-				"test", c, dummyCallback, dummyStoreEncryptionStatus)
-			if err != nil {
-				t.Fatalf("%+v", err)
+			eventModel, err2 := newWASMModel("test", c, dummyCallback,
+				dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 
 			testChannel := &cryptoBroadcast.Channel{
@@ -236,9 +241,9 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 			}
 			eventModel.JoinChannel(testChannel)
 			eventModel.JoinChannel(testChannel2)
-			results, err := indexedDb.Dump(eventModel.db, channelsStoreName)
-			if err != nil {
-				t.Fatalf("%+v", err)
+			results, err2 := indexedDb.Dump(eventModel.db, channelsStoreName)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 			if len(results) != 2 {
 				t.Fatalf("Expected 2 channels to exist")
@@ -246,7 +251,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 			eventModel.LeaveChannel(testChannel.ReceptionID)
 			results, err = indexedDb.Dump(eventModel.db, channelsStoreName)
 			if err != nil {
-				t.Fatalf("%+v", err)
+				t.Fatal(err)
 			}
 			if len(results) != 1 {
 				t.Fatalf("Expected 1 channels to exist")
@@ -270,10 +275,10 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 		t.Run("Test_wasmModel_UUIDTest"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := "testHello" + cs
-			eventModel, err := newWASMModel(
-				testString, c, dummyCallback, dummyStoreEncryptionStatus)
-			if err != nil {
-				t.Fatalf("%+v", err)
+			eventModel, err2 := newWASMModel(testString, c, dummyCallback,
+				dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 
 			uuids := make([]uint64, 10)
@@ -317,10 +322,10 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 		t.Run("Test_wasmModel_DuplicateReceives"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := "testHello"
-			eventModel, err := newWASMModel(
-				testString, c, dummyCallback, dummyStoreEncryptionStatus)
-			if err != nil {
-				t.Fatalf("%+v", err)
+			eventModel, err2 := newWASMModel(testString, c, dummyCallback,
+				dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 
 			uuids := make([]uint64, 10)
@@ -367,10 +372,10 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 			testString := "test_deleteMsgByChannel"
 			totalMessages := 10
 			expectedMessages := 5
-			eventModel, err := newWASMModel(
-				testString, c, dummyCallback, dummyStoreEncryptionStatus)
-			if err != nil {
-				t.Fatalf("%+v", err)
+			eventModel, err2 := newWASMModel(testString, c, dummyCallback,
+				dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 
 			// Create a test channel id
@@ -396,9 +401,9 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 			}
 
 			// Check pre-results
-			result, err := indexedDb.Dump(eventModel.db, messageStoreName)
-			if err != nil {
-				t.Fatalf("%+v", err)
+			result, err2 := indexedDb.Dump(eventModel.db, messageStoreName)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 			if len(result) != totalMessages {
 				t.Errorf("Expected %d messages, got %d", totalMessages, len(result))
@@ -413,7 +418,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 			// Check final results
 			result, err = indexedDb.Dump(eventModel.db, messageStoreName)
 			if err != nil {
-				t.Fatalf("%+v", err)
+				t.Fatal(err)
 			}
 			if len(result) != expectedMessages {
 				t.Errorf("Expected %d messages, got %d", expectedMessages, len(result))
@@ -438,30 +443,30 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 		t.Run("TestWasmModel_receiveHelper_UniqueIndex"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := fmt.Sprintf("test_receiveHelper_UniqueIndex_%d", i)
-			eventModel, err := newWASMModel(
-				testString, c, dummyCallback, dummyStoreEncryptionStatus)
-			if err != nil {
-				t.Fatal(err)
+			eventModel, err2 := newWASMModel(testString, c, dummyCallback,
+				dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 
 			// Ensure index is unique
-			txn, err := eventModel.db.Transaction(
+			txn, err2 := eventModel.db.Transaction(
 				idb.TransactionReadOnly, messageStoreName)
-			if err != nil {
-				t.Fatal(err)
-			}
-			store, err := txn.ObjectStore(messageStoreName)
-			if err != nil {
-				t.Fatal(err)
-			}
-			idx, err := store.Index(messageStoreMessageIndex)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if isUnique, err2 := idx.Unique(); !isUnique {
-				t.Fatalf("Index is not unique!")
-			} else if err2 != nil {
+			if err2 != nil {
 				t.Fatal(err2)
+			}
+			store, err2 := txn.ObjectStore(messageStoreName)
+			if err2 != nil {
+				t.Fatal(err2)
+			}
+			idx, err2 := store.Index(messageStoreMessageIndex)
+			if err2 != nil {
+				t.Fatal(err2)
+			}
+			if isUnique, err3 := idx.Unique(); !isUnique {
+				t.Fatalf("Index is not unique!")
+			} else if err3 != nil {
+				t.Fatal(err3)
 			}
 
 			// First message insert should succeed
@@ -469,15 +474,15 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
-			uuid, err := eventModel.receiveHelper(testMsg, false)
-			if err != nil {
-				t.Fatal(err)
+			uuid, err2 := eventModel.receiveHelper(testMsg, false)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 
 			// The duplicate entry should return the same UUID
-			duplicateUuid, err := eventModel.receiveHelper(testMsg, false)
-			if err != nil {
-				t.Fatal(err)
+			duplicateUuid, err2 := eventModel.receiveHelper(testMsg, false)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 			if uuid != duplicateUuid {
 				t.Fatalf("Expected UUID %d to match %d", uuid, duplicateUuid)
@@ -489,9 +494,9 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 			testMsg = buildMessage([]byte(testString), testMsgId2.Bytes(), nil,
 				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
-			uuid2, err := eventModel.receiveHelper(testMsg, false)
-			if err != nil {
-				t.Fatal(err)
+			uuid2, err2 := eventModel.receiveHelper(testMsg, false)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 			if uuid2 == uuid {
 				t.Fatalf("Expected UUID %d to NOT match %d", uuid, duplicateUuid)
@@ -501,9 +506,9 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 			// message ID as the first
 			testMsg.ID = uuid
 			testMsg.MessageID = testMsgId.Bytes()
-			duplicateUuid2, err := eventModel.receiveHelper(testMsg, true)
-			if err != nil {
-				t.Fatal(err)
+			duplicateUuid2, err2 := eventModel.receiveHelper(testMsg, true)
+			if err2 != nil {
+				t.Fatal(err2)
 			}
 			if duplicateUuid2 != duplicateUuid {
 				t.Fatalf("Expected UUID %d to match %d", uuid, duplicateUuid)

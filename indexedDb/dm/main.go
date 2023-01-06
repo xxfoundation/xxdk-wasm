@@ -22,7 +22,6 @@ func main() {
 
 	m := &manager{mh: indexedDb.NewMessageHandler("DmIndexedDbWorker")}
 	m.RegisterHandlers()
-	RegisterDatabaseNameStore(m)
 	m.mh.SignalReady()
 	<-make(chan bool)
 	fmt.Println("[WW] Closing xxDK WebAssembly Channels Database Worker.")

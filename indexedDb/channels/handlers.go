@@ -71,7 +71,7 @@ func (m *manager) newWASMEventModelHandler(data []byte) ([]byte, error) {
 	}
 
 	m.model, err = NewWASMEventModel(msg.Path, encryption,
-		m.messageReceivedCallback, m.storeEncryptionStatus)
+		m.messageReceivedCallback, m.storeDatabaseName, m.storeEncryptionStatus)
 	if err != nil {
 		return []byte(err.Error()), nil
 	}
@@ -102,9 +102,42 @@ func (m *manager) messageReceivedCallback(
 		worker.GetMessageTag, worker.InitID, data)
 }
 
-// storeEncryptionStatus augments the functionality of
-// storage.StoreIndexedDbEncryptionStatus. It takes the database name and
-// encryption status
+// storeDatabaseName sends the database name to the main thread and waits for
+// the response. This function mocks the behavior of storage.StoreIndexedDb.
+//
+// storeDatabaseName adheres to the storeDatabaseNameFn type.
+func (m *manager) storeDatabaseName(databaseName string) error {
+	// Register response handler with channel that will wait for the response
+	responseChan := make(chan []byte)
+	m.mh.RegisterHandler(worker.StoreDatabaseNameTag,
+		func(data []byte) ([]byte, error) {
+			responseChan <- data
+			return nil, nil
+		})
+
+	// Send encryption status to main thread
+	m.mh.SendResponse(
+		worker.StoreDatabaseNameTag, worker.InitID, []byte(databaseName))
+
+	// Wait for response
+	select {
+	case response := <-responseChan:
+		if len(response) > 0 {
+			return errors.New(string(response))
+		}
+	case <-time.After(worker.ResponseTimeout):
+		return errors.Errorf("[WW] Timed out after %s waiting for response "+
+			"about storing the database name in local storage in the main "+
+			"thread", worker.ResponseTimeout)
+	}
+
+	return nil
+}
+
+// storeEncryptionStatus sends the database name and encryption status to the
+// main thread and waits for the response. If the value has not been previously
+// saved, it returns the saves encryption status. This function mocks the
+// behavior of storage.StoreIndexedDbEncryptionStatus.
 //
 // storeEncryptionStatus adheres to the storeEncryptionStatusFn type.
 func (m *manager) storeEncryptionStatus(

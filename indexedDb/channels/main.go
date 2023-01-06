@@ -21,7 +21,6 @@ func main() {
 	jww.INFO.Print("[WW] Starting xxDK WebAssembly Channels Database Worker.")
 
 	m := &manager{mh: indexedDb.NewMessageHandler("ChannelsIndexedDbWorker")}
-	RegisterDatabaseNameStore(m)
 	m.RegisterHandlers()
 	m.mh.SignalReady()
 	<-make(chan bool)

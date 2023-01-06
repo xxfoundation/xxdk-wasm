@@ -32,11 +32,11 @@ const InitID = uint64(0)
 const (
 	// workerInitialConnectionTimeout is the time to wait to receive initial
 	// contact from a new worker before timing out.
-	workerInitialConnectionTimeout = 2 * time.Second
+	workerInitialConnectionTimeout = 16 * time.Second
 
 	// ResponseTimeout is the general time to wait after sending a message to
 	// receive a response before timing out.
-	ResponseTimeout = 25 * time.Millisecond
+	ResponseTimeout = 8 * time.Second
 )
 
 // HandlerFn is the function that handles incoming data from the worker.
