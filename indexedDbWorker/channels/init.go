@@ -68,6 +68,10 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 	wh.RegisterHandler(indexedDbWorker.EncryptionStatusTag,
 		indexedDbWorker.InitID, false, checkDbEncryptionStatusHandler(wh))
 
+	// Register handler to manage the storage of the database name
+	wh.RegisterHandler(indexedDbWorker.StoreDatabaseNameTag,
+		indexedDbWorker.InitID, false, storeDatabaseNameHandler(wh))
+
 	encryptionJSON, err := json.Marshal(encryption)
 	if err != nil {
 		return nil, err
@@ -170,5 +174,22 @@ func checkDbEncryptionStatusHandler(
 		}
 
 		wh.SendMessage(indexedDbWorker.EncryptionStatusTag, statusData, nil)
+	}
+}
+
+// storeDatabaseNameHandler returns a handler that stores the database name to
+// storage when it is received from the worker.
+func storeDatabaseNameHandler(
+	wh *indexedDbWorker.WorkerHandler) func(data []byte) {
+	return func(data []byte) {
+		var returnData []byte
+
+		// Get the database name and save it to storage
+		jww.ERROR.Printf("*** Storing database name: %s", string(data))
+		if err := storage.StoreIndexedDb(string(data)); err != nil {
+			returnData = []byte(err.Error())
+		}
+
+		wh.SendMessage(indexedDbWorker.StoreDatabaseNameTag, returnData, nil)
 	}
 }

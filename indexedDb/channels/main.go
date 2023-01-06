@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Starting xxDK WebAssembly Database Worker.")
+	fmt.Println("Starting xxDK WebAssembly Channels Database Worker.")
 
 	m := &manager{mh: indexedDb.NewMessageHandler()}
 	RegisterDatabaseNameStore(m)
