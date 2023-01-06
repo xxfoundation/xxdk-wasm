@@ -13,12 +13,24 @@ import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/wasm"
+	"syscall/js"
 )
+
+func init() {
+	// Set up Javascript console listener set at level INFO
+	ll := wasm.NewJsConsoleLogListener(jww.LevelInfo)
+	jww.SetLogListeners(ll.Listen)
+	jww.SetStdoutThreshold(jww.LevelFatal + 1)
+}
 
 func main() {
 	fmt.Println("[WW] Starting xxDK WebAssembly Channels Database Worker.")
-	jww.SetStdoutThreshold(jww.LevelDebug)
 	jww.INFO.Print("[WW] Starting xxDK WebAssembly Channels Database Worker.")
+
+	js.Global().Set("LogLevel", js.FuncOf(wasm.LogLevel))
+	js.Global().Set("LogToFile", js.FuncOf(wasm.LogToFile))
+	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
 
 	m := &manager{mh: indexedDb.NewMessageHandler("ChannelsIndexedDbWorker")}
 	m.RegisterHandlers()

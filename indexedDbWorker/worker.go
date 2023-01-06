@@ -22,6 +22,9 @@ import (
 // TODO:
 //  1. Fix ID counter
 //  2. Use transfer list when sending
+//  3. Get path to JS file from bindings
+//  4. restructure packages
+//  5. fix tag system
 
 // InitID is the ID for the first item in the handler list. If the list only
 // contains one handler, then this is the ID of that handler. If the list has
