@@ -13,7 +13,7 @@ import (
 	"encoding/json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
+	worker "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"sync"
 	"syscall/js"
@@ -30,7 +30,7 @@ type MessageHandler struct {
 
 	// handlers is a list of functions to handle messages that come from the
 	// main thread keyed on the handler tag.
-	handlers map[indexedDbWorker.Tag]HandlerFn
+	handlers map[worker.Tag]HandlerFn
 
 	// name describes the worker. It is used for debugging and logging purposes.
 	name string
@@ -42,7 +42,7 @@ type MessageHandler struct {
 func NewMessageHandler(name string) *MessageHandler {
 	mh := &MessageHandler{
 		messages: make(chan js.Value, 100),
-		handlers: make(map[indexedDbWorker.Tag]HandlerFn),
+		handlers: make(map[worker.Tag]HandlerFn),
 		name:     name,
 	}
 
@@ -55,13 +55,13 @@ func NewMessageHandler(name string) *MessageHandler {
 // ready. Once the main thread receives this, it will initiate communication.
 // Therefore, this should only be run once all listeners are ready.
 func (mh *MessageHandler) SignalReady() {
-	mh.SendResponse(indexedDbWorker.ReadyTag, indexedDbWorker.InitID, nil)
+	mh.SendResponse(worker.ReadyTag, worker.InitID, nil)
 }
 
 // SendResponse sends a reply to the main thread with the given tag and ID,
 func (mh *MessageHandler) SendResponse(
-	tag indexedDbWorker.Tag, id uint64, data []byte) {
-	msg := indexedDbWorker.WorkerMessage{
+	tag worker.Tag, id uint64, data []byte) {
+	msg := worker.WorkerMessage{
 		Tag:  tag,
 		ID:   id,
 		Data: data,
@@ -82,7 +82,7 @@ func (mh *MessageHandler) SendResponse(
 // everytime a message from the main thread is received. If the registered
 // handler returns a response, it is sent to the main thread.
 func (mh *MessageHandler) receiveMessage(data []byte) error {
-	var msg indexedDbWorker.WorkerMessage
+	var msg worker.WorkerMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func (mh *MessageHandler) receiveMessage(data []byte) error {
 	go func() {
 		response, err2 := handler(msg.Data)
 		if err2 != nil {
-			jww.FATAL.Panicf("[WW] [%s] Handler for for %q and ID %d returned "+
+			jww.ERROR.Printf("[WW] [%s] Handler for for %q and ID %d returned "+
 				"an error: %+v", mh.name, msg.Tag, msg.ID, err)
 		}
 		if response != nil {
@@ -116,7 +116,7 @@ func (mh *MessageHandler) receiveMessage(data []byte) error {
 // previous registered handler with the same tag. This function is thread safe.
 //
 // If the handler returns anything but nil, it will be returned as a response.
-func (mh *MessageHandler) RegisterHandler(tag indexedDbWorker.Tag, handler HandlerFn) {
+func (mh *MessageHandler) RegisterHandler(tag worker.Tag, handler HandlerFn) {
 	jww.DEBUG.Printf(
 		"[WW] [%s] Worker registering handler for tag %q", mh.name, tag)
 	mh.mux.Lock()

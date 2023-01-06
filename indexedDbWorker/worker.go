@@ -99,8 +99,9 @@ func NewWorkerHandler(aURL, name string) (*WorkerHandler, error) {
 	select {
 	case <-ready:
 	case <-time.After(workerInitialConnectionTimeout):
-		return nil, errors.Errorf("timed out after %s waiting for initial "+
-			"message from worker", workerInitialConnectionTimeout)
+		return nil, errors.Errorf("[WW] [%s] timed out after %s waiting for "+
+			"initial message from worker",
+			wh.name, workerInitialConnectionTimeout)
 	}
 
 	return wh, nil

@@ -61,8 +61,7 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			if oldVersion == newVersion {
-				jww.INFO.Printf("IndexDb version is current: v%d",
-					newVersion)
+				jww.INFO.Printf("IndexDb version is current: v%d", newVersion)
 				return nil
 			}
 
@@ -208,7 +207,7 @@ func RegisterDatabaseNameStore(m *manager) {
 				return errors.New(string(response))
 			}
 		case <-time.After(indexedDbWorker.ResponseTimeout):
-			return errors.Errorf("timed out after %s waiting for "+
+			return errors.Errorf("[WW] Timed out after %s waiting for "+
 				"response about storing the database name in local "+
 				"storage in the main thread", indexedDbWorker.ResponseTimeout)
 		}
