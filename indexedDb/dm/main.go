@@ -17,7 +17,7 @@ import (
 func main() {
 	fmt.Println("Starting xxDK WebAssembly DM Database Worker.")
 
-	m := &manager{mh: indexedDb.NewMessageHandler()}
+	m := &manager{mh: indexedDb.NewMessageHandler("DmIndexedDbWorker")}
 	m.RegisterHandlers()
 	RegisterDatabaseNameStore(m)
 	m.mh.SignalReady()

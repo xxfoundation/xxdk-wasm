@@ -58,6 +58,9 @@ type WorkerHandler struct {
 	// idCount tracks the newest ID to assign to new handlers.
 	idCount uint64
 
+	// name describes the worker. It is used for debugging and logging purposes.
+	name string
+
 	mux sync.Mutex
 }
 
@@ -79,6 +82,7 @@ func NewWorkerHandler(aURL, name string) (*WorkerHandler, error) {
 		worker:   js.Global().Get("Worker").New(aURL, opts),
 		handlers: make(map[Tag]map[uint64]HandlerFn),
 		idCount:  InitID,
+		name:     name,
 	}
 
 	// Register listeners on the Javascript worker object that receive messages
@@ -112,18 +116,42 @@ func (wh *WorkerHandler) SendMessage(
 		id = wh.RegisterHandler(tag, 0, true, receptionHandler)
 	}
 
-	message := WorkerMessage{
+	jww.DEBUG.Printf("[WW] [%s] Main sending message for %q and ID %d with "+
+		"data: %s", wh.name, tag, id, data)
+
+	msg := WorkerMessage{
 		Tag:  tag,
 		ID:   id,
 		Data: data,
 	}
-	payload, err := json.Marshal(message)
+	payload, err := json.Marshal(msg)
 	if err != nil {
-		jww.FATAL.Panicf(
-			"Failed to marshal payload for %q going to worker: %+v", tag, err)
+		jww.FATAL.Panicf("[WW] [%s] Main failed to marshal %T for %q and "+
+			"ID %d going to worker: %+v", wh.name, msg, tag, id, err)
 	}
 
 	go wh.postMessage(string(payload))
+}
+
+// receiveMessage is registered with the Javascript event listener and is called
+// every time a new message from the worker is received.
+func (wh *WorkerHandler) receiveMessage(data []byte) error {
+	var msg WorkerMessage
+	err := json.Unmarshal(data, &msg)
+	if err != nil {
+		return err
+	}
+	jww.DEBUG.Printf("[WW] [%s] Main received message for %q and ID %d with "+
+		"data: %s", wh.name, msg.Tag, msg.ID, msg.Data)
+
+	handler, err := wh.getHandler(msg.Tag, msg.ID)
+	if err != nil {
+		return err
+	}
+
+	go handler(msg.Data)
+
+	return nil
 }
 
 // RegisterHandler registers the handler for the given tag and ID unless autoID
@@ -140,6 +168,9 @@ func (wh *WorkerHandler) RegisterHandler(
 	if autoID {
 		id = wh.getNextID()
 	}
+
+	jww.DEBUG.Printf("[WW] [%s] Main registering handler for tag %q and ID %d "+
+		"(autoID: %t)", wh.name, tag, id, autoID)
 
 	if _, exists := wh.handlers[tag]; !exists {
 		wh.handlers[tag] = make(map[uint64]HandlerFn)
@@ -163,45 +194,29 @@ func (wh *WorkerHandler) addEventListeners() {
 	// Create a listener for when the message event is fired on the worker. This
 	// occurs when a message is received from the worker.
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/message_event
-	messageEvent := js.FuncOf(func(this js.Value, args []js.Value) any {
+	messageEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
 		err := wh.receiveMessage([]byte(args[0].Get("data").String()))
 		if err != nil {
-			jww.ERROR.Printf("Failed to receive message from worker: %+v", err)
+			jww.ERROR.Printf("[WW] [%s] Failed to receive message from "+
+				"worker: %+v", wh.name, err)
 		}
 		return nil
 	})
 
 	// Create listener for when a messageerror event is fired on the worker.
-	// This occurs when it receives a message that can't be deserialized.
+	// This occurs when it receives a message that cannot be deserialized.
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/messageerror_event
-	messageError := js.FuncOf(func(this js.Value, args []js.Value) any {
+	messageError := js.FuncOf(func(_ js.Value, args []js.Value) any {
 		event := args[0]
-		jww.ERROR.Printf(
-			"Error receiving message from worker: %s", utils.JsToJson(event))
+		jww.ERROR.Printf("[WW] [%s] Main received error message from worker: %s",
+			wh.name, utils.JsToJson(event))
 		return nil
 	})
 
+	// Register each event listener on the worker using addEventListener
+	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
 	wh.worker.Call("addEventListener", "message", messageEvent)
 	wh.worker.Call("addEventListener", "messageerror", messageError)
-}
-
-// receiveMessage is registered with the Javascript event listener and is called
-// every time a new message from the worker is received.
-func (wh *WorkerHandler) receiveMessage(data []byte) error {
-	var message WorkerMessage
-	err := json.Unmarshal(data, &message)
-	if err != nil {
-		return err
-	}
-
-	handler, err := wh.getHandler(message.Tag, message.ID)
-	if err != nil {
-		return err
-	}
-
-	go handler(message.Data)
-
-	return nil
 }
 
 // getHandler returns the handler with the given ID or returns an error if no
@@ -244,8 +259,8 @@ func (wh *WorkerHandler) getHandler(tag Tag, id uint64) (HandlerFn, error) {
 // js.Undefined can be passed explicitly.
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage
-func (wh *WorkerHandler) postMessage(message any) {
-	wh.worker.Call("postMessage", message)
+func (wh *WorkerHandler) postMessage(msg any) {
+	wh.worker.Call("postMessage", msg)
 }
 
 // postMessageTransferList sends an array of Transferable objects to transfer to
@@ -258,8 +273,8 @@ func (wh *WorkerHandler) postMessage(message any) {
 // transferList
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage#transfer
-func (wh *WorkerHandler) postMessageTransferList(message, transferList any) {
-	wh.worker.Call("postMessage", message, transferList)
+func (wh *WorkerHandler) postMessageTransferList(msg, transferList any) {
+	wh.worker.Call("postMessage", msg, transferList)
 }
 
 // newWorkerOptions creates a new Javascript object containing optional

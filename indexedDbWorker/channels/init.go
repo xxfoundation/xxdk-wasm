@@ -23,7 +23,7 @@ import (
 
 // WorkerJavascriptFileURL is the URL of the script the worker will execute to
 // launch the worker WASM binary. It must obey the same-origin policy.
-const WorkerJavascriptFileURL = "/integrations/assets/dmIndexedDbWorker.js"
+const WorkerJavascriptFileURL = "/integrations/assets/channelsIndexedDbWorker.js"
 
 // MessageReceivedCallback is called any time a message is received or updated.
 //
@@ -77,12 +77,12 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 		return nil, err
 	}
 
-	message := NewWASMEventModelMessage{
+	msg := NewWASMEventModelMessage{
 		Path:           path,
 		EncryptionJSON: string(encryptionJSON),
 	}
 
-	payload, err := json.Marshal(message)
+	payload, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,6 @@ func storeDatabaseNameHandler(
 		var returnData []byte
 
 		// Get the database name and save it to storage
-		jww.ERROR.Printf("*** Storing database name: %s", string(data))
 		if err := storage.StoreIndexedDb(string(data)); err != nil {
 			returnData = []byte(err.Error())
 		}

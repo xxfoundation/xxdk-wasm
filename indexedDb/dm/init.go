@@ -193,9 +193,9 @@ func RegisterDatabaseNameStore(m *manager) {
 	storeDatabaseNameResponseChan := make(chan []byte)
 	// Register handler
 	m.mh.RegisterHandler(indexedDbWorker.StoreDatabaseNameTag,
-		func(data []byte) []byte {
+		func(data []byte) ([]byte, error) {
 			storeDatabaseNameResponseChan <- data
-			return nil
+			return nil, nil
 		})
 
 	storeDatabaseName = func(databaseName string) error {

@@ -24,7 +24,7 @@ import (
 
 // WorkerJavascriptFileURL is the URL of the script the worker will execute to
 // launch the worker WASM binary. It must obey the same-origin policy.
-const WorkerJavascriptFileURL = "/integrations/assets/indexedDbWorker.js"
+const WorkerJavascriptFileURL = "/integrations/assets/dmIndexedDbWorker.js"
 
 // MessageReceivedCallback is called any time a message is received or updated.
 //
@@ -68,12 +68,12 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 		return nil, err
 	}
 
-	message := NewWASMEventModelMessage{
+	msg := NewWASMEventModelMessage{
 		Path:           path,
 		EncryptionJSON: string(encryptionJSON),
 	}
 
-	payload, err := json.Marshal(message)
+	payload, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}

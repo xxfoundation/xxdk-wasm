@@ -20,7 +20,7 @@ import (
 	"gitlab.com/elixxir/crypto/fastRNG"
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
+	worker "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
 	mChannels "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker/channels"
 	"gitlab.com/xx_network/crypto/csprng"
 	"gitlab.com/xx_network/primitives/id"
@@ -37,28 +37,26 @@ type manager struct {
 // RegisterHandlers registers all the reception handlers to manage messages from
 // the main thread for the channels.EventModel.
 func (m *manager) RegisterHandlers() {
-
-	m.mh.RegisterHandler(indexedDbWorker.NewWASMEventModelTag, m.newWASMEventModelHandler)
-	m.mh.RegisterHandler(indexedDbWorker.JoinChannelTag, m.joinChannelHandler)
-	m.mh.RegisterHandler(indexedDbWorker.LeaveChannelTag, m.leaveChannelHandler)
-	m.mh.RegisterHandler(indexedDbWorker.ReceiveMessageTag, m.receiveMessageHandler)
-	m.mh.RegisterHandler(indexedDbWorker.ReceiveReplyTag, m.receiveReplyHandler)
-	m.mh.RegisterHandler(indexedDbWorker.ReceiveReactionTag, m.receiveReactionHandler)
-	m.mh.RegisterHandler(indexedDbWorker.UpdateFromUUIDTag, m.updateFromUUIDHandler)
-	m.mh.RegisterHandler(indexedDbWorker.UpdateFromMessageIDTag, m.updateFromMessageIDHandler)
-	m.mh.RegisterHandler(indexedDbWorker.GetMessageTag, m.getMessageHandler)
-	m.mh.RegisterHandler(indexedDbWorker.DeleteMessageTag, m.deleteMessageHandler)
+	m.mh.RegisterHandler(worker.NewWASMEventModelTag, m.newWASMEventModelHandler)
+	m.mh.RegisterHandler(worker.JoinChannelTag, m.joinChannelHandler)
+	m.mh.RegisterHandler(worker.LeaveChannelTag, m.leaveChannelHandler)
+	m.mh.RegisterHandler(worker.ReceiveMessageTag, m.receiveMessageHandler)
+	m.mh.RegisterHandler(worker.ReceiveReplyTag, m.receiveReplyHandler)
+	m.mh.RegisterHandler(worker.ReceiveReactionTag, m.receiveReactionHandler)
+	m.mh.RegisterHandler(worker.UpdateFromUUIDTag, m.updateFromUUIDHandler)
+	m.mh.RegisterHandler(worker.UpdateFromMessageIDTag, m.updateFromMessageIDHandler)
+	m.mh.RegisterHandler(worker.GetMessageTag, m.getMessageHandler)
+	m.mh.RegisterHandler(worker.DeleteMessageTag, m.deleteMessageHandler)
 }
 
 // newWASMEventModelHandler is the handler for NewWASMEventModel. Returns nil on
 // success or an error message on failure.
-func (m *manager) newWASMEventModelHandler(data []byte) []byte {
+func (m *manager) newWASMEventModelHandler(data []byte) ([]byte, error) {
 	var msg mChannels.NewWASMEventModelMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal "+
-			"NewWASMEventModelMessage from main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 
 	// Create new encryption cipher
@@ -66,17 +64,16 @@ func (m *manager) newWASMEventModelHandler(data []byte) []byte {
 	encryption, err := cryptoChannel.NewCipherFromJSON(
 		[]byte(msg.EncryptionJSON), rng.GetStream())
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal channel cipher from "+
-			"main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal Cipher from main thread: %+v", err)
 	}
 
 	m.model, err = NewWASMEventModel(msg.Path, encryption,
 		m.messageReceivedCallback, m.storeEncryptionStatus)
 	if err != nil {
-		return []byte(err.Error())
+		return []byte(err.Error()), nil
 	}
-	return nil
+	return nil, nil
 }
 
 // messageReceivedCallback sends calls to the MessageReceivedCallback in the
@@ -100,7 +97,7 @@ func (m *manager) messageReceivedCallback(
 
 	// Send it to the main thread
 	m.mh.SendResponse(
-		indexedDbWorker.GetMessageTag, indexedDbWorker.InitID, data)
+		worker.GetMessageTag, worker.InitID, data)
 }
 
 // storeEncryptionStatus augments the functionality of
@@ -122,15 +119,15 @@ func (m *manager) storeEncryptionStatus(
 
 	// Register response handler with channel that will wait for the response
 	responseChan := make(chan []byte)
-	m.mh.RegisterHandler(indexedDbWorker.EncryptionStatusTag,
-		func(data []byte) []byte {
+	m.mh.RegisterHandler(worker.EncryptionStatusTag,
+		func(data []byte) ([]byte, error) {
 			responseChan <- data
-			return nil
+			return nil, nil
 		})
 
 	// Send encryption status to main thread
 	m.mh.SendResponse(
-		indexedDbWorker.EncryptionStatusTag, indexedDbWorker.InitID, data)
+		worker.EncryptionStatusTag, worker.InitID, data)
 
 	// Wait for response
 	var response mChannels.EncryptionStatusReply
@@ -139,10 +136,10 @@ func (m *manager) storeEncryptionStatus(
 		if err = json.Unmarshal(responseData, &response); err != nil {
 			return false, err
 		}
-	case <-time.After(indexedDbWorker.ResponseTimeout):
+	case <-time.After(worker.ResponseTimeout):
 		return false, errors.Errorf("timed out after %s waiting for "+
 			"response about the database encryption status from local "+
-			"storage in the main thread", indexedDbWorker.ResponseTimeout)
+			"storage in the main thread", worker.ResponseTimeout)
 	}
 
 	// If the response contain an error, return it
@@ -156,42 +153,39 @@ func (m *manager) storeEncryptionStatus(
 
 // joinChannelHandler is the handler for wasmModel.JoinChannel. Always returns
 // nil; meaning, no response is supplied (or expected).
-func (m *manager) joinChannelHandler(data []byte) []byte {
+func (m *manager) joinChannelHandler(data []byte) ([]byte, error) {
 	var channel cryptoBroadcast.Channel
 	err := json.Unmarshal(data, &channel)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal broadcast.Channel from "+
-			"main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", channel, err)
 	}
 
 	m.model.JoinChannel(&channel)
-	return nil
+	return nil, nil
 }
 
 // leaveChannelHandler is the handler for wasmModel.LeaveChannel. Always returns
 // nil; meaning, no response is supplied (or expected).
-func (m *manager) leaveChannelHandler(data []byte) []byte {
+func (m *manager) leaveChannelHandler(data []byte) ([]byte, error) {
 	channelID, err := id.Unmarshal(data)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not unmarshal channel ID from main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", channelID, err)
 	}
 
 	m.model.LeaveChannel(channelID)
-	return nil
+	return nil, nil
 }
 
 // receiveMessageHandler is the handler for wasmModel.ReceiveMessage. Returns
 // nil on error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveMessageHandler(data []byte) []byte {
+func (m *manager) receiveMessageHandler(data []byte) ([]byte, error) {
 	var msg channels.ModelMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal channels.ModelMessage "+
-			"from main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 
 	uuid := m.model.ReceiveMessage(msg.ChannelID, msg.MessageID, msg.Nickname,
@@ -201,22 +195,19 @@ func (m *manager) receiveMessageHandler(data []byte) []byte {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal UUID from ReceiveMessage: %+v", err)
-		return nil
+		return nil, errors.Errorf("failed to JSON marshal UUID : %+v", err)
 	}
-	return uuidData
+	return uuidData, nil
 }
 
 // receiveReplyHandler is the handler for wasmModel.ReceiveReply. Returns
 // nil on error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveReplyHandler(data []byte) []byte {
+func (m *manager) receiveReplyHandler(data []byte) ([]byte, error) {
 	var msg mChannels.ReceiveReplyMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal ReceiveReplyMessage "+
-			"from main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 
 	uuid := m.model.ReceiveReply(msg.ChannelID, msg.MessageID, msg.ReactionTo,
@@ -226,22 +217,19 @@ func (m *manager) receiveReplyHandler(data []byte) []byte {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal UUID from ReceiveReply: %+v", err)
-		return nil
+		return nil, errors.Errorf("failed to JSON marshal UUID : %+v", err)
 	}
-	return uuidData
+	return uuidData, nil
 }
 
 // receiveReactionHandler is the handler for wasmModel.ReceiveReaction. Returns
 // nil on error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveReactionHandler(data []byte) []byte {
+func (m *manager) receiveReactionHandler(data []byte) ([]byte, error) {
 	var msg mChannels.ReceiveReplyMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal ReceiveReplyMessage "+
-			"from main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 
 	uuid := m.model.ReceiveReaction(msg.ChannelID, msg.MessageID,
@@ -251,22 +239,19 @@ func (m *manager) receiveReactionHandler(data []byte) []byte {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal UUID from ReceiveReaction: %+v", err)
-		return nil
+		return nil, errors.Errorf("failed to JSON marshal UUID : %+v", err)
 	}
-	return uuidData
+	return uuidData, nil
 }
 
 // updateFromUUIDHandler is the handler for wasmModel.UpdateFromUUID. Always
 // returns nil; meaning, no response is supplied (or expected).
-func (m *manager) updateFromUUIDHandler(data []byte) []byte {
+func (m *manager) updateFromUUIDHandler(data []byte) ([]byte, error) {
 	var msg mChannels.MessageUpdateInfo
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal MessageUpdateInfo "+
-			"from main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 	var messageID *message.ID
 	var timestamp *time.Time
@@ -294,18 +279,17 @@ func (m *manager) updateFromUUIDHandler(data []byte) []byte {
 
 	m.model.UpdateFromUUID(
 		msg.UUID, messageID, timestamp, round, pinned, hidden, status)
-	return nil
+	return nil, nil
 }
 
 // updateFromMessageIDHandler is the handler for wasmModel.UpdateFromMessageID.
 // Always returns nil; meaning, no response is supplied (or expected).
-func (m *manager) updateFromMessageIDHandler(data []byte) []byte {
+func (m *manager) updateFromMessageIDHandler(data []byte) ([]byte, error) {
 	var msg mChannels.MessageUpdateInfo
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal MessageUpdateInfo "+
-			"from main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 	var timestamp *time.Time
 	var round *rounds.Round
@@ -332,23 +316,21 @@ func (m *manager) updateFromMessageIDHandler(data []byte) []byte {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal UUID from UpdateFromMessageID: %+v", err)
-		return nil
+		return nil, errors.Errorf("failed to JSON marshal UUID : %+v", err)
 	}
-	return uuidData
+
+	return uuidData, nil
 }
 
 // getMessageHandler is the handler for wasmModel.GetMessage. Returns JSON
 // marshalled channels.GetMessageMessage. If an error occurs, then Error will
 // be set with the error message. Otherwise, Message will be set. Only one field
 // will be set.
-func (m *manager) getMessageHandler(data []byte) []byte {
+func (m *manager) getMessageHandler(data []byte) ([]byte, error) {
 	messageID, err := message.UnmarshalID(data)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal message ID from main "+
-			"thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", messageID, err)
 	}
 
 	reply := mChannels.GetMessageMessage{}
@@ -362,27 +344,25 @@ func (m *manager) getMessageHandler(data []byte) []byte {
 
 	messageData, err := json.Marshal(reply)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON marshal GetMessageMessage for "+
-			"GetMessage reply: %+v", err)
-		return nil
+		return nil, errors.Errorf("failed to JSON marshal %T from main thread "+
+			"for GetMessage reply: %+v", reply, err)
 	}
-	return messageData
+	return messageData, nil
 }
 
 // deleteMessageHandler is the handler for wasmModel.DeleteMessage. Always
 // returns nil; meaning, no response is supplied (or expected).
-func (m *manager) deleteMessageHandler(data []byte) []byte {
+func (m *manager) deleteMessageHandler(data []byte) ([]byte, error) {
 	messageID, err := message.UnmarshalID(data)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal message ID from main "+
-			"thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", messageID, err)
 	}
 
 	err = m.model.DeleteMessage(messageID)
 	if err != nil {
-		return []byte(err.Error())
+		return []byte(err.Error()), nil
 	}
 
-	return nil
+	return nil, nil
 }

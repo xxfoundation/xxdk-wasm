@@ -46,7 +46,7 @@ func dummyStoreEncryptionStatus(_ string, encryptionStatus bool) (bool, error) {
 // Happy path, insert message and look it up
 func TestWasmModel_msgIDLookup(t *testing.T) {
 	cipher, err := cryptoChannel.NewCipher(
-		[]byte("testpass"), []byte("testsalt"), 128, csprng.NewSystemRNG())
+		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
@@ -134,7 +134,7 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 // Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
 func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 	cipher, err := cryptoChannel.NewCipher(
-		[]byte("testpass"), []byte("testsalt"), 128, csprng.NewSystemRNG())
+		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
@@ -205,7 +205,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 // Smoke test wasmModel.JoinChannel/wasmModel.LeaveChannel happy paths.
 func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 	cipher, err := cryptoChannel.NewCipher(
-		[]byte("testpass"), []byte("testsalt"), 128, csprng.NewSystemRNG())
+		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
@@ -258,7 +258,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 // Test UUID gets returned when different messages are added.
 func Test_wasmModel_UUIDTest(t *testing.T) {
 	cipher, err := cryptoChannel.NewCipher(
-		[]byte("testpass"), []byte("testsalt"), 128, csprng.NewSystemRNG())
+		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
@@ -305,7 +305,7 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 // Tests if the same message ID being sent always returns the same UUID.
 func Test_wasmModel_DuplicateReceives(t *testing.T) {
 	cipher, err := cryptoChannel.NewCipher(
-		[]byte("testpass"), []byte("testsalt"), 128, csprng.NewSystemRNG())
+		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
@@ -353,7 +353,7 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 // result is as expected.
 func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 	cipher, err := cryptoChannel.NewCipher(
-		[]byte("testpass"), []byte("testsalt"), 128, csprng.NewSystemRNG())
+		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
@@ -426,7 +426,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 // Inserts will not fail, they simply will not happen.
 func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 	cipher, err := cryptoChannel.NewCipher(
-		[]byte("testpass"), []byte("testsalt"), 128, csprng.NewSystemRNG())
+		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}

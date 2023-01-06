@@ -18,7 +18,7 @@ import (
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/fastRNG"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
+	worker "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
 	mChannels "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker/channels"
 	mDm "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker/dm"
 	"gitlab.com/xx_network/crypto/csprng"
@@ -35,24 +35,22 @@ type manager struct {
 // RegisterHandlers registers all the reception handlers to manage messages from
 // the main thread for the channels.EventModel.
 func (m *manager) RegisterHandlers() {
-
-	m.mh.RegisterHandler(indexedDbWorker.NewWASMEventModelTag, m.newWASMEventModelHandler)
-	m.mh.RegisterHandler(indexedDbWorker.ReceiveTag, m.receiveHandler)
-	m.mh.RegisterHandler(indexedDbWorker.ReceiveTextTag, m.receiveTextHandler)
-	m.mh.RegisterHandler(indexedDbWorker.ReceiveReplyTag, m.receiveReplyHandler)
-	m.mh.RegisterHandler(indexedDbWorker.ReceiveReactionTag, m.receiveReactionHandler)
-	m.mh.RegisterHandler(indexedDbWorker.UpdateSentStatusTag, m.updateSentStatusHandler)
+	m.mh.RegisterHandler(worker.NewWASMEventModelTag, m.newWASMEventModelHandler)
+	m.mh.RegisterHandler(worker.ReceiveTag, m.receiveHandler)
+	m.mh.RegisterHandler(worker.ReceiveTextTag, m.receiveTextHandler)
+	m.mh.RegisterHandler(worker.ReceiveReplyTag, m.receiveReplyHandler)
+	m.mh.RegisterHandler(worker.ReceiveReactionTag, m.receiveReactionHandler)
+	m.mh.RegisterHandler(worker.UpdateSentStatusTag, m.updateSentStatusHandler)
 }
 
 // newWASMEventModelHandler is the handler for NewWASMEventModel. Returns nil on
 // success or an error message on failure.
-func (m *manager) newWASMEventModelHandler(data []byte) []byte {
+func (m *manager) newWASMEventModelHandler(data []byte) ([]byte, error) {
 	var msg mChannels.NewWASMEventModelMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal NewWASMEventModelMessage "+
-			"from NewWASMEventModel in main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 
 	// Create new encryption cipher
@@ -60,17 +58,16 @@ func (m *manager) newWASMEventModelHandler(data []byte) []byte {
 	encryption, err := cryptoChannel.NewCipherFromJSON(
 		[]byte(msg.EncryptionJSON), rng.GetStream())
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal channel cipher from "+
-			"main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf("failed to JSON unmarshal channel cipher "+
+			"from main thread: %+v", err)
 	}
 
 	m.model, err = NewWASMEventModel(msg.Path, encryption,
 		m.messageReceivedCallback, m.storeEncryptionStatus)
 	if err != nil {
-		return []byte(err.Error())
+		return []byte(err.Error()), nil
 	}
-	return nil
+	return nil, nil
 }
 
 // messageReceivedCallback sends calls to the MessageReceivedCallback in the
@@ -94,7 +91,7 @@ func (m *manager) messageReceivedCallback(
 
 	// Send it to the main thread
 	m.mh.SendResponse(
-		indexedDbWorker.GetMessageTag, indexedDbWorker.InitID, data)
+		worker.GetMessageTag, worker.InitID, data)
 }
 
 // storeEncryptionStatus augments the functionality of
@@ -116,15 +113,15 @@ func (m *manager) storeEncryptionStatus(
 
 	// Register response handler with channel that will wait for the response
 	responseChan := make(chan []byte)
-	m.mh.RegisterHandler(indexedDbWorker.EncryptionStatusTag,
-		func(data []byte) []byte {
+	m.mh.RegisterHandler(worker.EncryptionStatusTag,
+		func(data []byte) ([]byte, error) {
 			responseChan <- data
-			return nil
+			return nil, nil
 		})
 
 	// Send encryption status to main thread
 	m.mh.SendResponse(
-		indexedDbWorker.EncryptionStatusTag, indexedDbWorker.InitID, data)
+		worker.EncryptionStatusTag, worker.InitID, data)
 
 	// Wait for response
 	var response mChannels.EncryptionStatusReply
@@ -133,10 +130,10 @@ func (m *manager) storeEncryptionStatus(
 		if err = json.Unmarshal(responseData, &response); err != nil {
 			return false, err
 		}
-	case <-time.After(indexedDbWorker.ResponseTimeout):
+	case <-time.After(worker.ResponseTimeout):
 		return false, errors.Errorf("timed out after %s waiting for "+
 			"response about the database encryption status from local "+
-			"storage in the main thread", indexedDbWorker.ResponseTimeout)
+			"storage in the main thread", worker.ResponseTimeout)
 	}
 
 	// If the response contain an error, return it
@@ -150,13 +147,12 @@ func (m *manager) storeEncryptionStatus(
 
 // receiveHandler is the handler for wasmModel.Receive. Returns nil on error or
 // the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveHandler(data []byte) []byte {
+func (m *manager) receiveHandler(data []byte) ([]byte, error) {
 	var msg mDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal dm.TransferMessage from "+
-			"Receive in main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 
 	uuid := m.model.Receive(
@@ -165,22 +161,19 @@ func (m *manager) receiveHandler(data []byte) []byte {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal UUID from Receive: %+v", err)
-		return nil
+		return nil, errors.Errorf("failed to JSON marshal UUID : %+v", err)
 	}
-	return uuidData
+	return uuidData, nil
 }
 
 // receiveTextHandler is the handler for wasmModel.ReceiveText. Returns nil on
 // error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveTextHandler(data []byte) []byte {
+func (m *manager) receiveTextHandler(data []byte) ([]byte, error) {
 	var msg mDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal dm.TransferMessage from "+
-			"ReceiveText in main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 
 	uuid := m.model.ReceiveText(
@@ -189,22 +182,20 @@ func (m *manager) receiveTextHandler(data []byte) []byte {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal UUID from ReceiveText: %+v", err)
-		return nil
+		return nil, errors.Errorf("failed to JSON marshal UUID : %+v", err)
 	}
-	return uuidData
+
+	return uuidData, nil
 }
 
 // receiveReplyHandler is the handler for wasmModel.ReceiveReply. Returns nil on
 // error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveReplyHandler(data []byte) []byte {
+func (m *manager) receiveReplyHandler(data []byte) ([]byte, error) {
 	var msg mDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal dm.TransferMessage from "+
-			"ReceiveReply in main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 
 	uuid := m.model.ReceiveReply(msg.MessageID, msg.ReactionTo, msg.Nickname,
@@ -213,22 +204,20 @@ func (m *manager) receiveReplyHandler(data []byte) []byte {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal UUID from ReceiveReply: %+v", err)
-		return nil
+		return nil, errors.Errorf("failed to JSON marshal UUID : %+v", err)
 	}
-	return uuidData
+
+	return uuidData, nil
 }
 
 // receiveReactionHandler is the handler for wasmModel.ReceiveReaction. Returns
 // nil on error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveReactionHandler(data []byte) []byte {
+func (m *manager) receiveReactionHandler(data []byte) ([]byte, error) {
 	var msg mDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal dm.TransferMessage from "+
-			"ReceiveReaction in main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 
 	uuid := m.model.ReceiveReaction(msg.MessageID, msg.ReactionTo, msg.Nickname,
@@ -237,25 +226,24 @@ func (m *manager) receiveReactionHandler(data []byte) []byte {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal UUID from ReceiveReaction: %+v", err)
-		return nil
+		return nil, errors.Errorf("failed to JSON marshal UUID : %+v", err)
 	}
-	return uuidData
+
+	return uuidData, nil
 }
 
 // updateSentStatusHandler is the handler for wasmModel.UpdateSentStatus. Always
 // returns nil; meaning, no response is supplied (or expected).
-func (m *manager) updateSentStatusHandler(data []byte) []byte {
+func (m *manager) updateSentStatusHandler(data []byte) ([]byte, error) {
 	var msg mDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON unmarshal dm.TransferMessage from "+
-			"UpdateSentStatus in main thread: %+v", err)
-		return nil
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 
 	m.model.UpdateSentStatus(
 		msg.UUID, msg.MessageID, msg.Timestamp, msg.Round, msg.Status)
-	return nil
+
+	return nil, nil
 }
