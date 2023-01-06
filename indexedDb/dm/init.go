@@ -63,8 +63,7 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			if oldVersion == newVersion {
-				jww.INFO.Printf("IndexDb version is current: v%d",
-					newVersion)
+				jww.INFO.Printf("IndexDb version is current: v%d", newVersion)
 				return nil
 			}
 
@@ -89,6 +88,13 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	// Wait for database open to finish
 	db, err := openRequest.Await(ctx)
 	if err != nil {
+		return nil, err
+	}
+
+	// Get the database name and save it to storage
+	if dbName, err2 := db.Name(); err2 != nil {
+		return nil, err2
+	} else if err = storeDatabaseName(dbName); err != nil {
 		return nil, err
 	}
 
@@ -167,13 +173,6 @@ func v1Upgrade(db *idb.Database) error {
 		return err
 	}
 
-	// Get the database name and save it to storage
-	if databaseName, err2 := db.Name(); err2 != nil {
-		return err2
-	} else if err = storeDatabaseName(databaseName); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -213,6 +212,7 @@ func RegisterDatabaseNameStore(m *manager) {
 				"response about storing the database name in local "+
 				"storage in the main thread", indexedDbWorker.ResponseTimeout)
 		}
+
 		return nil
 	}
 }

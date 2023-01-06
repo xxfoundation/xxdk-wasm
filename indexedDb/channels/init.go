@@ -89,6 +89,13 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 		return nil, err
 	}
 
+	// Get the database name and save it to storage
+	if dbName, err2 := db.Name(); err2 != nil {
+		return nil, err2
+	} else if err = storeDatabaseName(dbName); err != nil {
+		return nil, err
+	}
+
 	// Save the encryption status to storage
 	encryptionStatus := encryption != nil
 	loadedEncryptionStatus, err :=
@@ -162,13 +169,6 @@ func v1Upgrade(db *idb.Database) error {
 	// Build Channel ObjectStore
 	_, err = db.CreateObjectStore(channelsStoreName, storeOpts)
 	if err != nil {
-		return err
-	}
-
-	// Get the database name and save it to storage
-	if databaseName, err2 := db.Name(); err2 != nil {
-		return err2
-	} else if err = storeDatabaseName(databaseName); err != nil {
 		return err
 	}
 
