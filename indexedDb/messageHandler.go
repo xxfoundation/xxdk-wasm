@@ -166,17 +166,3 @@ func (mh *MessageHandler) addEventListeners() {
 func (mh *MessageHandler) postMessage(aMessage any) {
 	js.Global().Call("postMessage", aMessage)
 }
-
-// postMessageTransferList sends an array of Transferable objects to transfer to
-// the main thread. This is meant to be used to transfer large amounts of binary
-// data using a high-performance, zero-copy operation. Refer to the doc for more
-// information.
-//
-// Note: The binary data cannot simply be passed as the transferList. The
-// traversable objects must be specified in the aMessage and included in the
-// transferList
-//
-// Doc: https://developer.mozilla.org/en-US/docs/Web/API/DedicatedWorkerGlobalScope/postMessage
-func (mh *MessageHandler) postMessageTransferList(aMessage, transferList any) {
-	js.Global().Call("postMessage", aMessage, transferList)
-}

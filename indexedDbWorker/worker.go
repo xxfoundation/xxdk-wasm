@@ -21,10 +21,9 @@ import (
 
 // TODO:
 //  1. Fix ID counter
-//  2. Use transfer list when sending
-//  3. Get path to JS file from bindings
-//  4. restructure packages
-//  5. fix tag system
+//  2. Get path to JS file from bindings
+//  3. restructure packages
+//  4. fix tag system
 
 // InitID is the ID for the first item in the handler list. If the list only
 // contains one handler, then this is the ID of that handler. If the list has
@@ -265,20 +264,6 @@ func (wh *WorkerHandler) getHandler(tag Tag, id uint64) (HandlerFn, error) {
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage
 func (wh *WorkerHandler) postMessage(msg any) {
 	wh.worker.Call("postMessage", msg)
-}
-
-// postMessageTransferList sends an array of Transferable objects to transfer to
-// the worker. This is meant to be used to transfer large amounts of binary data
-// using a high-performance, zero-copy operation. Refer to the doc for more
-// information.
-//
-// Note: The binary data cannot simply be passed as the transferList. The
-// traversable objects must be specified in the aMessage and included in the
-// transferList
-//
-// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage#transfer
-func (wh *WorkerHandler) postMessageTransferList(msg, transferList any) {
-	wh.worker.Call("postMessage", msg, transferList)
 }
 
 // newWorkerOptions creates a new Javascript object containing optional
