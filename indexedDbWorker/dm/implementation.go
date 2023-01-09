@@ -67,7 +67,7 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(worker.ReceiveTag, data, func(data []byte) {
+	w.wh.SendMessage(ReceiveTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -112,7 +112,7 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(worker.ReceiveTextTag, data, func(data []byte) {
+	w.wh.SendMessage(ReceiveTextTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -158,7 +158,7 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(worker.ReceiveReplyTag, data, func(data []byte) {
+	w.wh.SendMessage(ReceiveReplyTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -204,7 +204,7 @@ func (w *wasmModel) ReceiveReaction(messageID, reactionTo message.ID, nickname,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(worker.ReceiveReactionTag, data, func(data []byte) {
+	w.wh.SendMessage(ReceiveReactionTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -242,5 +242,5 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 			"Could not JSON marshal payload for TransferMessage: %+v", err)
 	}
 
-	w.wh.SendMessage(worker.UpdateSentStatusTag, data, nil)
+	w.wh.SendMessage(UpdateSentStatusTag, data, nil)
 }

@@ -35,17 +35,11 @@ func TestManager_getNextID(t *testing.T) {
 		responseIDs: make(map[Tag]uint64),
 	}
 
-	for _, tag := range []Tag{
-		ReadyTag, NewWASMEventModelTag, EncryptionStatusTag,
-		StoreDatabaseNameTag, JoinChannelTag, LeaveChannelTag,
-		ReceiveMessageTag, ReceiveReplyTag, ReceiveReactionTag,
-		UpdateFromUUIDTag, UpdateFromMessageIDTag, GetMessageTag,
-		DeleteMessageTag, ReceiveTag, ReceiveTextTag, UpdateSentStatusTag,
-	} {
+	for _, tag := range []Tag{readyTag, "test", "A", "B", "C"} {
 		id := m.getNextID(tag)
-		if id != InitID {
-			t.Errorf("ID for new tag %q is not InitID."+
-				"\nexpected: %d\nreceived: %d", tag, InitID, id)
+		if id != initID {
+			t.Errorf("ID for new tag %q is not initID."+
+				"\nexpected: %d\nreceived: %d", tag, initID, id)
 		}
 
 		for j := uint64(1); j < 100; j++ {

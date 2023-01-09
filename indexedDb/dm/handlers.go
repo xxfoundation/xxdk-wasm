@@ -36,12 +36,12 @@ type manager struct {
 // RegisterHandlers registers all the reception handlers to manage messages from
 // the main thread for the channels.EventModel.
 func (m *manager) RegisterHandlers() {
-	m.mh.RegisterHandler(worker.NewWASMEventModelTag, m.newWASMEventModelHandler)
-	m.mh.RegisterHandler(worker.ReceiveTag, m.receiveHandler)
-	m.mh.RegisterHandler(worker.ReceiveTextTag, m.receiveTextHandler)
-	m.mh.RegisterHandler(worker.ReceiveReplyTag, m.receiveReplyHandler)
-	m.mh.RegisterHandler(worker.ReceiveReactionTag, m.receiveReactionHandler)
-	m.mh.RegisterHandler(worker.UpdateSentStatusTag, m.updateSentStatusHandler)
+	m.mh.RegisterCallback(mDm.NewWASMEventModelTag, m.newWASMEventModelHandler)
+	m.mh.RegisterCallback(mDm.ReceiveTag, m.receiveHandler)
+	m.mh.RegisterCallback(mDm.ReceiveTextTag, m.receiveTextHandler)
+	m.mh.RegisterCallback(mDm.ReceiveReplyTag, m.receiveReplyHandler)
+	m.mh.RegisterCallback(mDm.ReceiveReactionTag, m.receiveReactionHandler)
+	m.mh.RegisterCallback(mDm.UpdateSentStatusTag, m.updateSentStatusHandler)
 }
 
 // newWASMEventModelHandler is the handler for NewWASMEventModel. Returns an
@@ -91,7 +91,7 @@ func (m *manager) messageReceivedCallback(
 	}
 
 	// Send it to the main thread
-	m.mh.SendMessage(worker.MessageReceivedCallbackTag, data)
+	m.mh.SendMessage(mDm.MessageReceivedCallbackTag, data)
 }
 
 // storeDatabaseName sends the database name to the main thread and waits for
@@ -101,14 +101,14 @@ func (m *manager) messageReceivedCallback(
 func (m *manager) storeDatabaseName(databaseName string) error {
 	// Register response handler with channel that will wait for the response
 	responseChan := make(chan []byte)
-	m.mh.RegisterCallback(worker.StoreDatabaseNameTag,
+	m.mh.RegisterCallback(mDm.StoreDatabaseNameTag,
 		func(data []byte) ([]byte, error) {
 			responseChan <- data
 			return nil, nil
 		})
 
 	// Send encryption status to main thread
-	m.mh.SendMessage(worker.StoreDatabaseNameTag, []byte(databaseName))
+	m.mh.SendMessage(mDm.StoreDatabaseNameTag, []byte(databaseName))
 
 	// Wait for response
 	select {
@@ -145,14 +145,14 @@ func (m *manager) storeEncryptionStatus(
 
 	// Register response handler with channel that will wait for the response
 	responseChan := make(chan []byte)
-	m.mh.RegisterCallback(worker.EncryptionStatusTag,
+	m.mh.RegisterCallback(mDm.EncryptionStatusTag,
 		func(data []byte) ([]byte, error) {
 			responseChan <- data
 			return nil, nil
 		})
 
 	// Send encryption status to main thread
-	m.mh.SendMessage(worker.EncryptionStatusTag, data)
+	m.mh.SendMessage(mDm.EncryptionStatusTag, data)
 
 	// Wait for response
 	var response mChannels.EncryptionStatusReply

@@ -12,30 +12,7 @@ package worker
 // Tag describes how a message sent to or from the worker should be handled.
 type Tag string
 
-// FIXME: This system of tagging does not work so well when using the
-//  Manager for more than one database. This should bed fixed.
-
-// List of tags that can be used when sending a message or registering a handler
-// to receive a message.
+// Generic tags used by all workers.
 const (
-	ReadyTag Tag = "Ready"
-
-	NewWASMEventModelTag       Tag = "NewWASMEventModel"
-	MessageReceivedCallbackTag Tag = "MessageReceivedCallback"
-	EncryptionStatusTag        Tag = "EncryptionStatus"
-	StoreDatabaseNameTag       Tag = "StoreDatabaseName"
-
-	JoinChannelTag         Tag = "JoinChannel"
-	LeaveChannelTag        Tag = "LeaveChannel"
-	ReceiveMessageTag      Tag = "ReceiveMessage"
-	ReceiveReplyTag        Tag = "ReceiveReply"
-	ReceiveReactionTag     Tag = "ReceiveReaction"
-	UpdateFromUUIDTag      Tag = "UpdateFromUUID"
-	UpdateFromMessageIDTag Tag = "UpdateFromMessageID"
-	GetMessageTag          Tag = "GetMessage"
-	DeleteMessageTag       Tag = "DeleteMessage"
-
-	ReceiveTag          Tag = "Receive"
-	ReceiveTextTag      Tag = "ReceiveText"
-	UpdateSentStatusTag Tag = "UpdateSentStatusTag"
+	readyTag Tag = "Ready"
 )

@@ -40,12 +40,12 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 		return
 	}
 
-	w.wm.SendMessage(worker.JoinChannelTag, data, nil)
+	w.wm.SendMessage(JoinChannelTag, data, nil)
 }
 
 // LeaveChannel is called whenever a channel is left locally.
 func (w *wasmModel) LeaveChannel(channelID *id.ID) {
-	w.wm.SendMessage(worker.LeaveChannelTag, channelID.Marshal(), nil)
+	w.wm.SendMessage(LeaveChannelTag, channelID.Marshal(), nil)
 }
 
 // ReceiveMessage is called whenever a message is received on a given channel.
@@ -81,7 +81,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wm.SendMessage(worker.ReceiveMessageTag, data, func(data []byte) {
+	w.wm.SendMessage(ReceiveMessageTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -149,7 +149,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wm.SendMessage(worker.ReceiveReplyTag, data, func(data []byte) {
+	w.wm.SendMessage(ReceiveReplyTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -211,7 +211,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wm.SendMessage(worker.ReceiveReactionTag, data, func(data []byte) {
+	w.wm.SendMessage(ReceiveReactionTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -298,7 +298,7 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 		return
 	}
 
-	w.wm.SendMessage(worker.UpdateFromUUIDTag, data, nil)
+	w.wm.SendMessage(UpdateFromUUIDTag, data, nil)
 }
 
 // UpdateFromMessageID is called whenever a message with the message ID is
@@ -344,7 +344,7 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wm.SendMessage(worker.UpdateFromMessageIDTag, data,
+	w.wm.SendMessage(UpdateFromMessageIDTag, data,
 		func(data []byte) {
 			var uuid uint64
 			err = json.Unmarshal(data, &uuid)
@@ -378,7 +378,7 @@ type GetMessageMessage struct {
 func (w *wasmModel) GetMessage(
 	messageID message.ID) (channels.ModelMessage, error) {
 	msgChan := make(chan GetMessageMessage)
-	w.wm.SendMessage(worker.GetMessageTag, messageID.Marshal(),
+	w.wm.SendMessage(GetMessageTag, messageID.Marshal(),
 		func(data []byte) {
 			var msg GetMessageMessage
 			err := json.Unmarshal(data, &msg)
@@ -405,7 +405,7 @@ func (w *wasmModel) GetMessage(
 // DeleteMessage removes a message with the given messageID from storage.
 func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 	errChan := make(chan error)
-	w.wm.SendMessage(worker.DeleteMessageTag, messageID.Marshal(),
+	w.wm.SendMessage(DeleteMessageTag, messageID.Marshal(),
 		func(data []byte) {
 			if data != nil {
 				errChan <- errors.New(string(data))

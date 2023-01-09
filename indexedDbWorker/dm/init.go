@@ -46,23 +46,20 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) (dm.EventModel, error) {
 
 	// TODO: bring in URL and name from caller
-	wh, err := worker.NewManager(
-		WorkerJavascriptFileURL, "dmIndexedDb")
+	wh, err := worker.NewManager(WorkerJavascriptFileURL, "dmIndexedDb")
 	if err != nil {
 		return nil, err
 	}
 
 	// Register handler to manage messages for the MessageReceivedCallback
 	wh.RegisterCallback(
-		worker.MessageReceivedCallbackTag, messageReceivedCallbackHandler(cb))
+		MessageReceivedCallbackTag, messageReceivedCallbackHandler(cb))
 
 	// Register handler to manage checking encryption status from local storage
-	wh.RegisterCallback(
-		worker.EncryptionStatusTag, checkDbEncryptionStatusHandler(wh))
+	wh.RegisterCallback(EncryptionStatusTag, checkDbEncryptionStatusHandler(wh))
 
 	// Register handler to manage the storage of the database name
-	wh.RegisterCallback(
-		worker.StoreDatabaseNameTag, storeDatabaseNameHandler(wh))
+	wh.RegisterCallback(StoreDatabaseNameTag, storeDatabaseNameHandler(wh))
 
 	encryptionJSON, err := json.Marshal(encryption)
 	if err != nil {
@@ -80,7 +77,7 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 	}
 
 	errChan := make(chan string)
-	wh.SendMessage(worker.NewWASMEventModelTag, payload,
+	wh.SendMessage(NewWASMEventModelTag, payload,
 		func(data []byte) { errChan <- string(data) })
 
 	select {
@@ -164,7 +161,7 @@ func checkDbEncryptionStatusHandler(wh *worker.Manager) func(data []byte) {
 			return
 		}
 
-		wh.SendMessage(worker.EncryptionStatusTag, statusData, nil)
+		wh.SendMessage(EncryptionStatusTag, statusData, nil)
 	}
 }
 
@@ -179,6 +176,6 @@ func storeDatabaseNameHandler(wh *worker.Manager) func(data []byte) {
 			returnData = []byte(err.Error())
 		}
 
-		wh.SendMessage(worker.StoreDatabaseNameTag, returnData, nil)
+		wh.SendMessage(StoreDatabaseNameTag, returnData, nil)
 	}
 }

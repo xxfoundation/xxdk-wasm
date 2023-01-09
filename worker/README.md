@@ -1,6 +1,7 @@
 # Web Worker API
 
-This package allows you to create a [Javascript Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
+This package allows you to create
+a [Javascript Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
 from WASM and facilitates communication between the web worker and the main
 thread using a messaging system.
 
@@ -26,7 +27,6 @@ func main() {
 	<-make(chan bool)
 }
 ```
-
 
 Example WASM start file:
 

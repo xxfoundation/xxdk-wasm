@@ -55,14 +55,14 @@ func NewThreadManager(name string) *ThreadManager {
 // ready. Once the main thread receives this, it will initiate communication.
 // Therefore, this should only be run once all listeners are ready.
 func (tm *ThreadManager) SignalReady() {
-	tm.SendMessage(ReadyTag, nil)
+	tm.SendMessage(readyTag, nil)
 }
 
 // SendMessage sends a message to the main thread for the given tag.
 func (tm *ThreadManager) SendMessage(tag Tag, data []byte) {
-	msg := Message{
+	msg := message{
 		Tag:      tag,
-		ID:       InitID,
+		ID:       initID,
 		DeleteCB: false,
 		Data:     data,
 	}
@@ -81,7 +81,7 @@ func (tm *ThreadManager) SendMessage(tag Tag, data []byte) {
 // sendResponse sends a reply to the main thread with the given tag and ID.
 func (tm *ThreadManager) sendResponse(
 	tag Tag, id uint64, data []byte) {
-	msg := Message{
+	msg := message{
 		Tag:      tag,
 		ID:       id,
 		DeleteCB: true,
@@ -103,7 +103,7 @@ func (tm *ThreadManager) sendResponse(
 // everytime a message from the main thread is received. If the registered
 // callback returns a response, it is sent to the main thread.
 func (tm *ThreadManager) receiveMessage(data []byte) error {
-	var msg Message
+	var msg message
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return err
