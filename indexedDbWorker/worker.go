@@ -275,6 +275,14 @@ func (wh *WorkerHandler) postMessage(msg any) {
 	wh.worker.Call("postMessage", msg)
 }
 
+// Terminate immediately terminates the Worker. This does not offer the worker
+// an opportunity to finish its operations; it is stopped at once.
+//
+// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/terminate
+func (wh *WorkerHandler) Terminate() {
+	wh.worker.Call("terminate")
+}
+
 // newWorkerOptions creates a new Javascript object containing optional
 // properties that can be set when creating a new worker.
 //
