@@ -23,7 +23,8 @@ import (
 
 func main() {
 	fmt.Println("Starting WebAssembly Worker.")
-	_ = worker.NewThreadManager("exampleWebWorker")
+	tm := worker.NewThreadManager("exampleWebWorker")
+	tm.SignalReady()
 	<-make(chan bool)
 }
 ```

@@ -82,7 +82,7 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 		}
 	case <-time.After(worker.ResponseTimeout):
 		return nil, errors.Errorf("timed out after %s waiting for indexedDB "+
-			"database in worker to intialize", worker.ResponseTimeout)
+			"database in worker to initialize", worker.ResponseTimeout)
 	}
 
 	return &wasmModel{wh}, nil
