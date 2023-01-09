@@ -20,10 +20,10 @@ import (
 )
 
 // TODO:
-//  1. Fix ID counter
-//  2. Get path to JS file from bindings
-//  3. restructure packages
-//  4. fix tag system
+//  1. fix tag system
+//  2. restructure packages
+//  3. Get path to JS file from bindings
+//  4. Add tests for worker.go and messageHandler.go
 
 // InitID is the ID for the first item in the handler list. If the list only
 // contains one handler, then this is the ID of that handler. If the list has
@@ -57,8 +57,10 @@ type WorkerHandler struct {
 	// ID. If the message is not a reply, then it appears on InitID.
 	handlers map[Tag]map[uint64]HandlerFn
 
-	// idCount tracks the newest ID to assign to new handlers.
-	idCount uint64
+	// handlerIDs is a list of the newest ID to assign to each handler when
+	// registered. The IDs are used to connect a reply from the worker to the
+	// original message sent by the main thread.
+	handlerIDs map[Tag]uint64
 
 	// name describes the worker. It is used for debugging and logging purposes.
 	name string
@@ -81,10 +83,10 @@ func NewWorkerHandler(aURL, name string) (*WorkerHandler, error) {
 	opts := newWorkerOptions("", "", name)
 
 	wh := &WorkerHandler{
-		worker:   js.Global().Get("Worker").New(aURL, opts),
-		handlers: make(map[Tag]map[uint64]HandlerFn),
-		idCount:  InitID,
-		name:     name,
+		worker:     js.Global().Get("Worker").New(aURL, opts),
+		handlers:   make(map[Tag]map[uint64]HandlerFn),
+		handlerIDs: make(map[Tag]uint64),
+		name:       name,
 	}
 
 	// Register listeners on the Javascript worker object that receive messages
@@ -157,6 +159,32 @@ func (wh *WorkerHandler) receiveMessage(data []byte) error {
 	return nil
 }
 
+// getHandler returns the handler with the given ID or returns an error if no
+// handler is found. The handler is deleted from the map if specified in
+// deleteAfterReceiving. This function is thread safe.
+func (wh *WorkerHandler) getHandler(tag Tag, id uint64) (HandlerFn, error) {
+	wh.mux.Lock()
+	defer wh.mux.Unlock()
+	handlers, exists := wh.handlers[tag]
+	if !exists {
+		return nil, errors.Errorf("no handlers found for tag %q", tag)
+	}
+
+	handler, exists := handlers[id]
+	if !exists {
+		return nil, errors.Errorf("no %q handler found for ID %d", tag, id)
+	}
+
+	if _, exists = deleteAfterReceiving[tag]; exists {
+		delete(wh.handlers[tag], id)
+		if len(wh.handlers[tag]) == 0 {
+			delete(wh.handlers, tag)
+		}
+	}
+
+	return handler, nil
+}
+
 // RegisterHandler registers the handler for the given tag and ID unless autoID
 // is true, in which case a unique ID is used. Returns the ID that was
 // registered. If a previous handler was registered, it is overwritten.
@@ -166,10 +194,8 @@ func (wh *WorkerHandler) RegisterHandler(
 	wh.mux.Lock()
 	defer wh.mux.Unlock()
 
-	// FIXME: This ID system only really works correctly when used with a
-	//  single tag. This should probably be fixed.
 	if autoID {
-		id = wh.getNextID()
+		id = wh.getNextID(tag)
 	}
 
 	jww.DEBUG.Printf("[WW] [%s] Main registering handler for tag %q and ID %d "+
@@ -183,12 +209,21 @@ func (wh *WorkerHandler) RegisterHandler(
 	return id
 }
 
-// getNextID returns the next unique ID. This function is not thread-safe.
-func (wh *WorkerHandler) getNextID() uint64 {
-	id := wh.idCount
-	wh.idCount++
+// getNextID returns the next unique ID for the given tag. This function is not
+// thread-safe.
+func (wh *WorkerHandler) getNextID(tag Tag) uint64 {
+	if _, exists := wh.handlerIDs[tag]; !exists {
+		wh.handlerIDs[tag] = InitID
+	}
+
+	id := wh.handlerIDs[tag]
+	wh.handlerIDs[tag]++
 	return id
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Javascript Call Wrappers                                                   //
+////////////////////////////////////////////////////////////////////////////////
 
 // addEventListeners adds the event listeners needed to receive a message from
 // the worker. Two listeners were added; one to receive messages from the worker
@@ -220,32 +255,6 @@ func (wh *WorkerHandler) addEventListeners() {
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
 	wh.worker.Call("addEventListener", "message", messageEvent)
 	wh.worker.Call("addEventListener", "messageerror", messageError)
-}
-
-// getHandler returns the handler with the given ID or returns an error if no
-// handler is found. The handler is deleted from the map if specified in
-// deleteAfterReceiving. This function is thread safe.
-func (wh *WorkerHandler) getHandler(tag Tag, id uint64) (HandlerFn, error) {
-	wh.mux.Lock()
-	defer wh.mux.Unlock()
-	handlers, exists := wh.handlers[tag]
-	if !exists {
-		return nil, errors.Errorf("no handlers found for tag %q", tag)
-	}
-
-	handler, exists := handlers[id]
-	if !exists {
-		return nil, errors.Errorf("no %q handler found for ID %d", tag, id)
-	}
-
-	if _, exists = deleteAfterReceiving[tag]; exists {
-		delete(wh.handlers[tag], id)
-		if len(wh.handlers[tag]) == 0 {
-			delete(wh.handlers, tag)
-		}
-	}
-
-	return handler, nil
 }
 
 // postMessage sends a message to the worker.

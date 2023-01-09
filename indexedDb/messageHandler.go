@@ -124,6 +124,10 @@ func (mh *MessageHandler) RegisterHandler(tag worker.Tag, handler HandlerFn) {
 	mh.mux.Unlock()
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Javascript Call Wrappers                                                   //
+////////////////////////////////////////////////////////////////////////////////
+
 // addEventListeners adds the event listeners needed to receive a message from
 // the worker. Two listeners were added; one to receive messages from the worker
 // and the other to receive errors.
