@@ -23,10 +23,6 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 )
 
-// WorkerJavascriptFileURL is the URL of the script the worker will execute to
-// launch the worker WASM binary. It must obey the same-origin policy.
-const WorkerJavascriptFileURL = "/integrations/assets/channelsIndexedDbWorker.js"
-
 // MessageReceivedCallback is called any time a message is received or updated.
 //
 // update is true if the row is old and was edited.
@@ -35,10 +31,10 @@ type MessageReceivedCallback func(uuid uint64, channelID *id.ID, update bool)
 // NewWASMEventModelBuilder returns an EventModelBuilder which allows
 // the channel manager to define the path but the callback is the same
 // across the board.
-func NewWASMEventModelBuilder(encryption cryptoChannel.Cipher,
+func NewWASMEventModelBuilder(wasmJsPath string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) channels.EventModelBuilder {
 	fn := func(path string) (channels.EventModel, error) {
-		return NewWASMEventModel(path, encryption, cb)
+		return NewWASMEventModel(path, wasmJsPath, encryption, cb)
 	}
 	return fn
 }
@@ -52,11 +48,10 @@ type NewWASMEventModelMessage struct {
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
-func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
+func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) (channels.EventModel, error) {
 
-	// TODO: bring in URL and name from caller
-	wm, err := worker.NewManager(WorkerJavascriptFileURL, "channelsIndexedDb")
+	wm, err := worker.NewManager(wasmJsPath, "channelsIndexedDb")
 	if err != nil {
 		return nil, err
 	}

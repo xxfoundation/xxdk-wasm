@@ -20,8 +20,7 @@ import (
 )
 
 // TODO:
-//  1. Get path to JS file from bindings
-//  2. Add tests for manager.go and thread.go
+//  1. Add tests for manager.go and thread.go
 
 // initID is the ID for the first item in the callback list. If the list only
 // contains one callback, then this is the ID of that callback. If the list has

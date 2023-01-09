@@ -23,10 +23,6 @@ import (
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
 
-// WorkerJavascriptFileURL is the URL of the script the worker will execute to
-// launch the worker WASM binary. It must obey the same-origin policy.
-const WorkerJavascriptFileURL = "/integrations/assets/dmIndexedDbWorker.js"
-
 // MessageReceivedCallback is called any time a message is received or updated.
 //
 // update is true if the row is old and was edited.
@@ -42,11 +38,10 @@ type NewWASMEventModelMessage struct {
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
-func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
+func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) (dm.EventModel, error) {
 
-	// TODO: bring in URL and name from caller
-	wh, err := worker.NewManager(WorkerJavascriptFileURL, "dmIndexedDb")
+	wh, err := worker.NewManager(wasmJsPath, "dmIndexedDb")
 	if err != nil {
 		return nil, err
 	}

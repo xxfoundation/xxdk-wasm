@@ -11,7 +11,7 @@ const go = new Go();
 const binPath = 'xxdk-channelsIndexedDkWorker.wasm'
 WebAssembly.instantiateStreaming(fetch(binPath), go.importObject).then((result) => {
     go.run(result.instance);
-    LogLevel(2);
+    LogLevel(1);
 }).catch((err) => {
     console.error(err);
 });
