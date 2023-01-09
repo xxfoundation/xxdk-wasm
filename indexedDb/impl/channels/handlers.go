@@ -19,7 +19,7 @@ import (
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/fastRNG"
 	"gitlab.com/elixxir/crypto/message"
-	mChannels "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker/channels"
+	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"gitlab.com/xx_network/crypto/csprng"
 	"gitlab.com/xx_network/primitives/id"
@@ -38,22 +38,22 @@ type manager struct {
 // RegisterHandlers registers all the reception handlers to manage messages from
 // the main thread for the channels.EventModel.
 func (m *manager) RegisterHandlers() {
-	m.mh.RegisterCallback(mChannels.NewWASMEventModelTag, m.newWASMEventModelHandler)
-	m.mh.RegisterCallback(mChannels.JoinChannelTag, m.joinChannelHandler)
-	m.mh.RegisterCallback(mChannels.LeaveChannelTag, m.leaveChannelHandler)
-	m.mh.RegisterCallback(mChannels.ReceiveMessageTag, m.receiveMessageHandler)
-	m.mh.RegisterCallback(mChannels.ReceiveReplyTag, m.receiveReplyHandler)
-	m.mh.RegisterCallback(mChannels.ReceiveReactionTag, m.receiveReactionHandler)
-	m.mh.RegisterCallback(mChannels.UpdateFromUUIDTag, m.updateFromUUIDHandler)
-	m.mh.RegisterCallback(mChannels.UpdateFromMessageIDTag, m.updateFromMessageIDHandler)
-	m.mh.RegisterCallback(mChannels.GetMessageTag, m.getMessageHandler)
-	m.mh.RegisterCallback(mChannels.DeleteMessageTag, m.deleteMessageHandler)
+	m.mh.RegisterCallback(wChannels.NewWASMEventModelTag, m.newWASMEventModelHandler)
+	m.mh.RegisterCallback(wChannels.JoinChannelTag, m.joinChannelHandler)
+	m.mh.RegisterCallback(wChannels.LeaveChannelTag, m.leaveChannelHandler)
+	m.mh.RegisterCallback(wChannels.ReceiveMessageTag, m.receiveMessageHandler)
+	m.mh.RegisterCallback(wChannels.ReceiveReplyTag, m.receiveReplyHandler)
+	m.mh.RegisterCallback(wChannels.ReceiveReactionTag, m.receiveReactionHandler)
+	m.mh.RegisterCallback(wChannels.UpdateFromUUIDTag, m.updateFromUUIDHandler)
+	m.mh.RegisterCallback(wChannels.UpdateFromMessageIDTag, m.updateFromMessageIDHandler)
+	m.mh.RegisterCallback(wChannels.GetMessageTag, m.getMessageHandler)
+	m.mh.RegisterCallback(wChannels.DeleteMessageTag, m.deleteMessageHandler)
 }
 
 // newWASMEventModelHandler is the handler for NewWASMEventModel. Returns an
 // empty slice on success or an error message on failure.
 func (m *manager) newWASMEventModelHandler(data []byte) ([]byte, error) {
-	var msg mChannels.NewWASMEventModelMessage
+	var msg wChannels.NewWASMEventModelMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return []byte{}, errors.Errorf(
@@ -84,7 +84,7 @@ func (m *manager) newWASMEventModelHandler(data []byte) ([]byte, error) {
 func (m *manager) messageReceivedCallback(
 	uuid uint64, channelID *id.ID, update bool) {
 	// Package parameters for sending
-	msg := &mChannels.MessageReceivedCallbackMessage{
+	msg := &wChannels.MessageReceivedCallbackMessage{
 		UUID:      uuid,
 		ChannelID: channelID,
 		Update:    update,
@@ -97,7 +97,7 @@ func (m *manager) messageReceivedCallback(
 	}
 
 	// Send it to the main thread
-	m.mh.SendMessage(mChannels.MessageReceivedCallbackTag, data)
+	m.mh.SendMessage(wChannels.MessageReceivedCallbackTag, data)
 }
 
 // storeDatabaseName sends the database name to the main thread and waits for
@@ -107,14 +107,14 @@ func (m *manager) messageReceivedCallback(
 func (m *manager) storeDatabaseName(databaseName string) error {
 	// Register response handler with channel that will wait for the response
 	responseChan := make(chan []byte)
-	m.mh.RegisterCallback(mChannels.StoreDatabaseNameTag,
+	m.mh.RegisterCallback(wChannels.StoreDatabaseNameTag,
 		func(data []byte) ([]byte, error) {
 			responseChan <- data
 			return nil, nil
 		})
 
 	// Send encryption status to main thread
-	m.mh.SendMessage(mChannels.StoreDatabaseNameTag, []byte(databaseName))
+	m.mh.SendMessage(wChannels.StoreDatabaseNameTag, []byte(databaseName))
 
 	// Wait for response
 	select {
@@ -140,7 +140,7 @@ func (m *manager) storeDatabaseName(databaseName string) error {
 func (m *manager) storeEncryptionStatus(
 	databaseName string, encryption bool) (bool, error) {
 	// Package parameters for sending
-	msg := &mChannels.EncryptionStatusMessage{
+	msg := &wChannels.EncryptionStatusMessage{
 		DatabaseName:     databaseName,
 		EncryptionStatus: encryption,
 	}
@@ -151,17 +151,17 @@ func (m *manager) storeEncryptionStatus(
 
 	// Register response handler with channel that will wait for the response
 	responseChan := make(chan []byte)
-	m.mh.RegisterCallback(mChannels.EncryptionStatusTag,
+	m.mh.RegisterCallback(wChannels.EncryptionStatusTag,
 		func(data []byte) ([]byte, error) {
 			responseChan <- data
 			return nil, nil
 		})
 
 	// Send encryption status to main thread
-	m.mh.SendMessage(mChannels.EncryptionStatusTag, data)
+	m.mh.SendMessage(wChannels.EncryptionStatusTag, data)
 
 	// Wait for response
-	var response mChannels.EncryptionStatusReply
+	var response wChannels.EncryptionStatusReply
 	select {
 	case responseData := <-responseChan:
 		if err = json.Unmarshal(responseData, &response); err != nil {
@@ -234,7 +234,7 @@ func (m *manager) receiveMessageHandler(data []byte) ([]byte, error) {
 // receiveReplyHandler is the handler for wasmModel.ReceiveReply. Returns a UUID
 // of 0 on error or the JSON marshalled UUID (uint64) on success.
 func (m *manager) receiveReplyHandler(data []byte) ([]byte, error) {
-	var msg mChannels.ReceiveReplyMessage
+	var msg wChannels.ReceiveReplyMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return zeroUUID, errors.Errorf(
@@ -256,7 +256,7 @@ func (m *manager) receiveReplyHandler(data []byte) ([]byte, error) {
 // receiveReactionHandler is the handler for wasmModel.ReceiveReaction. Returns
 // a UUID of 0 on error or the JSON marshalled UUID (uint64) on success.
 func (m *manager) receiveReactionHandler(data []byte) ([]byte, error) {
-	var msg mChannels.ReceiveReplyMessage
+	var msg wChannels.ReceiveReplyMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return zeroUUID, errors.Errorf(
@@ -278,7 +278,7 @@ func (m *manager) receiveReactionHandler(data []byte) ([]byte, error) {
 // updateFromUUIDHandler is the handler for wasmModel.UpdateFromUUID. Always
 // returns nil; meaning, no response is supplied (or expected).
 func (m *manager) updateFromUUIDHandler(data []byte) ([]byte, error) {
-	var msg mChannels.MessageUpdateInfo
+	var msg wChannels.MessageUpdateInfo
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return nil, errors.Errorf(
@@ -316,7 +316,7 @@ func (m *manager) updateFromUUIDHandler(data []byte) ([]byte, error) {
 // updateFromMessageIDHandler is the handler for wasmModel.UpdateFromMessageID.
 // Always returns nil; meaning, no response is supplied (or expected).
 func (m *manager) updateFromMessageIDHandler(data []byte) ([]byte, error) {
-	var msg mChannels.MessageUpdateInfo
+	var msg wChannels.MessageUpdateInfo
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return nil, errors.Errorf(
@@ -364,7 +364,7 @@ func (m *manager) getMessageHandler(data []byte) ([]byte, error) {
 			"failed to JSON unmarshal %T from main thread: %+v", messageID, err)
 	}
 
-	reply := mChannels.GetMessageMessage{}
+	reply := wChannels.GetMessageMessage{}
 
 	msg, err := m.model.GetMessage(messageID)
 	if err != nil {

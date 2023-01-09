@@ -5,6 +5,8 @@
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
+//go:build js && wasm
+
 package channels
 
 import "gitlab.com/elixxir/xxdk-wasm/worker"
@@ -12,7 +14,6 @@ import "gitlab.com/elixxir/xxdk-wasm/worker"
 // List of tags that can be used when sending a message or registering a handler
 // to receive a message.
 const (
-
 	NewWASMEventModelTag       worker.Tag = "NewWASMEventModel"
 	MessageReceivedCallbackTag worker.Tag = "MessageReceivedCallback"
 	EncryptionStatusTag        worker.Tag = "EncryptionStatus"

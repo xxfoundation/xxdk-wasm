@@ -13,7 +13,7 @@ import (
 	"crypto/ed25519"
 	"syscall/js"
 
-	indexDB "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker/dm"
+	indexDB "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
 
 	"encoding/base64"
 

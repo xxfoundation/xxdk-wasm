@@ -15,7 +15,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/channels"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	"gitlab.com/xx_network/primitives/id"
 	"syscall/js"
 )
@@ -59,7 +59,7 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback, storeDatabaseName storeDatabaseNameFn,
 	storeEncryptionStatus storeEncryptionStatusFn) (*wasmModel, error) {
 	// Attempt to open database object
-	ctx, cancel := indexedDb.NewContext()
+	ctx, cancel := impl.NewContext()
 	defer cancel()
 	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {

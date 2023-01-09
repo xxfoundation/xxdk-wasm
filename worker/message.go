@@ -5,6 +5,8 @@
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
+//go:build js && wasm
+
 package worker
 
 // message is the outer message that contains the contents of each message sent

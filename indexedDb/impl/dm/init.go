@@ -11,6 +11,7 @@ package main
 
 import (
 	"crypto/ed25519"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
@@ -18,7 +19,6 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/dm"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 )
 
 const (
@@ -61,7 +61,7 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback, storeDatabaseName storeDatabaseNameFn,
 	storeEncryptionStatus storeEncryptionStatusFn) (*wasmModel, error) {
 	// Attempt to open database object
-	ctx, cancel := indexedDb.NewContext()
+	ctx, cancel := impl.NewContext()
 	defer cancel()
 	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {

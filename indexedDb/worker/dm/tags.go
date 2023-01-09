@@ -5,6 +5,8 @@
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
+//go:build js && wasm
+
 package channelEventModel
 
 import "gitlab.com/elixxir/xxdk-wasm/worker"

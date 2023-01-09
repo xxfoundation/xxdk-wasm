@@ -14,7 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"gitlab.com/elixxir/client/v4/channels"
-	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker/channels"
+	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 	"gitlab.com/xx_network/primitives/id"
 	"sync"
 	"syscall/js"
