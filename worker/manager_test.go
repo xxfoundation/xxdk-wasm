@@ -31,8 +31,8 @@ func TestManager_RegisterHandler(t *testing.T) {
 // Tests that Manager.getNextID returns the expected ID for various Tags.
 func TestManager_getNextID(t *testing.T) {
 	m := &Manager{
-		handlers:   make(map[Tag]map[uint64]RHandlerFn),
-		handlerIDs: make(map[Tag]uint64),
+		callbacks:   make(map[Tag]map[uint64]ReceptionCallback),
+		responseIDs: make(map[Tag]uint64),
 	}
 
 	for _, tag := range []Tag{

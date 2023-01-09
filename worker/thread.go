@@ -18,8 +18,9 @@ import (
 	"syscall/js"
 )
 
-// HandlerFn is the function that handles incoming data from the main thread.
-type HandlerFn func(data []byte) ([]byte, error)
+// ThreadReceptionCallback is the function that handles incoming data from the
+// main thread.
+type ThreadReceptionCallback func(data []byte) ([]byte, error)
 
 // ThreadManager queues incoming messages from the main thread and handles them
 // based on their tag.
@@ -27,9 +28,9 @@ type ThreadManager struct {
 	// messages is a list of queued messages sent from the main thread.
 	messages chan js.Value
 
-	// handlers is a list of functions to handle messages that come from the
-	// main thread keyed on the handler tag.
-	handlers map[Tag]HandlerFn
+	// callbacks is a list of callbacks to handle messages that come from the
+	// main thread keyed on the callback tag.
+	callbacks map[Tag]ThreadReceptionCallback
 
 	// name describes the worker. It is used for debugging and logging purposes.
 	name string
@@ -40,9 +41,9 @@ type ThreadManager struct {
 // NewThreadManager initialises a new ThreadManager.
 func NewThreadManager(name string) *ThreadManager {
 	mh := &ThreadManager{
-		messages: make(chan js.Value, 100),
-		handlers: make(map[Tag]HandlerFn),
-		name:     name,
+		messages:  make(chan js.Value, 100),
+		callbacks: make(map[Tag]ThreadReceptionCallback),
+		name:      name,
 	}
 
 	mh.addEventListeners()
@@ -54,18 +55,39 @@ func NewThreadManager(name string) *ThreadManager {
 // ready. Once the main thread receives this, it will initiate communication.
 // Therefore, this should only be run once all listeners are ready.
 func (tm *ThreadManager) SignalReady() {
-	tm.SendResponse(ReadyTag, InitID, nil)
+	tm.SendMessage(ReadyTag, nil)
 }
 
-// SendResponse sends a reply to the main thread with the given tag and ID,
-func (tm *ThreadManager) SendResponse(
+// SendMessage sends a message to the main thread for the given tag.
+func (tm *ThreadManager) SendMessage(tag Tag, data []byte) {
+	msg := Message{
+		Tag:      tag,
+		ID:       InitID,
+		DeleteCB: false,
+		Data:     data,
+	}
+	jww.DEBUG.Printf("[WW] [%s] Worker sending message for %q with data: %s",
+		tm.name, tag, data)
+
+	payload, err := json.Marshal(msg)
+	if err != nil {
+		jww.FATAL.Panicf("[WW] [%s] Worker failed to marshal %T for %q going "+
+			"to main: %+v", tm.name, msg, tag, err)
+	}
+
+	go tm.postMessage(string(payload))
+}
+
+// sendResponse sends a reply to the main thread with the given tag and ID.
+func (tm *ThreadManager) sendResponse(
 	tag Tag, id uint64, data []byte) {
 	msg := Message{
-		Tag:  tag,
-		ID:   id,
-		Data: data,
+		Tag:      tag,
+		ID:       id,
+		DeleteCB: true,
+		Data:     data,
 	}
-	jww.DEBUG.Printf("[WW] [%s] Worker sending message for %q and ID %d with "+
+	jww.DEBUG.Printf("[WW] [%s] Worker sending reply for %q and ID %d with "+
 		"data: %s", tm.name, tag, id, data)
 
 	payload, err := json.Marshal(msg)
@@ -79,7 +101,7 @@ func (tm *ThreadManager) SendResponse(
 
 // receiveMessage is registered with the Javascript event listener and is called
 // everytime a message from the main thread is received. If the registered
-// handler returns a response, it is sent to the main thread.
+// callback returns a response, it is sent to the main thread.
 func (tm *ThreadManager) receiveMessage(data []byte) error {
 	var msg Message
 	err := json.Unmarshal(data, &msg)
@@ -90,36 +112,38 @@ func (tm *ThreadManager) receiveMessage(data []byte) error {
 		"data: %s", tm.name, msg.Tag, msg.ID, msg.Data)
 
 	tm.mux.Lock()
-	handler, exists := tm.handlers[msg.Tag]
+	callback, exists := tm.callbacks[msg.Tag]
 	tm.mux.Unlock()
 	if !exists {
-		return errors.Errorf("no handler found for tag %q", msg.Tag)
+		return errors.Errorf("no callback found for tag %q", msg.Tag)
 	}
 
-	// Call handler and register response with its return
+	// Call callback and register response with its return
 	go func() {
-		response, err2 := handler(msg.Data)
+		response, err2 := callback(msg.Data)
 		if err2 != nil {
-			jww.ERROR.Printf("[WW] [%s] Handler for for %q and ID %d returned "+
-				"an error: %+v", tm.name, msg.Tag, msg.ID, err)
+			jww.ERROR.Printf("[WW] [%s] Callback for for %q and ID %d "+
+				"returned an error: %+v", tm.name, msg.Tag, msg.ID, err)
 		}
 		if response != nil {
-			tm.SendResponse(msg.Tag, msg.ID, response)
+			tm.sendResponse(msg.Tag, msg.ID, response)
 		}
 	}()
 
 	return nil
 }
 
-// RegisterHandler registers the handler with the given tag overwriting any
-// previous registered handler with the same tag. This function is thread safe.
+// RegisterCallback registers the callback with the given tag overwriting any
+// previous registered callbacks with the same tag. This function is thread
+// safe.
 //
-// If the handler returns anything but nil, it will be returned as a response.
-func (tm *ThreadManager) RegisterHandler(tag Tag, handler HandlerFn) {
+// If the callback returns anything but nil, it will be returned as a response.
+func (tm *ThreadManager) RegisterCallback(
+	tag Tag, receptionCallback ThreadReceptionCallback) {
 	jww.DEBUG.Printf(
-		"[WW] [%s] Worker registering handler for tag %q", tm.name, tag)
+		"[WW] [%s] Worker registering callback for tag %q", tm.name, tag)
 	tm.mux.Lock()
-	tm.handlers[tag] = handler
+	tm.callbacks[tag] = receptionCallback
 	tm.mux.Unlock()
 }
 

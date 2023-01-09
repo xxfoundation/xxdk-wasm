@@ -39,24 +39,3 @@ const (
 	ReceiveTextTag      Tag = "ReceiveText"
 	UpdateSentStatusTag Tag = "UpdateSentStatusTag"
 )
-
-// deleteAfterReceiving is a list of Tags that will have their handler deleted
-// after a message is received. This is mainly used for responses where the
-// handler will only handle it once and never again.
-var deleteAfterReceiving = map[Tag]struct{}{
-	ReadyTag:               {},
-	NewWASMEventModelTag:   {},
-	EncryptionStatusTag:    {},
-	JoinChannelTag:         {},
-	LeaveChannelTag:        {},
-	ReceiveMessageTag:      {},
-	ReceiveReplyTag:        {},
-	ReceiveReactionTag:     {},
-	UpdateFromUUIDTag:      {},
-	UpdateFromMessageIDTag: {},
-	GetMessageTag:          {},
-	DeleteMessageTag:       {},
-	ReceiveTag:             {},
-	ReceiveTextTag:         {},
-	UpdateSentStatusTag:    {},
-}

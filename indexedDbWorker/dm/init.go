@@ -53,16 +53,16 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 	}
 
 	// Register handler to manage messages for the MessageReceivedCallback
-	wh.RegisterHandler(worker.MessageReceivedCallbackTag, worker.InitID, false,
-		messageReceivedCallbackHandler(cb))
+	wh.RegisterCallback(
+		worker.MessageReceivedCallbackTag, messageReceivedCallbackHandler(cb))
 
 	// Register handler to manage checking encryption status from local storage
-	wh.RegisterHandler(worker.EncryptionStatusTag, worker.InitID, false,
-		checkDbEncryptionStatusHandler(wh))
+	wh.RegisterCallback(
+		worker.EncryptionStatusTag, checkDbEncryptionStatusHandler(wh))
 
 	// Register handler to manage the storage of the database name
-	wh.RegisterHandler(worker.StoreDatabaseNameTag, worker.InitID, false,
-		storeDatabaseNameHandler(wh))
+	wh.RegisterCallback(
+		worker.StoreDatabaseNameTag, storeDatabaseNameHandler(wh))
 
 	encryptionJSON, err := json.Marshal(encryption)
 	if err != nil {

@@ -97,8 +97,7 @@ func (m *manager) messageReceivedCallback(
 	}
 
 	// Send it to the main thread
-	m.mh.SendResponse(
-		worker.MessageReceivedCallbackTag, worker.InitID, data)
+	m.mh.SendMessage(worker.MessageReceivedCallbackTag, data)
 }
 
 // storeDatabaseName sends the database name to the main thread and waits for
@@ -108,15 +107,14 @@ func (m *manager) messageReceivedCallback(
 func (m *manager) storeDatabaseName(databaseName string) error {
 	// Register response handler with channel that will wait for the response
 	responseChan := make(chan []byte)
-	m.mh.RegisterHandler(worker.StoreDatabaseNameTag,
+	m.mh.RegisterCallback(worker.StoreDatabaseNameTag,
 		func(data []byte) ([]byte, error) {
 			responseChan <- data
 			return nil, nil
 		})
 
 	// Send encryption status to main thread
-	m.mh.SendResponse(
-		worker.StoreDatabaseNameTag, worker.InitID, []byte(databaseName))
+	m.mh.SendMessage(worker.StoreDatabaseNameTag, []byte(databaseName))
 
 	// Wait for response
 	select {
@@ -153,15 +151,14 @@ func (m *manager) storeEncryptionStatus(
 
 	// Register response handler with channel that will wait for the response
 	responseChan := make(chan []byte)
-	m.mh.RegisterHandler(worker.EncryptionStatusTag,
+	m.mh.RegisterCallback(worker.EncryptionStatusTag,
 		func(data []byte) ([]byte, error) {
 			responseChan <- data
 			return nil, nil
 		})
 
 	// Send encryption status to main thread
-	m.mh.SendResponse(
-		worker.EncryptionStatusTag, worker.InitID, data)
+	m.mh.SendMessage(worker.EncryptionStatusTag, data)
 
 	// Wait for response
 	var response mChannels.EncryptionStatusReply
