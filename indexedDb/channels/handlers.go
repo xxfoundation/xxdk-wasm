@@ -19,9 +19,8 @@ import (
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/fastRNG"
 	"gitlab.com/elixxir/crypto/message"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
-	worker "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
 	mChannels "gitlab.com/elixxir/xxdk-wasm/indexedDbWorker/channels"
+	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"gitlab.com/xx_network/crypto/csprng"
 	"gitlab.com/xx_network/primitives/id"
 	"time"
@@ -32,7 +31,7 @@ var zeroUUID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
 // manager handles the event model and the message handler, which is used to
 // send information between the event model and the main thread.
 type manager struct {
-	mh    *indexedDb.MessageHandler
+	mh    *worker.ThreadManager
 	model channels.EventModel
 }
 

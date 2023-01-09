@@ -12,19 +12,19 @@ package channelEventModel
 import (
 	"crypto/ed25519"
 	"encoding/json"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
 	"time"
 
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	"gitlab.com/elixxir/client/v4/dm"
 	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
 
 // wasmModel implements dm.EventModel interface, which uses the channels system
 // passed an object that adheres to in order to get events on the channel.
 type wasmModel struct {
-	wh *indexedDbWorker.WorkerHandler
+	wh *worker.Manager
 }
 
 // TransferMessage is JSON marshalled and sent to the worker.
@@ -67,7 +67,7 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDbWorker.ReceiveTag, data, func(data []byte) {
+	w.wh.SendMessage(worker.ReceiveTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -81,9 +81,9 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	select {
 	case uuid := <-uuidChan:
 		return uuid
-	case <-time.After(indexedDbWorker.ResponseTimeout):
+	case <-time.After(worker.ResponseTimeout):
 		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about Receive", indexedDbWorker.ResponseTimeout)
+			"worker about Receive", worker.ResponseTimeout)
 	}
 
 	return 0
@@ -112,7 +112,7 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDbWorker.ReceiveTextTag, data, func(data []byte) {
+	w.wh.SendMessage(worker.ReceiveTextTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -126,9 +126,9 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	select {
 	case uuid := <-uuidChan:
 		return uuid
-	case <-time.After(indexedDbWorker.ResponseTimeout):
+	case <-time.After(worker.ResponseTimeout):
 		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveText", indexedDbWorker.ResponseTimeout)
+			"worker about ReceiveText", worker.ResponseTimeout)
 	}
 
 	return 0
@@ -158,7 +158,7 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDbWorker.ReceiveReplyTag, data, func(data []byte) {
+	w.wh.SendMessage(worker.ReceiveReplyTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -172,9 +172,9 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	select {
 	case uuid := <-uuidChan:
 		return uuid
-	case <-time.After(indexedDbWorker.ResponseTimeout):
+	case <-time.After(worker.ResponseTimeout):
 		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReply", indexedDbWorker.ResponseTimeout)
+			"worker about ReceiveReply", worker.ResponseTimeout)
 	}
 
 	return 0
@@ -204,7 +204,7 @@ func (w *wasmModel) ReceiveReaction(messageID, reactionTo message.ID, nickname,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDbWorker.ReceiveReactionTag, data, func(data []byte) {
+	w.wh.SendMessage(worker.ReceiveReactionTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -218,9 +218,9 @@ func (w *wasmModel) ReceiveReaction(messageID, reactionTo message.ID, nickname,
 	select {
 	case uuid := <-uuidChan:
 		return uuid
-	case <-time.After(indexedDbWorker.ResponseTimeout):
+	case <-time.After(worker.ResponseTimeout):
 		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReaction", indexedDbWorker.ResponseTimeout)
+			"worker about ReceiveReaction", worker.ResponseTimeout)
 	}
 
 	return 0
@@ -242,5 +242,5 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 			"Could not JSON marshal payload for TransferMessage: %+v", err)
 	}
 
-	w.wh.SendMessage(indexedDbWorker.UpdateSentStatusTag, data, nil)
+	w.wh.SendMessage(worker.UpdateSentStatusTag, data, nil)
 }

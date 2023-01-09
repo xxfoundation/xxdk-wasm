@@ -7,31 +7,31 @@
 
 //go:build js && wasm
 
-package indexedDbWorker
+package worker
 
 import (
 	"testing"
 )
 
-func TestNewWorkerHandler(t *testing.T) {
+func TestNewManager(t *testing.T) {
 }
 
-func TestWorkerHandler_SendMessage(t *testing.T) {
+func TestManager_SendMessage(t *testing.T) {
 }
 
-func TestWorkerHandler_receiveMessage(t *testing.T) {
+func TestManager_receiveMessage(t *testing.T) {
 }
 
-func TestWorkerHandler_getHandler(t *testing.T) {
+func TestManager_getHandler(t *testing.T) {
 }
 
-func TestWorkerHandler_RegisterHandler(t *testing.T) {
+func TestManager_RegisterHandler(t *testing.T) {
 }
 
-// Tests that WorkerHandler.getNextID returns the expected ID for various Tags.
-func TestWorkerHandler_getNextID(t *testing.T) {
-	wh := &WorkerHandler{
-		handlers:   make(map[Tag]map[uint64]HandlerFn),
+// Tests that Manager.getNextID returns the expected ID for various Tags.
+func TestManager_getNextID(t *testing.T) {
+	m := &Manager{
+		handlers:   make(map[Tag]map[uint64]RHandlerFn),
 		handlerIDs: make(map[Tag]uint64),
 	}
 
@@ -42,14 +42,14 @@ func TestWorkerHandler_getNextID(t *testing.T) {
 		UpdateFromUUIDTag, UpdateFromMessageIDTag, GetMessageTag,
 		DeleteMessageTag, ReceiveTag, ReceiveTextTag, UpdateSentStatusTag,
 	} {
-		id := wh.getNextID(tag)
+		id := m.getNextID(tag)
 		if id != InitID {
 			t.Errorf("ID for new tag %q is not InitID."+
 				"\nexpected: %d\nreceived: %d", tag, InitID, id)
 		}
 
 		for j := uint64(1); j < 100; j++ {
-			id = wh.getNextID(tag)
+			id = m.getNextID(tag)
 			if id != j {
 				t.Errorf("Unexpected ID for tag %q."+
 					"\nexpected: %d\nreceived: %d", tag, j, id)
@@ -62,10 +62,10 @@ func TestWorkerHandler_getNextID(t *testing.T) {
 // Javascript Call Wrappers                                                   //
 ////////////////////////////////////////////////////////////////////////////////
 
-func TestWorkerHandler_addEventListeners(t *testing.T) {
+func TestManager_addEventListeners(t *testing.T) {
 }
 
-func TestWorkerHandler_postMessage(t *testing.T) {
+func TestManager_postMessage(t *testing.T) {
 }
 
 func Test_newWorkerOptions(t *testing.T) {

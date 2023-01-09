@@ -7,13 +7,13 @@
 
 //go:build js && wasm
 
-package indexedDbWorker
+package worker
 
 // Tag describes how a message sent to or from the worker should be handled.
 type Tag string
 
 // FIXME: This system of tagging does not work so well when using the
-//  WorkerHandler for more than one database. This should bed fixed.
+//  Manager for more than one database. This should bed fixed.
 
 // List of tags that can be used when sending a message or registering a handler
 // to receive a message.

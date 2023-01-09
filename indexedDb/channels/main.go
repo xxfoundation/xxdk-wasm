@@ -12,8 +12,8 @@ package main
 import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
+	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"syscall/js"
 )
 
@@ -32,7 +32,7 @@ func main() {
 	js.Global().Set("LogToFile", js.FuncOf(wasm.LogToFile))
 	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
 
-	m := &manager{mh: indexedDb.NewMessageHandler("ChannelsIndexedDbWorker")}
+	m := &manager{mh: worker.NewThreadManager("ChannelsIndexedDbWorker")}
 	m.RegisterHandlers()
 	m.mh.SignalReady()
 	<-make(chan bool)

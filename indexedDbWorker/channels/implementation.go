@@ -14,8 +14,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
-
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
@@ -23,6 +21,7 @@ import (
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
 	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"gitlab.com/xx_network/primitives/id"
 )
 
@@ -30,7 +29,7 @@ import (
 // system passed an object that adheres to in order to get events on the
 // channel.
 type wasmModel struct {
-	wh *indexedDbWorker.WorkerHandler
+	wm *worker.Manager
 }
 
 // JoinChannel is called whenever a channel is joined locally.
@@ -41,12 +40,12 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 		return
 	}
 
-	w.wh.SendMessage(indexedDbWorker.JoinChannelTag, data, nil)
+	w.wm.SendMessage(worker.JoinChannelTag, data, nil)
 }
 
 // LeaveChannel is called whenever a channel is left locally.
 func (w *wasmModel) LeaveChannel(channelID *id.ID) {
-	w.wh.SendMessage(indexedDbWorker.LeaveChannelTag, channelID.Marshal(), nil)
+	w.wm.SendMessage(worker.LeaveChannelTag, channelID.Marshal(), nil)
 }
 
 // ReceiveMessage is called whenever a message is received on a given channel.
@@ -82,7 +81,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDbWorker.ReceiveMessageTag, data, func(data []byte) {
+	w.wm.SendMessage(worker.ReceiveMessageTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -96,9 +95,9 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 	select {
 	case uuid := <-uuidChan:
 		return uuid
-	case <-time.After(indexedDbWorker.ResponseTimeout):
+	case <-time.After(worker.ResponseTimeout):
 		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveMessage", indexedDbWorker.ResponseTimeout)
+			"worker about ReceiveMessage", worker.ResponseTimeout)
 	}
 
 	return 0
@@ -150,7 +149,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDbWorker.ReceiveReplyTag, data, func(data []byte) {
+	w.wm.SendMessage(worker.ReceiveReplyTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -164,9 +163,9 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 	select {
 	case uuid := <-uuidChan:
 		return uuid
-	case <-time.After(indexedDbWorker.ResponseTimeout):
+	case <-time.After(worker.ResponseTimeout):
 		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReply", indexedDbWorker.ResponseTimeout)
+			"worker about ReceiveReply", worker.ResponseTimeout)
 	}
 
 	return 0
@@ -212,7 +211,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDbWorker.ReceiveReactionTag, data, func(data []byte) {
+	w.wm.SendMessage(worker.ReceiveReactionTag, data, func(data []byte) {
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
@@ -226,9 +225,9 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 	select {
 	case uuid := <-uuidChan:
 		return uuid
-	case <-time.After(indexedDbWorker.ResponseTimeout):
+	case <-time.After(worker.ResponseTimeout):
 		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReply", indexedDbWorker.ResponseTimeout)
+			"worker about ReceiveReply", worker.ResponseTimeout)
 	}
 
 	return 0
@@ -299,7 +298,7 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 		return
 	}
 
-	w.wh.SendMessage(indexedDbWorker.UpdateFromUUIDTag, data, nil)
+	w.wm.SendMessage(worker.UpdateFromUUIDTag, data, nil)
 }
 
 // UpdateFromMessageID is called whenever a message with the message ID is
@@ -345,7 +344,7 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	}
 
 	uuidChan := make(chan uint64)
-	w.wh.SendMessage(indexedDbWorker.UpdateFromMessageIDTag, data,
+	w.wm.SendMessage(worker.UpdateFromMessageIDTag, data,
 		func(data []byte) {
 			var uuid uint64
 			err = json.Unmarshal(data, &uuid)
@@ -360,9 +359,9 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	select {
 	case uuid := <-uuidChan:
 		return uuid
-	case <-time.After(indexedDbWorker.ResponseTimeout):
+	case <-time.After(worker.ResponseTimeout):
 		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about UpdateFromMessageID", indexedDbWorker.ResponseTimeout)
+			"worker about UpdateFromMessageID", worker.ResponseTimeout)
 	}
 
 	return 0
@@ -379,7 +378,7 @@ type GetMessageMessage struct {
 func (w *wasmModel) GetMessage(
 	messageID message.ID) (channels.ModelMessage, error) {
 	msgChan := make(chan GetMessageMessage)
-	w.wh.SendMessage(indexedDbWorker.GetMessageTag, messageID.Marshal(),
+	w.wm.SendMessage(worker.GetMessageTag, messageID.Marshal(),
 		func(data []byte) {
 			var msg GetMessageMessage
 			err := json.Unmarshal(data, &msg)
@@ -396,17 +395,17 @@ func (w *wasmModel) GetMessage(
 			return channels.ModelMessage{}, errors.New(msg.Error)
 		}
 		return msg.Message, nil
-	case <-time.After(indexedDbWorker.ResponseTimeout):
+	case <-time.After(worker.ResponseTimeout):
 		return channels.ModelMessage{}, errors.Errorf("timed out after %s "+
 			"waiting for response from the worker about GetMessage",
-			indexedDbWorker.ResponseTimeout)
+			worker.ResponseTimeout)
 	}
 }
 
 // DeleteMessage removes a message with the given messageID from storage.
 func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 	errChan := make(chan error)
-	w.wh.SendMessage(indexedDbWorker.DeleteMessageTag, messageID.Marshal(),
+	w.wm.SendMessage(worker.DeleteMessageTag, messageID.Marshal(),
 		func(data []byte) {
 			if data != nil {
 				errChan <- errors.New(string(data))
@@ -418,8 +417,8 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 	select {
 	case err := <-errChan:
 		return err
-	case <-time.After(indexedDbWorker.ResponseTimeout):
+	case <-time.After(worker.ResponseTimeout):
 		return errors.Errorf("timed out after %s waiting for response from "+
-			"the worker about DeleteMessage", indexedDbWorker.ResponseTimeout)
+			"the worker about DeleteMessage", worker.ResponseTimeout)
 	}
 }

@@ -12,14 +12,15 @@ package channelEventModel
 import (
 	"crypto/ed25519"
 	"encoding/json"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDbWorker"
 	"time"
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+
 	"gitlab.com/elixxir/client/v4/dm"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
+	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
 
 // WorkerJavascriptFileURL is the URL of the script the worker will execute to
@@ -45,23 +46,23 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) (dm.EventModel, error) {
 
 	// TODO: bring in URL and name from caller
-	wh, err := indexedDbWorker.NewWorkerHandler(
+	wh, err := worker.NewManager(
 		WorkerJavascriptFileURL, "dmIndexedDb")
 	if err != nil {
 		return nil, err
 	}
 
 	// Register handler to manage messages for the MessageReceivedCallback
-	wh.RegisterHandler(indexedDbWorker.MessageReceivedCallbackTag,
-		indexedDbWorker.InitID, false, messageReceivedCallbackHandler(cb))
+	wh.RegisterHandler(worker.MessageReceivedCallbackTag, worker.InitID, false,
+		messageReceivedCallbackHandler(cb))
 
 	// Register handler to manage checking encryption status from local storage
-	wh.RegisterHandler(indexedDbWorker.EncryptionStatusTag,
-		indexedDbWorker.InitID, false, checkDbEncryptionStatusHandler(wh))
+	wh.RegisterHandler(worker.EncryptionStatusTag, worker.InitID, false,
+		checkDbEncryptionStatusHandler(wh))
 
 	// Register handler to manage the storage of the database name
-	wh.RegisterHandler(indexedDbWorker.StoreDatabaseNameTag,
-		indexedDbWorker.InitID, false, storeDatabaseNameHandler(wh))
+	wh.RegisterHandler(worker.StoreDatabaseNameTag, worker.InitID, false,
+		storeDatabaseNameHandler(wh))
 
 	encryptionJSON, err := json.Marshal(encryption)
 	if err != nil {
@@ -79,7 +80,7 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 	}
 
 	errChan := make(chan string)
-	wh.SendMessage(indexedDbWorker.NewWASMEventModelTag, payload,
+	wh.SendMessage(worker.NewWASMEventModelTag, payload,
 		func(data []byte) { errChan <- string(data) })
 
 	select {
@@ -87,9 +88,9 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 		if workerErr != "" {
 			return nil, errors.New(workerErr)
 		}
-	case <-time.After(indexedDbWorker.ResponseTimeout):
+	case <-time.After(worker.ResponseTimeout):
 		return nil, errors.Errorf("timed out after %s waiting for indexedDB "+
-			"database in worker to intialize", indexedDbWorker.ResponseTimeout)
+			"database in worker to intialize", worker.ResponseTimeout)
 	}
 
 	return &wasmModel{wh}, nil
@@ -134,8 +135,7 @@ type EncryptionStatusReply struct {
 
 // checkDbEncryptionStatusHandler returns a handler to manage checking
 // encryption status from local storage.
-func checkDbEncryptionStatusHandler(
-	wh *indexedDbWorker.WorkerHandler) func(data []byte) {
+func checkDbEncryptionStatusHandler(wh *worker.Manager) func(data []byte) {
 	return func(data []byte) {
 		// Unmarshal received message
 		var msg EncryptionStatusMessage
@@ -164,14 +164,13 @@ func checkDbEncryptionStatusHandler(
 			return
 		}
 
-		wh.SendMessage(indexedDbWorker.EncryptionStatusTag, statusData, nil)
+		wh.SendMessage(worker.EncryptionStatusTag, statusData, nil)
 	}
 }
 
 // storeDatabaseNameHandler returns a handler that stores the database name to
 // storage when it is received from the worker.
-func storeDatabaseNameHandler(
-	wh *indexedDbWorker.WorkerHandler) func(data []byte) {
+func storeDatabaseNameHandler(wh *worker.Manager) func(data []byte) {
 	return func(data []byte) {
 		var returnData []byte
 
@@ -180,6 +179,6 @@ func storeDatabaseNameHandler(
 			returnData = []byte(err.Error())
 		}
 
-		wh.SendMessage(indexedDbWorker.StoreDatabaseNameTag, returnData, nil)
+		wh.SendMessage(worker.StoreDatabaseNameTag, returnData, nil)
 	}
 }
