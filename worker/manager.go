@@ -20,9 +20,8 @@ import (
 )
 
 // TODO:
-//  1. restructure packages
-//  2. Get path to JS file from bindings
-//  3. Add tests for manager.go and thread.go
+//  1. Get path to JS file from bindings
+//  2. Add tests for manager.go and thread.go
 
 // initID is the ID for the first item in the callback list. If the list only
 // contains one callback, then this is the ID of that callback. If the list has
@@ -185,8 +184,8 @@ func (m *Manager) RegisterCallback(tag Tag, receptionCB ReceptionCallback) {
 
 	id := initID
 
-	jww.DEBUG.Printf("[WW] [%s] Main registering callback for tag %q and ID "+
-		"%d (autoID: %t)", m.name, tag, id)
+	jww.DEBUG.Printf("[WW] [%s] Main registering callback for tag %q and ID %d",
+		m.name, tag, id)
 
 	m.callbacks[tag] = map[uint64]ReceptionCallback{id: receptionCB}
 }
