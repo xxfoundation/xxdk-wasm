@@ -99,7 +99,7 @@ func (m *manager) messageReceivedCallback(
 
 	// Send it to the main thread
 	m.mh.SendResponse(
-		worker.GetMessageTag, worker.InitID, data)
+		worker.MessageReceivedCallbackTag, worker.InitID, data)
 }
 
 // storeDatabaseName sends the database name to the main thread and waits for

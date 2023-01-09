@@ -52,8 +52,8 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 	}
 
 	// Register handler to manage messages for the MessageReceivedCallback
-	wh.RegisterHandler(indexedDbWorker.GetMessageTag, indexedDbWorker.InitID,
-		false, messageReceivedCallbackHandler(cb))
+	wh.RegisterHandler(indexedDbWorker.MessageReceivedCallbackTag,
+		indexedDbWorker.InitID, false, messageReceivedCallbackHandler(cb))
 
 	// Register handler to manage checking encryption status from local storage
 	wh.RegisterHandler(indexedDbWorker.EncryptionStatusTag,

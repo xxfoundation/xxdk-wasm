@@ -20,9 +20,10 @@ type Tag string
 const (
 	ReadyTag Tag = "Ready"
 
-	NewWASMEventModelTag Tag = "NewWASMEventModel"
-	EncryptionStatusTag  Tag = "EncryptionStatus"
-	StoreDatabaseNameTag Tag = "StoreDatabaseName"
+	NewWASMEventModelTag       Tag = "NewWASMEventModel"
+	MessageReceivedCallbackTag Tag = "MessageReceivedCallback"
+	EncryptionStatusTag        Tag = "EncryptionStatus"
+	StoreDatabaseNameTag       Tag = "StoreDatabaseName"
 
 	JoinChannelTag         Tag = "JoinChannel"
 	LeaveChannelTag        Tag = "LeaveChannel"
@@ -53,5 +54,9 @@ var deleteAfterReceiving = map[Tag]struct{}{
 	ReceiveReactionTag:     {},
 	UpdateFromUUIDTag:      {},
 	UpdateFromMessageIDTag: {},
+	GetMessageTag:          {},
 	DeleteMessageTag:       {},
+	ReceiveTag:             {},
+	ReceiveTextTag:         {},
+	UpdateSentStatusTag:    {},
 }
