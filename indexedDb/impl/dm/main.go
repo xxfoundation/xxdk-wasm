@@ -33,7 +33,7 @@ func main() {
 	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
 
 	m := &manager{mh: worker.NewThreadManager("DmIndexedDbWorker")}
-	m.RegisterHandlers()
+	m.registerCallbacks()
 	m.mh.SignalReady()
 	<-make(chan bool)
 	fmt.Println("[WW] Closing xxDK WebAssembly Channels Database Worker.")

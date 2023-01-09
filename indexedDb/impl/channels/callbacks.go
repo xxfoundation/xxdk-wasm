@@ -28,31 +28,31 @@ import (
 
 var zeroUUID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
 
-// manager handles the event model and the message handler, which is used to
+// manager handles the event model and the message callbacks, which is used to
 // send information between the event model and the main thread.
 type manager struct {
 	mh    *worker.ThreadManager
 	model channels.EventModel
 }
 
-// RegisterHandlers registers all the reception handlers to manage messages from
-// the main thread for the channels.EventModel.
-func (m *manager) RegisterHandlers() {
-	m.mh.RegisterCallback(wChannels.NewWASMEventModelTag, m.newWASMEventModelHandler)
-	m.mh.RegisterCallback(wChannels.JoinChannelTag, m.joinChannelHandler)
-	m.mh.RegisterCallback(wChannels.LeaveChannelTag, m.leaveChannelHandler)
-	m.mh.RegisterCallback(wChannels.ReceiveMessageTag, m.receiveMessageHandler)
-	m.mh.RegisterCallback(wChannels.ReceiveReplyTag, m.receiveReplyHandler)
-	m.mh.RegisterCallback(wChannels.ReceiveReactionTag, m.receiveReactionHandler)
-	m.mh.RegisterCallback(wChannels.UpdateFromUUIDTag, m.updateFromUUIDHandler)
-	m.mh.RegisterCallback(wChannels.UpdateFromMessageIDTag, m.updateFromMessageIDHandler)
-	m.mh.RegisterCallback(wChannels.GetMessageTag, m.getMessageHandler)
-	m.mh.RegisterCallback(wChannels.DeleteMessageTag, m.deleteMessageHandler)
+// registerCallbacks registers all the reception callbacks to manage messages
+// from the main thread for the channels.EventModel.
+func (m *manager) registerCallbacks() {
+	m.mh.RegisterCallback(wChannels.NewWASMEventModelTag, m.newWASMEventModelCB)
+	m.mh.RegisterCallback(wChannels.JoinChannelTag, m.joinChannelCB)
+	m.mh.RegisterCallback(wChannels.LeaveChannelTag, m.leaveChannelCB)
+	m.mh.RegisterCallback(wChannels.ReceiveMessageTag, m.receiveMessageCB)
+	m.mh.RegisterCallback(wChannels.ReceiveReplyTag, m.receiveReplyCB)
+	m.mh.RegisterCallback(wChannels.ReceiveReactionTag, m.receiveReactionCB)
+	m.mh.RegisterCallback(wChannels.UpdateFromUUIDTag, m.updateFromUUIDCB)
+	m.mh.RegisterCallback(wChannels.UpdateFromMessageIDTag, m.updateFromMessageIDCB)
+	m.mh.RegisterCallback(wChannels.GetMessageTag, m.getMessageCB)
+	m.mh.RegisterCallback(wChannels.DeleteMessageTag, m.deleteMessageCB)
 }
 
-// newWASMEventModelHandler is the handler for NewWASMEventModel. Returns an
-// empty slice on success or an error message on failure.
-func (m *manager) newWASMEventModelHandler(data []byte) ([]byte, error) {
+// newWASMEventModelCB is the callback for NewWASMEventModel. Returns an empty
+// slice on success or an error message on failure.
+func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 	var msg wChannels.NewWASMEventModelMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -105,7 +105,7 @@ func (m *manager) messageReceivedCallback(
 //
 // storeDatabaseName adheres to the storeDatabaseNameFn type.
 func (m *manager) storeDatabaseName(databaseName string) error {
-	// Register response handler with channel that will wait for the response
+	// Register response callback with channel that will wait for the response
 	responseChan := make(chan []byte)
 	m.mh.RegisterCallback(wChannels.StoreDatabaseNameTag,
 		func(data []byte) ([]byte, error) {
@@ -149,7 +149,7 @@ func (m *manager) storeEncryptionStatus(
 		return false, err
 	}
 
-	// Register response handler with channel that will wait for the response
+	// Register response callback with channel that will wait for the response
 	responseChan := make(chan []byte)
 	m.mh.RegisterCallback(wChannels.EncryptionStatusTag,
 		func(data []byte) ([]byte, error) {
@@ -182,9 +182,9 @@ func (m *manager) storeEncryptionStatus(
 	return response.EncryptionStatus, nil
 }
 
-// joinChannelHandler is the handler for wasmModel.JoinChannel. Always returns
-// nil; meaning, no response is supplied (or expected).
-func (m *manager) joinChannelHandler(data []byte) ([]byte, error) {
+// joinChannelCB is the callback for wasmModel.JoinChannel. Always returns nil;
+// meaning, no response is supplied (or expected).
+func (m *manager) joinChannelCB(data []byte) ([]byte, error) {
 	var channel cryptoBroadcast.Channel
 	err := json.Unmarshal(data, &channel)
 	if err != nil {
@@ -196,9 +196,9 @@ func (m *manager) joinChannelHandler(data []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// leaveChannelHandler is the handler for wasmModel.LeaveChannel. Always returns
+// leaveChannelCB is the callback for wasmModel.LeaveChannel. Always returns
 // nil; meaning, no response is supplied (or expected).
-func (m *manager) leaveChannelHandler(data []byte) ([]byte, error) {
+func (m *manager) leaveChannelCB(data []byte) ([]byte, error) {
 	channelID, err := id.Unmarshal(data)
 	if err != nil {
 		return nil, errors.Errorf(
@@ -209,9 +209,9 @@ func (m *manager) leaveChannelHandler(data []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// receiveMessageHandler is the handler for wasmModel.ReceiveMessage. Returns a
-// UUID of 0 on error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveMessageHandler(data []byte) ([]byte, error) {
+// receiveMessageCB is the callback for wasmModel.ReceiveMessage. Returns a UUID
+// of 0 on error or the JSON marshalled UUID (uint64) on success.
+func (m *manager) receiveMessageCB(data []byte) ([]byte, error) {
 	var msg channels.ModelMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -231,9 +231,9 @@ func (m *manager) receiveMessageHandler(data []byte) ([]byte, error) {
 	return uuidData, nil
 }
 
-// receiveReplyHandler is the handler for wasmModel.ReceiveReply. Returns a UUID
-// of 0 on error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveReplyHandler(data []byte) ([]byte, error) {
+// receiveReplyCB is the callback for wasmModel.ReceiveReply. Returns a UUID of
+// 0 on error or the JSON marshalled UUID (uint64) on success.
+func (m *manager) receiveReplyCB(data []byte) ([]byte, error) {
 	var msg wChannels.ReceiveReplyMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -253,9 +253,9 @@ func (m *manager) receiveReplyHandler(data []byte) ([]byte, error) {
 	return uuidData, nil
 }
 
-// receiveReactionHandler is the handler for wasmModel.ReceiveReaction. Returns
-// a UUID of 0 on error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveReactionHandler(data []byte) ([]byte, error) {
+// receiveReactionCB is the callback for wasmModel.ReceiveReaction. Returns a
+// UUID of 0 on error or the JSON marshalled UUID (uint64) on success.
+func (m *manager) receiveReactionCB(data []byte) ([]byte, error) {
 	var msg wChannels.ReceiveReplyMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -275,9 +275,9 @@ func (m *manager) receiveReactionHandler(data []byte) ([]byte, error) {
 	return uuidData, nil
 }
 
-// updateFromUUIDHandler is the handler for wasmModel.UpdateFromUUID. Always
-// returns nil; meaning, no response is supplied (or expected).
-func (m *manager) updateFromUUIDHandler(data []byte) ([]byte, error) {
+// updateFromUUIDCB is the callback for wasmModel.UpdateFromUUID. Always returns
+// nil; meaning, no response is supplied (or expected).
+func (m *manager) updateFromUUIDCB(data []byte) ([]byte, error) {
 	var msg wChannels.MessageUpdateInfo
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -313,9 +313,9 @@ func (m *manager) updateFromUUIDHandler(data []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// updateFromMessageIDHandler is the handler for wasmModel.UpdateFromMessageID.
+// updateFromMessageIDCB is the callback for wasmModel.UpdateFromMessageID.
 // Always returns nil; meaning, no response is supplied (or expected).
-func (m *manager) updateFromMessageIDHandler(data []byte) ([]byte, error) {
+func (m *manager) updateFromMessageIDCB(data []byte) ([]byte, error) {
 	var msg wChannels.MessageUpdateInfo
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -353,11 +353,11 @@ func (m *manager) updateFromMessageIDHandler(data []byte) ([]byte, error) {
 	return uuidData, nil
 }
 
-// getMessageHandler is the handler for wasmModel.GetMessage. Returns JSON
+// getMessageCB is the callback for wasmModel.GetMessage. Returns JSON
 // marshalled channels.GetMessageMessage. If an error occurs, then Error will
 // be set with the error message. Otherwise, Message will be set. Only one field
 // will be set.
-func (m *manager) getMessageHandler(data []byte) ([]byte, error) {
+func (m *manager) getMessageCB(data []byte) ([]byte, error) {
 	messageID, err := message.UnmarshalID(data)
 	if err != nil {
 		return nil, errors.Errorf(
@@ -381,9 +381,9 @@ func (m *manager) getMessageHandler(data []byte) ([]byte, error) {
 	return messageData, nil
 }
 
-// deleteMessageHandler is the handler for wasmModel.DeleteMessage. Always
-// returns nil; meaning, no response is supplied (or expected).
-func (m *manager) deleteMessageHandler(data []byte) ([]byte, error) {
+// deleteMessageCB is the callback for wasmModel.DeleteMessage. Always returns
+// nil; meaning, no response is supplied (or expected).
+func (m *manager) deleteMessageCB(data []byte) ([]byte, error) {
 	messageID, err := message.UnmarshalID(data)
 	if err != nil {
 		return nil, errors.Errorf(

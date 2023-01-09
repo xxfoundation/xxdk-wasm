@@ -17,7 +17,6 @@ import (
 	"gitlab.com/elixxir/client/v4/dm"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/fastRNG"
-	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 	wDm "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"gitlab.com/xx_network/crypto/csprng"
@@ -26,28 +25,28 @@ import (
 
 var zeroUUID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
 
-// manager handles the event model and the message handler, which is used to
+// manager handles the event model and the message callbacks, which is used to
 // send information between the event model and the main thread.
 type manager struct {
 	mh    *worker.ThreadManager
 	model dm.EventModel
 }
 
-// RegisterHandlers registers all the reception handlers to manage messages from
-// the main thread for the channels.EventModel.
-func (m *manager) RegisterHandlers() {
-	m.mh.RegisterCallback(wDm.NewWASMEventModelTag, m.newWASMEventModelHandler)
-	m.mh.RegisterCallback(wDm.ReceiveTag, m.receiveHandler)
-	m.mh.RegisterCallback(wDm.ReceiveTextTag, m.receiveTextHandler)
-	m.mh.RegisterCallback(wDm.ReceiveReplyTag, m.receiveReplyHandler)
-	m.mh.RegisterCallback(wDm.ReceiveReactionTag, m.receiveReactionHandler)
-	m.mh.RegisterCallback(wDm.UpdateSentStatusTag, m.updateSentStatusHandler)
+// registerCallbacks registers all the reception callbacks to manage messages
+// from the main thread for the channels.EventModel.
+func (m *manager) registerCallbacks() {
+	m.mh.RegisterCallback(wDm.NewWASMEventModelTag, m.newWASMEventModelCB)
+	m.mh.RegisterCallback(wDm.ReceiveTag, m.receiveCB)
+	m.mh.RegisterCallback(wDm.ReceiveTextTag, m.receiveTextCB)
+	m.mh.RegisterCallback(wDm.ReceiveReplyTag, m.receiveReplyCB)
+	m.mh.RegisterCallback(wDm.ReceiveReactionTag, m.receiveReactionCB)
+	m.mh.RegisterCallback(wDm.UpdateSentStatusTag, m.updateSentStatusCB)
 }
 
-// newWASMEventModelHandler is the handler for NewWASMEventModel. Returns an
-// empty slice on success or an error message on failure.
-func (m *manager) newWASMEventModelHandler(data []byte) ([]byte, error) {
-	var msg wChannels.NewWASMEventModelMessage
+// newWASMEventModelCB is the callback for NewWASMEventModel. Returns an empty
+// slice on success or an error message on failure.
+func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
+	var msg wDm.NewWASMEventModelMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return []byte{}, errors.Errorf(
@@ -99,7 +98,7 @@ func (m *manager) messageReceivedCallback(
 //
 // storeDatabaseName adheres to the storeDatabaseNameFn type.
 func (m *manager) storeDatabaseName(databaseName string) error {
-	// Register response handler with channel that will wait for the response
+	// Register response callback with channel that will wait for the response
 	responseChan := make(chan []byte)
 	m.mh.RegisterCallback(wDm.StoreDatabaseNameTag,
 		func(data []byte) ([]byte, error) {
@@ -134,7 +133,7 @@ func (m *manager) storeDatabaseName(databaseName string) error {
 func (m *manager) storeEncryptionStatus(
 	databaseName string, encryption bool) (bool, error) {
 	// Package parameters for sending
-	msg := &wChannels.EncryptionStatusMessage{
+	msg := &wDm.EncryptionStatusMessage{
 		DatabaseName:     databaseName,
 		EncryptionStatus: encryption,
 	}
@@ -143,7 +142,7 @@ func (m *manager) storeEncryptionStatus(
 		return false, err
 	}
 
-	// Register response handler with channel that will wait for the response
+	// Register response callback with channel that will wait for the response
 	responseChan := make(chan []byte)
 	m.mh.RegisterCallback(wDm.EncryptionStatusTag,
 		func(data []byte) ([]byte, error) {
@@ -155,7 +154,7 @@ func (m *manager) storeEncryptionStatus(
 	m.mh.SendMessage(wDm.EncryptionStatusTag, data)
 
 	// Wait for response
-	var response wChannels.EncryptionStatusReply
+	var response wDm.EncryptionStatusReply
 	select {
 	case responseData := <-responseChan:
 		if err = json.Unmarshal(responseData, &response); err != nil {
@@ -176,9 +175,9 @@ func (m *manager) storeEncryptionStatus(
 	return response.EncryptionStatus, nil
 }
 
-// receiveHandler is the handler for wasmModel.Receive. Returns a UUID of 0 on
-// error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveHandler(data []byte) ([]byte, error) {
+// receiveCB is the callback for wasmModel.Receive. Returns a UUID of 0 on error
+// or the JSON marshalled UUID (uint64) on success.
+func (m *manager) receiveCB(data []byte) ([]byte, error) {
 	var msg wDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -197,9 +196,9 @@ func (m *manager) receiveHandler(data []byte) ([]byte, error) {
 	return uuidData, nil
 }
 
-// receiveTextHandler is the handler for wasmModel.ReceiveText. Returns a UUID
-// of 0 on error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveTextHandler(data []byte) ([]byte, error) {
+// receiveTextCB is the callback for wasmModel.ReceiveText. Returns a UUID of 0
+// on error or the JSON marshalled UUID (uint64) on success.
+func (m *manager) receiveTextCB(data []byte) ([]byte, error) {
 	var msg wDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -219,9 +218,9 @@ func (m *manager) receiveTextHandler(data []byte) ([]byte, error) {
 	return uuidData, nil
 }
 
-// receiveReplyHandler is the handler for wasmModel.ReceiveReply. Returns a UUID
-// of 0 on error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveReplyHandler(data []byte) ([]byte, error) {
+// receiveReplyCB is the callback for wasmModel.ReceiveReply. Returns a UUID of
+// 0 on error or the JSON marshalled UUID (uint64) on success.
+func (m *manager) receiveReplyCB(data []byte) ([]byte, error) {
 	var msg wDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -241,9 +240,9 @@ func (m *manager) receiveReplyHandler(data []byte) ([]byte, error) {
 	return uuidData, nil
 }
 
-// receiveReactionHandler is the handler for wasmModel.ReceiveReaction. Returns
-// a UUID of 0 on error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveReactionHandler(data []byte) ([]byte, error) {
+// receiveReactionCB is the callback for wasmModel.ReceiveReaction. Returns a
+// UUID of 0 on error or the JSON marshalled UUID (uint64) on success.
+func (m *manager) receiveReactionCB(data []byte) ([]byte, error) {
 	var msg wDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -263,9 +262,9 @@ func (m *manager) receiveReactionHandler(data []byte) ([]byte, error) {
 	return uuidData, nil
 }
 
-// updateSentStatusHandler is the handler for wasmModel.UpdateSentStatus. Always
+// updateSentStatusCB is the callback for wasmModel.UpdateSentStatus. Always
 // returns nil; meaning, no response is supplied (or expected).
-func (m *manager) updateSentStatusHandler(data []byte) ([]byte, error) {
+func (m *manager) updateSentStatusCB(data []byte) ([]byte, error) {
 	var msg wDm.TransferMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
