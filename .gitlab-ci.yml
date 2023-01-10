@@ -14,6 +14,7 @@ before_script:
   - git config --global url."git@$GITLAB_SERVER:".insteadOf "https://gitlab.com/"
   - git config --global url."git@$GITLAB_SERVER:".insteadOf "https://git.xx.network/" --add
   - export PATH=$HOME/go/bin:$PATH
+  - export GOPATH=$HOME/go/bin
 
 stages:
   - test
@@ -47,6 +48,13 @@ wasm-test:
   script:
     - export PATH=/root/go/bin:$PATH
     - echo > utils/utils_js.s
+    - env
+    # - go install github.com/agnivade/wasmbrowsertest@latest
+    # - mv ~/go/bin/go_js_wasm_exec ~/go/bin/go_js_wasm_exec.old
+    # - ln -s ~/go/bin/wasmbrowsertest ~/go/bin/go_js_wasm_exec
+    - go mod vendor
+    - unset SSH_PRIVATE_KEY
+    - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)
     - GOOS=js GOARCH=wasm go test ./indexedDb/... -v
     - GOOS=js GOARCH=wasm go test ./... -v
 
