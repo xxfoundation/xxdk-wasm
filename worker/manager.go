@@ -112,7 +112,7 @@ func (m *Manager) SendMessage(
 	jww.DEBUG.Printf("[WW] [%s] Main sending message for %q and ID %d with "+
 		"data: %s", m.name, tag, id, data)
 
-	msg := message{
+	msg := Message{
 		Tag:  tag,
 		ID:   id,
 		Data: data,
@@ -129,7 +129,7 @@ func (m *Manager) SendMessage(
 // receiveMessage is registered with the Javascript event listener and is called
 // every time a new message from the worker is received.
 func (m *Manager) receiveMessage(data []byte) error {
-	var msg message
+	var msg Message
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return err
@@ -222,6 +222,13 @@ func (m *Manager) getNextID(tag Tag) uint64 {
 	return id
 }
 
+// GetWorker returns the web worker object. This returned so the worker object
+// can be returned to the Javascript layer for it to communicate with the worker
+// thread.
+func (m *Manager) GetWorker() js.Value {
+	return m.worker
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Javascript Call Wrappers                                                   //
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,20 +249,33 @@ func (m *Manager) addEventListeners() {
 		return nil
 	})
 
+	// Create listener for when an error event is fired on the worker. This
+	// occurs when an error occurs in the worker.
+	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/error_event
+	errorEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
+		event := args[0]
+		jww.ERROR.Printf("[WW] [%s] Main received error event: %s",
+			m.name, utils.JsErrorToJson(event))
+		return nil
+	})
+
 	// Create listener for when a messageerror event is fired on the worker.
 	// This occurs when it receives a message that cannot be deserialized.
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/messageerror_event
-	messageError := js.FuncOf(func(_ js.Value, args []js.Value) any {
+	messageerrorEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
 		event := args[0]
-		jww.ERROR.Printf("[WW] [%s] Main received error message from worker: %s",
-			m.name, utils.JsToJson(event))
+		jww.ERROR.Printf("[WW] [%s] Main received message error event: %s",
+			m.name, utils.JsErrorToJson(event))
 		return nil
 	})
+
+	// TODO: add listener for onerror
 
 	// Register each event listener on the worker using addEventListener
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
 	m.worker.Call("addEventListener", "message", messageEvent)
-	m.worker.Call("addEventListener", "messageerror", messageError)
+	m.worker.Call("addEventListener", "error", errorEvent)
+	m.worker.Call("addEventListener", "messageerror", messageerrorEvent)
 }
 
 // postMessage sends a message to the worker.
@@ -290,7 +310,7 @@ func (m *Manager) Terminate() {
 // Each property is optional; leave a property empty to use the defaults (as
 // documented). The available properties are:
 //   - type - The type of worker to create. The value can be either "classic" or
-//     "module". If not specified, the default used is classic.
+//     "module". If not specified, the default used is "classic".
 //   - credentials - The type of credentials to use for the worker. The value
 //     can be "omit", "same-origin", or "include". If it is not specified, or if
 //     the type is "classic", then the default used is "omit" (no credentials

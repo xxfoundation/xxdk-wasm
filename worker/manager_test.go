@@ -13,19 +13,41 @@ import (
 	"testing"
 )
 
+// Tests NewManager
 func TestNewManager(t *testing.T) {
+	aURL := "/index.js"
+	aName := "Name"
+	m, err := NewManager(aURL, aName)
+	if err != nil {
+		t.Fatalf("Failed to create new Manager: %+v", err)
+	}
+
+	t.Logf("Manager: %+v", m)
 }
 
+// Tests Manager.SendMessage
 func TestManager_SendMessage(t *testing.T) {
+	// TODO
 }
 
+// Tests Manager.receiveMessage
 func TestManager_receiveMessage(t *testing.T) {
+	// TODO
 }
 
-func TestManager_getHandler(t *testing.T) {
+// Tests Manager.getCallback
+func TestManager_getCallback(t *testing.T) {
+	// TODO
 }
 
-func TestManager_RegisterHandler(t *testing.T) {
+// Tests Manager.RegisterCallback
+func TestManager_RegisterCallback(t *testing.T) {
+	// TODO
+}
+
+// Tests Manager.registerReplyCallback
+func TestManager_registerReplyCallback(t *testing.T) {
+	// TODO
 }
 
 // Tests that Manager.getNextID returns the expected ID for various Tags.
@@ -52,15 +74,56 @@ func TestManager_getNextID(t *testing.T) {
 	}
 }
 
+// Tests Manager.GetWorker
+func TestManager_GetWorker(t *testing.T) {
+	// TODO
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Javascript Call Wrappers                                                   //
 ////////////////////////////////////////////////////////////////////////////////
 
+// Tests Manager.addEventListeners
 func TestManager_addEventListeners(t *testing.T) {
+	// TODO
 }
 
+// Tests Manager.postMessage
 func TestManager_postMessage(t *testing.T) {
+	// TODO
 }
 
+// Tests Manager.Terminate
+func TestManager_Terminate(t *testing.T) {
+	// TODO
+}
+
+// Tests that newWorkerOptions returns a Javascript object with the expected
+// type, credentials, and name fields.
 func Test_newWorkerOptions(t *testing.T) {
+	for i, workerType := range []string{"classic", "module"} {
+		for j, credentials := range []string{"omit", "same-origin", "include"} {
+			for k, name := range []string{"name1", "name2", "name3"} {
+				opts := newWorkerOptions(workerType, credentials, name)
+
+				v := opts.Get("type").String()
+				if v != workerType {
+					t.Errorf("Unexpected type (%d, %d, %d)."+
+						"\nexpected: %s\nreceived: %s", i, j, k, workerType, v)
+				}
+
+				v = opts.Get("credentials").String()
+				if v != credentials {
+					t.Errorf("Unexpected credentials (%d, %d, %d)."+
+						"\nexpected: %s\nreceived: %s", i, j, k, credentials, v)
+				}
+
+				v = opts.Get("name").String()
+				if v != name {
+					t.Errorf("Unexpected name (%d, %d, %d)."+
+						"\nexpected: %s\nreceived: %s", i, j, k, name, v)
+				}
+			}
+		}
+	}
 }
