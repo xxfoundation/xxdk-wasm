@@ -7,7 +7,7 @@ require (
 	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client/v4 v4.3.12-0.20230110001057-c497a486a22f
+	gitlab.com/elixxir/client/v4 v4.3.12-0.20230110005723-f1f098321618
 	gitlab.com/elixxir/crypto v0.0.7-0.20230109232445-64f3e6192c3a
 	gitlab.com/elixxir/primitives v0.0.3-0.20230109222259-f62b2a90b62c
 	gitlab.com/xx_network/crypto v0.0.5-0.20230109222209-557b66d73c33
@@ -18,24 +18,35 @@ require (
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect
 	git.xx.network/elixxir/grpc-web-go-client v0.0.0-20221221204132-2ed1fec765f1 // indirect
+	github.com/agnivade/wasmbrowsertest v0.6.0 // indirect
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/badoux/checkmail v1.2.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
+	github.com/chromedp/cdproto v0.0.0-20221108233440-fad8339618ab // indirect
+	github.com/chromedp/chromedp v0.8.6 // indirect
+	github.com/chromedp/sysutil v1.0.0 // indirect
 	github.com/cloudflare/circl v1.2.0 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/elliotchance/orderedmap v1.4.0 // indirect
 	github.com/forPelevin/gomoji v1.1.8 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/go-interpreter/wagon v0.6.0 // indirect
+	github.com/gobwas/httphead v0.1.0 // indirect
+	github.com/gobwas/pool v0.2.1 // indirect
+	github.com/gobwas/ws v1.1.0 // indirect
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/google/pprof v0.0.0-20221103000818-d260c55eee4c // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.11.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
