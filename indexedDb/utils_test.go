@@ -21,8 +21,6 @@ import (
 func TestGet_NoMessageError(t *testing.T) {
 	db := newTestDB("messages", "index", t)
 
-	t.Errorf("DIE")
-
 	_, err := Get(db, "messages", js.ValueOf(5))
 	if err == nil || !strings.Contains(err.Error(), "undefined") {
 		t.Errorf("Did not get expected error when getting a message that "+
