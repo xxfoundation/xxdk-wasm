@@ -635,9 +635,9 @@ func GetChannelInfo(_ js.Value, args []js.Value) any {
 //     1 = private, and 2 = secret. Refer to the comment below for more
 //     information.
 //
-// Returns:
-//   - The pretty print of the channel (string).
-//   - Throws a TypeError if generating the channel fails.
+// Returns a promise:
+//   - Resolves to the pretty print of the channel (string).
+//   - Rejected with an error if generating the channel fails.
 //
 // The [broadcast.PrivacyLevel] of a channel indicates the level of channel
 // information revealed when sharing it via URL. For any channel besides public
@@ -649,14 +649,21 @@ func GetChannelInfo(_ js.Value, args []js.Value) any {
 //     description.
 //   - A privacy level of [broadcast.Secret] reveals nothing.
 func (cm *ChannelsManager) GenerateChannel(_ js.Value, args []js.Value) any {
-	prettyPrint, err := cm.api.GenerateChannel(
-		args[0].String(), args[1].String(), args[2].Int())
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	name := args[0].String()
+	description := args[1].String()
+	privacyLevel := args[2].Int()
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		prettyPrint, err :=
+			cm.api.GenerateChannel(name, description, privacyLevel)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(prettyPrint)
+		}
 	}
 
-	return prettyPrint
+	return utils.CreatePromise(promiseFn)
 }
 
 // JoinChannel joins the given channel. It will return the error

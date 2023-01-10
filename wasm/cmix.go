@@ -83,19 +83,25 @@ func newCmixJS(api *bindings.Cmix) map[string]any {
 //   - args[2] - Password used for storage (Uint8Array).
 //   - args[3] - Registration code (string).
 //
-// Returns:
-//   - Throws a TypeError if creating new [Cmix] fails.
+// Returns a promise:
+//   - Resolves on success.
+//   - Rejected with an error if creating a new cMix client fails.
 func NewCmix(_ js.Value, args []js.Value) any {
+	ndfJSON := args[0].String()
+	storageDir := args[1].String()
 	password := utils.CopyBytesToGo(args[2])
+	registrationCode := args[3].String()
 
-	err := bindings.NewCmix(
-		args[0].String(), args[1].String(), password, args[3].String())
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		err := bindings.NewCmix(ndfJSON, storageDir, password, registrationCode)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve()
+		}
 	}
 
-	return nil
+	return utils.CreatePromise(promiseFn)
 }
 
 // LoadCmix will load an existing user storage from the storageDir using the
