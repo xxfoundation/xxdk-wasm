@@ -47,7 +47,7 @@ wasm-test:
     - go install github.com/agnivade/wasmbrowsertest@latest
     - mv ~/go/bin/go_js_wasm_exec ~/go/bin/go_js_wasm_exec.old
     - ln -s ~/go/bin/wasmbrowsertest ~/go/bin/go_js_wasm_exec
-    - env | awk -F'=' '{print $1}' | grep -v PATH | xargs -Ixxx unset xxx
+    - unset $(env | awk -F'=' '{print $1}' | grep -v PATH)
     - GOOS=js GOARCH=wasm go test ./indexedDb/... -v
     - GOOS=js GOARCH=wasm go test ./... -v
 
