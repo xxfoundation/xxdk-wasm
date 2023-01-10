@@ -43,6 +43,7 @@ wasm-test:
   script:
     - export PATH=/root/go/bin:$PATH
     - echo > utils/utils_js.s
+    - env
     - GOOS=js GOARCH=wasm go test ./indexedDb/... -v
     - GOOS=js GOARCH=wasm go test ./... -v
 
