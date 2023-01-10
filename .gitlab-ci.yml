@@ -48,7 +48,7 @@ wasm-test:
     - mv ~/go/bin/go_js_wasm_exec ~/go/bin/go_js_wasm_exec.old
     - ln -s ~/go/bin/wasmbrowsertest ~/go/bin/go_js_wasm_exec
     - unset SSH_PRIVATE_KEY
-    - unset $(env | grep '=' | awk -F'=' '{print $1}' | grep -v PATH)
+    - unset $(env | grep '=' | awk -F'=' '{print $1}' | grep -v PATH | grep -v GO)
     - GOOS=js GOARCH=wasm go test ./indexedDb/... -v
     - GOOS=js GOARCH=wasm go test ./... -v
 
