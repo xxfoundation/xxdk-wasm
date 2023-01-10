@@ -44,6 +44,8 @@ wasm-test:
     - export PATH=/root/go/bin:$PATH
     - echo > utils/utils_js.s
     - env
+    - go install github.com/agnivade/wasmbrowsertest@latest
+    - ln -s ~/go/bin/wasmbrowsertest ~/go/bin/go_js_wasm_exec
     - GOOS=js GOARCH=wasm go test ./indexedDb/... -v
     - GOOS=js GOARCH=wasm go test ./... -v
 
