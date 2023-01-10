@@ -11,6 +11,7 @@ package main
 
 import (
 	"fmt"
+	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"os"
 	"syscall/js"
 
@@ -24,7 +25,7 @@ import (
 func init() {
 	// Overwrites setting the log level to INFO done in bindings so that the
 	// Javascript console can be used
-	ll := wasm.NewJsConsoleLogListener(jww.LevelInfo)
+	ll := logging.NewJsConsoleLogListener(jww.LevelInfo)
 	jww.SetLogListeners(ll.Listen)
 	jww.SetStdoutThreshold(jww.LevelFatal + 1)
 
@@ -38,6 +39,9 @@ func init() {
 func main() {
 	fmt.Println("Starting xxDK WebAssembly bindings.")
 	fmt.Printf("Client version %s\n", bindings.GetVersion())
+
+	// logging/listener.go
+	js.Global().Set("LogToFile", js.FuncOf(logging.LogToFileJS))
 
 	// storage/password.go
 	js.Global().Set("GetOrInitPassword", js.FuncOf(storage.GetOrInitPassword))
@@ -143,7 +147,6 @@ func main() {
 
 	// wasm/logging.go
 	js.Global().Set("LogLevel", js.FuncOf(wasm.LogLevel))
-	js.Global().Set("LogToFile", js.FuncOf(wasm.LogToFile))
 	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
 	js.Global().Set("EnableGrpcLogs", js.FuncOf(wasm.EnableGrpcLogs))
 

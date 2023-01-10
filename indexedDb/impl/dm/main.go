@@ -12,6 +12,7 @@ package main
 import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"syscall/js"
@@ -19,7 +20,7 @@ import (
 
 func init() {
 	// Set up Javascript console listener set at level INFO
-	ll := wasm.NewJsConsoleLogListener(jww.LevelInfo)
+	ll := logging.NewJsConsoleLogListener(jww.LevelInfo)
 	jww.SetLogListeners(ll.Listen)
 	jww.SetStdoutThreshold(jww.LevelFatal + 1)
 }
@@ -28,8 +29,8 @@ func main() {
 	fmt.Println("[WW] Starting xxDK WebAssembly DM Database Worker.")
 	jww.INFO.Print("[WW] Starting xxDK WebAssembly DM Database Worker.")
 
-	js.Global().Set("LogLevel", js.FuncOf(wasm.LogLevel))
-	js.Global().Set("LogToFile", js.FuncOf(wasm.LogToFile))
+	js.Global().Set("LogLevel", js.FuncOf(logging.LogLevelJS))
+	js.Global().Set("LogToFile", js.FuncOf(logging.LogToFileJS))
 	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
 
 	m := &manager{mh: worker.NewThreadManager("DmIndexedDbWorker")}
