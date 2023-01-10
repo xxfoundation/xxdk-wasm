@@ -269,8 +269,6 @@ func (m *Manager) addEventListeners() {
 		return nil
 	})
 
-	// TODO: add listener for onerror
-
 	// Register each event listener on the worker using addEventListener
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
 	m.worker.Call("addEventListener", "message", messageEvent)

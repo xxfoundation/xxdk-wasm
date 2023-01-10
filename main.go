@@ -43,6 +43,9 @@ func main() {
 	// logging/listener.go
 	js.Global().Set("LogToFile", js.FuncOf(logging.LogToFileJS))
 
+	// logging/worker.go
+	js.Global().Set("LogToFileWorker", js.FuncOf(logging.LogToFileWorkerJS))
+
 	// storage/password.go
 	js.Global().Set("GetOrInitPassword", js.FuncOf(storage.GetOrInitPassword))
 	js.Global().Set("ChangeExternalPassword",
