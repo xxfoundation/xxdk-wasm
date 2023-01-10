@@ -65,14 +65,18 @@ func NewDummyTrafficManager(_ js.Value, args []js.Value) any {
 	return newDummyTrafficJS(dt)
 }
 
-// Pause will pause the [DummyTraffic]'s sending thread, meaning messages will no
-// longer be sent. After calling Pause, the sending thread may only be resumed
-// by calling Resume.
+// Pause will pause the [DummyTraffic]'s sending thread, meaning messages will
+// no longer be sent. After calling Pause, the sending thread may only be
+// resumed by calling Resume.
 //
 // There may be a small delay between this call and the pause taking effect.
 // This is because Pause will not cancel the thread when it is in the process
 // of sending messages, but will instead wait for that thread to complete. The
 // thread will then be prevented from beginning another round of sending.
+//
+// Returns:
+//   - Throws a TypeError if it fails to send a pause signal to the sending
+//     thread.
 func (dt *DummyTraffic) Pause(js.Value, []js.Value) any {
 	err := dt.api.Pause()
 	if err != nil {
@@ -83,14 +87,19 @@ func (dt *DummyTraffic) Pause(js.Value, []js.Value) any {
 	return nil
 }
 
-// Start will start up the [DummyTraffic]'s sending thread, meaning messages will
-//  be sent. This should be called after calling NewManager, as by default the
-//  thread is paused. This may also be called after a call to [DummyTraffic.Pause].
+// Start will start up the [DummyTraffic]'s sending thread, meaning messages
+// will be sent. This should be called after calling [NewDummyTrafficManager],
+// by default the thread is paused. This may also be called after a call to
+// [DummyTraffic.Pause].
 //
 // This will re-initialize the sending thread with a new randomly generated
 // interval between sending dummy messages. This means that there is zero
 // guarantee that the sending interval prior to pausing will be the same
 // sending interval after a call to Start.
+//
+// Returns:
+//   - Throws a TypeError if it fails to send a start signal to the sending
+//     thread.
 func (dt *DummyTraffic) Start(js.Value, []js.Value) any {
 	err := dt.api.Start()
 	if err != nil {
@@ -107,7 +116,7 @@ func (dt *DummyTraffic) Start(js.Value, []js.Value) any {
 // [DummyTraffic.Pause] for more details)
 //
 // Returns:
-//   - bool - Returns true ([dummy.Running]) if the sending thread is sending
+//   - Returns true ([dummy.Running]) if the sending thread is sending
 //     messages and false ([dummy.Paused]) if the sending thread is not sending
 //     messages.
 func (dt *DummyTraffic) GetStatus(js.Value, []js.Value) any {
