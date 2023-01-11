@@ -28,11 +28,11 @@ const initID = uint64(0)
 const (
 	// workerInitialConnectionTimeout is the time to wait to receive initial
 	// contact from a new worker before timing out.
-	workerInitialConnectionTimeout = 16 * time.Second
+	workerInitialConnectionTimeout = 90 * time.Second
 
 	// ResponseTimeout is the general time to wait after sending a message to
 	// receive a response before timing out.
-	ResponseTimeout = 8 * time.Second
+	ResponseTimeout = 30 * time.Second
 )
 
 // ReceptionCallback is the function that handles incoming data from the worker.

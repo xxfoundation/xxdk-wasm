@@ -20,9 +20,8 @@ import (
 	"time"
 )
 
-// TODO: add comments
-// TODO: add tests
-
+// List of tags that can be used when sending a message or registering a handler
+// to receive a message.
 const (
 	NewLogFileTag worker.Tag = "NewLogFile"
 	NameTag       worker.Tag = "Name"
@@ -187,10 +186,10 @@ func (lfw *LogFileWorker) Size() int {
 //   - args[3] - Log file name (string).
 //   - args[4] - Max log file size, in bytes (int).
 //
-// Returns:
-//   - A Javascript representation of the [LogFileWorker] object, which allows
-//     accessing the contents of the log file and other metadata.
-//   - Throws a TypeError if starting the worker fails.
+// Returns a promise:
+//   - Resolves to a Javascript representation of the [LogFileWorker] object,
+//     which allows accessing the contents of the log file and other metadata.
+//   - Rejected with an error if starting the worker fails.
 func LogToFileWorkerJS(_ js.Value, args []js.Value) any {
 	wasmJsPath := args[0].String()
 	name := args[1].String()
@@ -198,14 +197,17 @@ func LogToFileWorkerJS(_ js.Value, args []js.Value) any {
 	logFileName := args[3].String()
 	maxLogFileSize := args[4].Int()
 
-	lfw, err := LogToFileWorker(
-		wasmJsPath, name, threshold, logFileName, maxLogFileSize)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		lfw, err := LogToFileWorker(
+			wasmJsPath, name, threshold, logFileName, maxLogFileSize)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(NewLogFileWorkerJS(lfw))
+		}
 	}
 
-	return NewLogFileWorkerJS(lfw)
+	return utils.CreatePromise(promiseFn)
 }
 
 // NewLogFileWorkerJS creates a new Javascript compatible object
