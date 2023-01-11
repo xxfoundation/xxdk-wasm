@@ -96,11 +96,10 @@ func TestManager_getCallback(t *testing.T) {
 func TestManager_RegisterCallback(t *testing.T) {
 	m := &Manager{callbacks: make(map[Tag]map[uint64]ReceptionCallback)}
 
-	msg := Message{Tag: readyTag, ID: 5}
+	msg := Message{Tag: readyTag, ID: initID}
 	cbChan := make(chan struct{})
 	cb := func([]byte) { cbChan <- struct{}{} }
 	m.RegisterCallback(msg.Tag, cb)
-	m.callbacks[msg.Tag] = map[uint64]ReceptionCallback{msg.ID: cb}
 
 	data, err := json.Marshal(msg)
 	if err != nil {
