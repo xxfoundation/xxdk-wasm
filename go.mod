@@ -7,7 +7,7 @@ require (
 	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client/v4 v4.3.12-0.20230111011720-685725612575
+	gitlab.com/elixxir/client/v4 v4.3.12-0.20230111201740-d7b92e7434fe
 	gitlab.com/elixxir/crypto v0.0.7-0.20230109232445-64f3e6192c3a
 	gitlab.com/elixxir/primitives v0.0.3-0.20230109222259-f62b2a90b62c
 	gitlab.com/xx_network/crypto v0.0.5-0.20230109222209-557b66d73c33
@@ -72,7 +72,7 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	gitlab.com/elixxir/bloomfilter v0.0.0-20211222005329-7d931ceead6f // indirect
-	gitlab.com/elixxir/comms v0.0.4-0.20230109233320-a0c90d3324a0 // indirect
+	gitlab.com/elixxir/comms v0.0.4-0.20230110212240-9764d391d692 // indirect
 	gitlab.com/elixxir/ekv v0.2.1 // indirect
 	gitlab.com/xx_network/comms v0.0.4-0.20230109222246-7de292982747 // indirect
 	gitlab.com/xx_network/ring v0.0.3-0.20220902183151-a7d3b15bc981 // indirect
