@@ -20,7 +20,6 @@ stages:
   - test
   - build
   - tag
-  - version_check
   - doc-update
   - version_check
 
@@ -32,11 +31,13 @@ build:
     - go mod vendor -v
     - mkdir -p release
     - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -o release/xxdk.wasm main.go
-    - GOOS=js GOARCH=wasm go build -mod vendor -ldflags '-w -s' -trimpath -o release/xxdk-channelsIndexedDkWorker.wasm ./indexedDb/impl/channels/...
-    - GOOS=js GOARCH=wasm go build -mod vendor -ldflags '-w -s' -trimpath -o release/xxdk-dmIndexedDkWorker.wasm ./indexedDb/impl/dm/...
+    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-channelsIndexedDkWorker.wasm ./indexedDb/impl/channels/...
+    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-dmIndexedDkWorker.wasm ./indexedDb/impl/dm/...
+    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-logFileWorker.wasm ./logging/workerThread/...
     - cp wasm_exec.js release/
     - cp indexedDb/impl/channels/channelsIndexedDbWorker.js release/
     - cp indexedDb/impl/dm/dmIndexedDbWorker.js release/
+    - cp logging/workerThread/logFileWorker.js release/
   artifacts:
     paths:
       - release/
