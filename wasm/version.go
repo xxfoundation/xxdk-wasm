@@ -11,10 +11,11 @@ package wasm
 
 import (
 	"encoding/json"
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
-	"syscall/js"
 )
 
 // GetVersion returns the current xxDK WASM semantic version.
