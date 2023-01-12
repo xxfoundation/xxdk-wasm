@@ -77,21 +77,12 @@ func (wlf *workerLogFile) registerCallbacks() {
 	// Callback for LogFileWorker.GetFile
 	wlf.wtm.RegisterCallback(logging.WriteLogTag,
 		func(data []byte) ([]byte, error) {
-			var wr logging.WriteResponse
-
 			n, err := wlf.b.Write(data)
 			if err != nil {
-				wr.Err = err.Error()
-			} else {
-				wr.N = n
-			}
-
-			if err != nil {
-				return []byte(err.Error()), err
+				return nil, err
 			} else if n != len(data) {
-				err = errors.Errorf(
+				return nil, errors.Errorf(
 					"wrote %d bytes; expected %d bytes", n, len(data))
-				return []byte(err.Error()), err
 			}
 
 			return nil, nil
@@ -100,6 +91,11 @@ func (wlf *workerLogFile) registerCallbacks() {
 
 	// Callback for LogFileWorker.GetFile
 	wlf.wtm.RegisterCallback(logging.GetFileTag, func([]byte) ([]byte, error) {
+		return wlf.b.Bytes(), nil
+	})
+
+	// Callback for LogFileWorker.GetFile
+	wlf.wtm.RegisterCallback(logging.GetFileExtTag, func([]byte) ([]byte, error) {
 		return wlf.b.Bytes(), nil
 	})
 

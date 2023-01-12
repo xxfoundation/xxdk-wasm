@@ -12,7 +12,6 @@ package logging
 import (
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
@@ -102,37 +101,11 @@ func (lfw *LogFileWorker) Listen(t jww.Threshold) io.Writer {
 	return lfw
 }
 
-type WriteResponse struct {
-	N   int    `json:"n"`
-	Err string `json:"err"`
-}
-
-// Write sends the bytes to the worker. It waits for a response from the worker
-// and returns the number of bytes written or an error, if one occurred.
+// Write sends the bytes to the worker. It does not wait for a response and
+// always returns the length of p and a nil error.
 func (lfw *LogFileWorker) Write(p []byte) (n int, err error) {
-	wrChan := make(chan WriteResponse)
-	lfw.wm.SendMessage(WriteLogTag, p, func(data []byte) {
-		var wr WriteResponse
-		err2 := json.Unmarshal(data, &wr)
-		if err2 != nil {
-			wrChan <- WriteResponse{Err: fmt.Sprintf(
-				"failed to unmarshal WriteResponse from worker: %+v", err2)}
-		} else {
-			wrChan <- wr
-		}
-	})
-
-	select {
-	case wr := <-wrChan:
-		if wr.Err != "" {
-			return 0, errors.New(wr.Err)
-		} else {
-			return wr.N, nil
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return 0, errors.Errorf("timed out after %s waiting for response from "+
-			"the worker about Write", worker.ResponseTimeout)
-	}
+	lfw.wm.SendMessage(WriteLogTag, p, nil)
+	return len(p), err
 }
 
 // Name returns the name of the log file.
