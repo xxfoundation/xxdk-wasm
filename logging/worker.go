@@ -12,10 +12,12 @@ package logging
 import (
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
+	"io"
 	"syscall/js"
 	"time"
 )
@@ -24,43 +26,43 @@ import (
 // to receive a message.
 const (
 	NewLogFileTag worker.Tag = "NewLogFile"
-	NameTag       worker.Tag = "Name"
-	ThresholdTag  worker.Tag = "Threshold"
+	WriteLogTag   worker.Tag = "WriteLog"
 	GetFileTag    worker.Tag = "GetFile"
-	MaxSizeTag    worker.Tag = "MaxSize"
+	GetFileExtTag worker.Tag = "GetFileExt"
 	SizeTag       worker.Tag = "Size"
 )
 
 // LogFileWorker manages communication with the web worker running the log file
 // listener.
 type LogFileWorker struct {
-	wm *worker.Manager
-}
-
-// NewLogFileMessage is sent from the main thread to the worker thread to start
-// a new log file listener.
-type NewLogFileMessage struct {
-	Threshold      jww.Threshold `json:"threshold"`
-	LogFileName    string        `json:"logFileName"`
-	MaxLogFileSize int           `json:"maxLogFileSize"`
+	name           string
+	threshold      jww.Threshold
+	maxLogFileSize int
+	wm             *worker.Manager
 }
 
 // LogToFileWorker starts a new worker that begins listening for logs and
 // writing them to file.
 func LogToFileWorker(wasmJsPath, name string, threshold jww.Threshold,
-	logFileName string, maxLogFileSize int) (*LogFileWorker, error) {
+	maxLogFileSize int) (*LogFileWorker, error) {
 	wm, err := worker.NewManager(wasmJsPath, name, false)
 	if err != nil {
 		return nil, err
 	}
 
-	msg := NewLogFileMessage{
-		Threshold:      threshold,
-		LogFileName:    logFileName,
-		MaxLogFileSize: maxLogFileSize,
+	lfw := &LogFileWorker{
+		name:           name,
+		threshold:      threshold,
+		maxLogFileSize: maxLogFileSize,
+		wm:             wm,
 	}
 
-	data, err := json.Marshal(&msg)
+	lfw.wm.RegisterCallback(GetFileExtTag, func([]byte) {
+		jww.DEBUG.Print(
+			"Received file requested from external Javascript. Ignoring file.")
+	})
+
+	data, err := json.Marshal(maxLogFileSize)
 	if err != nil {
 		return nil, err
 	}
@@ -84,41 +86,63 @@ func LogToFileWorker(wasmJsPath, name string, threshold jww.Threshold,
 			"file in worker to initialize", worker.ResponseTimeout)
 	}
 
-	return &LogFileWorker{wm}, nil
+	// Add the log listener
+	jww.SetLogListeners(AddLogListener(lfw.Listen)...)
+
+	return lfw, nil
+}
+
+// Listen is called for every logging event. This function adheres to the
+// [jwalterweatherman.LogListener] type.
+func (lfw *LogFileWorker) Listen(t jww.Threshold) io.Writer {
+	if t < lfw.threshold {
+		return nil
+	}
+
+	return lfw
+}
+
+type WriteResponse struct {
+	N   int    `json:"n"`
+	Err string `json:"err"`
+}
+
+// Write sends the bytes to the worker. It waits for a response from the worker
+// and returns the number of bytes written or an error, if one occurred.
+func (lfw *LogFileWorker) Write(p []byte) (n int, err error) {
+	wrChan := make(chan WriteResponse)
+	lfw.wm.SendMessage(WriteLogTag, p, func(data []byte) {
+		var wr WriteResponse
+		err2 := json.Unmarshal(data, &wr)
+		if err2 != nil {
+			wrChan <- WriteResponse{Err: fmt.Sprintf(
+				"failed to unmarshal WriteResponse from worker: %+v", err2)}
+		} else {
+			wrChan <- wr
+		}
+	})
+
+	select {
+	case wr := <-wrChan:
+		if wr.Err != "" {
+			return 0, errors.New(wr.Err)
+		} else {
+			return wr.N, nil
+		}
+	case <-time.After(worker.ResponseTimeout):
+		return 0, errors.Errorf("timed out after %s waiting for response from "+
+			"the worker about Write", worker.ResponseTimeout)
+	}
 }
 
 // Name returns the name of the log file.
 func (lfw *LogFileWorker) Name() string {
-	nameChan := make(chan string)
-	lfw.wm.SendMessage(NameTag, nil, func(data []byte) {
-		nameChan <- string(data)
-	})
-
-	select {
-	case name := <-nameChan:
-		return name
-	case <-time.After(worker.ResponseTimeout):
-		jww.FATAL.Panicf("Timed out after %s waiting for log file name from "+
-			"worker", worker.ResponseTimeout)
-		return ""
-	}
+	return lfw.name
 }
 
 // Threshold returns the log level threshold used in the file.
 func (lfw *LogFileWorker) Threshold() jww.Threshold {
-	thresholdChan := make(chan []byte)
-	lfw.wm.SendMessage(ThresholdTag, nil, func(data []byte) {
-		thresholdChan <- data
-	})
-
-	select {
-	case data := <-thresholdChan:
-		return jww.Threshold(binary.LittleEndian.Uint64(data))
-	case <-time.After(worker.ResponseTimeout):
-		jww.FATAL.Panicf("Timed out after %s waiting for log file threshold "+
-			"from worker", worker.ResponseTimeout)
-		return 0
-	}
+	return lfw.threshold
 }
 
 // GetFile returns the entire log file.
@@ -140,19 +164,7 @@ func (lfw *LogFileWorker) GetFile() []byte {
 
 // MaxSize returns the max size, in bytes, that the log file is allowed to be.
 func (lfw *LogFileWorker) MaxSize() int {
-	maxSizeChan := make(chan []byte)
-	lfw.wm.SendMessage(MaxSizeTag, nil, func(data []byte) {
-		maxSizeChan <- data
-	})
-
-	select {
-	case data := <-maxSizeChan:
-		return int(jww.Threshold(binary.LittleEndian.Uint64(data)))
-	case <-time.After(worker.ResponseTimeout):
-		jww.FATAL.Panicf("Timed out after %s waiting for log file max file "+
-			"size from worker", worker.ResponseTimeout)
-		return 0
-	}
+	return lfw.maxLogFileSize
 }
 
 // Size returns the current size, in bytes, written to the log file.
@@ -183,8 +195,7 @@ func (lfw *LogFileWorker) Size() int {
 //   - args[0] - Path to Javascript start file for the worker WASM (string).
 //   - args[1] - Name of the worker (used in logs) (string).
 //   - args[2] - Log level (int).
-//   - args[3] - Log file name (string).
-//   - args[4] - Max log file size, in bytes (int).
+//   - args[3] - Max log file size, in bytes (int).
 //
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [LogFileWorker] object,
@@ -194,12 +205,11 @@ func LogToFileWorkerJS(_ js.Value, args []js.Value) any {
 	wasmJsPath := args[0].String()
 	name := args[1].String()
 	threshold := jww.Threshold(args[2].Int())
-	logFileName := args[3].String()
-	maxLogFileSize := args[4].Int()
+	maxLogFileSize := args[3].Int()
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		lfw, err := LogToFileWorker(
-			wasmJsPath, name, threshold, logFileName, maxLogFileSize)
+			wasmJsPath, name, threshold, maxLogFileSize)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {

@@ -13,6 +13,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/armon/circbuf"
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
@@ -30,7 +32,7 @@ func init() {
 // logging messages to the log file.
 type workerLogFile struct {
 	wtm *worker.ThreadManager
-	lf  *logging.LogFile
+	b   *circbuf.Buffer
 }
 
 func main() {
@@ -55,53 +57,56 @@ func (wlf *workerLogFile) registerCallbacks() {
 	// Callback for logging.LogToFileWorker
 	wlf.wtm.RegisterCallback(logging.NewLogFileTag,
 		func(data []byte) ([]byte, error) {
-			var msg logging.NewLogFileMessage
-			err := json.Unmarshal(data, &msg)
+			var maxLogFileSize int64
+			err := json.Unmarshal(data, &maxLogFileSize)
 			if err != nil {
 				return []byte(err.Error()), err
 			}
 
-			wlf.lf, err = logging.NewLogFile(
-				msg.LogFileName, msg.Threshold, msg.MaxLogFileSize)
+			wlf.b, err = circbuf.NewBuffer(maxLogFileSize)
 			if err != nil {
 				return []byte(err.Error()), err
 			}
 
-			jww.DEBUG.Printf(
-				"[LOG] Created new worker log file %q of size %d with level %s",
-				msg.LogFileName, msg.MaxLogFileSize, msg.Threshold)
+			jww.DEBUG.Printf("[LOG] Created new worker log file of size %d",
+				maxLogFileSize)
 
 			return []byte{}, nil
 		})
 
-	// Callback for LogFileWorker.Name
-	wlf.wtm.RegisterCallback(logging.NameTag, func([]byte) ([]byte, error) {
-		return []byte(wlf.lf.Name()), nil
-	})
+	// Callback for LogFileWorker.GetFile
+	wlf.wtm.RegisterCallback(logging.WriteLogTag,
+		func(data []byte) ([]byte, error) {
+			var wr logging.WriteResponse
 
-	// Callback for LogFileWorker.Threshold
-	wlf.wtm.RegisterCallback(logging.ThresholdTag, func([]byte) ([]byte, error) {
-		b := make([]byte, 8)
-		binary.LittleEndian.PutUint64(b, uint64(wlf.lf.Threshold()))
-		return b, nil
-	})
+			n, err := wlf.b.Write(data)
+			if err != nil {
+				wr.Err = err.Error()
+			} else {
+				wr.N = n
+			}
+
+			if err != nil {
+				return []byte(err.Error()), err
+			} else if n != len(data) {
+				err = errors.Errorf(
+					"wrote %d bytes; expected %d bytes", n, len(data))
+				return []byte(err.Error()), err
+			}
+
+			return nil, nil
+		},
+	)
 
 	// Callback for LogFileWorker.GetFile
 	wlf.wtm.RegisterCallback(logging.GetFileTag, func([]byte) ([]byte, error) {
-		return wlf.lf.GetFile(), nil
-	})
-
-	// Callback for LogFileWorker.MaxSize
-	wlf.wtm.RegisterCallback(logging.MaxSizeTag, func([]byte) ([]byte, error) {
-		b := make([]byte, 8)
-		binary.LittleEndian.PutUint64(b, uint64(wlf.lf.MaxSize()))
-		return b, nil
+		return wlf.b.Bytes(), nil
 	})
 
 	// Callback for LogFileWorker.Size
 	wlf.wtm.RegisterCallback(logging.SizeTag, func([]byte) ([]byte, error) {
 		b := make([]byte, 8)
-		binary.LittleEndian.PutUint64(b, uint64(wlf.lf.Size()))
+		binary.LittleEndian.PutUint64(b, uint64(wlf.b.TotalWritten()))
 		return b, nil
 	})
 }
