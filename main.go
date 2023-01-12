@@ -196,6 +196,8 @@ func main() {
 	js.Global().Set("GetClientVersion", js.FuncOf(wasm.GetClientVersion))
 	js.Global().Set("GetClientGitVersion", js.FuncOf(wasm.GetClientGitVersion))
 	js.Global().Set("GetClientDependencies", js.FuncOf(wasm.GetClientDependencies))
+	js.Global().Set("GetWasmSemanticVersion", js.FuncOf(wasm.GetWasmSemanticVersion))
+	js.Global().Set("GetXXDKSemanticVersion", js.FuncOf(wasm.GetXXDKSemanticVersion))
 
 	<-make(chan bool)
 	os.Exit(0)
