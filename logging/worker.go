@@ -49,7 +49,7 @@ type NewLogFileMessage struct {
 // writing them to file.
 func LogToFileWorker(wasmJsPath, name string, threshold jww.Threshold,
 	logFileName string, maxLogFileSize int) (*LogFileWorker, error) {
-	wm, err := worker.NewManager(wasmJsPath, name)
+	wm, err := worker.NewManager(wasmJsPath, name, false)
 	if err != nil {
 		return nil, err
 	}

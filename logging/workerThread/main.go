@@ -21,7 +21,7 @@ import (
 
 func init() {
 	// Set up Javascript console listener set at level INFO
-	ll := logging.NewJsConsoleLogListener(jww.LevelInfo)
+	ll := logging.NewJsConsoleLogListener(jww.LevelDebug)
 	jww.SetLogListeners(ll.Listen)
 	jww.SetStdoutThreshold(jww.LevelFatal + 1)
 }
@@ -39,7 +39,8 @@ func main() {
 
 	js.Global().Set("LogLevel", js.FuncOf(logging.LogLevelJS))
 
-	wlf := workerLogFile{wtm: worker.NewThreadManager("ChannelsIndexedDbWorker")}
+	wlf := workerLogFile{
+		wtm: worker.NewThreadManager("ChannelsIndexedDbWorker", false)}
 
 	wlf.registerCallbacks()
 
@@ -65,6 +66,10 @@ func (wlf *workerLogFile) registerCallbacks() {
 			if err != nil {
 				return []byte(err.Error()), err
 			}
+
+			jww.DEBUG.Printf(
+				"[LOG] Created new worker log file %q of size %d with level %s",
+				msg.LogFileName, msg.MaxLogFileSize, msg.Threshold)
 
 			return []byte{}, nil
 		})

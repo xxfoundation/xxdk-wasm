@@ -47,7 +47,7 @@ func LogToFile(threshold jww.Threshold, logFileName string,
 	jww.SetLogListeners(AddLogListener(lf.Listen)...)
 
 	msg := fmt.Sprintf("Outputting log to file %s of max size %d with level %s",
-		lf.Name(), lf.Size(), threshold)
+		lf.Name(), lf.MaxSize(), threshold)
 	switch threshold {
 	case jww.LevelTrace:
 		fallthrough

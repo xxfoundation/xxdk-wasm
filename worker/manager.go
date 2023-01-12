@@ -59,20 +59,25 @@ type Manager struct {
 	// name describes the worker. It is used for debugging and logging purposes.
 	name string
 
+	// messageLogging determines if debug message logs should be printed every
+	// time a message is sent/received to/from the worker.
+	messageLogging bool
+
 	mux sync.Mutex
 }
 
 // NewManager generates a new Manager. This functions will only return once
 // communication with the worker has been established.
-func NewManager(aURL, name string) (*Manager, error) {
+func NewManager(aURL, name string, messageLogging bool) (*Manager, error) {
 	// Create new worker options with the given name
 	opts := newWorkerOptions("", "", name)
 
 	m := &Manager{
-		worker:      js.Global().Get("Worker").New(aURL, opts),
-		callbacks:   make(map[Tag]map[uint64]ReceptionCallback),
-		responseIDs: make(map[Tag]uint64),
-		name:        name,
+		worker:         js.Global().Get("Worker").New(aURL, opts),
+		callbacks:      make(map[Tag]map[uint64]ReceptionCallback),
+		responseIDs:    make(map[Tag]uint64),
+		name:           name,
+		messageLogging: messageLogging,
 	}
 
 	// Register listeners on the Javascript worker object that receive messages
@@ -106,8 +111,10 @@ func (m *Manager) SendMessage(
 		id = m.registerReplyCallback(tag, receptionCB)
 	}
 
-	jww.DEBUG.Printf("[WW] [%s] Main sending message for %q and ID %d with "+
-		"data: %s", m.name, tag, id, data)
+	if m.messageLogging {
+		jww.DEBUG.Printf("[WW] [%s] Main sending message for %q and ID %d "+
+			"with data: %s", m.name, tag, id, data)
+	}
 
 	msg := Message{
 		Tag:  tag,
@@ -131,8 +138,11 @@ func (m *Manager) receiveMessage(data []byte) error {
 	if err != nil {
 		return err
 	}
-	jww.DEBUG.Printf("[WW] [%s] Main received message for %q and ID %d with "+
-		"data: %s", m.name, msg.Tag, msg.ID, msg.Data)
+
+	if m.messageLogging {
+		jww.DEBUG.Printf("[WW] [%s] Main received message for %q and ID %d "+
+			"with data: %s", m.name, msg.Tag, msg.ID, msg.Data)
+	}
 
 	callback, err := m.getCallback(msg.Tag, msg.ID, msg.DeleteCB)
 	if err != nil {

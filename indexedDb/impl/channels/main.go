@@ -33,7 +33,7 @@ func main() {
 	js.Global().Set("LogToFile", js.FuncOf(logging.LogToFileJS))
 	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
 
-	m := &manager{mh: worker.NewThreadManager("ChannelsIndexedDbWorker")}
+	m := &manager{mh: worker.NewThreadManager("ChannelsIndexedDbWorker", true)}
 	m.registerCallbacks()
 	m.mh.SignalReady()
 	<-make(chan bool)

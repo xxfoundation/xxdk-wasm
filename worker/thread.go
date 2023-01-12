@@ -35,15 +35,20 @@ type ThreadManager struct {
 	// name describes the worker. It is used for debugging and logging purposes.
 	name string
 
+	// messageLogging determines if debug message logs should be printed every
+	// time a message is sent/received to/from the worker.
+	messageLogging bool
+
 	mux sync.Mutex
 }
 
 // NewThreadManager initialises a new ThreadManager.
-func NewThreadManager(name string) *ThreadManager {
+func NewThreadManager(name string, messageLogging bool) *ThreadManager {
 	mh := &ThreadManager{
-		messages:  make(chan js.Value, 100),
-		callbacks: make(map[Tag]ThreadReceptionCallback),
-		name:      name,
+		messages:       make(chan js.Value, 100),
+		callbacks:      make(map[Tag]ThreadReceptionCallback),
+		name:           name,
+		messageLogging: messageLogging,
 	}
 
 	mh.addEventListeners()
@@ -66,8 +71,11 @@ func (tm *ThreadManager) SendMessage(tag Tag, data []byte) {
 		DeleteCB: false,
 		Data:     data,
 	}
-	jww.DEBUG.Printf("[WW] [%s] Worker sending message for %q with data: %s",
-		tm.name, tag, data)
+
+	if tm.messageLogging {
+		jww.DEBUG.Printf("[WW] [%s] Worker sending message for %q with data: %s",
+			tm.name, tag, data)
+	}
 
 	payload, err := json.Marshal(msg)
 	if err != nil {
@@ -87,8 +95,11 @@ func (tm *ThreadManager) sendResponse(
 		DeleteCB: true,
 		Data:     data,
 	}
-	jww.DEBUG.Printf("[WW] [%s] Worker sending reply for %q and ID %d with "+
-		"data: %s", tm.name, tag, id, data)
+
+	if tm.messageLogging {
+		jww.DEBUG.Printf("[WW] [%s] Worker sending reply for %q and ID %d "+
+			"with data: %s", tm.name, tag, id, data)
+	}
 
 	payload, err := json.Marshal(msg)
 	if err != nil {
@@ -108,8 +119,11 @@ func (tm *ThreadManager) receiveMessage(data []byte) error {
 	if err != nil {
 		return err
 	}
-	jww.DEBUG.Printf("[WW] [%s] Worker received message for %q and ID %d with "+
-		"data: %s", tm.name, msg.Tag, msg.ID, msg.Data)
+
+	if tm.messageLogging {
+		jww.DEBUG.Printf("[WW] [%s] Worker received message for %q and ID %d "+
+			"with data: %s", tm.name, msg.Tag, msg.ID, msg.Data)
+	}
 
 	tm.mux.Lock()
 	callback, exists := tm.callbacks[msg.Tag]
