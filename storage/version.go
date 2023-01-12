@@ -10,11 +10,11 @@
 package storage
 
 import (
-	"os"
-
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/bindings"
+	"os"
+	"sync"
 )
 
 // SEMVER is the current semantic version of xxDK WASM.
@@ -38,16 +38,22 @@ func CheckAndStoreVersions() error {
 
 func checkAndStoreVersions(
 	currentWasmVer, currentClientVer string, ls *LocalStorage) error {
-	// Get the stored client and WASM versions, if they exists
-	storedClientVer, err := initOrLoadStoredSemver(
-		clientVerKey, currentClientVer, ls)
+	// Get the stored client version, if it exists
+	storedClientVer, err :=
+		initOrLoadStoredSemver(clientVerKey, currentClientVer, ls)
 	if err != nil {
 		return err
 	}
+
+	// Get the stored WASM versions, if it exists
 	storedWasmVer, err := initOrLoadStoredSemver(semverKey, currentWasmVer, ls)
 	if err != nil {
 		return err
 	}
+
+	// Store old versions to memory
+	setOldClientSemVersion(storedClientVer)
+	setOldWasmSemVersion(storedWasmVer)
 
 	// Check if client needs an update
 	if storedClientVer != currentClientVer {
@@ -95,4 +101,44 @@ func initOrLoadStoredSemver(
 
 	// Return the stored version
 	return string(storedVersion), nil
+}
+
+// oldVersions contains the old versions of xxdk WASM and xxdk client that were
+// stored in storage before being overwritten on update.
+var oldVersions struct {
+	wasm   string
+	client string
+	sync.Mutex
+}
+
+// GetOldWasmSemVersion returns the old version of xxdk WASM before being
+// updated.
+func GetOldWasmSemVersion() string {
+	oldVersions.Lock()
+	defer oldVersions.Unlock()
+	return oldVersions.wasm
+}
+
+// GetOldClientSemVersion returns the old version of xxdk client before being
+// updated.
+func GetOldClientSemVersion() string {
+	oldVersions.Lock()
+	defer oldVersions.Unlock()
+	return oldVersions.client
+}
+
+// setOldWasmSemVersion sets the old version of xxdk WASM. This should be called
+// before it is updated.
+func setOldWasmSemVersion(v string) {
+	oldVersions.Lock()
+	defer oldVersions.Unlock()
+	oldVersions.wasm = v
+}
+
+// setOldClientSemVersion sets the old version of xxdk client. This should be
+// called before it is updated.
+func setOldClientSemVersion(v string) {
+	oldVersions.Lock()
+	defer oldVersions.Unlock()
+	oldVersions.client = v
 }
