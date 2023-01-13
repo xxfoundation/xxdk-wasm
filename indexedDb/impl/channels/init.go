@@ -10,16 +10,16 @@
 package main
 
 import (
-	"crypto/ed25519"
+	"syscall/js"
+
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+
 	"gitlab.com/elixxir/client/v4/channels"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
-	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	"gitlab.com/xx_network/primitives/id"
-	"syscall/js"
+	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 )
 
 const (
@@ -31,19 +31,6 @@ const (
 	// runtime. Used for migration purposes.
 	currentVersion uint = 1
 )
-
-// MessageReceivedCallback is called any time a message is received or updated.
-//
-// update is true if the row is old and was edited.
-type MessageReceivedCallback func(uuid uint64, channelID *id.ID, update bool)
-
-// DeletedMessageCallback is called any time a message is deleted.
-type DeletedMessageCallback func(messageID message.ID)
-
-// MutedUserCallback is called any time a user is muted or unmuted. unmute is
-// true if the user has been unmuted and false if they have been muted.
-type MutedUserCallback func(
-	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool)
 
 // storeDatabaseNameFn matches storage.StoreIndexedDb so that the data can be
 // sent between the worker and main thread.
@@ -57,9 +44,10 @@ type storeEncryptionStatusFn func(
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
 func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
-	messageReceivedCB MessageReceivedCallback,
-	deletedMessageCB DeletedMessageCallback,
-	mutedUserCB MutedUserCallback, storeDatabaseName storeDatabaseNameFn,
+	messageReceivedCB wChannels.MessageReceivedCallback,
+	deletedMessageCB wChannels.DeletedMessageCallback,
+	mutedUserCB wChannels.MutedUserCallback,
+	storeDatabaseName storeDatabaseNameFn,
 	storeEncryptionStatus storeEncryptionStatusFn) (channels.EventModel, error) {
 	databaseName := path + databaseSuffix
 	return newWASMModel(databaseName, encryption, messageReceivedCB,
@@ -68,8 +56,9 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
-	messageReceivedCB MessageReceivedCallback,
-	deletedMessageCB DeletedMessageCallback, mutedUserCB MutedUserCallback,
+	messageReceivedCB wChannels.MessageReceivedCallback,
+	deletedMessageCB wChannels.DeletedMessageCallback,
+	mutedUserCB wChannels.MutedUserCallback,
 	storeDatabaseName storeDatabaseNameFn,
 	storeEncryptionStatus storeEncryptionStatusFn) (*wasmModel, error) {
 	// Attempt to open database object

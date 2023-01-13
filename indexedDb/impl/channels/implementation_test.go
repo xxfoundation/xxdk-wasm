@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 func dummyReceivedMessageCB(uint64, *id.ID, bool)      {}
 func dummyDeletedMessageCB(message.ID)                 {}
 func dummyMutedUserCB(*id.ID, ed25519.PublicKey, bool) {}
-func dummyStoreDatabaseName(string) error { return nil }
+func dummyStoreDatabaseName(string) error              { return nil }
 func dummyStoreEncryptionStatus(_ string, encryptionStatus bool) (bool, error) {
 	return encryptionStatus, nil
 }

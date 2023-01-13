@@ -16,6 +16,8 @@ import "gitlab.com/elixxir/xxdk-wasm/worker"
 const (
 	NewWASMEventModelTag       worker.Tag = "NewWASMEventModel"
 	MessageReceivedCallbackTag worker.Tag = "MessageReceivedCallback"
+	DeletedMessageCallbackTag  worker.Tag = "DeletedMessageCallback"
+	MutedUserCallbackTag       worker.Tag = "MutedUserCallback"
 	EncryptionStatusTag        worker.Tag = "EncryptionStatus"
 	StoreDatabaseNameTag       worker.Tag = "StoreDatabaseName"
 
@@ -28,4 +30,5 @@ const (
 	UpdateFromMessageIDTag worker.Tag = "UpdateFromMessageID"
 	GetMessageTag          worker.Tag = "GetMessage"
 	DeleteMessageTag       worker.Tag = "DeleteMessage"
+	MuteUserTag            worker.Tag = "MuteUser"
 )

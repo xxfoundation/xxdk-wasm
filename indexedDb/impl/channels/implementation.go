@@ -28,6 +28,7 @@ import (
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
+	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
 )
@@ -38,9 +39,9 @@ import (
 type wasmModel struct {
 	db                *idb.Database
 	cipher            cryptoChannel.Cipher
-	receivedMessageCB MessageReceivedCallback
-	deletedMessageCB  DeletedMessageCallback
-	mutedUserCB       MutedUserCallback
+	receivedMessageCB wChannels.MessageReceivedCallback
+	deletedMessageCB  wChannels.DeletedMessageCallback
+	mutedUserCB       wChannels.MutedUserCallback
 	updateMux         sync.Mutex
 }
 
@@ -81,8 +82,7 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 	parentErr := errors.New("failed to LeaveChannel")
 
 	// Delete the channel from storage
-	err := indexedDb.Delete(w.db, channelsStoreName,
-		js.ValueOf(channelID.String()))
+	err := impl.Delete(w.db, channelsStoreName, js.ValueOf(channelID.String()))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to delete Channel: %+v", err))
