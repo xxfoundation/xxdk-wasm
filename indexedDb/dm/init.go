@@ -35,7 +35,8 @@ const (
 // MessageReceivedCallback is called any time a message is received or updated.
 //
 // update is true if the row is old and was edited.
-type MessageReceivedCallback func(uuid uint64, pubKey ed25519.PublicKey, update bool)
+type MessageReceivedCallback func(
+	uuid uint64, pubKey ed25519.PublicKey, update bool)
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
