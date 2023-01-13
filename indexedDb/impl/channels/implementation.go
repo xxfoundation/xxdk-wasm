@@ -13,7 +13,6 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	"strings"
 	"sync"
 	"syscall/js"
@@ -28,6 +27,7 @@ import (
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
 )
@@ -39,6 +39,8 @@ type wasmModel struct {
 	db                *idb.Database
 	cipher            cryptoChannel.Cipher
 	receivedMessageCB MessageReceivedCallback
+	deletedMessageCB  DeletedMessageCallback
+	mutedUserCB       MutedUserCallback
 	updateMux         sync.Mutex
 }
 
@@ -79,7 +81,7 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 	parentErr := errors.New("failed to LeaveChannel")
 
 	// Delete the channel from storage
-	err := impl.Delete(w.db, channelsStoreName,
+	err := indexedDb.Delete(w.db, channelsStoreName,
 		js.ValueOf(channelID.String()))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
@@ -488,8 +490,22 @@ func (w *wasmModel) GetMessage(
 // DeleteMessage removes a message with the given messageID from storage.
 func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 	msgId := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
-	return impl.DeleteIndex(w.db, messageStoreName,
-		messageStoreMessageIndex, pkeyName, msgId)
+
+	err := impl.DeleteIndex(
+		w.db, messageStoreName, messageStoreMessageIndex, pkeyName, msgId)
+	if err != nil {
+		return err
+	}
+
+	go w.deletedMessageCB(messageID)
+
+	return nil
+}
+
+// MuteUser is called whenever a user is muted or unmuted.
+func (w *wasmModel) MuteUser(
+	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
+	go w.mutedUserCB(channelID, pubKey, unmute)
 }
 
 // msgIDLookup gets the UUID of the Message with the given messageID.
@@ -510,5 +526,4 @@ func (w *wasmModel) msgIDLookup(messageID message.ID) (*Message, error) {
 		return nil, err
 	}
 	return resultMsg, nil
-
 }
