@@ -22,6 +22,8 @@ import (
 	"time"
 )
 
+// todo: add ability to import beginning of log
+
 // List of tags that can be used when sending a message or registering a handler
 // to receive a message.
 const (
@@ -225,10 +227,17 @@ func NewLogFileWorkerJS(lfw *LogFileWorker) map[string]any {
 
 // GetFileJS returns the entire log file.
 //
-// Returns:
+// Returns promise:
 //   - Log file contents (string).
+//
+// Returns a promise:
+//   - Resolves to the log file contents (string).
 func (lfw *LogFileWorker) GetFileJS(js.Value, []js.Value) any {
-	return string(lfw.GetFile())
+	promiseFn := func(resolve, _ func(args ...any) js.Value) {
+		resolve(string(lfw.GetFile()))
+	}
+
+	return utils.CreatePromise(promiseFn)
 }
 
 // ThresholdJS returns the log level threshold used in the file.
@@ -249,10 +258,14 @@ func (lfw *LogFileWorker) MaxSizeJS(js.Value, []js.Value) any {
 
 // SizeJS returns the current size, in bytes, written to the log file.
 //
-// Returns:
-//   - Current file size (int).
+// Returns a promise:
+//   - Resolves to the current file size (int).
 func (lfw *LogFileWorker) SizeJS(js.Value, []js.Value) any {
-	return lfw.Size()
+	promiseFn := func(resolve, _ func(args ...any) js.Value) {
+		resolve(lfw.Size())
+	}
+
+	return utils.CreatePromise(promiseFn)
 }
 
 // WorkerJS returns the web worker object.
