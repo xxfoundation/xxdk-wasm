@@ -36,7 +36,8 @@ type wasmModel struct {
 func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 	data, err := json.Marshal(channel)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON marshal broadcast.Channel: %+v", err)
+		jww.ERROR.Printf(
+			"[CH] Could not JSON marshal broadcast.Channel: %+v", err)
 		return
 	}
 
@@ -76,7 +77,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 	data, err := json.Marshal(msg)
 	if err != nil {
 		jww.ERROR.Printf(
-			"Could not JSON marshal payload for ReceiveMessage: %+v", err)
+			"[CH] Could not JSON marshal payload for ReceiveMessage: %+v", err)
 		return 0
 	}
 
@@ -85,8 +86,8 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to ReceiveMessage: %+v", err)
+			jww.ERROR.Printf("[CH] Could not JSON unmarshal response to "+
+				"ReceiveMessage: %+v", err)
 			uuidChan <- 0
 		}
 		uuidChan <- uuid
@@ -96,8 +97,8 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 	case uuid := <-uuidChan:
 		return uuid
 	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveMessage", worker.ResponseTimeout)
+		jww.ERROR.Printf("[CH] Timed out after %s waiting for response from "+
+			"the worker about ReceiveMessage", worker.ResponseTimeout)
 	}
 
 	return 0
@@ -144,7 +145,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 	data, err := json.Marshal(msg)
 	if err != nil {
 		jww.ERROR.Printf(
-			"Could not JSON marshal payload for ReceiveReply: %+v", err)
+			"[CH] Could not JSON marshal payload for ReceiveReply: %+v", err)
 		return 0
 	}
 
@@ -153,8 +154,8 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to ReceiveReply: %+v", err)
+			jww.ERROR.Printf("[CH] Could not JSON unmarshal response to "+
+				"ReceiveReply: %+v", err)
 			uuidChan <- 0
 		}
 		uuidChan <- uuid
@@ -164,8 +165,8 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 	case uuid := <-uuidChan:
 		return uuid
 	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReply", worker.ResponseTimeout)
+		jww.ERROR.Printf("[CH] Timed out after %s waiting for response from "+
+			"the worker about ReceiveReply", worker.ResponseTimeout)
 	}
 
 	return 0
@@ -206,7 +207,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 	data, err := json.Marshal(msg)
 	if err != nil {
 		jww.ERROR.Printf(
-			"Could not JSON marshal payload for ReceiveReaction: %+v", err)
+			"[CH] Could not JSON marshal payload for ReceiveReaction: %+v", err)
 		return 0
 	}
 
@@ -215,8 +216,8 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 		var uuid uint64
 		err = json.Unmarshal(data, &uuid)
 		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to ReceiveReaction: %+v", err)
+			jww.ERROR.Printf("[CH] Could not JSON unmarshal response to "+
+				"ReceiveReaction: %+v", err)
 			uuidChan <- 0
 		}
 		uuidChan <- uuid
@@ -226,8 +227,8 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 	case uuid := <-uuidChan:
 		return uuid
 	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReply", worker.ResponseTimeout)
+		jww.ERROR.Printf("[CH] Timed out after %s waiting for response from "+
+			"the worker about ReceiveReply", worker.ResponseTimeout)
 	}
 
 	return 0
@@ -294,7 +295,7 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 	data, err := json.Marshal(msg)
 	if err != nil {
 		jww.ERROR.Printf(
-			"Could not JSON marshal payload for UpdateFromUUID: %+v", err)
+			"[CH] Could not JSON marshal payload for UpdateFromUUID: %+v", err)
 		return
 	}
 
@@ -338,8 +339,8 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 
 	data, err := json.Marshal(msg)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal payload for UpdateFromMessageID: %+v", err)
+		jww.ERROR.Printf("[CH] Could not JSON marshal payload for "+
+			"UpdateFromMessageID: %+v", err)
 		return 0
 	}
 
@@ -349,7 +350,7 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 			var uuid uint64
 			err = json.Unmarshal(data, &uuid)
 			if err != nil {
-				jww.ERROR.Printf("Could not JSON unmarshal response to "+
+				jww.ERROR.Printf("[CH] Could not JSON unmarshal response to "+
 					"UpdateFromMessageID: %+v", err)
 				uuidChan <- 0
 			}
@@ -360,8 +361,8 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	case uuid := <-uuidChan:
 		return uuid
 	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about UpdateFromMessageID", worker.ResponseTimeout)
+		jww.ERROR.Printf("[CH] Timed out after %s waiting for response from "+
+			"the worker about UpdateFromMessageID", worker.ResponseTimeout)
 	}
 
 	return 0
@@ -383,8 +384,8 @@ func (w *wasmModel) GetMessage(
 			var msg GetMessageMessage
 			err := json.Unmarshal(data, &msg)
 			if err != nil {
-				jww.ERROR.Printf(
-					"Could not JSON unmarshal response to GetMessage: %+v", err)
+				jww.ERROR.Printf("[CH] Could not JSON unmarshal response to "+
+					"GetMessage: %+v", err)
 			}
 			msgChan <- msg
 		})
@@ -421,4 +422,30 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 		return errors.Errorf("timed out after %s waiting for response from "+
 			"the worker about DeleteMessage", worker.ResponseTimeout)
 	}
+}
+
+// MuteUserMessage is JSON marshalled and sent to the worker for
+// [wasmModel.MuteUser].
+type MuteUserMessage struct {
+	ChannelID *id.ID            `json:"channelID"`
+	PubKey    ed25519.PublicKey `json:"pubKey"`
+	Unmute    bool              `json:"unmute"`
+}
+
+// MuteUser is called whenever a user is muted or unmuted.
+func (w *wasmModel) MuteUser(
+	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
+	msg := MuteUserMessage{
+		ChannelID: channelID,
+		PubKey:    pubKey,
+		Unmute:    unmute,
+	}
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		jww.ERROR.Printf("[CH] Could not marshal MuteUserMessage: %+v", err)
+		return
+	}
+
+	w.wm.SendMessage(MuteUserTag, data, nil)
 }

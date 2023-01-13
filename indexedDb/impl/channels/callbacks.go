@@ -10,6 +10,7 @@
 package main
 
 import (
+	"crypto/ed25519"
 	"encoding/json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -70,17 +71,18 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 	}
 
 	m.model, err = NewWASMEventModel(msg.Path, encryption,
-		m.messageReceivedCallback, m.storeDatabaseName, m.storeEncryptionStatus)
+		m.messageReceivedCallback, m.deletedMessageCallback, m.mutedUserCallback,
+		m.storeDatabaseName, m.storeEncryptionStatus)
 	if err != nil {
 		return []byte(err.Error()), nil
 	}
 	return []byte{}, nil
 }
 
-// messageReceivedCallback sends calls to the MessageReceivedCallback in the
-// main thread.
+// messageReceivedCallback sends calls to the channels.MessageReceivedCallback
+// in the main thread.
 //
-// storeEncryptionStatus adhere to the MessageReceivedCallback type.
+// storeEncryptionStatus adhere to the channels.MessageReceivedCallback type.
 func (m *manager) messageReceivedCallback(
 	uuid uint64, channelID *id.ID, update bool) {
 	// Package parameters for sending
@@ -91,13 +93,42 @@ func (m *manager) messageReceivedCallback(
 	}
 	data, err := json.Marshal(msg)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal MessageReceivedCallbackMessage: %+v", err)
+		jww.ERROR.Printf("Could not JSON marshal %T: %+v", msg, err)
 		return
 	}
 
 	// Send it to the main thread
 	m.mh.SendMessage(wChannels.MessageReceivedCallbackTag, data)
+}
+
+// deletedMessageCallback sends calls to the channels.DeletedMessageCallback in
+// the main thread.
+//
+// storeEncryptionStatus adhere to the channels.MessageReceivedCallback type.
+func (m *manager) deletedMessageCallback(messageID message.ID) {
+	m.mh.SendMessage(wChannels.DeletedMessageCallbackTag, messageID.Marshal())
+}
+
+// mutedUserCallback sends calls to the channels.MutedUserCallback in the main
+// thread.
+//
+// storeEncryptionStatus adhere to the channels.MessageReceivedCallback type.
+func (m *manager) mutedUserCallback(
+	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
+	// Package parameters for sending
+	msg := &wChannels.MuteUserMessage{
+		ChannelID: channelID,
+		PubKey:    pubKey,
+		Unmute:    unmute,
+	}
+	data, err := json.Marshal(msg)
+	if err != nil {
+		jww.ERROR.Printf("Could not JSON marshal %T: %+v", msg, err)
+		return
+	}
+
+	// Send it to the main thread
+	m.mh.SendMessage(wChannels.MutedUserCallbackTag, data)
 }
 
 // storeDatabaseName sends the database name to the main thread and waits for
@@ -394,6 +425,21 @@ func (m *manager) deleteMessageCB(data []byte) ([]byte, error) {
 	if err != nil {
 		return []byte(err.Error()), nil
 	}
+
+	return nil, nil
+}
+
+// muteUserCB is the callback for wasmModel.MuteUser. Always returns nil;
+// meaning, no response is supplied (or expected).
+func (m *manager) muteUserCB(data []byte) ([]byte, error) {
+	var msg wChannels.MuteUserMessage
+	err := json.Unmarshal(data, &msg)
+	if err != nil {
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
+	}
+
+	m.model.MuteUser(msg.ChannelID, msg.PubKey, msg.Unmute)
 
 	return nil, nil
 }

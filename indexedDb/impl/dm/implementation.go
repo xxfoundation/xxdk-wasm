@@ -12,7 +12,6 @@ package main
 import (
 	"crypto/ed25519"
 	"encoding/json"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	"strings"
 	"sync"
 	"syscall/js"
@@ -28,6 +27,7 @@ import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 )
 
 // wasmModel implements dm.EventModel interface, which uses the channels system
@@ -100,8 +100,7 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	parentErr := errors.New("failed to Receive")
 
 	// If there is no extant Conversation, create one.
-	_, err := impl.Get(
-		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
@@ -143,8 +142,7 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	parentErr := errors.New("failed to ReceiveText")
 
 	// If there is no extant Conversation, create one.
-	_, err := impl.Get(
-		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
@@ -188,8 +186,7 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	parentErr := errors.New("failed to ReceiveReply")
 
 	// If there is no extant Conversation, create one.
-	_, err := impl.Get(
-		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
@@ -233,8 +230,7 @@ func (w *wasmModel) ReceiveReaction(messageID, _ message.ID, nickname,
 	parentErr := errors.New("failed to ReceiveText")
 
 	// If there is no extant Conversation, create one.
-	_, err := impl.Get(
-		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)

@@ -10,14 +10,16 @@
 package main
 
 import (
+	"syscall/js"
+
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+
 	"gitlab.com/elixxir/client/v4/channels"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	"gitlab.com/xx_network/primitives/id"
-	"syscall/js"
+	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 )
 
 const (
@@ -29,11 +31,6 @@ const (
 	// runtime. Used for migration purposes.
 	currentVersion uint = 1
 )
-
-// MessageReceivedCallback is called any time a message is received or updated.
-//
-// update is true if the row is old and was edited.
-type MessageReceivedCallback func(uuid uint64, channelID *id.ID, update bool)
 
 // storeDatabaseNameFn matches storage.StoreIndexedDb so that the data can be
 // sent between the worker and main thread.
@@ -47,16 +44,22 @@ type storeEncryptionStatusFn func(
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
 func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback, storeDatabaseName storeDatabaseNameFn,
+	messageReceivedCB wChannels.MessageReceivedCallback,
+	deletedMessageCB wChannels.DeletedMessageCallback,
+	mutedUserCB wChannels.MutedUserCallback,
+	storeDatabaseName storeDatabaseNameFn,
 	storeEncryptionStatus storeEncryptionStatusFn) (channels.EventModel, error) {
 	databaseName := path + databaseSuffix
-	return newWASMModel(
-		databaseName, encryption, cb, storeDatabaseName, storeEncryptionStatus)
+	return newWASMModel(databaseName, encryption, messageReceivedCB,
+		deletedMessageCB, mutedUserCB, storeDatabaseName, storeEncryptionStatus)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback, storeDatabaseName storeDatabaseNameFn,
+	messageReceivedCB wChannels.MessageReceivedCallback,
+	deletedMessageCB wChannels.DeletedMessageCallback,
+	mutedUserCB wChannels.MutedUserCallback,
+	storeDatabaseName storeDatabaseNameFn,
 	storeEncryptionStatus storeEncryptionStatusFn) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()
@@ -115,7 +118,13 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 		jww.WARN.Printf("IndexedDb encryption disabled!")
 	}
 
-	wrapper := &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}
+	wrapper := &wasmModel{
+		db:                db,
+		cipher:            encryption,
+		receivedMessageCB: messageReceivedCB,
+		deletedMessageCB:  deletedMessageCB,
+		mutedUserCB:       mutedUserCB,
+	}
 
 	return wrapper, nil
 }
