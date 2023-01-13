@@ -10,11 +10,13 @@
 package channels
 
 import (
+	"crypto/ed25519"
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/channels"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
+	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/xx_network/primitives/id"
@@ -36,13 +38,24 @@ const (
 // update is true if the row is old and was edited.
 type MessageReceivedCallback func(uuid uint64, channelID *id.ID, update bool)
 
+// DeletedMessageCallback is called any time a message is deleted.
+type DeletedMessageCallback func(messageID message.ID)
+
+// MutedUserCallback is called any time a user is muted or unmuted. unmute is
+// true if the user has been unmuted and false if they have been muted.
+type MutedUserCallback func(
+	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool)
+
 // NewWASMEventModelBuilder returns an EventModelBuilder which allows
 // the channel manager to define the path but the callback is the same
 // across the board.
 func NewWASMEventModelBuilder(encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback) channels.EventModelBuilder {
+	messageReceivedCB MessageReceivedCallback,
+	deletedMessageCB DeletedMessageCallback,
+	mutedUserCB MutedUserCallback) channels.EventModelBuilder {
 	fn := func(path string) (channels.EventModel, error) {
-		return NewWASMEventModel(path, encryption, cb)
+		return NewWASMEventModel(
+			path, encryption, messageReceivedCB, deletedMessageCB, mutedUserCB)
 	}
 	return fn
 }
@@ -50,14 +63,19 @@ func NewWASMEventModelBuilder(encryption cryptoChannel.Cipher,
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
 func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback) (channels.EventModel, error) {
+	messageReceivedCB MessageReceivedCallback,
+	deletedMessageCB DeletedMessageCallback,
+	mutedUserCB MutedUserCallback) (channels.EventModel, error) {
 	databaseName := path + databaseSuffix
-	return newWASMModel(databaseName, encryption, cb)
+	return newWASMModel(databaseName,
+		encryption, messageReceivedCB, deletedMessageCB, mutedUserCB)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback) (*wasmModel, error) {
+	messageReceivedCB MessageReceivedCallback,
+	deletedMessageCB DeletedMessageCallback,
+	mutedUserCB MutedUserCallback) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := indexedDb.NewContext()
 	defer cancel()
@@ -122,7 +140,13 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	if err != nil {
 		return nil, err
 	}
-	wrapper := &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}
+	wrapper := &wasmModel{
+		db:                db,
+		cipher:            encryption,
+		receivedMessageCB: messageReceivedCB,
+		deletedMessageCB:  deletedMessageCB,
+		mutedUserCB:       mutedUserCB,
+	}
 
 	return wrapper, nil
 }
