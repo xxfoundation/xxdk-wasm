@@ -49,6 +49,7 @@ func (m *manager) registerCallbacks() {
 	m.mh.RegisterCallback(wChannels.UpdateFromMessageIDTag, m.updateFromMessageIDCB)
 	m.mh.RegisterCallback(wChannels.GetMessageTag, m.getMessageCB)
 	m.mh.RegisterCallback(wChannels.DeleteMessageTag, m.deleteMessageCB)
+	m.mh.RegisterCallback(wChannels.MuteUserTag, m.muteUserCB)
 }
 
 // newWASMEventModelCB is the callback for NewWASMEventModel. Returns an empty
