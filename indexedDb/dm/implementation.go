@@ -102,7 +102,8 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	parentErr := errors.New("failed to Receive")
 
 	// If there is no extant Conversation, create one.
-	_, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := indexedDb.Get(
+		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
@@ -144,7 +145,8 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	parentErr := errors.New("failed to ReceiveText")
 
 	// If there is no extant Conversation, create one.
-	_, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := indexedDb.Get(
+		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
@@ -188,7 +190,8 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	parentErr := errors.New("failed to ReceiveReply")
 
 	// If there is no extant Conversation, create one.
-	_, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := indexedDb.Get(
+		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
@@ -226,13 +229,14 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	return uuid
 }
 
-func (w *wasmModel) ReceiveReaction(messageID, reactionTo message.ID, nickname,
+func (w *wasmModel) ReceiveReaction(messageID, _ message.ID, nickname,
 	reaction string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveText")
 
 	// If there is no extant Conversation, create one.
-	_, err := indexedDb.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := indexedDb.Get(
+		w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), indexedDb.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
