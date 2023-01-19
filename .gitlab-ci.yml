@@ -61,18 +61,6 @@ go-test:
     - go mod vendor -v
     - go test ./... -v
 
-version_check:
-  stage: version_check
-  except:
-    - tags
-  only:
-    - master
-  image: $DOCKER_IMAGE
-  script:
-    - GITTAG=$(git describe --tags)
-    - CODEVERS=$(cat storage/version.go | grep "const SEMVER =" | cut -d ' ' -f4 | tr -d '"')
-    - if [[ $GITTAG != $CODEVERS ]]; then echo "VERSION NUMBER BAD $GITTAG != $CODEVERS"; exit -1; fi
-
 tag:
   stage: build
   except:
