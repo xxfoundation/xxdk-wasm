@@ -53,8 +53,8 @@ var sanitizeEmojis = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// Initialize the logging if set
-		if viper.GetInt(logLevelFlag) != 0 {
-			initLog(1, "emoji-sanitization.log")
+		if logFile := viper.GetString(logFileFlag); logFile != "" {
+			initLog(viper.GetInt(logFileFlag), logFile)
 		}
 
 		// Retrieve emoji-mart file from URL
@@ -110,9 +110,8 @@ func init() {
 	}
 
 	sanitizeEmojis.PersistentFlags().StringP(logFileFlag, "l", "",
-		"Path to the log output path. If logLevel is not set, this flag "+
-			"wll be ignored. By default, this flag is not set so a log will not "+
-			"be created unless specified.")
+		"Path to the log output path. By default, this flag is not set "+
+			"so a log will not be created unless specified.")
 	err = viper.BindPFlag(logFileFlag, sanitizeEmojis.PersistentFlags().
 		Lookup(logFileFlag))
 	if err != nil {
@@ -121,8 +120,7 @@ func init() {
 	}
 
 	sanitizeEmojis.PersistentFlags().IntP(logLevelFlag, "v", 0,
-		"Verbosity level of logging. If not set, this defaults to 0 and will "+
-			"not create logs. ")
+		"Verbosity level of logging. This defaults to 0. ")
 	err = viper.BindPFlag(logLevelFlag, sanitizeEmojis.PersistentFlags().
 		Lookup(logLevelFlag))
 	if err != nil {

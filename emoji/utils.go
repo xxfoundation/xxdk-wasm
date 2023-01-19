@@ -15,7 +15,7 @@ import (
 )
 
 // initLog will enable JWW logging.
-func initLog(threshold uint, logPath string) {
+func initLog(threshold int, logPath string) {
 	if logPath != "-" && logPath != "" {
 		// Disable stdout output
 		jww.SetStdoutOutput(io.Discard)
