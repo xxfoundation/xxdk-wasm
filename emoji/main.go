@@ -57,12 +57,16 @@ var sanitizeEmojis = &cobra.Command{
 			initLog(viper.GetInt(logFileFlag), logFile)
 		}
 
+		jww.INFO.Printf("Retrieving emoji-mart JSON file...")
+
 		// Retrieve emoji-mart file from URL
 		resp, err := http.Get(emojiMartUrl)
 		if err != nil {
 			jww.FATAL.Panicf(
 				"Failed to retrieve emoji-mart JSON from URL: %+v", err)
 		}
+
+		jww.INFO.Printf("Reading emoji-mart JSON file into bytes...")
 
 		// Read HTTP response into byte slice
 		var buf bytes.Buffer
@@ -75,12 +79,16 @@ var sanitizeEmojis = &cobra.Command{
 		}
 		emojiMartJson := buf.Bytes()
 
+		jww.INFO.Printf("Sanitizing emoji-mart JSON...")
+
 		// Sanitize the JSON file
 		backendSet := NewSet()
 		sanitizedJSON, err := backendSet.SanitizeEmojiMartSet(emojiMartJson)
 		if err != nil {
 			jww.FATAL.Panicf("Failed to sanitize emoji-mart list: %+v", err)
 		}
+
+		jww.INFO.Printf("Outputting sanitized emoji JSON to file...")
 
 		// Write sanitized JSON to file
 		sanitizedOutputFilePath := viper.GetString(sanitizedOutputFlag)
