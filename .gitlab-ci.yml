@@ -36,6 +36,27 @@ build:
     paths:
       - release/
 
+go-test:
+  stage: test
+  except:
+    - tags
+  script:
+    - go mod vendor -v
+    - go test ./... -v
+
+emoji-update:
+  stage: build
+  except:
+    - tags
+  script:
+    - go mod vendor -v
+    - mkdir -p release
+    - go run -ldflags '-w -s' ./emoji/... -o emojiSet.json -l - -v 2
+    - cp emojiSet.json release/
+  artifacts:
+    paths:
+      - release/
+
 wasm-test:
   stage: test
   except:
@@ -52,27 +73,6 @@ wasm-test:
     - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)
     - GOOS=js GOARCH=wasm go test ./indexedDb/... -v
     - GOOS=js GOARCH=wasm go test ./... -v
-
-go-test:
-  stage: test
-  except:
-    - tags
-  script:
-    - go mod vendor -v
-    - go test ./... -v
-
-emoji-update:
-  stage: build
-  except:
-    - tags
-  script:
-    - go mod vendor -v
-    - mkdir -p release
-    - go run -ldflags '-w -s' ./emoji/... -o emojiSet.json
-    - cp emojiSet.json release/
-  artifacts:
-    paths:
-      - release/
 
 version_check:
   stage: version_check
