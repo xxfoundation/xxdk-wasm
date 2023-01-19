@@ -112,6 +112,10 @@ func main() {
 	js.Global().Set("Login", js.FuncOf(wasm.Login))
 	js.Global().Set("LoginEphemeral", js.FuncOf(wasm.LoginEphemeral))
 
+	// wasm/emoji.go
+	js.Global().Set("SupportedEmojis", js.FuncOf(wasm.SupportedEmojis))
+	js.Global().Set("ValidateReaction", js.FuncOf(wasm.ValidateReaction))
+
 	// wasm/errors.go
 	js.Global().Set("CreateUserFriendlyErrorMessage",
 		js.FuncOf(wasm.CreateUserFriendlyErrorMessage))
