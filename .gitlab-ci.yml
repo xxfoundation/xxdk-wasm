@@ -21,7 +21,7 @@ stages:
   - build
   - tag
   - doc-update
-  - version_check
+  - combine_artefacts
 
 build:
   stage: build
@@ -74,17 +74,24 @@ wasm-test:
     - GOOS=js GOARCH=wasm go test ./indexedDb/... -v
     - GOOS=js GOARCH=wasm go test ./... -v
 
-version_check:
-  stage: version_check
+combine_artefacts:
+  stage: combine_artefacts
   except:
     - tags
-  only:
-    - master
   image: $DOCKER_IMAGE
   script:
-    - GITTAG=$(git describe --tags)
-    - CODEVERS=$(cat storage/version.go | grep "const SEMVER =" | cut -d ' ' -f4 | tr -d '"')
-    - if [[ $GITTAG != $CODEVERS ]]; then echo "VERSION NUMBER BAD $GITTAG != $CODEVERS"; exit -1; fi
+    - PIPELINE_JOBS=$(curl --header "PRIVATE-TOKEN: $GITLAB_TOKEN" $CI_SERVER_URL/api/v4/projects/$PIPELINE_JOBS/pipelines/$CI_PIPELINE_ID/jobs)
+    - BUILD_JOB_JSON=$(echo $WASM_PIPELINE_JOB | jq '.[] | select(.name=="build")')
+    - EMOJI_UPDATE_JOB_JSON=$(echo $PIPELINE_JOBS | jq '.[] | select(.name=="emoji-update")')
+
+    - BUILD_JOB_ID=$(echo $BUILD_JOB_JSON | jq -r '.["id"]')
+    - EMOJI_UPDATE_JOB_ID=$(echo $EMOJI_UPDATE_JOB_JSON | jq -r '.["id"]')
+
+    - mkdir release
+
+    - curl --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --output release/wasm_exec.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/wasm_exec.js
+    - curl --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --output release/xxdk.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/xxdk.wasm
+    - curl --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --output release/emojiSet.json $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$EMOJI_UPDATE_JOB_ID/artifacts/release/emojiSet.json
 
 tag:
   stage: build
