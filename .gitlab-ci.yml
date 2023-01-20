@@ -81,6 +81,7 @@ combine_artefacts:
   image: $DOCKER_IMAGE
   script:
     - 'PIPELINE_JOBS=$(curl --header "PRIVATE-TOKEN: $GITLAB_TOKEN" $CI_SERVER_URL/api/v4/projects/$PIPELINE_JOBS/pipelines/$CI_PIPELINE_ID/jobs)'
+    - echo $PIPELINE_JOBS
     - BUILD_JOB_JSON=$(echo $WASM_PIPELINE_JOB | jq '.[] | select(.name=="build")')
     - EMOJI_UPDATE_JOB_JSON=$(echo $PIPELINE_JOBS | jq '.[] | select(.name=="emoji-update")')
 
