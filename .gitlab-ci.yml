@@ -89,9 +89,9 @@ combine_artefacts:
 
     - mkdir release
 
-    - curl --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --output release/wasm_exec.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/wasm_exec.js
-    - curl --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --output release/xxdk.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/xxdk.wasm
-    - curl --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --output release/emojiSet.json $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$EMOJI_UPDATE_JOB_ID/artifacts/release/emojiSet.json
+    - 'curl --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --output release/wasm_exec.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/wasm_exec.js'
+    - 'curl --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --output release/xxdk.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/xxdk.wasm'
+    - 'curl --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --output release/emojiSet.json $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$EMOJI_UPDATE_JOB_ID/artifacts/release/emojiSet.json'
 
 tag:
   stage: build
