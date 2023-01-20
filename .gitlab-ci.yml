@@ -33,6 +33,7 @@ build:
     - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -o release/xxdk.wasm main.go
     - cp wasm_exec.js release/
   artifacts:
+    expire_in: 1 hour
     paths:
       - release/
 
@@ -54,6 +55,7 @@ emoji-update:
     - go run -ldflags '-w -s' ./emoji/... -o emojiSet.json -v 2
     - cp emojiSet.json release/
   artifacts:
+    expire_in: 1 hour
     paths:
       - release/
 
@@ -94,6 +96,9 @@ combine_artefacts:
     - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/wasm_exec.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/wasm_exec.js'
     - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/xxdk.wasm'
     - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/emojiSet.json $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$EMOJI_UPDATE_JOB_ID/artifacts/release/emojiSet.json'
+  artifacts:
+  paths:
+    - release/
 
 tag:
   stage: build
