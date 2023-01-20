@@ -89,7 +89,7 @@ combine_artefacts:
     - BUILD_JOB_ID=$(echo $BUILD_JOB_JSON | jq -r '.["id"]')
     - EMOJI_UPDATE_JOB_ID=$(echo $EMOJI_UPDATE_JOB_JSON | jq -r '.["id"]')
 
-    - mkdir release
+    - mkdir -p release
 
     - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/wasm_exec.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/wasm_exec.js'
     - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/xxdk.wasm'
