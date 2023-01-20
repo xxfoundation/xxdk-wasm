@@ -55,15 +55,18 @@ func (s *Set) SanitizeEmojiMartSet(frontendEmojiSetJson []byte) ([]byte, error) 
 			"failed to unmarshal emoji-mart set JSON: %+v", err)
 	}
 
-	jww.INFO.Printf("[SanitizeEmojiMartSet] Finding incompatible emojis...")
+	jww.INFO.Printf(
+		"Finding incompatible emojis and replacing mismatched codepoints.")
 
 	// Find all incompatible emojis in the front end set
 	emojisToRemove := s.findIncompatibleEmojis(&frontEndEmojiSet)
 
-	jww.INFO.Printf("[SanitizeEmojiMartSet] Removing incompatible emojis...")
+	jww.INFO.Printf("Removing incompatible emojis.")
 
 	// Remove all incompatible emojis from the set
 	removeIncompatibleEmojis(&frontEndEmojiSet, emojisToRemove)
+
+	jww.INFO.Printf("Removed %d incompatible codepoints.", len(emojisToRemove))
 
 	return json.Marshal(frontEndEmojiSet)
 }
@@ -79,9 +82,14 @@ func (s *Set) findIncompatibleEmojis(set *emojiMartSet) (emojisToRemove []emojiI
 			// Determine if the emoji's codepoint should be replaced or removed
 			replacement, replace := s.replace(Skin.Unified)
 			if replace {
+				jww.TRACE.Printf("Replaced codepoint %q with %q for emoji %q",
+					Skin.Unified, replacement, id)
 				newSkins = append(newSkins, replacement)
 			} else if !s.remove(Skin.Unified) {
 				newSkins = append(newSkins, Skin)
+			} else {
+				jww.TRACE.Printf("Removed codepoint %q from emoji %q",
+					Skin.Unified, id)
 			}
 		}
 
@@ -93,6 +101,7 @@ func (s *Set) findIncompatibleEmojis(set *emojiMartSet) (emojisToRemove []emojiI
 		} else {
 			// If all skins have been removed, then mark the emoji for removal
 			emojisToRemove = append(emojisToRemove, id)
+			jww.DEBUG.Printf("All skins removed for emoji %q", id)
 		}
 	}
 
@@ -102,8 +111,12 @@ func (s *Set) findIncompatibleEmojis(set *emojiMartSet) (emojisToRemove []emojiI
 // removeIncompatibleEmojis removes all the emojis in emojisToRemove from the
 // emojiMartSet set.
 func removeIncompatibleEmojis(set *emojiMartSet, emojisToRemove []emojiID) {
+	jww.DEBUG.Printf(
+		"Removing %d emojis: %s", len(emojisToRemove), emojisToRemove)
+
 	// Remove all incompatible emojis from the emojiMartSet.Emojis list
 	for _, char := range emojisToRemove {
+		jww.TRACE.Printf("Removing %q from emojiMartSet.Emojis", char)
 		delete(set.Emojis, char)
 	}
 
@@ -115,6 +128,8 @@ func removeIncompatibleEmojis(set *emojiMartSet, emojisToRemove []emojiID) {
 			for _, char := range emojisToRemove {
 				if cat.Emojis[i] == char {
 					cat.Emojis = append(cat.Emojis[:i], cat.Emojis[i+1:]...)
+					jww.TRACE.Printf(
+						"Removing %q from emojiMartSet.Categories", char)
 				}
 			}
 		}
@@ -125,6 +140,8 @@ func removeIncompatibleEmojis(set *emojiMartSet, emojisToRemove []emojiID) {
 		for _, removedId := range emojisToRemove {
 			if id == removedId {
 				delete(set.Aliases, alias)
+				jww.TRACE.Printf(
+					"Removing %q from emojiMartSet.Aliases", alias)
 			}
 		}
 	}

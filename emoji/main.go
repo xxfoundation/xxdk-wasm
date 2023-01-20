@@ -12,8 +12,9 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
-	"github.com/spf13/viper"
 	"gitlab.com/xx_network/primitives/utils"
+	"io"
+	"log"
 	"net/http"
 	"os"
 )
@@ -25,25 +26,24 @@ import (
 // URL should be updated if new sets become available.
 const emojiMartUrl = "https://raw.githubusercontent.com/missive/emoji-mart/main/packages/emoji-mart-data/sets/14/native.json"
 
-// Flag constants.
-const (
-	sanitizedOutputFlag = "output"
-	logLevelFlag        = "logLevel"
-	logFileFlag         = "logFile"
+// Flag variables.
+var (
+	requestURL, outputPath, logFile string
+	logLevel                        int
 )
 
 func main() {
-	if err := sanitizeEmojis.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 }
 
-// sanitizeEmojis Downloads the emoji file (from emoji-mart) and sanitizes that
+// Downloads the emoji file (from emoji-mart) and sanitizes that
 // list. Sanitization removes all emojis not supported by the backend. The
-// sanitized JSON is returned via a file specified by the user. Refer to the flags
-// for details.
-var sanitizeEmojis = &cobra.Command{
+// sanitized JSON is returned via a file specified by the user. Refer to the
+// flags for details.
+var cmd = &cobra.Command{
 	Use: "sanitizeEmojis",
 	Short: "Downloads the emoji file (from emoji-mart) and sanitizes that " +
 		"list. Sanitization removes all emojis not supported by the backend. " +
@@ -53,20 +53,22 @@ var sanitizeEmojis = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// Initialize the logging if set
-		if logFile := viper.GetString(logFileFlag); logFile != "" {
-			initLog(viper.GetInt(logFileFlag), logFile)
+		if logFile != "" {
+			initLog(logLevel, logFile)
 		}
 
-		jww.INFO.Printf("Retrieving emoji-mart JSON file...")
-
 		// Retrieve emoji-mart file from URL
-		resp, err := http.Get(emojiMartUrl)
+		jww.INFO.Printf("Requesting file %s", requestURL)
+		resp, err := http.Get(requestURL)
 		if err != nil {
 			jww.FATAL.Panicf(
 				"Failed to retrieve emoji-mart JSON from URL: %+v", err)
+		} else if resp.StatusCode != http.StatusOK {
+			jww.FATAL.Panicf("Bad status: %s", resp.Status)
 		}
 
-		jww.INFO.Printf("Reading emoji-mart JSON file into bytes...")
+		jww.INFO.Printf("Received HTTP response: %s", resp.Status)
+		jww.DEBUG.Printf("Response: %+v", resp)
 
 		// Read HTTP response into byte slice
 		var buf bytes.Buffer
@@ -79,7 +81,7 @@ var sanitizeEmojis = &cobra.Command{
 		}
 		emojiMartJson := buf.Bytes()
 
-		jww.INFO.Printf("Sanitizing emoji-mart JSON...")
+		jww.INFO.Printf("Read %d bytes of JSON file", len(emojiMartJson))
 
 		// Sanitize the JSON file
 		backendSet := NewSet()
@@ -88,52 +90,61 @@ var sanitizeEmojis = &cobra.Command{
 			jww.FATAL.Panicf("Failed to sanitize emoji-mart list: %+v", err)
 		}
 
-		jww.INFO.Printf("Outputting sanitized emoji JSON to file...")
+		jww.INFO.Printf("Sanitised JSON file.")
 
 		// Write sanitized JSON to file
-		sanitizedOutputFilePath := viper.GetString(sanitizedOutputFlag)
-		err = utils.WriteFileDef(sanitizedOutputFilePath, sanitizedJSON)
+		err = utils.WriteFileDef(outputPath, sanitizedJSON)
 		if err != nil {
 			jww.FATAL.Panicf(
 				"Failed to write sanitized emojis to filepath %s: %+v",
-				sanitizedOutputFilePath, err)
+				outputPath, err)
 		}
+
+		jww.INFO.Printf("Wrote sanitised JSON file to %s", outputPath)
 	},
 }
 
-// init is the initialization function for Cobra which defines commands
-// and flags.
+// init is the initialization function for Cobra which defines flags.
 func init() {
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-	sanitizeEmojis.PersistentFlags().StringP(sanitizedOutputFlag, "o",
-		"output.json",
-		"File path that the sanitized JSON file will be outputted to.")
-	err := viper.BindPFlag(sanitizedOutputFlag, sanitizeEmojis.PersistentFlags().
-		Lookup(sanitizedOutputFlag))
-	if err != nil {
-		jww.FATAL.Panicf(
-			"Failed to bind pf flag to %q: %+v", sanitizedOutputFlag, err)
+	cmd.Flags().StringVarP(&requestURL, "url", "u", emojiMartUrl,
+		"URL to download emoji-mart JSON file.")
+	cmd.Flags().StringVarP(&outputPath, "output", "o", "output.json",
+		"Output JSON file path.")
+	cmd.Flags().StringVarP(&logFile, "log", "l", "-",
+		"Log output path. By default, logs are printed to stdout. "+
+			"To disable logging, set this to empty.")
+	cmd.Flags().IntVarP(&logLevel, "logLevel", "v", 0,
+		"Verbosity level of logging. 0 = INFO, 1 = DEBUG, 2 = TRACE")
+}
+
+// initLog will enable JWW logging.
+func initLog(threshold int, logPath string) {
+	if logPath != "-" && logPath != "" {
+		// Disable stdout output
+		jww.SetStdoutOutput(io.Discard)
+
+		// Use log file
+		logOutput, err :=
+			os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			panic(err)
+		}
+		jww.SetLogOutput(logOutput)
 	}
 
-	sanitizeEmojis.PersistentFlags().StringP(logFileFlag, "l", "",
-		"Path to the log output path. By default, this flag is not set "+
-			"so a log will not be created unless specified.")
-	err = viper.BindPFlag(logFileFlag, sanitizeEmojis.PersistentFlags().
-		Lookup(logFileFlag))
-	if err != nil {
-		jww.FATAL.Panicf(
-			"Failed to bind pf flag to %q: %+v", logFileFlag, err)
+	if threshold > 1 {
+		jww.SetStdoutThreshold(jww.LevelTrace)
+		jww.SetLogThreshold(jww.LevelTrace)
+		jww.SetFlags(log.LstdFlags | log.Lmicroseconds)
+		jww.INFO.Printf("log level set to: %s", jww.LevelTrace)
+	} else if threshold == 1 {
+		jww.SetStdoutThreshold(jww.LevelDebug)
+		jww.SetLogThreshold(jww.LevelDebug)
+		jww.SetFlags(log.LstdFlags | log.Lmicroseconds)
+		jww.INFO.Printf("log level set to: %s", jww.LevelDebug)
+	} else {
+		jww.SetStdoutThreshold(jww.LevelInfo)
+		jww.SetLogThreshold(jww.LevelInfo)
+		jww.INFO.Printf("log level set to: %s", jww.LevelInfo)
 	}
-
-	sanitizeEmojis.PersistentFlags().IntP(logLevelFlag, "v", 0,
-		"Verbosity level of logging. This defaults to 0. ")
-	err = viper.BindPFlag(logLevelFlag, sanitizeEmojis.PersistentFlags().
-		Lookup(logLevelFlag))
-	if err != nil {
-		jww.FATAL.Panicf(
-			"Failed to bind pf flag to %q: %+v", logLevelFlag, err)
-	}
-
 }
