@@ -13,8 +13,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/armon/circbuf"
 	"github.com/pkg/errors"
-	"github.com/smallnest/ringbuffer"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
@@ -26,27 +26,14 @@ import (
 )
 
 const (
-	// defaultInitThreshold is the log threshold used for the initial log before
+	// DefaultInitThreshold is the log threshold used for the initial log before
 	// any logging options is set.
-	defaultInitThreshold = jww.LevelTrace
+	DefaultInitThreshold = jww.LevelTrace
 
 	// logListenerChanSize is the size of the listener channel that stores log
 	// messages before they are written.
-	logListenerChanSize = 250
+	logListenerChanSize = 1500
 )
-
-// logger is the global that all jwalterweatherman logging is sent to.
-var logger *Logger
-
-func init() {
-	logger = InitLogFile()
-}
-
-// GetLogger returns the Logger object, used to manager where logging is
-// recorded.
-func GetLogger() *Logger {
-	return logger
-}
 
 // List of tags that can be used when sending a message or registering a handler
 // to receive a message.
@@ -57,6 +44,9 @@ const (
 	GetFileExtTag worker.Tag = "GetFileExt"
 	SizeTag       worker.Tag = "Size"
 )
+
+// logger is the global that all jwalterweatherman logging is sent to.
+var logger *Logger
 
 // Logger manages the recording of jwalterweatherman logs. It can write logs to
 // a local, in-memory buffer or to an external worker.
@@ -69,28 +59,48 @@ type Logger struct {
 	mode        atomic.Uint32
 	processQuit chan struct{}
 
-	rb *ringbuffer.RingBuffer
+	cb *circbuf.Buffer
 	wm *worker.Manager
 }
 
-// InitLogFile creates a new Logger that begins storing the first 250 log
-// entries. If either the log file or log worker is enabled, then these logs are
-// redirected to the set destination. If the channel fills up with no log
-// recorder enabled, then the listener is disabled.
-func InitLogFile() *Logger {
+// InitLogger initializes the logger. Include this in the init function in main.
+func InitLogger() *Logger {
+	logger = NewLogger()
+	return logger
+}
+
+// GetLogger returns the Logger object, used to manager where logging is
+// recorded.
+func GetLogger() *Logger {
+	return logger
+}
+
+// NewLogger creates a new Logger that begins storing the first
+// DefaultInitThreshold log entries. If either the log file or log worker is
+// enabled, then these logs are redirected to the set destination. If the
+// channel fills up with no log recorder enabled, then the listener is disabled.
+func NewLogger() *Logger {
+	lf := newLogger()
+
+	// Add the log listener
+	lf.logListenerID = AddLogListener(lf.Listen)
+
+	jww.INFO.Printf("[LOG] Enabled initial log file listener in %s with ID %d "+
+		"at threshold %s that can store %d entries",
+		lf.getMode(), lf.logListenerID, lf.Threshold(), cap(lf.listenChan))
+
+	return lf
+}
+
+// newLogger initialises a Logger without adding it as a log listener.
+func newLogger() *Logger {
 	lf := &Logger{
-		threshold:   defaultInitThreshold,
+		threshold:   DefaultInitThreshold,
 		listenChan:  make(chan []byte, logListenerChanSize),
 		mode:        atomic.Uint32{},
 		processQuit: make(chan struct{}),
 	}
 	lf.setMode(initMode)
-
-	// Add the log listener
-	lf.logListenerID = AddLogListener(lf.Listen)
-
-	jww.INFO.Printf("Enabled initial log file listener at threshold %s that "+
-		"can store %d entries", lf.threshold, len(lf.listenChan))
 
 	return lf
 }
@@ -101,31 +111,25 @@ func (l *Logger) LogToFile(threshold jww.Threshold, maxLogFileSize int) error {
 	if err != nil {
 		return err
 	}
-	l.rb = ringbuffer.New(maxLogFileSize)
 
-	go l.processFileLog(l.processQuit)
+	b, err := circbuf.NewBuffer(int64(maxLogFileSize))
+	if err != nil {
+		return err
+	}
+	l.cb = b
 
-	return nil
-}
-
-// processFileLog processes the log messages sent to the listener channel and
-// writes them to the local ring buffer.
-func (l *Logger) processFileLog(quit chan struct{}) {
-	jww.INFO.Printf("Starting log file processing thread.")
-
-	for {
-		select {
-		case <-quit:
-			jww.INFO.Printf("Stopping log file processing thread.")
-			return
-		case p := <-l.listenChan:
-			_, err := l.rb.Write(p)
-			if err != nil {
-				jww.ERROR.Printf(
-					"Failed to write log entry to ring buffer: %+v", err)
-			}
+	sendLog := func(p []byte) {
+		if n, err2 := l.cb.Write(p); err2 != nil {
+			jww.ERROR.Printf(
+				"[LOG] Error writing log to circular buffer: %+v", err2)
+		} else if n != len(p) {
+			jww.ERROR.Printf(
+				"[LOG] Wrote %d bytes when %d bytes expected", n, len(p))
 		}
 	}
+	go l.processLog(workerMode, sendLog, l.processQuit)
+
+	return nil
 }
 
 // LogToFileWorker starts a new worker that begins listening for logs and
@@ -148,7 +152,7 @@ func (l *Logger) LogToFileWorker(threshold jww.Threshold, maxLogFileSize int,
 	// Register the callback used by the Javascript to request the log file.
 	// This prevents an error print when GetFileExtTag is not registered.
 	l.wm.RegisterCallback(GetFileExtTag, func([]byte) {
-		jww.DEBUG.Print("[WW] Received file requested from external " +
+		jww.DEBUG.Print("[LOG] Received file requested from external " +
 			"Javascript. Ignoring file.")
 	})
 
@@ -178,25 +182,26 @@ func (l *Logger) LogToFileWorker(threshold jww.Threshold, maxLogFileSize int,
 			"file in worker to initialize", worker.ResponseTimeout)
 	}
 
-	jww.INFO.Printf("Initialized log to file web worker %s.", workerName)
+	jww.INFO.Printf("[LOG] Initialized log to file web worker %s.", workerName)
 
-	go l.processWorkerLog(l.processQuit)
+	sendLog := func(p []byte) { l.wm.SendMessage(WriteLogTag, p, nil) }
+	go l.processLog(workerMode, sendLog, l.processQuit)
 
 	return nil
 }
 
-// processWorkerLog processes the log messages sent to the listener channel and
-// sends them to the worker to be logged.
-func (l *Logger) processWorkerLog(quit chan struct{}) {
-	jww.INFO.Printf("Starting worker log file processing thread.")
+// processLog processes the log messages sent to the listener channel and sends
+// them to the appropriate recorder.
+func (l *Logger) processLog(m mode, sendLog func(p []byte), quit chan struct{}) {
+	jww.INFO.Printf("[LOG] Starting log file processing thread in %s.", m)
 
 	for {
 		select {
 		case <-quit:
-			jww.INFO.Printf("Stopping worker log file processing thread.")
+			jww.INFO.Printf("[LOG] Stopping log file processing thread.")
 			return
 		case p := <-l.listenChan:
-			l.wm.SendMessage(WriteLogTag, p, nil)
+			go sendLog(p)
 		}
 	}
 }
@@ -215,8 +220,8 @@ func (l *Logger) prepare(
 	l.maxLogFileSize = maxLogFileSize
 	l.setMode(m)
 
-	msg := fmt.Sprintf("Outputting log to file in %s of max size %d with "+
-		"level %s", m, l.MaxSize(), l.Threshold())
+	msg := fmt.Sprintf("[LOG] Outputting log to file in %s of max size %d "+
+		"with level %s", m, l.MaxSize(), l.Threshold())
 	switch l.Threshold() {
 	case jww.LevelTrace:
 		fallthrough
@@ -241,44 +246,24 @@ func (l *Logger) prepare(
 // If the log worker is running, it is terminated. Once logging is stopped, it
 // cannot be resumed the log file cannot be recovered.
 func (l *Logger) StopLogging() {
+	jww.DEBUG.Printf("[LOG] Removing log listener with ID %d", l.logListenerID)
 	RemoveLogListener(l.logListenerID)
 
 	switch l.getMode() {
 	case workerMode:
-		l.wm.Terminate()
+		go l.wm.Terminate()
+		jww.DEBUG.Printf("[LOG] Terminated log worker.")
 	case fileMode:
-		l.rb.Reset()
+		jww.DEBUG.Printf("[LOG] Reset circular buffer.")
+		l.cb.Reset()
 	}
 
 	select {
 	case l.processQuit <- struct{}{}:
+		jww.DEBUG.Printf("[LOG] Sent quit channel to log process.")
 	default:
-		jww.ERROR.Printf("Failed to stop quit processes.")
+		jww.DEBUG.Printf("[LOG] Failed to stop log processes.")
 	}
-}
-
-// Listen is called for every logging event. This function adheres to the
-// [jwalterweatherman.LogListener] type.
-func (l *Logger) Listen(t jww.Threshold) io.Writer {
-	if t < l.threshold {
-		return nil
-	}
-
-	return l
-}
-
-// Write sends the bytes to the listener channel. It always returns the length
-// of p and a nil error.
-func (l *Logger) Write(p []byte) (n int, err error) {
-	select {
-	case l.listenChan <- p:
-	default:
-		jww.ERROR.Printf("Logger channel filled. Log file recording stopping.")
-		l.StopLogging()
-		return 0, errors.Errorf(
-			"Logger channel filled. Log file recording stopping.")
-	}
-	return len(p), nil
 }
 
 // GetFile returns the entire log file.
@@ -288,7 +273,7 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 func (l *Logger) GetFile() []byte {
 	switch l.getMode() {
 	case fileMode:
-		return l.rb.Bytes()
+		return l.cb.Bytes()
 	case workerMode:
 		fileChan := make(chan []byte)
 		l.wm.SendMessage(GetFileTag, nil, func(data []byte) { fileChan <- data })
@@ -297,8 +282,8 @@ func (l *Logger) GetFile() []byte {
 		case file := <-fileChan:
 			return file
 		case <-time.After(worker.ResponseTimeout):
-			jww.FATAL.Panicf("Timed out after %s waiting for log file from "+
-				"worker", worker.ResponseTimeout)
+			jww.FATAL.Panicf("[LOG] Timed out after %s waiting for log "+
+				"file from worker", worker.ResponseTimeout)
 			return nil
 		}
 	default:
@@ -323,7 +308,7 @@ func (l *Logger) MaxSize() int {
 func (l *Logger) Size() int {
 	switch l.getMode() {
 	case fileMode:
-		return l.rb.Length()
+		return int(l.cb.Size())
 	case workerMode:
 		sizeChan := make(chan []byte)
 		l.wm.SendMessage(SizeTag, nil, func(data []byte) { sizeChan <- data })
@@ -332,13 +317,42 @@ func (l *Logger) Size() int {
 		case data := <-sizeChan:
 			return int(jww.Threshold(binary.LittleEndian.Uint64(data)))
 		case <-time.After(worker.ResponseTimeout):
-			jww.FATAL.Panicf("Timed out after %s waiting for log file size "+
-				"from worker", worker.ResponseTimeout)
+			jww.FATAL.Panicf("[LOG] Timed out after %s waiting for log "+
+				"file size from worker", worker.ResponseTimeout)
 			return 0
 		}
 	default:
 		return 0
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// JWW Listener                                                               //
+////////////////////////////////////////////////////////////////////////////////
+
+// Listen is called for every logging event. This function adheres to the
+// [jwalterweatherman.LogListener] type.
+func (l *Logger) Listen(t jww.Threshold) io.Writer {
+	if t < l.threshold {
+		return nil
+	}
+
+	return l
+}
+
+// Write sends the bytes to the listener channel. It always returns the length
+// of p and a nil error. This function adheres to the io.Writer interface.
+func (l *Logger) Write(p []byte) (n int, err error) {
+	select {
+	case l.listenChan <- append([]byte{}, p...):
+	default:
+		jww.ERROR.Printf(
+			"[LOG] Logger channel filled. Log file recording stopping.")
+		l.StopLogging()
+		return 0, errors.Errorf(
+			"Logger channel filled. Log file recording stopping.")
+	}
+	return len(p), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -354,12 +368,15 @@ const (
 	workerMode
 )
 
+func (l *Logger) setMode(m mode) { l.mode.Store(uint32(m)) }
+func (l *Logger) getMode() mode  { return mode(l.mode.Load()) }
+
 // String returns a human-readable representation of the mode for logging and
 // debugging. This function adheres to the fmt.Stringer interface.
 func (m mode) String() string {
 	switch m {
 	case initMode:
-		return "uninitialized"
+		return "uninitialized mode"
 	case fileMode:
 		return "file mode"
 	case workerMode:
@@ -368,9 +385,6 @@ func (m mode) String() string {
 		return "invalid mode: " + strconv.Itoa(int(m))
 	}
 }
-
-func (l *Logger) setMode(m mode) { l.mode.Store(uint32(m)) }
-func (l *Logger) getMode() mode  { return mode(l.mode.Load()) }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Javascript Bindings                                                        //
@@ -458,7 +472,7 @@ func (l *Logger) LogToFileWorkerJS(_ js.Value, args []js.Value) any {
 // listener. If the log worker is running, it is terminated. Once logging is
 // stopped, it cannot be resumed the log file cannot be recovered.
 func (l *Logger) StopLoggingJS(js.Value, []js.Value) any {
-	go l.StopLogging()
+	l.StopLogging()
 
 	return nil
 }

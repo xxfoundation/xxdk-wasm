@@ -36,8 +36,8 @@ type workerLogFile struct {
 }
 
 func main() {
-	fmt.Println("[WW] Starting xxDK WebAssembly Log Worker.")
-	jww.INFO.Print("[WW] Starting xxDK WebAssembly Log Worker.")
+	fmt.Println("[LOG] Starting xxDK WebAssembly Log Worker.")
+	jww.INFO.Print("[LOG] Starting xxDK WebAssembly Log Worker.")
 
 	js.Global().Set("LogLevel", js.FuncOf(logging.LogLevelJS))
 
