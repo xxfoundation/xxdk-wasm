@@ -24,7 +24,7 @@ import (
 func init() {
 	// Set up Javascript console listener set at level INFO
 	ll := logging.NewJsConsoleLogListener(jww.LevelDebug)
-	jww.SetLogListeners(ll.Listen)
+	logging.AddLogListener(ll.Listen)
 	jww.SetStdoutThreshold(jww.LevelFatal + 1)
 }
 
@@ -74,7 +74,7 @@ func (wlf *workerLogFile) registerCallbacks() {
 			return []byte{}, nil
 		})
 
-	// Callback for LogFileWorker.GetFile
+	// Callback for Logging.GetFile
 	wlf.wtm.RegisterCallback(logging.WriteLogTag,
 		func(data []byte) ([]byte, error) {
 			n, err := wlf.b.Write(data)
@@ -89,17 +89,17 @@ func (wlf *workerLogFile) registerCallbacks() {
 		},
 	)
 
-	// Callback for LogFileWorker.GetFile
+	// Callback for Logging.GetFile
 	wlf.wtm.RegisterCallback(logging.GetFileTag, func([]byte) ([]byte, error) {
 		return wlf.b.Bytes(), nil
 	})
 
-	// Callback for LogFileWorker.GetFile
+	// Callback for Logging.GetFile
 	wlf.wtm.RegisterCallback(logging.GetFileExtTag, func([]byte) ([]byte, error) {
 		return wlf.b.Bytes(), nil
 	})
 
-	// Callback for LogFileWorker.Size
+	// Callback for Logging.Size
 	wlf.wtm.RegisterCallback(logging.SizeTag, func([]byte) ([]byte, error) {
 		b := make([]byte, 8)
 		binary.LittleEndian.PutUint64(b, uint64(wlf.b.TotalWritten()))

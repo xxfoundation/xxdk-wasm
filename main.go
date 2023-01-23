@@ -26,7 +26,7 @@ func init() {
 	// Overwrites setting the log level to INFO done in bindings so that the
 	// Javascript console can be used
 	ll := logging.NewJsConsoleLogListener(jww.LevelInfo)
-	jww.SetLogListeners(ll.Listen)
+	logging.AddLogListener(ll.Listen)
 	jww.SetStdoutThreshold(jww.LevelFatal + 1)
 
 	// Check that the WASM binary version is correct
@@ -44,7 +44,7 @@ func main() {
 	js.Global().Set("LogToFile", js.FuncOf(logging.LogToFileJS))
 
 	// logging/worker.go
-	js.Global().Set("LogToFileWorker", js.FuncOf(logging.LogToFileWorkerJS))
+	js.Global().Set("GetLogger", js.FuncOf(logging.GetLoggerJS))
 
 	// storage/password.go
 	js.Global().Set("GetOrInitPassword", js.FuncOf(storage.GetOrInitPassword))

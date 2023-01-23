@@ -32,7 +32,7 @@ func LogLevel(threshold jww.Threshold) error {
 	jww.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
 	ll := NewJsConsoleLogListener(threshold)
-	jww.SetLogListeners(AddLogListener(ll.Listen)...)
+	AddLogListener(ll.Listen)
 	jww.SetStdoutThreshold(jww.LevelFatal + 1)
 
 	msg := fmt.Sprintf("Log level set to: %s", threshold)

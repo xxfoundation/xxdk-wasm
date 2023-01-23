@@ -6,6 +6,7 @@ require (
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
 	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/pkg/errors v0.9.1
+	github.com/smallnest/ringbuffer v0.0.0-20210227121335-0a58434b36f2
 	github.com/spf13/jwalterweatherman v1.1.0
 	gitlab.com/elixxir/client/v4 v4.3.12-0.20230113194820-b027cd5a0c2b
 	gitlab.com/elixxir/crypto v0.0.7-0.20230113194317-6457dece338c

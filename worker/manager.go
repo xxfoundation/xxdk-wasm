@@ -232,9 +232,10 @@ func (m *Manager) getNextID(tag Tag) uint64 {
 // GetWorker returns the web worker object. This returned so the worker object
 // can be returned to the Javascript layer for it to communicate with the worker
 // thread.
-func (m *Manager) GetWorker() js.Value {
-	return m.worker
-}
+func (m *Manager) GetWorker() js.Value { return m.worker }
+
+// Name returns the name of the web worker object.
+func (m *Manager) Name() string { return m.name }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Javascript Call Wrappers                                                   //

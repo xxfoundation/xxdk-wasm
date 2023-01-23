@@ -19,20 +19,9 @@ import (
 	"syscall/js"
 )
 
-// logListeners is a list of all registered log listeners. This is used to add
-// additional log listener without overwriting previously registered listeners.
-var logListeners []jww.LogListener
-
-// AddLogListener appends to the log listener list. Call this and pass the
-// return into jwalterweatherman.SetLogListeners.
-func AddLogListener(ll jww.LogListener) []jww.LogListener {
-	logListeners = append(logListeners, ll)
-	return logListeners
-}
-
 // LogToFile enables logging to a file that can be downloaded.
 func LogToFile(threshold jww.Threshold, logFileName string,
-	maxLogFileSize int) (*LogFile, error) {
+	maxLogFileSize int) (*LogFile2, error) {
 	if threshold < jww.LevelTrace || threshold > jww.LevelFatal {
 		return nil,
 			errors.Errorf("log level is not valid: log level: %d", threshold)
@@ -44,7 +33,7 @@ func LogToFile(threshold jww.Threshold, logFileName string,
 		return nil, err
 	}
 
-	jww.SetLogListeners(AddLogListener(lf.Listen)...)
+	AddLogListener(lf.Listen)
 
 	msg := fmt.Sprintf("Outputting log to file %s of max size %d with level %s",
 		lf.Name(), lf.MaxSize(), threshold)
@@ -76,7 +65,7 @@ func LogToFile(threshold jww.Threshold, logFileName string,
 //   - args[2] - Max log file size, in bytes (int).
 //
 // Returns:
-//   - A Javascript representation of the [LogFile] object, which allows
+//   - A Javascript representation of the [LogFile2] object, which allows
 //     accessing the contents of the log file and other metadata.
 //   - Throws a TypeError if starting the log file writer fails.
 func LogToFileJS(_ js.Value, args []js.Value) any {
@@ -97,24 +86,24 @@ func LogToFileJS(_ js.Value, args []js.Value) any {
 // Log File Log Listener                                                      //
 ////////////////////////////////////////////////////////////////////////////////
 
-// LogFile represents a virtual log file in memory. It contains a circular
+// LogFile2 represents a virtual log file in memory. It contains a circular
 // buffer that limits the log file, overwriting the oldest logs.
-type LogFile struct {
+type LogFile2 struct {
 	name      string
 	threshold jww.Threshold
 	b         *circbuf.Buffer
 }
 
-// NewLogFile initialises a new [LogFile] for log writing.
+// NewLogFile initialises a new [LogFile2] for log writing.
 func NewLogFile(
-	name string, threshold jww.Threshold, maxSize int) (*LogFile, error) {
+	name string, threshold jww.Threshold, maxSize int) (*LogFile2, error) {
 	// Create new buffer of the specified size
 	b, err := circbuf.NewBuffer(int64(maxSize))
 	if err != nil {
 		return nil, err
 	}
 
-	return &LogFile{
+	return &LogFile2{
 		name:      name,
 		threshold: threshold,
 		b:         b,
@@ -122,8 +111,8 @@ func NewLogFile(
 }
 
 // NewLogFileJS creates a new Javascript compatible object (map[string]any) that
-// matches the [LogFile] structure.
-func NewLogFileJS(lf *LogFile) map[string]any {
+// matches the [LogFile2] structure.
+func NewLogFileJS(lf *LogFile2) map[string]any {
 	logFile := map[string]any{
 		"Name":      js.FuncOf(lf.NameJS),
 		"Threshold": js.FuncOf(lf.ThresholdJS),
@@ -137,7 +126,7 @@ func NewLogFileJS(lf *LogFile) map[string]any {
 
 // Listen is called for every logging event. This function adheres to the
 // [jwalterweatherman.LogListener] type.
-func (lf *LogFile) Listen(t jww.Threshold) io.Writer {
+func (lf *LogFile2) Listen(t jww.Threshold) io.Writer {
 	if t < lf.threshold {
 		return nil
 	}
@@ -146,25 +135,25 @@ func (lf *LogFile) Listen(t jww.Threshold) io.Writer {
 }
 
 // Name returns the name of the log file.
-func (lf *LogFile) Name() string { return lf.name }
+func (lf *LogFile2) Name() string { return lf.name }
 
 // Threshold returns the log level threshold used in the file.
-func (lf *LogFile) Threshold() jww.Threshold { return lf.threshold }
+func (lf *LogFile2) Threshold() jww.Threshold { return lf.threshold }
 
 // GetFile returns the entire log file.
-func (lf *LogFile) GetFile() []byte { return lf.b.Bytes() }
+func (lf *LogFile2) GetFile() []byte { return lf.b.Bytes() }
 
 // MaxSize returns the max size, in bytes, that the log file is allowed to be.
-func (lf *LogFile) MaxSize() int { return int(lf.b.Size()) }
+func (lf *LogFile2) MaxSize() int { return int(lf.b.Size()) }
 
 // Size returns the current size, in bytes, written to the log file.
-func (lf *LogFile) Size() int { return int(lf.b.TotalWritten()) }
+func (lf *LogFile2) Size() int { return int(lf.b.TotalWritten()) }
 
 // NameJS returns the name of the log file.
 //
 // Returns:
 //   - File name (string).
-func (lf *LogFile) NameJS(js.Value, []js.Value) any {
+func (lf *LogFile2) NameJS(js.Value, []js.Value) any {
 	return lf.Name()
 }
 
@@ -172,7 +161,7 @@ func (lf *LogFile) NameJS(js.Value, []js.Value) any {
 //
 // Returns:
 //   - Log level (string).
-func (lf *LogFile) ThresholdJS(js.Value, []js.Value) any {
+func (lf *LogFile2) ThresholdJS(js.Value, []js.Value) any {
 	return lf.Threshold().String()
 }
 
@@ -180,7 +169,7 @@ func (lf *LogFile) ThresholdJS(js.Value, []js.Value) any {
 //
 // Returns:
 //   - Log file contents (string).
-func (lf *LogFile) GetFileJS(js.Value, []js.Value) any {
+func (lf *LogFile2) GetFileJS(js.Value, []js.Value) any {
 	return string(lf.GetFile())
 }
 
@@ -188,7 +177,7 @@ func (lf *LogFile) GetFileJS(js.Value, []js.Value) any {
 //
 // Returns:
 //   - Max file size (int).
-func (lf *LogFile) MaxSizeJS(js.Value, []js.Value) any {
+func (lf *LogFile2) MaxSizeJS(js.Value, []js.Value) any {
 	return lf.MaxSize()
 }
 
@@ -196,6 +185,6 @@ func (lf *LogFile) MaxSizeJS(js.Value, []js.Value) any {
 //
 // Returns:
 //   - Current file size (int).
-func (lf *LogFile) SizeJS(js.Value, []js.Value) any {
+func (lf *LogFile2) SizeJS(js.Value, []js.Value) any {
 	return lf.Size()
 }

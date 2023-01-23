@@ -21,7 +21,7 @@ import (
 func init() {
 	// Set up Javascript console listener set at level INFO
 	ll := logging.NewJsConsoleLogListener(jww.LevelInfo)
-	jww.SetLogListeners(ll.Listen)
+	logging.AddLogListener(ll.Listen)
 	jww.SetStdoutThreshold(jww.LevelFatal + 1)
 }
 
