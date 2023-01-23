@@ -73,7 +73,6 @@ version_check:
     - tags
   only:
     - master
-    - release
   image: $DOCKER_IMAGE
   script:
     - GITTAG=$(git describe --tags)
