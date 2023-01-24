@@ -5,6 +5,10 @@
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
+// package main is its own utility that is compiled separate from xxdk-WASM. It
+// is used only to produce a compatible emoji file to be used by the frontend
+// and is not a WASM module itself.
+
 package main
 
 import (
@@ -67,8 +71,7 @@ var cmd = &cobra.Command{
 			jww.FATAL.Panicf("Bad status: %s", resp.Status)
 		}
 
-		jww.INFO.Printf("Received HTTP response: %s", resp.Status)
-		jww.DEBUG.Printf("Response: %+v", resp)
+		jww.DEBUG.Printf("Received HTTP response: %+v", resp)
 
 		// Read HTTP response into byte slice
 		var buf bytes.Buffer
@@ -81,7 +84,7 @@ var cmd = &cobra.Command{
 		}
 		emojiMartJson := buf.Bytes()
 
-		jww.INFO.Printf("Read %d bytes of JSON file", len(emojiMartJson))
+		jww.DEBUG.Printf("Read %d bytes of JSON file", len(emojiMartJson))
 
 		// Sanitize the JSON file
 		backendSet := NewSet()
@@ -90,7 +93,7 @@ var cmd = &cobra.Command{
 			jww.FATAL.Panicf("Failed to sanitize emoji-mart list: %+v", err)
 		}
 
-		jww.INFO.Printf("Sanitised JSON file.")
+		jww.DEBUG.Printf("Sanitised JSON file.")
 
 		// Write sanitized JSON to file
 		err = utils.WriteFileDef(outputPath, sanitizedJSON)

@@ -55,13 +55,13 @@ func (s *Set) SanitizeEmojiMartSet(frontendEmojiSetJson []byte) ([]byte, error) 
 			"failed to unmarshal emoji-mart set JSON: %+v", err)
 	}
 
-	jww.INFO.Printf(
+	jww.DEBUG.Printf(
 		"Finding incompatible emojis and replacing mismatched codepoints.")
 
 	// Find all incompatible emojis in the front end set
 	emojisToRemove := s.findIncompatibleEmojis(&frontEndEmojiSet)
 
-	jww.INFO.Printf("Removing incompatible emojis.")
+	jww.DEBUG.Printf("Removing incompatible emojis.")
 
 	// Remove all incompatible emojis from the set
 	removeIncompatibleEmojis(&frontEndEmojiSet, emojisToRemove)
