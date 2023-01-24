@@ -17,11 +17,15 @@ import (
 	"syscall/js"
 )
 
+// SEMVER is the current semantic version of the xxDK DM web worker.
+const SEMVER = "0.1.0"
+
 func init() {
 	// Set up Javascript console listener set at level INFO
 	ll := wasm.NewJsConsoleLogListener(jww.LevelInfo)
 	jww.SetLogListeners(ll.Listen)
 	jww.SetStdoutThreshold(jww.LevelFatal + 1)
+	jww.INFO.Printf("xxDK DM web worker version: v%s", SEMVER)
 }
 
 func main() {
