@@ -10,7 +10,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client/v4 v4.3.12-0.20230124180952-d55bf6744d95
+	gitlab.com/elixxir/client/v4 v4.3.12-0.20230124205627-61f6f4e7dfa7
 	gitlab.com/elixxir/crypto v0.0.7-0.20230120181912-b9c6cae57f5b
 	gitlab.com/elixxir/primitives v0.0.3-0.20230109222259-f62b2a90b62c
 	gitlab.com/xx_network/crypto v0.0.5-0.20230113190331-06f2eb12b97f
@@ -36,7 +36,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.11.7 // indirect
+	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-sqlite3 v1.14.15 // indirect
