@@ -54,6 +54,10 @@ func TestPublicFunctions(t *testing.T) {
 		"NewDMReceiver":               {},
 		"NewDMClientWithGoEventModel": {},
 		"GetDMDbCipherTrackerFromID":  {},
+
+		// Mobile-specific bindings not supported by the browser
+		"NewChannelsManagerMobile":  {},
+		"LoadChannelsManagerMobile": {},
 	}
 	wasmFuncs := getPublicFunctions("wasm", t)
 	bindingsFuncs := getPublicFunctions(
