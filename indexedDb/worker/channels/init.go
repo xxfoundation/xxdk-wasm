@@ -66,7 +66,7 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 	deletedMessageCB DeletedMessageCallback, mutedUserCB MutedUserCallback) (
 	channels.EventModel, error) {
 
-	wm, err := worker.NewManager(wasmJsPath, "channelsIndexedDb")
+	wm, err := worker.NewManager(wasmJsPath, "channelsIndexedDb", true)
 	if err != nil {
 		return nil, err
 	}

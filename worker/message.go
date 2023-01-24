@@ -9,9 +9,9 @@
 
 package worker
 
-// message is the outer message that contains the contents of each message sent
+// Message is the outer message that contains the contents of each message sent
 // to the worker. It is transmitted as JSON.
-type message struct {
+type Message struct {
 	Tag      Tag    `json:"tag"`
 	ID       uint64 `json:"id"`
 	DeleteCB bool   `json:"deleteCB"`

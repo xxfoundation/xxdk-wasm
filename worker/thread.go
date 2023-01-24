@@ -35,15 +35,20 @@ type ThreadManager struct {
 	// name describes the worker. It is used for debugging and logging purposes.
 	name string
 
+	// messageLogging determines if debug message logs should be printed every
+	// time a message is sent/received to/from the worker.
+	messageLogging bool
+
 	mux sync.Mutex
 }
 
 // NewThreadManager initialises a new ThreadManager.
-func NewThreadManager(name string) *ThreadManager {
+func NewThreadManager(name string, messageLogging bool) *ThreadManager {
 	mh := &ThreadManager{
-		messages:  make(chan js.Value, 100),
-		callbacks: make(map[Tag]ThreadReceptionCallback),
-		name:      name,
+		messages:       make(chan js.Value, 100),
+		callbacks:      make(map[Tag]ThreadReceptionCallback),
+		name:           name,
+		messageLogging: messageLogging,
 	}
 
 	mh.addEventListeners()
@@ -60,14 +65,17 @@ func (tm *ThreadManager) SignalReady() {
 
 // SendMessage sends a message to the main thread for the given tag.
 func (tm *ThreadManager) SendMessage(tag Tag, data []byte) {
-	msg := message{
+	msg := Message{
 		Tag:      tag,
 		ID:       initID,
 		DeleteCB: false,
 		Data:     data,
 	}
-	jww.DEBUG.Printf("[WW] [%s] Worker sending message for %q with data: %s",
-		tm.name, tag, data)
+
+	if tm.messageLogging {
+		jww.DEBUG.Printf("[WW] [%s] Worker sending message for %q with data: %s",
+			tm.name, tag, data)
+	}
 
 	payload, err := json.Marshal(msg)
 	if err != nil {
@@ -81,14 +89,17 @@ func (tm *ThreadManager) SendMessage(tag Tag, data []byte) {
 // sendResponse sends a reply to the main thread with the given tag and ID.
 func (tm *ThreadManager) sendResponse(
 	tag Tag, id uint64, data []byte) {
-	msg := message{
+	msg := Message{
 		Tag:      tag,
 		ID:       id,
 		DeleteCB: true,
 		Data:     data,
 	}
-	jww.DEBUG.Printf("[WW] [%s] Worker sending reply for %q and ID %d with "+
-		"data: %s", tm.name, tag, id, data)
+
+	if tm.messageLogging {
+		jww.DEBUG.Printf("[WW] [%s] Worker sending reply for %q and ID %d "+
+			"with data: %s", tm.name, tag, id, data)
+	}
 
 	payload, err := json.Marshal(msg)
 	if err != nil {
@@ -103,13 +114,16 @@ func (tm *ThreadManager) sendResponse(
 // everytime a message from the main thread is received. If the registered
 // callback returns a response, it is sent to the main thread.
 func (tm *ThreadManager) receiveMessage(data []byte) error {
-	var msg message
+	var msg Message
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return err
 	}
-	jww.DEBUG.Printf("[WW] [%s] Worker received message for %q and ID %d with "+
-		"data: %s", tm.name, msg.Tag, msg.ID, msg.Data)
+
+	if tm.messageLogging {
+		jww.DEBUG.Printf("[WW] [%s] Worker received message for %q and ID %d "+
+			"with data: %s", tm.name, msg.Tag, msg.ID, msg.Data)
+	}
 
 	tm.mux.Lock()
 	callback, exists := tm.callbacks[msg.Tag]
@@ -167,20 +181,31 @@ func (tm *ThreadManager) addEventListeners() {
 		return nil
 	})
 
+	// Create listener for when an error event is fired on the worker. This
+	// occurs when an error occurs in the worker.
+	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/error_event
+	errorEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
+		event := args[0]
+		jww.ERROR.Printf("[WW] [%s] Worker received error event: %s",
+			tm.name, utils.JsErrorToJson(event))
+		return nil
+	})
+
 	// Create listener for when a messageerror event is fired on the worker.
 	// This occurs when it receives a message that cannot be deserialized.
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/messageerror_event
-	messageError := js.FuncOf(func(_ js.Value, args []js.Value) any {
+	messageerrorEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
 		event := args[0]
-		jww.ERROR.Printf("[WW] [%s] Worker received error message from main "+
-			"thread: %s", tm.name, utils.JsToJson(event))
+		jww.ERROR.Printf("[WW] [%s] Worker received message error event: %s",
+			tm.name, utils.JsErrorToJson(event))
 		return nil
 	})
 
 	// Register each event listener on the worker using addEventListener
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
 	js.Global().Call("addEventListener", "message", messageEvent)
-	js.Global().Call("addEventListener", "messageerror", messageError)
+	js.Global().Call("addEventListener", "error", errorEvent)
+	js.Global().Call("addEventListener", "messageerror", messageerrorEvent)
 }
 
 // postMessage sends a message from this worker to the main WASM thread.

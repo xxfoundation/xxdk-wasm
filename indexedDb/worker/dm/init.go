@@ -41,7 +41,7 @@ type NewWASMEventModelMessage struct {
 func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) (dm.EventModel, error) {
 
-	wh, err := worker.NewManager(wasmJsPath, "dmIndexedDb")
+	wh, err := worker.NewManager(wasmJsPath, "dmIndexedDb", true)
 	if err != nil {
 		return nil, err
 	}
