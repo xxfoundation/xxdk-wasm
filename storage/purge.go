@@ -12,6 +12,7 @@ package storage
 import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/storage/utility"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"sync/atomic"
@@ -74,6 +75,8 @@ func Purge(_ js.Value, args []js.Value) any {
 			"failed to get list of indexedDb database names: %+v", err))
 		return nil
 	}
+	jww.DEBUG.Printf("[PURGE] Found %d databases to delete: %s",
+		len(databaseList), databaseList)
 
 	// Delete each database
 	for dbName := range databaseList {
@@ -89,13 +92,18 @@ func Purge(_ js.Value, args []js.Value) any {
 	ls := GetLocalStorage()
 
 	// Clear all local storage saved by this WASM project
-	ls.ClearWASM()
+	n := ls.ClearWASM()
+	jww.DEBUG.Printf("[PURGE] Cleared %d WASM keys in local storage", n)
 
 	// Clear all EKV from local storage
-	ls.ClearPrefix(storageDirectory)
+	n = ls.ClearPrefix(storageDirectory)
+	jww.DEBUG.Printf("[PURGE] Cleared %d keys with the prefix %q (for EKV)",
+		n, storageDirectory)
 
 	// Clear all NDFs saved to local storage
-	ls.ClearPrefix(utility.NdfStorageKeyNamePrefix)
+	n = ls.ClearPrefix(utility.NdfStorageKeyNamePrefix)
+	jww.DEBUG.Printf("[PURGE] Cleared %d keys with the prefix %q (for NDF)",
+		n, utility.NdfStorageKeyNamePrefix)
 
 	return nil
 }
