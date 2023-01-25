@@ -82,7 +82,7 @@ func (s *Set) findIncompatibleEmojis(set *emojiMartSet) (emojisToRemove []emojiI
 			// Determine if the emoji's codepoint should be replaced or removed
 			replacement, replace := s.replace(Skin.Unified)
 			if replace {
-				jww.TRACE.Printf("Replaced codepoint %q with %q for emoji %q",
+				jww.TRACE.Printf("Replaced codepoint %q with %v for emoji %q",
 					Skin.Unified, replacement, id)
 				newSkins = append(newSkins, replacement)
 			} else if !s.remove(Skin.Unified) {

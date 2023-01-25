@@ -39,8 +39,9 @@ func Test_emojiMartData_JSON_Marshal_Unmarshal(t *testing.T) {
 		Aliases: map[string]emojiID{
 			"lady_beetle": "ladybug",
 		},
-		Sheet: map[string]interface{}{
-			"test": "data",
+		Sheet: sheet{
+			Cols: 5,
+			Rows: 12,
 		},
 	}
 
