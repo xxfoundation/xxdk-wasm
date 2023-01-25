@@ -61,11 +61,11 @@ func Purge(_ js.Value, args []js.Value) any {
 	}
 
 	// Verify all Cmix followers are stopped
-	// if n := atomic.LoadUint64(&numClientsRunning); n != 0 {
-	// 	utils.Throw(utils.TypeError, errors.Errorf(
-	// 		"%d cMix followers running; all need to be stopped", n))
-	// 	return nil
-	// }
+	if n := atomic.LoadUint64(&numClientsRunning); n != 0 {
+		utils.Throw(utils.TypeError, errors.Errorf(
+			"%d cMix followers running; all need to be stopped", n))
+		return nil
+	}
 
 	// Get all indexedDb database names
 	databaseList, err := GetIndexedDbList()
