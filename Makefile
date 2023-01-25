@@ -26,7 +26,13 @@ update_master:
 	GOFLAGS="" go get gitlab.com/xx_network/primitives@master
 
 binary:
-	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk.wasm main.go
+	GOOS=js GOARCH=wasm go build -mod vendor -o xxdk.wasm main.go
+
+binary_move:
+	mv xxdk.wasm /c/Users/Jono/Projects/Go/git.xx.network/elixxir/speakeasy-web/public/integrations/assets/xxdk.wasm
+	tput bel
+
+debug: binary binary_move
 
 wasm_tests:
 	cp utils/utils_js.s utils/utils_js.s.bak
