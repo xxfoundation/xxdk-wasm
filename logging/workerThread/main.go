@@ -41,8 +41,7 @@ func main() {
 
 	js.Global().Set("LogLevel", js.FuncOf(logging.LogLevelJS))
 
-	wlf := workerLogFile{
-		wtm: worker.NewThreadManager("ChannelsIndexedDbWorker", false)}
+	wlf := workerLogFile{wtm: worker.NewThreadManager("Logger", false)}
 
 	wlf.registerCallbacks()
 
