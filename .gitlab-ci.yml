@@ -23,6 +23,27 @@ stages:
   - doc-update
   - combine_artefacts
 
+go-test:
+  stage: test
+  except:
+    - tags
+  script:
+    - go mod vendor -v
+    - go test ./... -v
+
+wasm-test:
+  stage: test
+  except:
+    - tags
+  script:
+    - export PATH=/root/go/bin:$PATH
+    - echo > utils/utils_js.s
+    - go mod vendor
+    - unset SSH_PRIVATE_KEY
+    - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)
+    - GOOS=js GOARCH=wasm go test ./indexedDb/... -v
+    - GOOS=js GOARCH=wasm go test ./... -v
+
 build:
   stage: build
   except:
@@ -36,14 +57,6 @@ build:
     paths:
       - release/
     expire_in: 1 hour
-
-go-test:
-  stage: test
-  except:
-    - tags
-  script:
-    - go mod vendor -v
-    - go test ./... -v
 
 emoji-update:
   stage: build
@@ -59,22 +72,16 @@ emoji-update:
       - release/
     expire_in: 1 hour
 
-wasm-test:
-  stage: test
+tag:
+  stage: build
   except:
     - tags
+  image: $DOCKER_IMAGE
   script:
-    - export PATH=/root/go/bin:$PATH
-    - echo > utils/utils_js.s
-    - env
-    # - go install github.com/agnivade/wasmbrowsertest@latest
-    # - mv ~/go/bin/go_js_wasm_exec ~/go/bin/go_js_wasm_exec.old
-    # - ln -s ~/go/bin/wasmbrowsertest ~/go/bin/go_js_wasm_exec
-    - go mod vendor
-    - unset SSH_PRIVATE_KEY
-    - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)
-    - GOOS=js GOARCH=wasm go test ./indexedDb/... -v
-    - GOOS=js GOARCH=wasm go test ./... -v
+    - git remote add origin_tags git@$GITLAB_SERVER:elixxir/xxdk-wasm.git || true
+    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -o release/xxdk.wasm main.go
+    - git tag $(sha256sum release/xxdk.wasm | awk '{ print $1 }') -f
+    - git push origin_tags -f --tags
 
 combine_artefacts:
   stage: combine_artefacts
@@ -96,24 +103,13 @@ combine_artefacts:
 
     - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/wasm_exec.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/wasm_exec.js'
     - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/xxdk.wasm'
-    - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/emojiSet.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$EMOJI_UPDATE_JOB_ID/artifacts/release/emojiSet.json'
+    - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/emojiSet.json $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$EMOJI_UPDATE_JOB_ID/artifacts/release/emojiSet.json'
 
     - ls release
   artifacts:
     paths:
       - release/
     expose_as: "release"
-
-tag:
-  stage: build
-  except:
-    - tags
-  image: $DOCKER_IMAGE
-  script:
-    - git remote add origin_tags git@$GITLAB_SERVER:elixxir/xxdk-wasm.git || true
-    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -o release/xxdk.wasm main.go
-    - git tag $(sha256sum release/xxdk.wasm | awk '{ print $1 }') -f
-    - git push origin_tags -f --tags
 
 # This pipeline job will attempt to have pkg.go.dev update docs for xxdk-wasm.
 #
