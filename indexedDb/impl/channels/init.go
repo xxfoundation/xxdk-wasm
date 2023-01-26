@@ -7,56 +7,67 @@
 
 //go:build js && wasm
 
-package channelEventModel
+package main
 
 import (
-	"crypto/ed25519"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/client/v4/dm"
+
+	"gitlab.com/elixxir/client/v4/channels"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
-	"gitlab.com/elixxir/xxdk-wasm/storage"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
+	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 )
 
 const (
 	// databaseSuffix is the suffix to be appended to the name of
 	// the database.
-	databaseSuffix = "_speakeasy_dm"
+	databaseSuffix = "_speakeasy"
 
 	// currentVersion is the current version of the IndexDb
 	// runtime. Used for migration purposes.
 	currentVersion uint = 1
 )
 
-// MessageReceivedCallback is called any time a message is received or updated.
-//
-// update is true if the row is old and was edited.
-type MessageReceivedCallback func(
-	uuid uint64, pubKey ed25519.PublicKey, update bool)
+// storeDatabaseNameFn matches storage.StoreIndexedDb so that the data can be
+// sent between the worker and main thread.
+type storeDatabaseNameFn func(databaseName string) error
+
+// storeEncryptionStatusFn matches storage.StoreIndexedDbEncryptionStatus so
+// that the data can be sent between the worker and main thread.
+type storeEncryptionStatusFn func(
+	databaseName string, encryptionStatus bool) (bool, error)
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
 func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback) (dm.EventModel, error) {
+	messageReceivedCB wChannels.MessageReceivedCallback,
+	deletedMessageCB wChannels.DeletedMessageCallback,
+	mutedUserCB wChannels.MutedUserCallback,
+	storeDatabaseName storeDatabaseNameFn,
+	storeEncryptionStatus storeEncryptionStatusFn) (channels.EventModel, error) {
 	databaseName := path + databaseSuffix
-	return newWASMModel(databaseName, encryption, cb)
+	return newWASMModel(databaseName, encryption, messageReceivedCB,
+		deletedMessageCB, mutedUserCB, storeDatabaseName, storeEncryptionStatus)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback) (*wasmModel, error) {
+	messageReceivedCB wChannels.MessageReceivedCallback,
+	deletedMessageCB wChannels.DeletedMessageCallback,
+	mutedUserCB wChannels.MutedUserCallback,
+	storeDatabaseName storeDatabaseNameFn,
+	storeEncryptionStatus storeEncryptionStatusFn) (*wasmModel, error) {
 	// Attempt to open database object
-	ctx, cancel := indexedDb.NewContext()
+	ctx, cancel := impl.NewContext()
 	defer cancel()
 	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			if oldVersion == newVersion {
-				jww.INFO.Printf("IndexDb version is current: v%d",
-					newVersion)
+				jww.INFO.Printf("IndexDb version is current: v%d", newVersion)
 				return nil
 			}
 
@@ -84,10 +95,17 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 		return nil, err
 	}
 
+	// Get the database name and save it to storage
+	if dbName, err2 := db.Name(); err2 != nil {
+		return nil, err2
+	} else if err = storeDatabaseName(dbName); err != nil {
+		return nil, err
+	}
+
 	// Save the encryption status to storage
 	encryptionStatus := encryption != nil
-	loadedEncryptionStatus, err := storage.StoreIndexedDbEncryptionStatus(
-		databaseName, encryptionStatus)
+	loadedEncryptionStatus, err :=
+		storeEncryptionStatus(databaseName, encryptionStatus)
 	if err != nil {
 		return nil, err
 	}
@@ -100,20 +118,13 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 		jww.WARN.Printf("IndexedDb encryption disabled!")
 	}
 
-	// Attempt to ensure the database has been properly initialized
-	openRequest, err = idb.Global().Open(ctx, databaseName, currentVersion,
-		func(db *idb.Database, oldVersion, newVersion uint) error {
-			return nil
-		})
-	if err != nil {
-		return nil, err
+	wrapper := &wasmModel{
+		db:                db,
+		cipher:            encryption,
+		receivedMessageCB: messageReceivedCB,
+		deletedMessageCB:  deletedMessageCB,
+		mutedUserCB:       mutedUserCB,
 	}
-	// Wait for database open to finish
-	db, err = openRequest.Await(ctx)
-	if err != nil {
-		return nil, err
-	}
-	wrapper := &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}
 
 	return wrapper, nil
 }
@@ -123,17 +134,17 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 // This can never be changed without permanently breaking backwards
 // compatibility.
 func v1Upgrade(db *idb.Database) error {
+	storeOpts := idb.ObjectStoreOptions{
+		KeyPath:       js.ValueOf(pkeyName),
+		AutoIncrement: true,
+	}
 	indexOpts := idb.IndexOptions{
 		Unique:     false,
 		MultiEntry: false,
 	}
 
 	// Build Message ObjectStore and Indexes
-	messageStoreOpts := idb.ObjectStoreOptions{
-		KeyPath:       js.ValueOf(msgPkeyName),
-		AutoIncrement: true,
-	}
-	messageStore, err := db.CreateObjectStore(messageStoreName, messageStoreOpts)
+	messageStore, err := db.CreateObjectStore(messageStoreName, storeOpts)
 	if err != nil {
 		return err
 	}
@@ -146,8 +157,8 @@ func v1Upgrade(db *idb.Database) error {
 	if err != nil {
 		return err
 	}
-	_, err = messageStore.CreateIndex(messageStoreConversationIndex,
-		js.ValueOf(messageStoreConversation), indexOpts)
+	_, err = messageStore.CreateIndex(messageStoreChannelIndex,
+		js.ValueOf(messageStoreChannel), indexOpts)
 	if err != nil {
 		return err
 	}
@@ -161,21 +172,15 @@ func v1Upgrade(db *idb.Database) error {
 	if err != nil {
 		return err
 	}
-
-	// Build Channel ObjectStore
-	conversationStoreOpts := idb.ObjectStoreOptions{
-		KeyPath:       js.ValueOf(convoPkeyName),
-		AutoIncrement: false,
-	}
-	_, err = db.CreateObjectStore(conversationStoreName, conversationStoreOpts)
+	_, err = messageStore.CreateIndex(messageStorePinnedIndex,
+		js.ValueOf(messageStorePinned), indexOpts)
 	if err != nil {
 		return err
 	}
 
-	// Get the database name and save it to storage
-	if databaseName, err := db.Name(); err != nil {
-		return err
-	} else if err = storage.StoreIndexedDb(databaseName); err != nil {
+	// Build Channel ObjectStore
+	_, err = db.CreateObjectStore(channelsStoreName, storeOpts)
+	if err != nil {
 		return err
 	}
 
