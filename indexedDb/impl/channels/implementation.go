@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package channels
+package main
 
 import (
 	"crypto/ed25519"
@@ -18,8 +18,6 @@ import (
 	"syscall/js"
 	"time"
 
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
-
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -29,6 +27,8 @@ import (
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
+	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
 )
@@ -39,9 +39,9 @@ import (
 type wasmModel struct {
 	db                *idb.Database
 	cipher            cryptoChannel.Cipher
-	receivedMessageCB MessageReceivedCallback
-	deletedMessageCB  DeletedMessageCallback
-	mutedUserCB       MutedUserCallback
+	receivedMessageCB wChannels.MessageReceivedCallback
+	deletedMessageCB  wChannels.DeletedMessageCallback
+	mutedUserCB       wChannels.MutedUserCallback
 	updateMux         sync.Mutex
 }
 
@@ -70,7 +70,7 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 		return
 	}
 
-	_, err = indexedDb.Put(w.db, channelsStoreName, channelObj)
+	_, err = impl.Put(w.db, channelsStoreName, channelObj)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to put Channel: %+v", err))
@@ -82,8 +82,7 @@ func (w *wasmModel) LeaveChannel(channelID *id.ID) {
 	parentErr := errors.New("failed to LeaveChannel")
 
 	// Delete the channel from storage
-	err := indexedDb.Delete(w.db, channelsStoreName,
-		js.ValueOf(channelID.String()))
+	err := impl.Delete(w.db, channelsStoreName, js.ValueOf(channelID.String()))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to delete Channel: %+v", err))
@@ -129,7 +128,7 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 	if err != nil {
 		return errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
 	}
-	ctx, cancel := indexedDb.NewContext()
+	ctx, cancel := impl.NewContext()
 	err = cursorRequest.Iter(ctx,
 		func(cursor *idb.CursorWithValue) error {
 			_, err := cursor.Delete()
@@ -269,7 +268,7 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 	key := js.ValueOf(uuid)
 
 	// Use the key to get the existing Message
-	currentMsg, err := indexedDb.Get(w.db, messageStoreName, key)
+	currentMsg, err := impl.Get(w.db, messageStoreName, key)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to get message: %+v", err))
@@ -305,7 +304,7 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	defer w.updateMux.Unlock()
 
 	msgIDStr := base64.StdEncoding.EncodeToString(messageID.Marshal())
-	currentMsgObj, err := indexedDb.GetIndex(w.db, messageStoreName,
+	currentMsgObj, err := impl.GetIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, js.ValueOf(msgIDStr))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
@@ -420,7 +419,7 @@ func (w *wasmModel) receiveHelper(
 	}
 
 	// Store message to database
-	result, err := indexedDb.Put(w.db, messageStoreName, messageObj)
+	result, err := impl.Put(w.db, messageStoreName, messageObj)
 	if err != nil && !strings.Contains(err.Error(),
 		"at least one key does not satisfy the uniqueness requirements") {
 		// Only return non-unique constraint errors so that the case
@@ -492,8 +491,8 @@ func (w *wasmModel) GetMessage(
 func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 	msgId := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
 
-	err := indexedDb.DeleteIndex(w.db, messageStoreName,
-		messageStoreMessageIndex, pkeyName, msgId)
+	err := impl.DeleteIndex(
+		w.db, messageStoreName, messageStoreMessageIndex, pkeyName, msgId)
 	if err != nil {
 		return err
 	}
@@ -512,7 +511,7 @@ func (w *wasmModel) MuteUser(
 // msgIDLookup gets the UUID of the Message with the given messageID.
 func (w *wasmModel) msgIDLookup(messageID message.ID) (*Message, error) {
 	msgIDStr := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
-	resultObj, err := indexedDb.GetIndex(w.db, messageStoreName,
+	resultObj, err := impl.GetIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, msgIDStr)
 	if err != nil {
 		return nil, err

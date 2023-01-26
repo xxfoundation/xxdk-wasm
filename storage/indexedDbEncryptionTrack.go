@@ -18,16 +18,17 @@ import (
 const databaseEncryptionToggleKey = "xxdkWasmDatabaseEncryptionToggle/"
 
 // StoreIndexedDbEncryptionStatus stores the encryption status if it has not
-// been previously saved. If it has, it returns its value.
+// been previously saved. If it has, then it returns its value.
 func StoreIndexedDbEncryptionStatus(
-	databaseName string, encryption bool) (bool, error) {
+	databaseName string, encryptionStatus bool) (
+	loadedEncryptionStatus bool, err error) {
 	data, err := GetLocalStorage().GetItem(
 		databaseEncryptionToggleKey + databaseName)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			GetLocalStorage().SetItem(
 				databaseEncryptionToggleKey+databaseName, []byte{1})
-			return encryption, nil
+			return encryptionStatus, nil
 		} else {
 			return false, err
 		}

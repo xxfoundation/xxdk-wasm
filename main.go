@@ -21,7 +21,9 @@ import (
 )
 
 func init() {
+	// Start logger first to capture all logging events
 	logging.InitLogger()
+
 	// Overwrites setting the log level to INFO done in bindings so that the
 	// Javascript console can be used
 	ll := logging.NewJsConsoleLogListener(jww.LevelInfo)
