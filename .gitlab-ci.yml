@@ -19,6 +19,7 @@ before_script:
 stages:
   - test
   - build
+  - combine_artefacts
   - tag
   - doc-update
   - version_check
