@@ -19,7 +19,7 @@ before_script:
 stages:
   - test
   - build
-  - combine_artefacts
+  - combine-artifacts
   - tag
   - doc-update
   - version_check
@@ -83,8 +83,8 @@ tag:
     - git tag $(sha256sum release/xxdk.wasm | awk '{ print $1 }') -f
     - git push origin_tags -f --tags
 
-combine_artefacts:
-  stage: combine_artefacts
+combine-artifacts:
+  stage: combine-artifacts
   except:
     - tags
   image: $DOCKER_IMAGE
