@@ -28,6 +28,12 @@ update_master:
 binary:
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk.wasm main.go
 
+worker_binaries:
+	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-channelsIndexedDkWorker.wasm ./indexedDb/impl/channels/...
+	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-dmIndexedDkWorker.wasm ./indexedDb/impl/dm/...
+
+binaries: binary worker_binaries
+
 wasm_tests:
 	cp utils/utils_js.s utils/utils_js.s.bak
 	> utils/utils_js.s

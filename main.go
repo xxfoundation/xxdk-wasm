@@ -15,7 +15,6 @@ import (
 	"syscall/js"
 
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
@@ -37,7 +36,6 @@ func init() {
 
 func main() {
 	fmt.Println("Starting xxDK WebAssembly bindings.")
-	fmt.Printf("Client version %s\n", bindings.GetVersion())
 
 	// storage/password.go
 	js.Global().Set("GetOrInitPassword", js.FuncOf(storage.GetOrInitPassword))
