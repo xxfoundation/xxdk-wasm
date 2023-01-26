@@ -21,11 +21,15 @@ import (
 	"syscall/js"
 )
 
+// SEMVER is the current semantic version of the xxDK Logger web worker.
+const SEMVER = "0.1.0"
+
 func init() {
 	// Set up Javascript console listener set at level INFO
 	ll := logging.NewJsConsoleLogListener(jww.LevelDebug)
 	logging.AddLogListener(ll.Listen)
 	jww.SetStdoutThreshold(jww.LevelFatal + 1)
+	jww.INFO.Printf("xxDK Logger web worker version: v%s", SEMVER)
 }
 
 // workerLogFile manages communication with the main thread and writing incoming
@@ -36,8 +40,7 @@ type workerLogFile struct {
 }
 
 func main() {
-	fmt.Println("[LOG] Starting xxDK WebAssembly Log Worker.")
-	jww.INFO.Print("[LOG] Starting xxDK WebAssembly Log Worker.")
+	jww.INFO.Print("[LOG] Starting xxDK WebAssembly Logger Worker.")
 
 	js.Global().Set("LogLevel", js.FuncOf(logging.LogLevelJS))
 
