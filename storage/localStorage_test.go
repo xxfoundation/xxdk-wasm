@@ -91,10 +91,11 @@ func TestLocalStorage_ClearPrefix(t *testing.T) {
 	s := newLocalStorage("")
 	s.clear()
 	prng := rand.New(rand.NewSource(11))
+	const numKeys = 10
 	var yesPrefix, noPrefix []string
 	prefix := "keyNamePrefix/"
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < numKeys; i++ {
 		keyName := "keyNum" + strconv.Itoa(i)
 		if prng.Intn(2) == 0 {
 			keyName = prefix + keyName
@@ -106,7 +107,11 @@ func TestLocalStorage_ClearPrefix(t *testing.T) {
 		s.SetItem(keyName, []byte(strconv.Itoa(i)))
 	}
 
-	s.ClearPrefix(prefix)
+	n := s.ClearPrefix(prefix)
+	if n != numKeys/2 {
+		t.Errorf("Incorrect number of keys.\nexpected: %d\nreceived: %d",
+			numKeys/2, n)
+	}
 
 	for _, keyName := range noPrefix {
 		if _, err := s.GetItem(keyName); err != nil {
@@ -126,8 +131,10 @@ func TestLocalStorage_ClearPrefix(t *testing.T) {
 func TestLocalStorage_ClearWASM(t *testing.T) {
 	jsStorage.clear()
 	prng := rand.New(rand.NewSource(11))
+	const numKeys = 10
 	var yesPrefix, noPrefix []string
-	for i := 0; i < 10; i++ {
+
+	for i := 0; i < numKeys; i++ {
 		keyName := "keyNum" + strconv.Itoa(i)
 		if prng.Intn(2) == 0 {
 			yesPrefix = append(yesPrefix, keyName)
@@ -138,7 +145,11 @@ func TestLocalStorage_ClearWASM(t *testing.T) {
 		}
 	}
 
-	jsStorage.ClearWASM()
+	n := jsStorage.ClearWASM()
+	if n != numKeys/2 {
+		t.Errorf("Incorrect number of keys.\nexpected: %d\nreceived: %d",
+			numKeys/2, n)
+	}
 
 	for _, keyName := range noPrefix {
 		if v := jsStorage.getItem(keyName); v.IsNull() {

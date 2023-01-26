@@ -114,36 +114,46 @@ func (ls *LocalStorage) Clear() {
 	ls.clear()
 }
 
-// ClearPrefix clears all keys with the given prefix.
-func (ls *LocalStorage) ClearPrefix(prefix string) {
+// ClearPrefix clears all keys with the given prefix.  Returns the number of
+// keys cleared.
+func (ls *LocalStorage) ClearPrefix(prefix string) int {
 	// Get a copy of all key names at once
 	keys := ls.keys()
 
 	// Loop through each key
+	var n int
 	for i := 0; i < keys.Length(); i++ {
 		if v := keys.Index(i); !v.IsNull() {
 			keyName := strings.TrimPrefix(v.String(), ls.prefix)
 			if strings.HasPrefix(keyName, prefix) {
 				ls.removeItem(v.String())
+				n++
 			}
 		}
 	}
+
+	return n
 }
 
-// ClearWASM clears all the keys in storage created by WASM.
-func (ls *LocalStorage) ClearWASM() {
+// ClearWASM clears all the keys in storage created by WASM. Returns the number
+// of keys cleared.
+func (ls *LocalStorage) ClearWASM() int {
 	// Get a copy of all key names at once
 	keys := ls.keys()
 
 	// Loop through each key
+	var n int
 	for i := 0; i < keys.Length(); i++ {
 		if v := keys.Index(i); !v.IsNull() {
 			keyName := v.String()
 			if strings.HasPrefix(keyName, ls.prefix) {
 				ls.RemoveItem(strings.TrimPrefix(keyName, ls.prefix))
+				n++
 			}
 		}
 	}
+
+	return n
 }
 
 // Key returns the name of the nth key in localStorage. Return os.ErrNotExist if
