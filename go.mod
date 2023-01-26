@@ -10,10 +10,10 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client/v4 v4.3.12-0.20230124205627-61f6f4e7dfa7
-	gitlab.com/elixxir/crypto v0.0.7-0.20230120181912-b9c6cae57f5b
+	gitlab.com/elixxir/client/v4 v4.3.12-0.20230126185549-b5f8c250058c
+	gitlab.com/elixxir/crypto v0.0.7-0.20230124220743-2a897bc01c59
 	gitlab.com/elixxir/primitives v0.0.3-0.20230109222259-f62b2a90b62c
-	gitlab.com/xx_network/crypto v0.0.5-0.20230113190331-06f2eb12b97f
+	gitlab.com/xx_network/crypto v0.0.5-0.20230124215920-951bed503c49
 	gitlab.com/xx_network/primitives v0.0.4-0.20221219230308-4b5550a9247d
 	golang.org/x/crypto v0.5.0
 )
