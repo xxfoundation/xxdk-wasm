@@ -80,6 +80,9 @@ emoji-update:
   stage: build
   except:
     - tags
+  only:
+    - release
+    - master
   script:
     - go mod vendor -v
     - mkdir -p release
