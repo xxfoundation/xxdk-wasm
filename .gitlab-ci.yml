@@ -124,15 +124,15 @@ combine-artifacts:
     - rm -rf release
     - mkdir -p release
 
-    - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/wasm_exec.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/wasm_exec.js'
-    - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/xxdk.wasm'
-    - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-channelsIndexedDkWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-channelsIndexedDkWorker.wasm'
-    - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-dmIndexedDkWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-dmIndexedDkWorker.wasm'
-    - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-logFileWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-logFileWorker.wasm'
-    - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/channelsIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/channelsIndexedDbWorker.js'
-    - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/dmIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/dmIndexedDbWorker.js'
-    - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/logFileWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/logFileWorker.js'
-    - 'curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/emojiSet.json $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$EMOJI_UPDATE_JOB_ID/artifacts/release/emojiSet.json'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/wasm_exec.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/wasm_exec.js'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/xxdk.wasm'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-channelsIndexedDkWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-channelsIndexedDkWorker.wasm'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-dmIndexedDkWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-dmIndexedDkWorker.wasm'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-logFileWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-logFileWorker.wasm'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/channelsIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/channelsIndexedDbWorker.js'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/dmIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/dmIndexedDbWorker.js'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/logFileWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/logFileWorker.js'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/emojiSet.json $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$EMOJI_UPDATE_JOB_ID/artifacts/release/emojiSet.json'
 
     - ls release
   artifacts:
