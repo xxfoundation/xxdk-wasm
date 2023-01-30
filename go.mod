@@ -4,13 +4,16 @@ go 1.19
 
 require (
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
+	github.com/forPelevin/gomoji v1.1.8
 	github.com/hack-pad/go-indexeddb v0.2.0
+	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
 	github.com/pkg/errors v0.9.1
+	github.com/spf13/cobra v1.5.0
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client/v4 v4.3.12-0.20230121012342-41b8d906a0ba
-	gitlab.com/elixxir/crypto v0.0.7-0.20230120181912-b9c6cae57f5b
+	gitlab.com/elixxir/client/v4 v4.3.12-0.20230130171647-cc3cced382ea
+	gitlab.com/elixxir/crypto v0.0.7-0.20230124220743-2a897bc01c59
 	gitlab.com/elixxir/primitives v0.0.3-0.20230109222259-f62b2a90b62c
-	gitlab.com/xx_network/crypto v0.0.5-0.20230113190331-06f2eb12b97f
+	gitlab.com/xx_network/crypto v0.0.5-0.20230124215920-951bed503c49
 	gitlab.com/xx_network/primitives v0.0.4-0.20221219230308-4b5550a9247d
 	golang.org/x/crypto v0.5.0
 )
@@ -24,16 +27,16 @@ require (
 	github.com/cloudflare/circl v1.2.0 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/elliotchance/orderedmap v1.4.0 // indirect
-	github.com/forPelevin/gomoji v1.1.8 // indirect
 	github.com/gobwas/ws v1.1.0 // indirect
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.11.7 // indirect
+	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-sqlite3 v1.14.15 // indirect
@@ -46,6 +49,7 @@ require (
 	github.com/sethvargo/go-diceware v0.3.0 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/ttacon/builder v0.0.0-20170518171403-c099f663e1c2 // indirect
 	github.com/ttacon/libphonenumber v1.2.1 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
