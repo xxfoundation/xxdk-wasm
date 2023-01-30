@@ -136,7 +136,6 @@ doc-update:
   only:
     - release
     - master
-    - Anne/Doc-Pull-Retry
 
 version-check:
   stage: version-check
