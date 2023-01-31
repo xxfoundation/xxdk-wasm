@@ -21,6 +21,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 // emojiMartUrl is the URL pointing to the native.JSON from emoji-mart that is
@@ -56,10 +57,8 @@ var cmd = &cobra.Command{
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		// Initialize the logging if set
-		if logFile != "" {
-			initLog(logLevel, logFile)
-		}
+		// Initialize the logging
+		initLog(jww.Threshold(logLevel), logFile)
 
 		// Retrieve emoji-mart file from URL
 		jww.INFO.Printf("Requesting file %s", requestURL)
@@ -115,14 +114,22 @@ func init() {
 		"Output JSON file path.")
 	cmd.Flags().StringVarP(&logFile, "log", "l", "-",
 		"Log output path. By default, logs are printed to stdout. "+
-			"To disable logging, set this to empty.")
-	cmd.Flags().IntVarP(&logLevel, "logLevel", "v", 0,
-		"Verbosity level of logging. 0 = INFO, 1 = DEBUG, 2 = TRACE")
+			"To disable logging, set this to empty (\"\").")
+	cmd.Flags().IntVarP(&logLevel, "logLevel", "v", 4,
+		"Verbosity level of logging. 0 = TRACE, 1 = DEBUG, 2 = INFO, "+
+			"3 = WARN, 4 = ERROR, 5 = CRITICAL, 6 = FATAL")
 }
 
-// initLog will enable JWW logging.
-func initLog(threshold int, logPath string) {
-	if logPath != "-" && logPath != "" {
+// initLog will enable JWW logging to the given log path with the given
+// threshold. If log path is empty, then logging is not enabled. Panics if the
+// log file cannot be opened or if the threshold is invalid.
+func initLog(threshold jww.Threshold, logPath string) {
+	if logPath == "" {
+		// Do not enable logging if no log file is set
+		return
+	} else if logPath != "-" {
+		// Set the log file if stdout is not selected
+
 		// Disable stdout output
 		jww.SetStdoutOutput(io.Discard)
 
@@ -135,19 +142,17 @@ func initLog(threshold int, logPath string) {
 		jww.SetLogOutput(logOutput)
 	}
 
-	if threshold > 1 {
-		jww.SetStdoutThreshold(jww.LevelTrace)
-		jww.SetLogThreshold(jww.LevelTrace)
-		jww.SetFlags(log.LstdFlags | log.Lmicroseconds)
-		jww.INFO.Printf("log level set to: %s", jww.LevelTrace)
-	} else if threshold == 1 {
-		jww.SetStdoutThreshold(jww.LevelDebug)
-		jww.SetLogThreshold(jww.LevelDebug)
-		jww.SetFlags(log.LstdFlags | log.Lmicroseconds)
-		jww.INFO.Printf("log level set to: %s", jww.LevelDebug)
-	} else {
-		jww.SetStdoutThreshold(jww.LevelInfo)
-		jww.SetLogThreshold(jww.LevelInfo)
-		jww.INFO.Printf("log level set to: %s", jww.LevelInfo)
+	if threshold < jww.LevelTrace || threshold > jww.LevelFatal {
+		panic("Invalid log threshold: " + strconv.Itoa(int(threshold)))
 	}
+
+	// Display microseconds if the threshold is set to TRACE or DEBUG
+	if threshold == jww.LevelTrace || threshold == jww.LevelDebug {
+		jww.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	}
+
+	// Enable logging
+	jww.SetStdoutThreshold(threshold)
+	jww.SetLogThreshold(threshold)
+	jww.INFO.Printf("Log level set to: %s", threshold)
 }
