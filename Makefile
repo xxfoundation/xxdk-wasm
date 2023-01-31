@@ -33,6 +33,9 @@ worker_binaries:
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-dmIndexedDkWorker.wasm ./indexedDb/impl/dm/...
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-logFileWorker.wasm ./logging/workerThread/...
 
+emojis:
+	go run -ldflags '-w -s' -trimpath ./emoji/... -o emojiSet.json
+
 binaries: binary worker_binaries
 
 wasm_tests:

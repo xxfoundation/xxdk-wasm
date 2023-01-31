@@ -86,7 +86,7 @@ emoji-update:
   script:
     - go mod vendor -v
     - mkdir -p release
-    - go run -ldflags '-w -s' ./emoji/... -o emojiSet.json -v 2
+    - go run -ldflags '-w -s' -trimpath ./emoji/... -o emojiSet.json -v 0
     - cp emojiSet.json release/
   artifacts:
     paths:
