@@ -63,6 +63,9 @@ type Message struct {
 	Pubkey         []byte `json:"pubkey"`
 	DmToken        uint32 `json:"dm_token"`
 	CodesetVersion uint8  `json:"codeset_version"`
+
+	// FileData can be used to store file data that is associated with a Message.
+	FileData []byte `json:"file_data"`
 }
 
 // Channel defines the IndexedDb representation of a single Channel.

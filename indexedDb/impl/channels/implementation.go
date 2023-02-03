@@ -396,6 +396,7 @@ func buildMessage(channelID, messageID, parentID []byte, nickname string,
 		Pubkey:         pubKey,
 		DmToken:        dmToken,
 		CodesetVersion: codeset,
+		FileData:       nil,
 	}
 }
 
