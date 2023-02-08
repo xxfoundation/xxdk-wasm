@@ -27,6 +27,7 @@ const (
 	messageStoreParentIndex    = "parent_message_id_index"
 	messageStoreTimestampIndex = "timestamp_index"
 	messageStorePinnedIndex    = "pinned_index"
+	messageStoreFileIndex      = "file_id_index"
 
 	// Message keyPath names (must match json struct tags).
 	messageStoreMessage   = "message_id"
@@ -34,6 +35,7 @@ const (
 	messageStoreParent    = "parent_message_id"
 	messageStoreTimestamp = "timestamp"
 	messageStorePinned    = "pinned"
+	messageStoreFile      = "file_id"
 )
 
 // Message defines the IndexedDb representation of a single Message.
@@ -47,7 +49,7 @@ const (
 type Message struct {
 	ID              uint64        `json:"id"` // Matches pkeyName
 	Nickname        string        `json:"nickname"`
-	MessageID       []byte        `json:"message_id"`        // Index
+	MessageID       []byte        `json:"message_id"`        // Unique Index
 	ChannelID       []byte        `json:"channel_id"`        // Index
 	ParentMessageID []byte        `json:"parent_message_id"` // Index
 	Timestamp       time.Time     `json:"timestamp"`         // Index
@@ -66,6 +68,8 @@ type Message struct {
 
 	// FileData can be used to store file data that is associated with a Message.
 	FileData []byte `json:"file_data"`
+	// FileId is a unique identifier for a given FileData
+	FileId []byte `json:"file_id"` // Unique Index
 }
 
 // Channel defines the IndexedDb representation of a single Channel.

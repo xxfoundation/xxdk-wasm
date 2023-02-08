@@ -29,7 +29,7 @@ const (
 
 	// currentVersion is the current version of the IndexDb
 	// runtime. Used for migration purposes.
-	currentVersion uint = 1
+	currentVersion uint = 2
 )
 
 // storeDatabaseNameFn matches storage.StoreIndexedDb so that the data can be
@@ -80,6 +80,13 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 					return err
 				}
 				oldVersion = 1
+			}
+			if oldVersion == 1 && newVersion >= 2 {
+				err := v2Upgrade(db)
+				if err != nil {
+					return err
+				}
+				oldVersion = 2
 			}
 
 			// if oldVersion == 1 && newVersion >= 2 { v2Upgrade(), oldVersion = 2 }
@@ -185,4 +192,37 @@ func v1Upgrade(db *idb.Database) error {
 	}
 
 	return nil
+}
+
+// v1Upgrade performs the v1 -> v2 database upgrade.
+//
+// This can never be changed without permanently breaking backwards
+// compatibility.
+func v2Upgrade(db *idb.Database) error {
+	// Prepare the Transaction
+	txn, err := db.Transaction(idb.TransactionReadWrite, messageStoreName)
+	if err != nil {
+		return errors.Errorf("Unable to create Transaction: %+v", err)
+	}
+	messageStore, err := txn.ObjectStore(messageStoreName)
+	if err != nil {
+		return errors.Errorf("Unable to get ObjectStore: %+v", err)
+	}
+
+	// Create the unique index
+	_, err = messageStore.CreateIndex(messageStoreFileIndex,
+		js.ValueOf(messageStoreFile),
+		idb.IndexOptions{
+			Unique:     true,
+			MultiEntry: false,
+		})
+	if err != nil {
+		return err
+	}
+
+	// Wait for the operation to return
+	ctx, cancel := impl.NewContext()
+	err = txn.Await(ctx)
+	cancel()
+	return err
 }
