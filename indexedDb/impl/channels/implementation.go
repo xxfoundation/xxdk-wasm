@@ -276,8 +276,8 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 		return
 	}
 
-	_, err = w.updateMessage(utils.JsToJson(currentMsg), messageID, timestamp,
-		round, pinned, hidden, status)
+	_, err = w.updateMessage(utils.JsToJson(currentMsg), messageID, nil, timestamp,
+		round, pinned, hidden, status, nil)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to updateMessage: %+v", err))
@@ -314,8 +314,8 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	}
 
 	currentMsg := utils.JsToJson(currentMsgObj)
-	uuid, err := w.updateMessage(currentMsg, &messageID, timestamp,
-		round, pinned, hidden, status)
+	uuid, err := w.updateMessage(currentMsg, &messageID, nil, timestamp,
+		round, pinned, hidden, status, nil)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to updateMessage: %+v", err))
@@ -325,8 +325,8 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 
 // updateMessage is a helper for updating a stored message.
 func (w *wasmModel) updateMessage(currentMsgJson string, messageID *message.ID,
-	timestamp *time.Time, round *rounds.Round, pinned, hidden *bool,
-	status *channels.SentStatus) (uint64, error) {
+	messageData []byte, timestamp *time.Time, round *rounds.Round, pinned,
+	hidden *bool, status *channels.SentStatus, fileData []byte) (uint64, error) {
 
 	newMessage := &Message{}
 	err := json.Unmarshal([]byte(currentMsgJson), newMessage)
@@ -355,6 +355,14 @@ func (w *wasmModel) updateMessage(currentMsgJson string, messageID *message.ID,
 
 	if hidden != nil {
 		newMessage.Hidden = *hidden
+	}
+
+	if messageData != nil {
+		newMessage.Text = messageData
+	}
+
+	if fileData != nil {
+		newMessage.FileData = fileData
 	}
 
 	// Store the updated Message
@@ -398,6 +406,7 @@ func buildMessage(channelID, messageID, parentID []byte, nickname string,
 		DmToken:        dmToken,
 		CodesetVersion: codeset,
 		FileData:       nil,
+		FileId:         nil,
 	}
 }
 
@@ -547,7 +556,32 @@ func (w *wasmModel) ReceiveFileMessage(channelID *id.ID, fileID fileTransfer.ID,
 	codeset uint8, timestamp time.Time, lease time.Duration,
 	round rounds.Round, messageType channels.MessageType, status channels.SentStatus,
 	hidden bool) (uint64, error) {
-	return 0, nil
+	var err error
+
+	// Handle encryption, if it is present
+	if w.cipher != nil {
+		fileInfo, err = w.cipher.Encrypt(fileInfo)
+		if err != nil {
+			return 0, errors.Errorf("Failed to encrypt fileInfo: %+v", err)
+		}
+		fileData, err = w.cipher.Encrypt(fileData)
+		if err != nil {
+			return 0, errors.Errorf("Failed to encrypt fileData: %+v", err)
+		}
+	}
+
+	msgToInsert := buildMessage(
+		channelID.Marshal(), nil, nil, nickname,
+		fileInfo, pubKey, dmToken, codeset, timestamp, lease, round.ID, messageType,
+		false, hidden, status)
+	msgToInsert.FileId = fileID.Marshal()
+	msgToInsert.FileData = fileData
+
+	uuid, err := w.receiveHelper(msgToInsert, false)
+	if err != nil {
+		return 0, errors.Errorf("Failed to receive File Message: %+v", err)
+	}
+	return uuid, nil
 }
 
 // UpdateFile is called when a file upload completed, a download starts, or
@@ -558,12 +592,53 @@ func (w *wasmModel) ReceiveFileMessage(channelID *id.ID, fileID fileTransfer.ID,
 // timestamp, round, pinned, hidden, and status are all nillable and may be
 // updated based upon the fileID at a later date. If a nil value is passed,
 // then make no update.
-func (w *wasmModel) UpdateFile(fileID fileTransfer.ID, fileInfo, fileData *[]byte, timestamp *time.Time,
+func (w *wasmModel) UpdateFile(fileID fileTransfer.ID, fileInfo, fileData []byte, timestamp *time.Time,
 	round *rounds.Round, pinned, hidden *bool, status *channels.SentStatus) error {
+	parentErr := "failed to UpdateFile"
+
+	currentMsg, err := impl.GetIndex(w.db, messageStoreName, messageStoreFileIndex,
+		js.ValueOf(fileID.Marshal()))
+	if err != nil {
+		return errors.WithMessage(err, parentErr)
+	}
+
+	// Handle encryption, if it is present
+	if w.cipher != nil {
+		if fileInfo != nil {
+			fileInfo, err = w.cipher.Encrypt(fileInfo)
+			if err != nil {
+				return errors.WithMessage(errors.Errorf("Failed to encrypt fileInfo: %+v", err), parentErr)
+
+			}
+		}
+		if fileData != nil {
+			fileData, err = w.cipher.Encrypt(fileData)
+			if err != nil {
+				return errors.WithMessage(errors.Errorf("Failed to encrypt fileData: %+v", err), parentErr)
+			}
+		}
+	}
+
+	_, err = w.updateMessage(utils.JsToJson(currentMsg), nil, fileInfo,
+		timestamp, round, pinned, hidden, status, fileData)
+	if err != nil {
+		return errors.WithMessage(err, parentErr)
+	}
 	return nil
 }
 
 // GetFile returns the file data and info at the given file ID.
 func (w *wasmModel) GetFile(fileID fileTransfer.ID) (fileInfo, fileData []byte, err error) {
-	return nil, nil, nil
+	resultObj, err := impl.GetIndex(w.db, messageStoreName, messageStoreFileIndex,
+		js.ValueOf(fileID.Marshal()))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resultMsg := &Message{}
+	err = json.Unmarshal([]byte(utils.JsToJson(resultObj)), resultMsg)
+	if err != nil {
+		return nil, nil, err
+	}
+	return resultMsg.Text, resultMsg.FileData, nil
 }
