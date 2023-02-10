@@ -512,12 +512,18 @@ func (w *wasmModel) GetMessage(
 }
 
 // DeleteMessage removes a message with the given messageID from storage.
+//
+// Returns an error if the message cannot be deleted. It must return
+// channels.NoMessageErr if the message does not exist.
 func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 	msgId := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
 
 	err := impl.DeleteIndex(
 		w.db, messageStoreName, messageStoreMessageIndex, pkeyName, msgId)
 	if err != nil {
+		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
+			return errors.WithMessage(err, channels.NoMessageErr)
+		}
 		return err
 	}
 
