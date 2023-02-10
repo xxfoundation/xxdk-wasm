@@ -275,7 +275,7 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 	currentMsg, err := impl.Get(w.db, messageStoreName, key)
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			return errors.WithMessage(err, channels.NoMessageErr)
+			return errors.WithMessage(channels.NoMessageErr, parentErr)
 		}
 		return errors.WithMessage(err, parentErr)
 	}
@@ -316,7 +316,7 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 		messageStoreMessageIndex, js.ValueOf(msgIDStr))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			return 0, errors.WithMessage(err, channels.NoMessageErr)
+			return 0, errors.WithMessage(channels.NoMessageErr, parentErr)
 		}
 		return 0, errors.WithMessage(err, parentErr)
 	}
@@ -522,7 +522,7 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 		w.db, messageStoreName, messageStoreMessageIndex, pkeyName, msgId)
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			return errors.WithMessage(err, channels.NoMessageErr)
+			return errors.WithMessage(channels.NoMessageErr, err.Error())
 		}
 		return err
 	}
@@ -622,7 +622,7 @@ func (w *wasmModel) UpdateFile(fileID fileTransfer.ID, fileInfo, fileData []byte
 		js.ValueOf(fileID.Marshal()))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			return errors.WithMessage(err, channels.NoMessageErr)
+			return errors.WithMessage(channels.NoMessageErr, parentErr)
 		}
 		return errors.WithMessage(err, parentErr)
 	}
