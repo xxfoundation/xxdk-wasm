@@ -402,6 +402,7 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [ChannelsManager] object.
 //   - Rejected with an error if loading indexedDb or the manager fails.
+//
 // FIXME: package names in comments for indexedDb
 func NewChannelsManagerWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
@@ -437,7 +438,7 @@ func newChannelsManagerWithIndexedDb(cmixID int, wasmJsPath string,
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		cm, err := bindings.NewChannelsManagerGoEventModel(
-			cmixID, privateIdentity, model)
+			cmixID, privateIdentity, model, nil)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -574,7 +575,7 @@ func loadChannelsManagerWithIndexedDb(cmixID int, wasmJsPath, storageTag string,
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		cm, err := bindings.LoadChannelsManagerGoEventModel(
-			cmixID, storageTag, model)
+			cmixID, storageTag, model, nil)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -1673,6 +1674,30 @@ func (cm *ChannelsManager) RegisterReceiveHandler(_ js.Value, args []js.Value) a
 // Event Model Logic                                                          //
 ////////////////////////////////////////////////////////////////////////////////
 
+// GetNoMessageErr returns the error channels.NoMessageErr, which must be
+// returned by EventModel methods (such as EventModel.UpdateFromUUID,
+// EventModel.UpdateFromMessageID, and EventModel.GetMessage) when the message
+// cannot be found.
+//
+// Returns:
+//   - channels.NoMessageErr error message (string).
+func GetNoMessageErr(js.Value, []js.Value) any {
+	return bindings.GetNoMessageErr()
+}
+
+// CheckNoMessageErr determines if the error returned by an EventModel function
+// indicates that the message or item does not exist. It returns true if the
+// error contains channels.NoMessageErr.
+//
+// Parameters:
+//   - args[0] - Error to check (Error).
+//
+// Returns
+//   - True if the error contains channels.NoMessageErr (boolean).
+func CheckNoMessageErr(_ js.Value, args []js.Value) any {
+	return bindings.CheckNoMessageErr(utils.JsErrorToJson(args[0]))
+}
+
 // eventModelBuilder adheres to the [bindings.EventModelBuilder] interface.
 type eventModelBuilder struct {
 	build func(args ...any) js.Value
@@ -1864,12 +1889,21 @@ func (em *eventModel) ReceiveReaction(channelID, messageID, reactionTo []byte,
 //   - uuid - The unique identifier of the message in the database (int).
 //   - messageUpdateInfoJSON - JSON of [bindings.MessageUpdateInfo]
 //     (Uint8Array).
-func (em *eventModel) UpdateFromUUID(uuid int64, messageUpdateInfoJSON []byte) {
-	em.updateFromUUID(uuid, utils.CopyBytesToJS(messageUpdateInfoJSON))
+//
+// Returns:
+//   - Returns an error if the message cannot be updated. It must return the
+//     error from [GetNoMessageErr] if the message does not exist.
+func (em *eventModel) UpdateFromUUID(
+	uuid int64, messageUpdateInfoJSON []byte) error {
+	err := em.updateFromUUID(uuid, utils.CopyBytesToJS(messageUpdateInfoJSON))
+	return js.Error{Value: err}
 }
 
 // UpdateFromMessageID is called whenever a message with the message ID is
 // modified.
+//
+// Note for developers: The internal Javascript function must return JSON of
+// [UuidAndError], which includes the returned UUID or an error.
 //
 // Parameters:
 //   - messageID - The bytes of the [channel.MessageID] of the received message
@@ -1880,16 +1914,31 @@ func (em *eventModel) UpdateFromUUID(uuid int64, messageUpdateInfoJSON []byte) {
 // Returns:
 //   - A non-negative unique uuid for the modified message by which it can be
 //     referenced later with [EventModel.UpdateFromUUID] int).
+//   - Returns an error if the message cannot be updated. It must return the
+//     error from [GetNoMessageErr] if the message does not exist.
 func (em *eventModel) UpdateFromMessageID(
-	messageID []byte, messageUpdateInfoJSON []byte) int64 {
-	return int64(em.updateFromMessageID(utils.CopyBytesToJS(messageID),
-		utils.CopyBytesToJS(messageUpdateInfoJSON)).Int())
+	messageID []byte, messageUpdateInfoJSON []byte) (int64, error) {
+	uuidAndErrorBytes := utils.CopyBytesToGo(em.updateFromMessageID(
+		utils.CopyBytesToJS(messageID),
+		utils.CopyBytesToJS(messageUpdateInfoJSON)))
+
+	var uae UuidAndError
+	err := json.Unmarshal(uuidAndErrorBytes, &uae)
+	if err != nil {
+		return 0, err
+	}
+
+	if uae.Error != "" {
+		return 0, errors.New(uae.Error)
+	}
+
+	return uae.UUID, nil
 }
 
 // GetMessage returns the message with the given [channel.MessageID].
 //
 // Note for developers: The internal Javascript function must return JSON of
-// MessageAndError, which includes the returned [channels.ModelMessage] or any
+// [MessageAndError], which includes the returned [channels.ModelMessage] or any
 // error that occurs during lookup.
 //
 // Parameters:
@@ -1938,6 +1987,21 @@ func (em *eventModel) DeleteMessage(messageID []byte) error {
 func (em *eventModel) MuteUser(channelID, pubkey []byte, unmute bool) {
 	em.muteUser(
 		utils.CopyBytesToJS(channelID), utils.CopyBytesToJS(pubkey), unmute)
+}
+
+// UuidAndError contains a UUID returned by an eventModel method or any possible
+// error that occurs. Only one field should be present at a time.
+//
+// Example JSON:
+//
+//	{ "uuid": 5, }
+//
+// Or:
+//
+//	{ "error": "An error occurred." }
+type UuidAndError struct {
+	UUID  int64  `json:"uuid,omitempty"`
+	Error string `json:"error,omitempty"`
 }
 
 // MessageAndError contains a message returned by eventModel.GetMessage or any
