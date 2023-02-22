@@ -361,17 +361,25 @@ func (w *wasmModel) receiveHelper(
 	return uuid, nil
 }
 
-// msgIDLookup gets the UUID of the Message with the given messageID.
-func (w *wasmModel) msgIDLookup(messageID message.ID) (uint64, error) {
-	resultObj, err := impl.GetIndex(w.db, messageStoreName,
-		messageStoreMessageIndex, utils.CopyBytesToJS(messageID.Marshal()))
-	if err != nil {
-		return 0, err
-	}
+// BlockSender silences messages sent by the indicated sender
+// public key.
+func (w *wasmModel) BlockSender(senderPubKey ed25519.PublicKey) {
+}
 
-	uuid := uint64(0)
-	if !resultObj.IsUndefined() {
-		uuid = uint64(resultObj.Get("id").Int())
-	}
-	return uuid, nil
+// UnblockSender allows messages sent by the indicated sender
+// public key.
+func (w *wasmModel) UnblockSender(senderPubKey ed25519.PublicKey) {
+}
+
+// GetConversations returns any conversations held by the
+// model (receiver)
+func (w *wasmModel) GetConversations(
+	senderPubKey ed25519.PublicKey) []dm.ModelConversation {
+	return nil
+}
+
+// GetConversations returns any conversations held by the
+// model (receiver)
+func (w *wasmModel) GetAllConversations() []dm.ModelConversation {
+	return nil
 }

@@ -244,3 +244,26 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 
 	w.wh.SendMessage(UpdateSentStatusTag, data, nil)
 }
+
+// BlockSender silences messages sent by the indicated sender
+// public key.
+func (w *wasmModel) BlockSender(senderPubKey ed25519.PublicKey) {
+}
+
+// UnblockSender allows messages sent by the indicated sender
+// public key.
+func (w *wasmModel) UnblockSender(senderPubKey ed25519.PublicKey) {
+}
+
+// GetCognversations returns any conversations held by the
+// model (receiver)
+func (w *wasmModel) GetConversations(
+	senderPubKey ed25519.PublicKey) []dm.ModelConversation {
+	return nil
+}
+
+// GetConversations returns any conversations held by the
+// model (receiver)
+func (w *wasmModel) GetAllConversations() []dm.ModelConversation {
+	return nil
+}

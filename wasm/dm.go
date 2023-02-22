@@ -13,9 +13,11 @@ import (
 	"crypto/ed25519"
 	"syscall/js"
 
+	jww "github.com/spf13/jwalterweatherman"
 	indexDB "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
 
 	"encoding/base64"
+	"encoding/json"
 
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/crypto/codename"
@@ -47,6 +49,8 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 		"ExportPrivateIdentity": js.FuncOf(cm.ExportPrivateIdentity),
 		"SetNickname":           js.FuncOf(cm.SetNickname),
 		"GetNickname":           js.FuncOf(cm.GetNickname),
+		"IsBlocked":             js.FuncOf(cm.IsBlocked),
+		"GetBlockedSenders":     js.FuncOf(cm.IsBlocked),
 
 		// DM Sending Methods and Reports
 		"SendText":     js.FuncOf(cm.SendText),
@@ -86,11 +90,15 @@ type dmReceiverBuilder struct {
 func (emb *dmReceiverBuilder) Build(path string) bindings.DMReceiver {
 	emJs := emb.build(path)
 	return &dmReceiver{
-		receive:          utils.WrapCB(emJs, "ReceiveText"),
-		receiveText:      utils.WrapCB(emJs, "ReceiveText"),
-		receiveReply:     utils.WrapCB(emJs, "ReceiveReply"),
-		receiveReaction:  utils.WrapCB(emJs, "ReceiveReaction"),
-		updateSentStatus: utils.WrapCB(emJs, "UpdateSentStatus"),
+		receive:             utils.WrapCB(emJs, "ReceiveText"),
+		receiveText:         utils.WrapCB(emJs, "ReceiveText"),
+		receiveReply:        utils.WrapCB(emJs, "ReceiveReply"),
+		receiveReaction:     utils.WrapCB(emJs, "ReceiveReaction"),
+		updateSentStatus:    utils.WrapCB(emJs, "UpdateSentStatus"),
+		blockSender:         utils.WrapCB(emJs, "BlockSender"),
+		unblockSender:       utils.WrapCB(emJs, "UnblockSender"),
+		getConversations:    utils.WrapCB(emJs, "GetConversations"),
+		getAllConversations: utils.WrapCB(emJs, "GetAllConversations"),
 	}
 }
 
@@ -500,6 +508,28 @@ func (ch *DMClient) GetNickname(_ js.Value, args []js.Value) any {
 	return nickname
 }
 
+// IsBlocked returns if the given sender is blocked
+// Blocking is controlled by the Receiver / EventModel
+//
+// Parameters:
+//   - args[0] - Marshalled bytes if the users public key (Uint8Array).
+//
+// Returns:
+//   - bool for if true
+func (dc *DMClient) IsBlocked(_ js.Value, args []js.Value) any {
+	return dc.api.IsBlocked(utils.CopyBytesToGo(args[0]))
+}
+
+// GetBlockedSenders returns all the blocked senders
+//
+// Parameters: None
+//
+// Returns:
+//   - JSON List of blocked IDs Uint8Arrays
+func (dc *DMClient) GetBlockedSenders(_ js.Value, args []js.Value) any {
+	return dc.api.GetBlockedSenders()
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Channel Receiving Logic and Callback Registration                          //
 ////////////////////////////////////////////////////////////////////////////////
@@ -536,11 +566,15 @@ func (cmrCB *dmReceptionCallback) Callback(
 // dmReceiver wraps Javascript callbacks to adhere to the [bindings.EventModel]
 // interface.
 type dmReceiver struct {
-	receive          func(args ...any) js.Value
-	receiveText      func(args ...any) js.Value
-	receiveReply     func(args ...any) js.Value
-	receiveReaction  func(args ...any) js.Value
-	updateSentStatus func(args ...any) js.Value
+	receive             func(args ...any) js.Value
+	receiveText         func(args ...any) js.Value
+	receiveReply        func(args ...any) js.Value
+	receiveReaction     func(args ...any) js.Value
+	updateSentStatus    func(args ...any) js.Value
+	blockSender         func(args ...any) js.Value
+	unblockSender       func(args ...any) js.Value
+	getConversations    func(args ...any) js.Value
+	getAllConversations func(args ...any) js.Value
 }
 
 // ReceiveMessage is called whenever a message is received on a given channel.
@@ -733,6 +767,45 @@ func (em *dmReceiver) UpdateSentStatus(uuid int64, messageID []byte,
 	timestamp, roundID, status int64) {
 	em.updateSentStatus(uuid, utils.CopyBytesToJS(messageID),
 		timestamp, roundID, status)
+}
+
+// BlockSender silences messages sent by the indicated sender
+// public key.
+//   - senderPubKey - The sender's Ed25519 public key to block.
+func (em *dmReceiver) BlockSender(senderPubKey []byte) {
+	pubKey := ed25519.PublicKey(senderPubKey)
+	em.blockSender(pubKey)
+}
+
+// UnblockSender allows messages sent by the indicated sender
+// public key.
+//   - senderPubKey - The sender's Ed25519 public key to unblock.
+func (em *dmReceiver) UnblockSender(senderPubKey []byte) {
+	pubKey := ed25519.PublicKey(senderPubKey)
+	em.unblockSender(pubKey)
+}
+
+// GetConversations returns any conversations held by the
+// model (receiver). JSON List of dm.ModelConversation object.
+func (em *dmReceiver) GetConversations(senderPubKey []byte) []byte {
+	pubKey := ed25519.PublicKey(senderPubKey)
+	convos := em.getConversations(pubKey)
+	convosJSON, err := json.Marshal(convos)
+	if err != nil {
+		jww.ERROR.Printf("couldn't marshal conversations: %+v", err)
+	}
+	return convosJSON
+}
+
+// GetConversations returns any conversations held by the
+// model (receiver). JSON List of dm.ModelConversation object.
+func (em *dmReceiver) GetAllConversations() []byte {
+	convos := em.getAllConversations()
+	convosJSON, err := json.Marshal(convos)
+	if err != nil {
+		jww.ERROR.Printf("couldn't marshal conversations: %+v", err)
+	}
+	return convosJSON
 }
 
 ////////////////////////////////////////////////////////////////////////////////
