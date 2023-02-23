@@ -167,7 +167,7 @@ func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 	messageReceivedCB := args[3]
 	cipherID := args[4].Int()
 
-	cipher, err := bindings.GetChannelDbCipherTrackerFromID(cipherID)
+	cipher, err := bindings.GetDMDbCipherTrackerFromID(cipherID)
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 	}
@@ -216,7 +216,7 @@ func NewDMClientWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 }
 
 func newDMClientWithIndexedDb(cmixID int, wasmJsPath string,
-	privateIdentity []byte, cb js.Value, cipher *bindings.ChannelDbCipher) any {
+	privateIdentity []byte, cb js.Value, cipher *bindings.DMDbCipher) any {
 
 	messageReceivedCB := func(uuid uint64, pubKey ed25519.PublicKey,
 		update bool) {
