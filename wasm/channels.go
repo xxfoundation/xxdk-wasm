@@ -763,26 +763,6 @@ func (cm *ChannelsManager) JoinChannel(_ js.Value, args []js.Value) any {
 	return utils.CopyBytesToJS(ci)
 }
 
-func (cm *ChannelsManager) EnableDirectMessages(_ js.Value, args []js.Value) any {
-	marshalledChanId := utils.CopyBytesToGo(args[0])
-	err := cm.api.EnableDirectMessages(marshalledChanId)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
-	}
-	return nil
-}
-
-func (cm *ChannelsManager) DisableDirectMessages(_ js.Value, args []js.Value) any {
-	marshalledChanId := utils.CopyBytesToGo(args[0])
-	err := cm.api.DisableDirectMessages(marshalledChanId)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
-	}
-	return nil
-}
-
 // LeaveChannel leaves the given channel. It will return the error
 // [channels.ChannelDoesNotExistsErr] if the channel was not previously joined.
 //
@@ -846,6 +826,42 @@ func (cm *ChannelsManager) GetChannels(js.Value, []js.Value) any {
 	}
 
 	return utils.CopyBytesToJS(channelList)
+}
+
+// EnableDirectMessages enables the token for direct messaging for this
+// channel.
+//
+// Parameters:
+//   - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
+//
+// Returns:
+//   - Throws a TypeError if saving the DM token fails.
+func (cm *ChannelsManager) EnableDirectMessages(_ js.Value, args []js.Value) any {
+	marshalledChanId := utils.CopyBytesToGo(args[0])
+	err := cm.api.EnableDirectMessages(marshalledChanId)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+	return nil
+}
+
+// DisableDirectMessages removes the token for direct messaging for a
+// given channel.
+//
+// Parameters:
+//   - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
+//
+// Returns:
+//   - Throws a TypeError if saving the DM token fails
+func (cm *ChannelsManager) DisableDirectMessages(_ js.Value, args []js.Value) any {
+	marshalledChanId := utils.CopyBytesToGo(args[0])
+	err := cm.api.DisableDirectMessages(marshalledChanId)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
