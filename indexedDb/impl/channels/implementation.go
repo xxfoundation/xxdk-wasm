@@ -385,7 +385,7 @@ func buildMessage(channelID, messageID, parentID []byte, nickname string,
 		ChannelID:       channelID,
 		ParentMessageID: parentID,
 		Timestamp:       timestamp,
-		Lease:           lease,
+		Lease:           lease.String(),
 		Status:          uint8(status),
 		Hidden:          hidden,
 		Pinned:          pinned,
@@ -468,6 +468,14 @@ func (w *wasmModel) GetMessage(
 		}
 	}
 
+	lease := time.Duration(0)
+	if len(lookupResult.Lease) > 0 {
+		lease, err = time.ParseDuration(lookupResult.Lease)
+		if err != nil {
+			return channels.ModelMessage{}, err
+		}
+	}
+
 	return channels.ModelMessage{
 		UUID:            lookupResult.ID,
 		Nickname:        lookupResult.Nickname,
@@ -475,7 +483,7 @@ func (w *wasmModel) GetMessage(
 		ChannelID:       channelId,
 		ParentMessageID: parentMsgId,
 		Timestamp:       lookupResult.Timestamp,
-		Lease:           lookupResult.Lease,
+		Lease:           lease,
 		Status:          channels.SentStatus(lookupResult.Status),
 		Hidden:          lookupResult.Hidden,
 		Pinned:          lookupResult.Pinned,
