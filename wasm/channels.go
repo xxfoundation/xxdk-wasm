@@ -41,12 +41,14 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]any {
 	cm := ChannelsManager{api}
 	channelsManagerMap := map[string]any{
 		// Basic Channel API
-		"GetID":           js.FuncOf(cm.GetID),
-		"GenerateChannel": js.FuncOf(cm.GenerateChannel),
-		"JoinChannel":     js.FuncOf(cm.JoinChannel),
-		"GetChannels":     js.FuncOf(cm.GetChannels),
-		"LeaveChannel":    js.FuncOf(cm.LeaveChannel),
-		"ReplayChannel":   js.FuncOf(cm.ReplayChannel),
+		"GetID":                 js.FuncOf(cm.GetID),
+		"GenerateChannel":       js.FuncOf(cm.GenerateChannel),
+		"JoinChannel":           js.FuncOf(cm.JoinChannel),
+		"GetChannels":           js.FuncOf(cm.GetChannels),
+		"LeaveChannel":          js.FuncOf(cm.LeaveChannel),
+		"ReplayChannel":         js.FuncOf(cm.ReplayChannel),
+		"EnableDirectMessages":  js.FuncOf(cm.EnableDirectMessages),
+		"DisableDirectMessages": js.FuncOf(cm.DisableDirectMessages),
 
 		// Share URL
 		"GetShareURL": js.FuncOf(cm.GetShareURL),
@@ -402,6 +404,7 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [ChannelsManager] object.
 //   - Rejected with an error if loading indexedDb or the manager fails.
+//
 // FIXME: package names in comments for indexedDb
 func NewChannelsManagerWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
@@ -758,6 +761,26 @@ func (cm *ChannelsManager) JoinChannel(_ js.Value, args []js.Value) any {
 	}
 
 	return utils.CopyBytesToJS(ci)
+}
+
+func (cm *ChannelsManager) EnableDirectMessages(_ js.Value, args []js.Value) any {
+	marshalledChanId := utils.CopyBytesToGo(args[0])
+	err := cm.api.EnableDirectMessages(marshalledChanId)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+	return nil
+}
+
+func (cm *ChannelsManager) DisableDirectMessages(_ js.Value, args []js.Value) any {
+	marshalledChanId := utils.CopyBytesToGo(args[0])
+	err := cm.api.DisableDirectMessages(marshalledChanId)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+	return nil
 }
 
 // LeaveChannel leaves the given channel. It will return the error
