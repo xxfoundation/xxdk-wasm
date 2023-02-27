@@ -402,6 +402,7 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [ChannelsManager] object.
 //   - Rejected with an error if loading indexedDb or the manager fails.
+//
 // FIXME: package names in comments for indexedDb
 func NewChannelsManagerWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
@@ -746,18 +747,23 @@ func (cm *ChannelsManager) GenerateChannel(_ js.Value, args []js.Value) any {
 //
 //	<Speakeasy-v3:Test_Channel|description:Channel description.|level:Public|created:1666718081766741100|secrets:+oHcqDbJPZaT3xD5NcdLY8OjOMtSQNKdKgLPmr7ugdU=|rCI0wr01dHFStjSFMvsBzFZClvDIrHLL5xbCOPaUOJ0=|493|1|7cBhJxVfQxWo+DypOISRpeWdQBhuQpAZtUbQHjBm8NQ=>
 //
-// Returns:
-//   - JSON of [bindings.ChannelInfo], which describes all relevant channel info
-//     (Uint8Array).
-//   - Throws a TypeError if joining the channel fails.
+// Returns a promise:
+//   - Resolves to the JSON of [bindings.ChannelInfo], which describes all
+//     relevant channel information (Uint8Array).
+//   - Rejected with an error if joining the channel fails.
 func (cm *ChannelsManager) JoinChannel(_ js.Value, args []js.Value) any {
-	ci, err := cm.api.JoinChannel(args[0].String())
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	channelPretty := args[0].String()
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		ci, err := cm.api.JoinChannel(channelPretty)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(ci))
+		}
 	}
 
-	return utils.CopyBytesToJS(ci)
+	return utils.CreatePromise(promiseFn)
 }
 
 // LeaveChannel leaves the given channel. It will return the error
@@ -766,18 +772,22 @@ func (cm *ChannelsManager) JoinChannel(_ js.Value, args []js.Value) any {
 // Parameters:
 //   - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //
-// Returns:
-//   - Throws a TypeError if the channel does not exist.
+// Returns a promise:
+//   - Resolves on success (void).
+//   - Rejected with an error if the channel does not exist.
 func (cm *ChannelsManager) LeaveChannel(_ js.Value, args []js.Value) any {
 	marshalledChanId := utils.CopyBytesToGo(args[0])
 
-	err := cm.api.LeaveChannel(marshalledChanId)
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		err := cm.api.LeaveChannel(marshalledChanId)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve()
+		}
 	}
 
-	return nil
+	return utils.CreatePromise(promiseFn)
 }
 
 // ReplayChannel replays all messages from the channel within the network's
