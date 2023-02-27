@@ -97,11 +97,6 @@ func (emb *dmReceiverBuilder) Build(path string) bindings.DMReceiver {
 // NewDMClient creates a new [DMClient] from a new private
 // identity ([channel.PrivateIdentity]).
 //
-// This is for creating a manager for an identity for the first time. For
-// generating a new one channel identity, use [GenerateChannelIdentity]. To
-// reload this channel manager, use [LoadDMClient], passing in the
-// storage tag retrieved by [DMClient.GetStorageTag].
-//
 // Parameters:
 //   - args[0] - ID of [Cmix] object in tracker (int). This can be retrieved
 //     using [Cmix.GetID].
@@ -131,11 +126,6 @@ func NewDMClient(_ js.Value, args []js.Value) any {
 // NewDMClientWithIndexedDb creates a new [DMClient] from a new
 // private identity ([channel.PrivateIdentity]) and using indexedDbWorker as a backend
 // to manage the event model.
-//
-// This is for creating a manager for an identity for the first time. For
-// generating a new one channel identity, use [GenerateChannelIdentity]. To
-// reload this channel manager, use [LoadDMClientWithIndexedDb], passing
-// in the storage tag retrieved by [DMClient.GetStorageTag].
 //
 // This function initialises an indexedDbWorker database.
 //
@@ -180,11 +170,6 @@ func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 // new private identity ([channel.PrivateIdentity]) and using indexedDbWorker as a
 // backend to manage the event model. However, the data is written in plain text
 // and not encrypted. It is recommended that you do not use this in production.
-//
-// This is for creating a manager for an identity for the first time. For
-// generating a new one channel identity, use [GenerateChannelIdentity]. To
-// reload this channel manager, use [LoadDMClientWithIndexedDbUnsafe],
-// passing in the storage tag retrieved by [DMClient.GetStorageTag].
 //
 // This function initialises an indexedDbWorker database.
 //
