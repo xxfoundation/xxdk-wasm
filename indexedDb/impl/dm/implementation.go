@@ -368,6 +368,8 @@ func (w *wasmModel) receiveHelper(
 		copy(msgID[:], newMessage.MessageID)
 		uuid, errLookup := w.msgIDLookup(msgID)
 		if uuid != 0 && errLookup == nil {
+			jww.WARN.Printf("result undefined, but found"+
+				" duplicate? %d, %s", uuid, msgID)
 			return uuid, nil
 		}
 		return 0, errors.Errorf("uuid lookup failure: %+v", err)
