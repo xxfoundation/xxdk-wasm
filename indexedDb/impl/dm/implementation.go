@@ -41,16 +41,15 @@ type wasmModel struct {
 
 // joinConversation is used for joining new conversations.
 func (w *wasmModel) joinConversation(nickname string,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8) error {
+	pubKey ed25519.PublicKey, dmToken uint32) error {
 	parentErr := errors.New("failed to joinConversation")
 
 	// Build object
 	newConvo := Conversation{
-		Pubkey:         pubKey,
-		Nickname:       nickname,
-		Token:          dmToken,
-		CodesetVersion: codeset,
-		Blocked:        false,
+		Pubkey:   pubKey,
+		Nickname: nickname,
+		Token:    dmToken,
+		Blocked:  false,
 	}
 
 	// Convert to jsObject
@@ -81,7 +80,7 @@ func (w *wasmModel) joinConversation(nickname string,
 // message, then you need to set it manually yourself.
 func buildMessage(messageID, parentID, text []byte, pubKey ed25519.PublicKey,
 	timestamp time.Time, round id.Round, mType dm.MessageType,
-	status dm.Status) *Message {
+	codeset uint8, status dm.Status) *Message {
 	return &Message{
 		MessageID:          messageID,
 		ConversationPubKey: pubKey,
@@ -89,6 +88,7 @@ func buildMessage(messageID, parentID, text []byte, pubKey ed25519.PublicKey,
 		Timestamp:          timestamp,
 		SenderPubKey:       pubKey[:],
 		Status:             uint8(status),
+		CodesetVersion:     codeset,
 		Text:               text,
 		Type:               uint16(mType),
 		Round:              uint64(round),
@@ -105,7 +105,7 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
+			err = w.joinConversation(nickname, pubKey, dmToken)
 			if err != nil {
 				jww.ERROR.Printf("[DM indexedDB] %+v", err)
 				return 0
@@ -131,7 +131,7 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	}
 
 	msgToInsert := buildMessage(messageID.Bytes(), nil, text, pubKey, timestamp,
-		round.ID, mType, status)
+		round.ID, mType, codeset, status)
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
 		jww.ERROR.Printf("[DM indexedDB] Failed to receive Message: %+v", err)
@@ -154,7 +154,7 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
+			err = w.joinConversation(nickname, pubKey, dmToken)
 			if err != nil {
 				jww.ERROR.Printf("[DM indexedDB] %+v", err)
 				return 0
@@ -182,7 +182,7 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	}
 
 	msgToInsert := buildMessage(messageID.Bytes(), nil, textBytes,
-		pubKey, timestamp, round.ID, dm.TextType, status)
+		pubKey, timestamp, round.ID, dm.TextType, codeset, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -206,7 +206,7 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
+			err = w.joinConversation(nickname, pubKey, dmToken)
 			if err != nil {
 				jww.ERROR.Printf("[DM indexedDB] %+v", err)
 				return 0
@@ -233,7 +233,8 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	}
 
 	msgToInsert := buildMessage(messageID.Bytes(), reactionTo.Marshal(),
-		textBytes, pubKey, timestamp, round.ID, dm.TextType, status)
+		textBytes, pubKey, timestamp, round.ID, dm.TextType, codeset,
+		status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -257,7 +258,7 @@ func (w *wasmModel) ReceiveReaction(messageID, _ message.ID, nickname,
 	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
+			err = w.joinConversation(nickname, pubKey, dmToken)
 			if err != nil {
 				jww.ERROR.Printf("[DM indexedDB] %+v", err)
 				return 0
@@ -283,7 +284,7 @@ func (w *wasmModel) ReceiveReaction(messageID, _ message.ID, nickname,
 	}
 
 	msgToInsert := buildMessage(messageID.Bytes(), nil, textBytes, pubKey,
-		timestamp, round.ID, dm.ReactionType, status)
+		timestamp, round.ID, dm.ReactionType, codeset, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
