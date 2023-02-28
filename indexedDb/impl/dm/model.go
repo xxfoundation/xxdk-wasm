@@ -24,13 +24,13 @@ const (
 
 	// Message index names.
 	messageStoreMessageIndex      = "message_id_index"
-	messageStoreConversationIndex = "conversation_id_index"
+	messageStoreConversationIndex = "conversation_pub_key_index"
 	messageStoreParentIndex       = "parent_message_id_index"
 	messageStoreTimestampIndex    = "timestamp_index"
 
 	// Message keyPath names (must match json struct tags).
 	messageStoreMessage      = "message_id"
-	messageStoreConversation = "conversation_id"
+	messageStoreConversation = "conversation_pub_key"
 	messageStoreParent       = "parent_message_id"
 	messageStoreTimestamp    = "timestamp"
 )
@@ -45,6 +45,8 @@ type Message struct {
 	ConversationPubKey []byte    `json:"conversation_pub_key"` // Index
 	ParentMessageID    []byte    `json:"parent_message_id"`    // Index
 	Timestamp          time.Time `json:"timestamp"`            // Index
+	SenderPubKey       []byte    `json:"sender_pub_key"`
+	CodesetVersion     uint8     `json:"codeset_version"`
 	Status             uint8     `json:"status"`
 	Text               []byte    `json:"text"`
 	Type               uint16    `json:"type"`
