@@ -45,6 +45,7 @@ type Message struct {
 	ConversationPubKey []byte    `json:"conversation_pub_key"` // Index
 	ParentMessageID    []byte    `json:"parent_message_id"`    // Index
 	Timestamp          time.Time `json:"timestamp"`            // Index
+	SenderPubKey       []byte    `json:"sender_pub_key"`
 	Status             uint8     `json:"status"`
 	Text               []byte    `json:"text"`
 	Type               uint16    `json:"type"`
