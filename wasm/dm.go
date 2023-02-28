@@ -47,7 +47,7 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 		"ExportPrivateIdentity": js.FuncOf(cm.ExportPrivateIdentity),
 		"SetNickname":           js.FuncOf(cm.SetNickname),
 		"GetNickname":           js.FuncOf(cm.GetNickname),
-		"GetStorageTag":         js.FuncOf(cm.GetStorageTag),
+		"GetDatabaseName":       js.FuncOf(cm.GetDatabaseName),
 
 		// DM Sending Methods and Reports
 		"SendText":     js.FuncOf(cm.SendText),
@@ -486,14 +486,14 @@ func (ch *DMClient) GetNickname(_ js.Value, args []js.Value) any {
 	return nickname
 }
 
-// GetStorageTag returns the storage tag, so users listening to the database
+// GetDatabaseName returns the storage tag, so users listening to the database
 // can separately listen and read updates there.
 //
 // Parameters:
 //
 // Returns:
 //   - The storage tag (string).
-func (dmc *DMClient) GetStorageTag(_ js.Value, args []js.Value) any {
+func (dmc *DMClient) GetDatabaseName(_ js.Value, args []js.Value) any {
 	return (base64.RawStdEncoding.EncodeToString(dmc.api.GetPublicKey()) +
 		"_speakeasy_dm")
 }
