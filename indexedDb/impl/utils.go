@@ -78,6 +78,46 @@ func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, erro
 	return resultObj, nil
 }
 
+// GetAll is a generic helper for getting all values from the given [idb.ObjectStore].
+func GetAll(db *idb.Database, objectStoreName string) ([]js.Value, error) {
+	parentErr := errors.Errorf("failed to GetAll %s", objectStoreName)
+
+	// Prepare the Transaction
+	txn, err := db.Transaction(idb.TransactionReadWrite, objectStoreName)
+	if err != nil {
+		return nil, errors.WithMessagef(parentErr,
+			"Unable to create Transaction: %+v", err)
+	}
+	store, err := txn.ObjectStore(objectStoreName)
+	if err != nil {
+		return nil, errors.WithMessagef(parentErr,
+			"Unable to get ObjectStore: %+v", err)
+	}
+
+	// Perform the operation
+	result := make([]js.Value, 0)
+	cursorRequest, err := store.OpenCursor(idb.CursorNext)
+	if err != nil {
+		return nil, errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
+	}
+	ctx, cancel := NewContext()
+	err = cursorRequest.Iter(ctx,
+		func(cursor *idb.CursorWithValue) error {
+			row, err := cursor.Value()
+			if err != nil {
+				return err
+			}
+			result = append(result, row)
+			return nil
+		})
+	cancel()
+	if err != nil {
+		return nil, errors.WithMessagef(parentErr,
+			"Unable to delete Message data: %+v", err)
+	}
+	return result, nil
+}
+
 // GetIndex is a generic helper for getting values from the given
 // [idb.ObjectStore] using the given [idb.Index].
 func GetIndex(db *idb.Database, objectStoreName,
