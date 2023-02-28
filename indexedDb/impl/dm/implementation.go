@@ -41,15 +41,16 @@ type wasmModel struct {
 
 // joinConversation is used for joining new conversations.
 func (w *wasmModel) joinConversation(nickname string,
-	pubKey ed25519.PublicKey, dmToken uint32) error {
+	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8) error {
 	parentErr := errors.New("failed to joinConversation")
 
 	// Build object
 	newConvo := Conversation{
-		Pubkey:   pubKey,
-		Nickname: nickname,
-		Token:    dmToken,
-		Blocked:  false,
+		Pubkey:         pubKey,
+		Nickname:       nickname,
+		Token:          dmToken,
+		CodesetVersion: codeset,
+		Blocked:        false,
 	}
 
 	// Convert to jsObject
@@ -105,7 +106,8 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken)
+			err = w.joinConversation(nickname, pubKey, dmToken,
+				codeset)
 			if err != nil {
 				jww.ERROR.Printf("[DM indexedDB] %+v", err)
 				return 0
@@ -154,7 +156,8 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken)
+			err = w.joinConversation(nickname, pubKey, dmToken,
+				codeset)
 			if err != nil {
 				jww.ERROR.Printf("[DM indexedDB] %+v", err)
 				return 0
@@ -206,7 +209,8 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken)
+			err = w.joinConversation(nickname, pubKey, dmToken,
+				codeset)
 			if err != nil {
 				jww.ERROR.Printf("[DM indexedDB] %+v", err)
 				return 0
@@ -258,7 +262,8 @@ func (w *wasmModel) ReceiveReaction(messageID, _ message.ID, nickname,
 	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken)
+			err = w.joinConversation(nickname, pubKey, dmToken,
+				codeset)
 			if err != nil {
 				jww.ERROR.Printf("[DM indexedDB] %+v", err)
 				return 0
