@@ -97,16 +97,16 @@ func buildMessage(messageID, parentID, text []byte, pubKey ed25519.PublicKey,
 }
 
 func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
+	partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
 	round rounds.Round, mType dm.MessageType, status dm.Status) uint64 {
 	parentErr := errors.New("failed to Receive")
 	jww.TRACE.Printf("[DM indexedDB] Receive(%s)", messageID)
 
 	// If there is no extant Conversation, create one.
-	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(partnerKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken,
+			err = w.joinConversation(nickname, partnerKey, dmToken,
 				codeset)
 			if err != nil {
 				jww.ERROR.Printf("[DM indexedDB] %+v", err)
@@ -132,7 +132,7 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 		}
 	}
 
-	msgToInsert := buildMessage(messageID.Bytes(), nil, text, pubKey, timestamp,
+	msgToInsert := buildMessage(messageID.Bytes(), nil, text, senderKey, timestamp,
 		round.ID, mType, codeset, status)
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -141,22 +141,22 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	}
 
 	jww.TRACE.Printf(
-		"[DM indexedDB] Calling ReceiveMessageCB(%v, %v, f)", uuid, pubKey)
-	go w.receivedMessageCB(uuid, pubKey, false)
+		"[DM indexedDB] Calling ReceiveMessageCB(%v, %v, f)", uuid, partnerKey)
+	go w.receivedMessageCB(uuid, partnerKey, false)
 	return uuid
 }
 
 func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveText")
 	jww.TRACE.Printf("[DM indexedDB] ReceiveText(%s)", messageID)
 
 	// If there is no extant Conversation, create one.
-	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(partnerKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken,
+			err = w.joinConversation(nickname, partnerKey, dmToken,
 				codeset)
 			if err != nil {
 				jww.ERROR.Printf("[DM indexedDB] %+v", err)
@@ -185,7 +185,7 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	}
 
 	msgToInsert := buildMessage(messageID.Bytes(), nil, textBytes,
-		pubKey, timestamp, round.ID, dm.TextType, codeset, status)
+		senderKey, timestamp, round.ID, dm.TextType, codeset, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -194,22 +194,22 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	}
 
 	jww.TRACE.Printf(
-		"[DM indexedDB] Calling ReceiveMessageCB(%v, %v, f)", uuid, pubKey)
-	go w.receivedMessageCB(uuid, pubKey, false)
+		"[DM indexedDB] Calling ReceiveMessageCB(%v, %v, f)", uuid, partnerKey)
+	go w.receivedMessageCB(uuid, partnerKey, false)
 	return uuid
 }
 
 func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
-	text string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	text string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveReply")
 	jww.TRACE.Printf("[DM indexedDB] ReceiveReply(%s)", messageID)
 
 	// If there is no extant Conversation, create one.
-	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(partnerKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken,
+			err = w.joinConversation(nickname, partnerKey, dmToken,
 				codeset)
 			if err != nil {
 				jww.ERROR.Printf("[DM indexedDB] %+v", err)
@@ -237,7 +237,7 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	}
 
 	msgToInsert := buildMessage(messageID.Bytes(), reactionTo.Marshal(),
-		textBytes, pubKey, timestamp, round.ID, dm.TextType, codeset,
+		textBytes, senderKey, timestamp, round.ID, dm.TextType, codeset,
 		status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
@@ -247,22 +247,22 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	}
 
 	jww.TRACE.Printf(
-		"[DM indexedDB] Calling ReceiveMessageCB(%v, %v, f)", uuid, pubKey)
-	go w.receivedMessageCB(uuid, pubKey, false)
+		"[DM indexedDB] Calling ReceiveMessageCB(%v, %v, f)", uuid, partnerKey)
+	go w.receivedMessageCB(uuid, partnerKey, false)
 	return uuid
 }
 
 func (w *wasmModel) ReceiveReaction(messageID, _ message.ID, nickname,
-	reaction string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	reaction string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	parentErr := errors.New("failed to ReceiveText")
 	jww.TRACE.Printf("[DM indexedDB] ReceiveReaction(%s)", messageID)
 
 	// If there is no extant Conversation, create one.
-	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(partnerKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken,
+			err = w.joinConversation(nickname, partnerKey, dmToken,
 				codeset)
 			if err != nil {
 				jww.ERROR.Printf("[DM indexedDB] %+v", err)
@@ -288,8 +288,9 @@ func (w *wasmModel) ReceiveReaction(messageID, _ message.ID, nickname,
 		}
 	}
 
-	msgToInsert := buildMessage(messageID.Bytes(), nil, textBytes, pubKey,
-		timestamp, round.ID, dm.ReactionType, codeset, status)
+	msgToInsert := buildMessage(messageID.Bytes(), nil, textBytes,
+		senderKey, timestamp, round.ID, dm.ReactionType,
+		codeset, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -298,8 +299,8 @@ func (w *wasmModel) ReceiveReaction(messageID, _ message.ID, nickname,
 	}
 
 	jww.TRACE.Printf("[DM indexedDB] Calling ReceiveMessageCB(%v, %v, f)",
-		uuid, pubKey)
-	go w.receivedMessageCB(uuid, pubKey, false)
+		uuid, partnerKey)
+	go w.receivedMessageCB(uuid, partnerKey, false)
 	return uuid
 }
 

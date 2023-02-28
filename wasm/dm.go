@@ -571,9 +571,9 @@ type dmReceiver struct {
 //   - A non-negative unique UUID for the message that it can be referenced by
 //     later with [dmReceiver.UpdateSentStatus].
 func (em *dmReceiver) Receive(messageID []byte, nickname string,
-	text []byte, pubKey []byte, dmToken int32, codeset int, timestamp,
+	text []byte, partnerKey, senderKey []byte, dmToken int32, codeset int, timestamp,
 	roundId, mType, status int64) int64 {
-	uuid := em.receive(messageID, nickname, text, pubKey, dmToken,
+	uuid := em.receive(messageID, nickname, text, partnerKey, senderKey, dmToken,
 		codeset, timestamp, roundId, mType, status)
 
 	return int64(uuid.Int())
@@ -594,7 +594,7 @@ func (em *dmReceiver) Receive(messageID []byte, nickname string,
 //     reply (Uint8Array).
 //   - senderUsername - The username of the sender of the message (string).
 //   - text - The content of the message (string).
-//   - pubKey - The sender's Ed25519 public key (Uint8Array).
+//   - partnerKey, senderKey - The sender's Ed25519 public key (Uint8Array).
 //   - dmToken - The dmToken (int32).
 //   - codeset - The codeset version (int).
 //   - timestamp - Time the message was received; represented as nanoseconds
@@ -614,10 +614,10 @@ func (em *dmReceiver) Receive(messageID []byte, nickname string,
 //   - A non-negative unique UUID for the message that it can be referenced by
 //     later with [dmReceiver.UpdateSentStatus].
 func (em *dmReceiver) ReceiveText(messageID []byte, nickname, text string,
-	pubKey []byte, dmToken int32, codeset int, timestamp,
+	partnerKey, senderKey []byte, dmToken int32, codeset int, timestamp,
 	roundId, status int64) int64 {
 
-	uuid := em.receiveText(messageID, nickname, text, pubKey, dmToken,
+	uuid := em.receiveText(messageID, nickname, text, partnerKey, senderKey, dmToken,
 		codeset, timestamp, roundId, status)
 
 	return int64(uuid.Int())
@@ -638,7 +638,7 @@ func (em *dmReceiver) ReceiveText(messageID []byte, nickname, text string,
 //     reply (Uint8Array).
 //   - senderUsername - The username of the sender of the message (string).
 //   - text - The content of the message (string).
-//   - pubKey - The sender's Ed25519 public key (Uint8Array).
+//   - partnerKey, senderKey - The sender's Ed25519 public key (Uint8Array).
 //   - dmToken - The dmToken (int32).
 //   - codeset - The codeset version (int).
 //   - timestamp - Time the message was received; represented as nanoseconds
@@ -658,9 +658,9 @@ func (em *dmReceiver) ReceiveText(messageID []byte, nickname, text string,
 //   - A non-negative unique UUID for the message that it can be referenced by
 //     later with [dmReceiver.UpdateSentStatus].
 func (em *dmReceiver) ReceiveReply(messageID, replyTo []byte, nickname,
-	text string, pubKey []byte, dmToken int32, codeset int,
+	text string, partnerKey, senderKey []byte, dmToken int32, codeset int,
 	timestamp, roundId, status int64) int64 {
-	uuid := em.receiveReply(messageID, replyTo, nickname, text, pubKey,
+	uuid := em.receiveReply(messageID, replyTo, nickname, text, partnerKey, senderKey,
 		dmToken, codeset, timestamp, roundId, status)
 
 	return int64(uuid.Int())
@@ -681,7 +681,7 @@ func (em *dmReceiver) ReceiveReply(messageID, replyTo []byte, nickname,
 //     reply (Uint8Array).
 //   - senderUsername - The username of the sender of the message (string).
 //   - reaction - The contents of the reaction message (string).
-//   - pubKey - The sender's Ed25519 public key (Uint8Array).
+//   - partnerKey, senderKey - The sender's Ed25519 public key (Uint8Array).
 //   - dmToken - The dmToken (int32).
 //   - codeset - The codeset version (int).
 //   - timestamp - Time the message was received; represented as nanoseconds
@@ -701,11 +701,11 @@ func (em *dmReceiver) ReceiveReply(messageID, replyTo []byte, nickname,
 //   - A non-negative unique UUID for the message that it can be referenced by
 //     later with [dmReceiver.UpdateSentStatus].
 func (em *dmReceiver) ReceiveReaction(messageID, reactionTo []byte,
-	nickname, reaction string, pubKey []byte, dmToken int32,
+	nickname, reaction string, partnerKey, senderKey []byte, dmToken int32,
 	codeset int, timestamp, roundId,
 	status int64) int64 {
 	uuid := em.receiveReaction(messageID, reactionTo, nickname, reaction,
-		pubKey, dmToken, codeset, timestamp, roundId, status)
+		partnerKey, senderKey, dmToken, codeset, timestamp, roundId, status)
 
 	return int64(uuid.Int())
 }
