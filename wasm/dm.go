@@ -494,7 +494,7 @@ func (ch *DMClient) GetNickname(_ js.Value, args []js.Value) any {
 // Returns:
 //   - The storage tag (string).
 func (dmc *DMClient) GetStorageTag(_ js.Value, args []js.Value) any {
-	return (base64.RawStdEncoding.EncodeToString(dmc.api.GetIdentity()) +
+	return (base64.RawStdEncoding.EncodeToString(dmc.api.GetPublicKey()) +
 		"_speakeasy_dm")
 }
 
