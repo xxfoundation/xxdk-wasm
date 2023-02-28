@@ -49,6 +49,7 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]any {
 		"ReplayChannel":         js.FuncOf(cm.ReplayChannel),
 		"EnableDirectMessages":  js.FuncOf(cm.EnableDirectMessages),
 		"DisableDirectMessages": js.FuncOf(cm.DisableDirectMessages),
+		"AreDMsEnabled":         js.FuncOf(cm.AreDMsEnabled),
 
 		// Share URL
 		"GetShareURL": js.FuncOf(cm.GetShareURL),
@@ -871,6 +872,24 @@ func (cm *ChannelsManager) DisableDirectMessages(_ js.Value, args []js.Value) an
 		return nil
 	}
 	return nil
+}
+
+// AreDMsEnabled returns the status of direct messaging for a given channel.
+//
+// Parameters:
+//   - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
+//
+// Returns:
+//   - enabled (bool) - status of dms for passed in channel ID, true if enabled
+//   - Throws a TypeError if unmarshalling the channel ID
+func (cm *ChannelsManager) AreDMsEnabled(_ js.Value, args []js.Value) any {
+	marshalledChanId := utils.CopyBytesToGo(args[0])
+	enabled, err := cm.api.AreDMsEnabled(marshalledChanId)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return false
+	}
+	return enabled
 }
 
 ////////////////////////////////////////////////////////////////////////////////
