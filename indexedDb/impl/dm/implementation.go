@@ -223,8 +223,7 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	timestamp time.Time, round rounds.Round, mType dm.MessageType, status dm.Status) (uint64, error) {
 
 	// If there is no extant Conversation, create one.
-	_, err := impl.Get(w.db, conversationStoreName,
-		utils.CopyBytesToJS(partnerKey[:]))
+	_, err := impl.Get(w.db, conversationStoreName, impl.EncodeBytes(partnerKey))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, partnerKey, dmToken,
@@ -315,7 +314,7 @@ func (w *wasmModel) receiveHelper(
 // msgIDLookup gets the UUID of the Message with the given messageID.
 func (w *wasmModel) msgIDLookup(messageID message.ID) (uint64, error) {
 	resultObj, err := impl.GetIndex(w.db, messageStoreName,
-		messageStoreMessageIndex, utils.CopyBytesToJS(messageID.Marshal()))
+		messageStoreMessageIndex, impl.EncodeBytes(messageID.Marshal()))
 	if err != nil {
 		return 0, err
 	}
