@@ -12,6 +12,8 @@ package main
 import (
 	"crypto/ed25519"
 	"encoding/json"
+	"time"
+
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/dm"
@@ -20,7 +22,6 @@ import (
 	wDm "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"gitlab.com/xx_network/crypto/csprng"
-	"time"
 )
 
 var zeroUUID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
@@ -186,7 +187,7 @@ func (m *manager) receiveCB(data []byte) ([]byte, error) {
 	}
 
 	uuid := m.model.Receive(
-		msg.MessageID, msg.Nickname, msg.Text, msg.PubKey, msg.DmToken,
+		msg.MessageID, msg.Nickname, msg.Text, msg.PartnerKey, msg.SenderKey, msg.DmToken,
 		msg.Codeset, msg.Timestamp, msg.Round, msg.MType, msg.Status)
 
 	uuidData, err := json.Marshal(uuid)
@@ -207,7 +208,7 @@ func (m *manager) receiveTextCB(data []byte) ([]byte, error) {
 	}
 
 	uuid := m.model.ReceiveText(
-		msg.MessageID, msg.Nickname, string(msg.Text), msg.PubKey, msg.DmToken,
+		msg.MessageID, msg.Nickname, string(msg.Text), msg.PartnerKey, msg.SenderKey, msg.DmToken,
 		msg.Codeset, msg.Timestamp, msg.Round, msg.Status)
 
 	uuidData, err := json.Marshal(uuid)
@@ -229,7 +230,7 @@ func (m *manager) receiveReplyCB(data []byte) ([]byte, error) {
 	}
 
 	uuid := m.model.ReceiveReply(msg.MessageID, msg.ReactionTo, msg.Nickname,
-		string(msg.Text), msg.PubKey, msg.DmToken, msg.Codeset, msg.Timestamp,
+		string(msg.Text), msg.PartnerKey, msg.SenderKey, msg.DmToken, msg.Codeset, msg.Timestamp,
 		msg.Round, msg.Status)
 
 	uuidData, err := json.Marshal(uuid)
@@ -251,7 +252,7 @@ func (m *manager) receiveReactionCB(data []byte) ([]byte, error) {
 	}
 
 	uuid := m.model.ReceiveReaction(msg.MessageID, msg.ReactionTo, msg.Nickname,
-		string(msg.Text), msg.PubKey, msg.DmToken, msg.Codeset, msg.Timestamp,
+		string(msg.Text), msg.PartnerKey, msg.SenderKey, msg.DmToken, msg.Codeset, msg.Timestamp,
 		msg.Round, msg.Status)
 
 	uuidData, err := json.Marshal(uuid)

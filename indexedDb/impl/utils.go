@@ -14,6 +14,7 @@ package impl
 
 import (
 	"context"
+	"encoding/base64"
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -34,6 +35,11 @@ const (
 // NewContext builds a context for indexedDb operations.
 func NewContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), dbTimeout)
+}
+
+// EncodeBytes returns the proper IndexedDb encoding for a byte slice into js.Value.
+func EncodeBytes(input []byte) js.Value {
+	return js.ValueOf(base64.StdEncoding.EncodeToString(input))
 }
 
 // Get is a generic helper for getting values from the given [idb.ObjectStore].

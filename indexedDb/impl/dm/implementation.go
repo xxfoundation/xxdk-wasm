@@ -17,17 +17,17 @@ import (
 	"syscall/js"
 	"time"
 
+	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	"gitlab.com/elixxir/client/v4/dm"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
-	"gitlab.com/xx_network/primitives/id"
-
-	"github.com/hack-pad/go-indexeddb/idb"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/xx_network/primitives/id"
 )
 
 // wasmModel implements dm.EventModel interface, which uses the channels system
@@ -79,15 +79,17 @@ func (w *wasmModel) joinConversation(nickname string,
 // NOTE: ID is not set inside this function because we want to use the
 // autoincrement key by default. If you are trying to overwrite an existing
 // message, then you need to set it manually yourself.
-func buildMessage(messageID, parentID, text []byte, pubKey ed25519.PublicKey,
-	timestamp time.Time, round id.Round, mType dm.MessageType,
-	status dm.Status) *Message {
+func buildMessage(messageID, parentID, text []byte, partnerKey,
+	senderKey ed25519.PublicKey, timestamp time.Time, round id.Round,
+	mType dm.MessageType, codeset uint8, status dm.Status) *Message {
 	return &Message{
 		MessageID:          messageID,
-		ConversationPubKey: pubKey,
+		ConversationPubKey: partnerKey[:],
 		ParentMessageID:    parentID,
 		Timestamp:          timestamp,
+		SenderPubKey:       senderKey[:],
 		Status:             uint8(status),
+		CodesetVersion:     codeset,
 		Text:               text,
 		Type:               uint16(mType),
 		Round:              uint64(round),
@@ -95,176 +97,65 @@ func buildMessage(messageID, parentID, text []byte, pubKey ed25519.PublicKey,
 }
 
 func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
+	partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
 	round rounds.Round, mType dm.MessageType, status dm.Status) uint64 {
-	parentErr := errors.New("failed to Receive")
+	parentErr := "[DM indexedDB] failed to Receive"
+	jww.TRACE.Printf("[DM indexedDB] Receive(%s)", messageID)
 
-	// If there is no extant Conversation, create one.
-	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	uuid, err := w.receiveWrapper(messageID, nil, nickname, string(text),
+		partnerKey, senderKey, dmToken, codeset, timestamp, round, mType, status)
 	if err != nil {
-		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
-			if err != nil {
-				jww.ERROR.Printf("%+v", err)
-			}
-		} else {
-			jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-				"Unable to get Conversation: %+v", err))
-		}
+		jww.ERROR.Printf("%+v", errors.WithMessagef(err, parentErr))
 		return 0
-	} else {
-		jww.DEBUG.Printf("Conversation with %s already joined", nickname)
 	}
-
-	// Handle encryption, if it is present
-	if w.cipher != nil {
-		text, err = w.cipher.Encrypt(text)
-		if err != nil {
-			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
-			return 0
-		}
-	}
-
-	msgToInsert := buildMessage(messageID.Bytes(), nil, text, pubKey, timestamp,
-		round.ID, mType, status)
-	uuid, err := w.receiveHelper(msgToInsert, false)
-	if err != nil {
-		jww.ERROR.Printf("Failed to receive Message: %+v", err)
-	}
-
-	go w.receivedMessageCB(uuid, pubKey, false)
 	return uuid
 }
 
 func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
-	parentErr := errors.New("failed to ReceiveText")
+	parentErr := "[DM indexedDB] failed to ReceiveText"
+	jww.TRACE.Printf("[DM indexedDB] ReceiveText(%s)", messageID)
 
-	// If there is no extant Conversation, create one.
-	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	uuid, err := w.receiveWrapper(messageID, nil, nickname, text,
+		partnerKey, senderKey, dmToken, codeset, timestamp, round,
+		dm.TextType, status)
 	if err != nil {
-		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
-			if err != nil {
-				jww.ERROR.Printf("%+v", err)
-			}
-		} else {
-			jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-				"Unable to get Conversation: %+v", err))
-		}
+		jww.ERROR.Printf("%+v", errors.WithMessagef(err, parentErr))
 		return 0
-	} else {
-		jww.DEBUG.Printf("Conversation with %s already joined", nickname)
 	}
-
-	// Handle encryption, if it is present
-	textBytes := []byte(text)
-	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt(textBytes)
-		if err != nil {
-			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
-			return 0
-		}
-	}
-
-	msgToInsert := buildMessage(messageID.Bytes(), nil, textBytes,
-		pubKey, timestamp, round.ID, dm.TextType, status)
-
-	uuid, err := w.receiveHelper(msgToInsert, false)
-	if err != nil {
-		jww.ERROR.Printf("Failed to receive Message: %+v", err)
-	}
-
-	go w.receivedMessageCB(uuid, pubKey, false)
 	return uuid
 }
 
 func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
-	text string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	text string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
-	parentErr := errors.New("failed to ReceiveReply")
+	parentErr := "[DM indexedDB] failed to ReceiveReply"
+	jww.TRACE.Printf("[DM indexedDB] ReceiveReply(%s)", messageID)
 
-	// If there is no extant Conversation, create one.
-	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	uuid, err := w.receiveWrapper(messageID, &reactionTo, nickname, text,
+		partnerKey, senderKey, dmToken, codeset, timestamp, round,
+		dm.TextType, status)
 	if err != nil {
-		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
-			if err != nil {
-				jww.ERROR.Printf("%+v", err)
-			}
-		} else {
-			jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-				"Unable to get Conversation: %+v", err))
-		}
+		jww.ERROR.Printf("%+v", errors.WithMessagef(err, parentErr))
 		return 0
-	} else {
-		jww.DEBUG.Printf("Conversation with %s already joined", nickname)
 	}
-
-	// Handle encryption, if it is present
-	textBytes := []byte(text)
-	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt(textBytes)
-		if err != nil {
-			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
-			return 0
-		}
-	}
-
-	msgToInsert := buildMessage(messageID.Bytes(), reactionTo.Marshal(), textBytes,
-		pubKey, timestamp, round.ID, dm.TextType, status)
-
-	uuid, err := w.receiveHelper(msgToInsert, false)
-	if err != nil {
-		jww.ERROR.Printf("Failed to receive Message: %+v", err)
-	}
-
-	go w.receivedMessageCB(uuid, pubKey, false)
 	return uuid
 }
 
-func (w *wasmModel) ReceiveReaction(messageID, _ message.ID, nickname,
-	reaction string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+func (w *wasmModel) ReceiveReaction(messageID, reactionTo message.ID, nickname,
+	reaction string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
-	parentErr := errors.New("failed to ReceiveText")
+	parentErr := "[DM indexedDB] failed to ReceiveReaction"
+	jww.TRACE.Printf("[DM indexedDB] ReceiveReaction(%s)", messageID)
 
-	// If there is no extant Conversation, create one.
-	_, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(pubKey))
+	uuid, err := w.receiveWrapper(messageID, &reactionTo, nickname, reaction,
+		partnerKey, senderKey, dmToken, codeset, timestamp, round,
+		dm.ReactionType, status)
 	if err != nil {
-		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, pubKey, dmToken, codeset)
-			if err != nil {
-				jww.ERROR.Printf("%+v", err)
-			}
-		} else {
-			jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-				"Unable to get Conversation: %+v", err))
-		}
+		jww.ERROR.Printf("%+v", errors.WithMessagef(err, parentErr))
 		return 0
-	} else {
-		jww.DEBUG.Printf("Conversation with %s already joined", nickname)
 	}
-
-	// Handle encryption, if it is present
-	textBytes := []byte(reaction)
-	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt(textBytes)
-		if err != nil {
-			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
-			return 0
-		}
-	}
-
-	msgToInsert := buildMessage(messageID.Bytes(), nil, textBytes,
-		pubKey, timestamp, round.ID, dm.ReactionType, status)
-
-	uuid, err := w.receiveHelper(msgToInsert, false)
-	if err != nil {
-		jww.ERROR.Printf("Failed to receive Message: %+v", err)
-	}
-
-	go w.receivedMessageCB(uuid, pubKey, false)
 	return uuid
 }
 
@@ -277,6 +168,8 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	//        special version of receiveHelper)
 	w.updateMux.Lock()
 	defer w.updateMux.Unlock()
+	jww.TRACE.Printf(
+		"[DM indexedDB] UpdateSentStatus(%d, %s, ...)", uuid, messageID)
 
 	// Convert messageID to the key generated by json.Marshal
 	key := js.ValueOf(uuid)
@@ -284,7 +177,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	// Use the key to get the existing Message
 	currentMsg, err := impl.Get(w.db, messageStoreName, key)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+		jww.ERROR.Printf("[DM indexedDB] %+v", errors.WithMessagef(parentErr,
 			"Unable to get message: %+v", err))
 		return
 	}
@@ -293,7 +186,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	newMessage := &Message{}
 	err = json.Unmarshal([]byte(utils.JsToJson(currentMsg)), newMessage)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
+		jww.ERROR.Printf("[DM indexedDB] %+v", errors.WithMessagef(parentErr,
 			"Could not JSON unmarshal message: %+v", err))
 		return
 	}
@@ -314,9 +207,64 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	// Store the updated Message
 	_, err = w.receiveHelper(newMessage, true)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
+		jww.ERROR.Printf("[DM indexedDB] %+v",
+			errors.Wrap(parentErr, err.Error()))
+		return
 	}
+
+	jww.TRACE.Printf("[DM indexedDB] Calling ReceiveMessageCB(%v, %v, t)",
+		uuid, newMessage.ConversationPubKey)
 	go w.receivedMessageCB(uuid, newMessage.ConversationPubKey, true)
+}
+
+// receiveWrapper is a higher-level wrapper of receiveHelper.
+func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, nickname,
+	data string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	timestamp time.Time, round rounds.Round, mType dm.MessageType, status dm.Status) (uint64, error) {
+
+	// If there is no extant Conversation, create one.
+	_, err := impl.Get(w.db, conversationStoreName, impl.EncodeBytes(partnerKey))
+	if err != nil {
+		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
+			err = w.joinConversation(nickname, partnerKey, dmToken,
+				codeset)
+			if err != nil {
+				return 0, err
+			}
+		} else {
+			return 0, err
+		}
+	} else {
+		jww.DEBUG.Printf(
+			"[DM indexedDB] Conversation with %s already joined", nickname)
+	}
+
+	// Handle encryption, if it is present
+	textBytes := []byte(data)
+	if w.cipher != nil {
+		textBytes, err = w.cipher.Encrypt(textBytes)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	var parentIdBytes []byte
+	if parentID != nil {
+		parentIdBytes = parentID.Marshal()
+	}
+
+	msgToInsert := buildMessage(messageID.Bytes(), parentIdBytes, textBytes,
+		partnerKey, senderKey, timestamp, round.ID, mType, codeset, status)
+
+	uuid, err := w.receiveHelper(msgToInsert, false)
+	if err != nil {
+		return 0, err
+	}
+
+	jww.TRACE.Printf("[DM indexedDB] Calling ReceiveMessageCB(%v, %v, f)",
+		uuid, partnerKey)
+	go w.receivedMessageCB(uuid, partnerKey, false)
+	return uuid, nil
 }
 
 // receiveHelper is a private helper for receiving any sort of message.
@@ -351,12 +299,14 @@ func (w *wasmModel) receiveHelper(
 		copy(msgID[:], newMessage.MessageID)
 		uuid, errLookup := w.msgIDLookup(msgID)
 		if uuid != 0 && errLookup == nil {
+			jww.WARN.Printf("[DM indexedDB] Result undefined, but found"+
+				" duplicate? %d, %s", uuid, msgID)
 			return uuid, nil
 		}
 		return 0, errors.Errorf("uuid lookup failure: %+v", err)
 	}
 	uuid := uint64(result.Int())
-	jww.DEBUG.Printf("Successfully stored message %d", uuid)
+	jww.DEBUG.Printf("[DM indexedDB] Successfully stored message %d", uuid)
 
 	return uuid, nil
 }
@@ -364,7 +314,7 @@ func (w *wasmModel) receiveHelper(
 // msgIDLookup gets the UUID of the Message with the given messageID.
 func (w *wasmModel) msgIDLookup(messageID message.ID) (uint64, error) {
 	resultObj, err := impl.GetIndex(w.db, messageStoreName,
-		messageStoreMessageIndex, utils.CopyBytesToJS(messageID.Marshal()))
+		messageStoreMessageIndex, impl.EncodeBytes(messageID.Marshal()))
 	if err != nil {
 		return 0, err
 	}
