@@ -14,6 +14,7 @@ package impl
 
 import (
 	"context"
+	"encoding/base64"
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -29,11 +30,19 @@ const (
 
 	// ErrDoesNotExist is an error string for got undefined on Get operations.
 	ErrDoesNotExist = "result is undefined"
+
+	// ErrUniqueConstraint is an error string for failed uniqueness inserts.
+	ErrUniqueConstraint = "at least one key does not satisfy the uniqueness requirements"
 )
 
 // NewContext builds a context for indexedDb operations.
 func NewContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), dbTimeout)
+}
+
+// EncodeBytes returns the proper IndexedDb encoding for a byte slice into js.Value.
+func EncodeBytes(input []byte) js.Value {
+	return js.ValueOf(base64.StdEncoding.EncodeToString(input))
 }
 
 // Get is a generic helper for getting values from the given [idb.ObjectStore].
