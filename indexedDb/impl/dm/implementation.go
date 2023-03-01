@@ -79,15 +79,15 @@ func (w *wasmModel) joinConversation(nickname string,
 // NOTE: ID is not set inside this function because we want to use the
 // autoincrement key by default. If you are trying to overwrite an existing
 // message, then you need to set it manually yourself.
-func buildMessage(messageID, parentID, text []byte, pubKey ed25519.PublicKey,
+func buildMessage(messageID, parentID, text []byte, partnerKey, senderKey ed25519.PublicKey,
 	timestamp time.Time, round id.Round, mType dm.MessageType,
 	codeset uint8, status dm.Status) *Message {
 	return &Message{
 		MessageID:          messageID,
-		ConversationPubKey: pubKey,
+		ConversationPubKey: partnerKey[:],
 		ParentMessageID:    parentID,
 		Timestamp:          timestamp,
-		SenderPubKey:       pubKey[:],
+		SenderPubKey:       senderKey[:],
 		Status:             uint8(status),
 		CodesetVersion:     codeset,
 		Text:               text,
@@ -132,8 +132,8 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 		}
 	}
 
-	msgToInsert := buildMessage(messageID.Bytes(), nil, text, senderKey, timestamp,
-		round.ID, mType, codeset, status)
+	msgToInsert := buildMessage(messageID.Bytes(), nil, text, partnerKey,
+		senderKey, timestamp, round.ID, mType, codeset, status)
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
 		jww.ERROR.Printf("[DM indexedDB] Failed to receive Message: %+v", err)
@@ -185,7 +185,8 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	}
 
 	msgToInsert := buildMessage(messageID.Bytes(), nil, textBytes,
-		senderKey, timestamp, round.ID, dm.TextType, codeset, status)
+		partnerKey, senderKey, timestamp, round.ID,
+		dm.TextType, codeset, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -237,8 +238,8 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	}
 
 	msgToInsert := buildMessage(messageID.Bytes(), reactionTo.Marshal(),
-		textBytes, senderKey, timestamp, round.ID, dm.TextType, codeset,
-		status)
+		textBytes, partnerKey, senderKey, timestamp, round.ID,
+		dm.TextType, codeset, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
@@ -289,7 +290,7 @@ func (w *wasmModel) ReceiveReaction(messageID, _ message.ID, nickname,
 	}
 
 	msgToInsert := buildMessage(messageID.Bytes(), nil, textBytes,
-		senderKey, timestamp, round.ID, dm.ReactionType,
+		partnerKey, senderKey, timestamp, round.ID, dm.ReactionType,
 		codeset, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
