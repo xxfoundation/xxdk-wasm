@@ -30,6 +30,9 @@ const (
 
 	// ErrDoesNotExist is an error string for got undefined on Get operations.
 	ErrDoesNotExist = "result is undefined"
+
+	// ErrUniqueConstraint is an error string for failed uniqueness inserts.
+	ErrUniqueConstraint = "at least one key does not satisfy the uniqueness requirements"
 )
 
 // NewContext builds a context for indexedDb operations.

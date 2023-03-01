@@ -288,7 +288,9 @@ func (w *wasmModel) receiveHelper(
 
 	// Store message to database
 	result, err := impl.Put(w.db, messageStoreName, messageObj)
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), impl.ErrUniqueConstraint) {
+		// Only return non-unique constraint errors so that the case
+		// below this one can be hit and handle duplicate entries properly.
 		return 0, errors.Errorf("Unable to put Message: %+v", err)
 	}
 
