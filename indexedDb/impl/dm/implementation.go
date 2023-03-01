@@ -79,15 +79,15 @@ func (w *wasmModel) joinConversation(nickname string,
 // NOTE: ID is not set inside this function because we want to use the
 // autoincrement key by default. If you are trying to overwrite an existing
 // message, then you need to set it manually yourself.
-func buildMessage(messageID, parentID, text []byte, pubKey ed25519.PublicKey,
-	timestamp time.Time, round id.Round, mType dm.MessageType,
-	codeset uint8, status dm.Status) *Message {
+func buildMessage(messageID, parentID, text []byte, partnerKey,
+	senderKey ed25519.PublicKey, timestamp time.Time, round id.Round,
+	mType dm.MessageType, codeset uint8, status dm.Status) *Message {
 	return &Message{
 		MessageID:          messageID,
-		ConversationPubKey: pubKey,
+		ConversationPubKey: partnerKey[:],
 		ParentMessageID:    parentID,
 		Timestamp:          timestamp,
-		SenderPubKey:       pubKey[:],
+		SenderPubKey:       senderKey[:],
 		Status:             uint8(status),
 		CodesetVersion:     codeset,
 		Text:               text,
@@ -254,7 +254,7 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	}
 
 	msgToInsert := buildMessage(messageID.Bytes(), parentIdBytes, textBytes,
-		senderKey, timestamp, round.ID, mType, codeset, status)
+		partnerKey, senderKey, timestamp, round.ID, mType, codeset, status)
 
 	uuid, err := w.receiveHelper(msgToInsert, false)
 	if err != nil {
