@@ -99,7 +99,7 @@ func buildMessage(messageID, parentID, text []byte, pubKey ed25519.PublicKey,
 func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
 	round rounds.Round, mType dm.MessageType, status dm.Status) uint64 {
-	parentErr := "failed to Receive"
+	parentErr := "[DM indexedDB] failed to Receive"
 	jww.TRACE.Printf("[DM indexedDB] Receive(%s)", messageID)
 
 	uuid, err := w.receiveWrapper(messageID, nil, nickname, string(text),
@@ -114,7 +114,7 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 	partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
-	parentErr := "failed to ReceiveText"
+	parentErr := "[DM indexedDB] failed to ReceiveText"
 	jww.TRACE.Printf("[DM indexedDB] ReceiveText(%s)", messageID)
 
 	uuid, err := w.receiveWrapper(messageID, nil, nickname, text,
@@ -130,7 +130,7 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 	text string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
-	parentErr := "failed to ReceiveReply"
+	parentErr := "[DM indexedDB] failed to ReceiveReply"
 	jww.TRACE.Printf("[DM indexedDB] ReceiveReply(%s)", messageID)
 
 	uuid, err := w.receiveWrapper(messageID, &reactionTo, nickname, text,
