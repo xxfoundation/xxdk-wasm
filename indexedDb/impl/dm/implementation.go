@@ -223,7 +223,8 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	timestamp time.Time, round rounds.Round, mType dm.MessageType, status dm.Status) (uint64, error) {
 
 	// If there is no extant Conversation, create one.
-	_, err := impl.Get(w.db, conversationStoreName, js.ValueOf(partnerKey))
+	_, err := impl.Get(w.db, conversationStoreName,
+		js.ValueOf(partnerKey[:]))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, partnerKey, dmToken,
