@@ -135,7 +135,7 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 
 	uuid, err := w.receiveWrapper(messageID, &reactionTo, nickname, text,
 		partnerKey, senderKey, dmToken, codeset, timestamp, round,
-		dm.TextType, status)
+		dm.ReplyType, status)
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(err, parentErr))
 		return 0
