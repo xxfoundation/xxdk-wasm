@@ -224,7 +224,7 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 
 	// If there is no extant Conversation, create one.
 	_, err := impl.Get(w.db, conversationStoreName,
-		js.ValueOf(partnerKey[:]))
+		utils.CopyBytesToJS(partnerKey[:]))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
 			err = w.joinConversation(nickname, partnerKey, dmToken,
