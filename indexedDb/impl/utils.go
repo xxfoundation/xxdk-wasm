@@ -48,7 +48,7 @@ func EncodeBytes(input []byte) js.Value {
 // Get is a generic helper for getting values from the given [idb.ObjectStore].
 // Only usable by primary key.
 func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, error) {
-	parentErr := errors.Errorf("failed to Get %s/%s", objectStoreName, key)
+	parentErr := errors.Errorf("failed to Get %s", objectStoreName)
 
 	// Prepare the Transaction
 	txn, err := db.Transaction(idb.TransactionReadOnly, objectStoreName)
@@ -82,17 +82,56 @@ func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, erro
 	}
 
 	// Process result into string
-	jww.DEBUG.Printf("Got from %s/%s: %s",
-		objectStoreName, key, utils.JsToJson(resultObj))
+	jww.DEBUG.Printf("Got from %s: %s",
+		objectStoreName, utils.JsToJson(resultObj))
 	return resultObj, nil
+}
+
+// GetAll is a generic helper for getting all values from the given [idb.ObjectStore].
+func GetAll(db *idb.Database, objectStoreName string) ([]js.Value, error) {
+	parentErr := errors.Errorf("failed to GetAll %s", objectStoreName)
+
+	// Prepare the Transaction
+	txn, err := db.Transaction(idb.TransactionReadWrite, objectStoreName)
+	if err != nil {
+		return nil, errors.WithMessagef(parentErr,
+			"Unable to create Transaction: %+v", err)
+	}
+	store, err := txn.ObjectStore(objectStoreName)
+	if err != nil {
+		return nil, errors.WithMessagef(parentErr,
+			"Unable to get ObjectStore: %+v", err)
+	}
+
+	// Perform the operation
+	result := make([]js.Value, 0)
+	cursorRequest, err := store.OpenCursor(idb.CursorNext)
+	if err != nil {
+		return nil, errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
+	}
+	ctx, cancel := NewContext()
+	err = cursorRequest.Iter(ctx,
+		func(cursor *idb.CursorWithValue) error {
+			row, err := cursor.Value()
+			if err != nil {
+				return err
+			}
+			result = append(result, row)
+			return nil
+		})
+	cancel()
+	if err != nil {
+		return nil, errors.WithMessagef(parentErr, err.Error())
+	}
+	return result, nil
 }
 
 // GetIndex is a generic helper for getting values from the given
 // [idb.ObjectStore] using the given [idb.Index].
 func GetIndex(db *idb.Database, objectStoreName,
 	indexName string, key js.Value) (js.Value, error) {
-	parentErr := errors.Errorf("failed to GetIndex %s/%s/%s",
-		objectStoreName, indexName, key)
+	parentErr := errors.Errorf("failed to GetIndex %s/%s",
+		objectStoreName, indexName)
 
 	// Prepare the Transaction
 	txn, err := db.Transaction(idb.TransactionReadOnly, objectStoreName)
@@ -131,8 +170,8 @@ func GetIndex(db *idb.Database, objectStoreName,
 	}
 
 	// Process result into string
-	jww.DEBUG.Printf("Got from %s/%s/%s: %s",
-		objectStoreName, indexName, key, utils.JsToJson(resultObj))
+	jww.DEBUG.Printf("Got from %s/%s: %s",
+		objectStoreName, indexName, utils.JsToJson(resultObj))
 	return resultObj, nil
 }
 
@@ -170,7 +209,7 @@ func Put(db *idb.Database, objectStoreName string, value js.Value) (js.Value, er
 // Delete is a generic helper for removing values from the given
 // [idb.ObjectStore]. Only usable by primary key.
 func Delete(db *idb.Database, objectStoreName string, key js.Value) error {
-	parentErr := errors.Errorf("failed to Delete %s/%s", objectStoreName, key)
+	parentErr := errors.Errorf("failed to Delete %s", objectStoreName)
 
 	// Prepare the Transaction
 	txn, err := db.Transaction(idb.TransactionReadWrite, objectStoreName)

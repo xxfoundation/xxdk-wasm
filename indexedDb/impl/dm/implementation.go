@@ -329,3 +329,109 @@ func (w *wasmModel) msgIDLookup(messageID message.ID) (uint64, error) {
 	}
 	return uuid, nil
 }
+
+// BlockSender silences messages sent by the indicated sender
+// public key.
+func (w *wasmModel) BlockSender(senderPubKey ed25519.PublicKey) {
+	parentErr := "failed to BlockSender"
+	err := w.setBlocked(senderPubKey, true)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessage(err, parentErr))
+	}
+}
+
+// UnblockSender allows messages sent by the indicated sender
+// public key.
+func (w *wasmModel) UnblockSender(senderPubKey ed25519.PublicKey) {
+	parentErr := "failed to UnblockSender"
+	err := w.setBlocked(senderPubKey, false)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessage(err, parentErr))
+	}
+}
+
+// setBlocked is a helper for blocking/unblocking a given Conversation.
+func (w *wasmModel) setBlocked(senderPubKey ed25519.PublicKey, isBlocked bool) error {
+	// Get current Conversation and set blocked
+	resultConvo, err := w.getConversation(senderPubKey)
+	if err != nil {
+		return err
+	}
+	resultConvo.Blocked = isBlocked
+
+	// Convert back to js.Value
+	newMessageJson, err := json.Marshal(resultConvo)
+	if err != nil {
+		return err
+	}
+	convoObj, err := utils.JsonToJS(newMessageJson)
+	if err != nil {
+		return err
+	}
+
+	// Insert into storage
+	_, err = impl.Put(w.db, conversationStoreName, convoObj)
+	return err
+}
+
+// GetConversation returns the conversation held by the model (receiver).
+func (w *wasmModel) GetConversation(senderPubKey ed25519.PublicKey) *dm.ModelConversation {
+	parentErr := "failed to GetConversation"
+	resultConvo, err := w.getConversation(senderPubKey)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessage(err, parentErr))
+		return nil
+	}
+
+	return &dm.ModelConversation{
+		Pubkey:         resultConvo.Pubkey,
+		Nickname:       resultConvo.Nickname,
+		Token:          resultConvo.Token,
+		CodesetVersion: resultConvo.CodesetVersion,
+		Blocked:        resultConvo.Blocked,
+	}
+}
+
+// getConversation is a helper that returns the Conversation with the given senderPubKey.
+func (w *wasmModel) getConversation(senderPubKey ed25519.PublicKey) (*Conversation, error) {
+	resultObj, err := impl.Get(w.db, conversationStoreName, impl.EncodeBytes(senderPubKey))
+	if err != nil {
+		return nil, err
+	}
+
+	resultConvo := &Conversation{}
+	err = json.Unmarshal([]byte(utils.JsToJson(resultObj)), resultConvo)
+	if err != nil {
+		return nil, err
+	}
+	return resultConvo, nil
+}
+
+// GetConversations returns any conversations held by the model (receiver).
+func (w *wasmModel) GetConversations() []dm.ModelConversation {
+	parentErr := "failed to GetConversations"
+
+	results, err := impl.GetAll(w.db, conversationStoreName)
+	if err != nil {
+		jww.ERROR.Printf("%+v", errors.WithMessage(err, parentErr))
+		return nil
+	}
+
+	conversations := make([]dm.ModelConversation, len(results))
+	for i := range results {
+		resultConvo := &Conversation{}
+		err = json.Unmarshal([]byte(utils.JsToJson(results[i])), resultConvo)
+		if err != nil {
+			jww.ERROR.Printf("%+v", errors.WithMessage(err, parentErr))
+			return nil
+		}
+		conversations[i] = dm.ModelConversation{
+			Pubkey:         resultConvo.Pubkey,
+			Nickname:       resultConvo.Nickname,
+			Token:          resultConvo.Token,
+			CodesetVersion: resultConvo.CodesetVersion,
+			Blocked:        resultConvo.Blocked,
+		}
+	}
+	return conversations
+}
