@@ -395,7 +395,7 @@ func (w *wasmModel) GetConversation(senderPubKey ed25519.PublicKey) *dm.ModelCon
 
 // getConversation is a helper that returns the Conversation with the given senderPubKey.
 func (w *wasmModel) getConversation(senderPubKey ed25519.PublicKey) (*Conversation, error) {
-	resultObj, err := impl.Get(w.db, conversationStoreName, utils.CopyBytesToJS(senderPubKey))
+	resultObj, err := impl.Get(w.db, conversationStoreName, impl.EncodeBytes(senderPubKey))
 	if err != nil {
 		return nil, err
 	}

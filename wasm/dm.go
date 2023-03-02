@@ -113,7 +113,7 @@ func (emb *dmReceiverBuilder) Build(path string) bindings.DMReceiver {
 func NewDMClient(_ js.Value, args []js.Value) any {
 	privateIdentity := utils.CopyBytesToGo(args[1])
 
-	em := &dmReceiverBuilder{args[2].IsNaN}
+	em := &dmReceiverBuilder{args[2].Invoke}
 
 	cm, err := bindings.NewDMClient(args[0].Int(), privateIdentity, em)
 	if err != nil {
@@ -473,8 +473,8 @@ func (dmc *DMClient) SetNickname(_ js.Value, args []js.Value) any {
 // Returns:
 //   - The nickname (string).
 //   - Throws TypeError if the channel has no nickname set.
-func (ch *DMClient) GetNickname(_ js.Value, args []js.Value) any {
-	nickname, err := ch.api.GetNickname()
+func (dmc *DMClient) GetNickname(_ js.Value, _ []js.Value) any {
+	nickname, err := dmc.api.GetNickname()
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
@@ -490,7 +490,7 @@ func (ch *DMClient) GetNickname(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - The storage tag (string).
-func (dmc *DMClient) GetDatabaseName(_ js.Value, args []js.Value) any {
+func (dmc *DMClient) GetDatabaseName(_ js.Value, _ []js.Value) any {
 	return base64.RawStdEncoding.EncodeToString(dmc.api.GetPublicKey()) +
 		"_speakeasy_dm"
 }
