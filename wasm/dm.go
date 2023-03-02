@@ -467,17 +467,14 @@ func (ch *DMClient) SetNickname(_ js.Value, args []js.Value) any {
 	return nil
 }
 
-// GetNickname returns the nickname set for a given channel. Returns an error if
+// GetNickname returns the nickname set for this user. Returns an error if
 // there is no nickname set.
-//
-// Parameters:
-//   - args[0] - Marshalled bytes if the channel's [id.ID] (Uint8Array).
 //
 // Returns:
 //   - The nickname (string).
 //   - Throws TypeError if the channel has no nickname set.
 func (ch *DMClient) GetNickname(_ js.Value, args []js.Value) any {
-	nickname, err := ch.api.GetNickname(utils.CopyBytesToGo(args[0]))
+	nickname, err := ch.api.GetNickname()
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
