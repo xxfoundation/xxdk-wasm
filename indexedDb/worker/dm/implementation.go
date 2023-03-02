@@ -249,3 +249,23 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 
 	w.wh.SendMessage(UpdateSentStatusTag, data, nil)
 }
+
+func (w *wasmModel) BlockSender(senderPubKey ed25519.PublicKey) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (w *wasmModel) UnblockSender(senderPubKey ed25519.PublicKey) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (w *wasmModel) GetConversation(senderPubKey ed25519.PublicKey) *dm.ModelConversation {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (w *wasmModel) GetConversations() []dm.ModelConversation {
+	//TODO implement me
+	panic("implement me")
+}
