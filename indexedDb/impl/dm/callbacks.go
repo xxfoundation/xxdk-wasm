@@ -42,6 +42,11 @@ func (m *manager) registerCallbacks() {
 	m.mh.RegisterCallback(wDm.ReceiveReplyTag, m.receiveReplyCB)
 	m.mh.RegisterCallback(wDm.ReceiveReactionTag, m.receiveReactionCB)
 	m.mh.RegisterCallback(wDm.UpdateSentStatusTag, m.updateSentStatusCB)
+
+	m.mh.RegisterCallback(wDm.BlockSenderTag, m.blockSenderCB)
+	m.mh.RegisterCallback(wDm.UnblockSenderTag, m.unblockSenderCB)
+	m.mh.RegisterCallback(wDm.GetConversationTag, m.getConversationCB)
+	m.mh.RegisterCallback(wDm.GetConversationsTag, m.getConversationsCB)
 }
 
 // newWASMEventModelCB is the callback for NewWASMEventModel. Returns an empty
@@ -277,4 +282,32 @@ func (m *manager) updateSentStatusCB(data []byte) ([]byte, error) {
 		msg.UUID, msg.MessageID, msg.Timestamp, msg.Round, msg.Status)
 
 	return nil, nil
+}
+
+// blockSenderCB is the callback for wasmModel.BlockSender. Always
+// returns nil; meaning, no response is supplied (or expected).
+func (m *manager) blockSenderCB(data []byte) ([]byte, error) {
+	m.model.BlockSender(data)
+	return nil, nil
+}
+
+// unblockSenderCB is the callback for wasmModel.UnblockSender. Always
+// returns nil; meaning, no response is supplied (or expected).
+func (m *manager) unblockSenderCB(data []byte) ([]byte, error) {
+	m.model.UnblockSender(data)
+	return nil, nil
+}
+
+// getConversationCB is the callback for wasmModel.GetConversation.
+// Returns nil on error or the JSON marshalled Conversation on success.
+func (m *manager) getConversationCB(data []byte) ([]byte, error) {
+	result := m.model.GetConversation(data)
+	return json.Marshal(result)
+}
+
+// getConversationsCB is the callback for wasmModel.GetConversations.
+// Returns nil on error or the JSON marshalled list of Conversation on success.
+func (m *manager) getConversationsCB(_ []byte) ([]byte, error) {
+	result := m.model.GetConversations()
+	return json.Marshal(result)
 }

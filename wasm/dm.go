@@ -11,6 +11,8 @@ package wasm
 
 import (
 	"crypto/ed25519"
+	"encoding/json"
+	"gitlab.com/elixxir/client/v4/dm"
 	"syscall/js"
 
 	indexDB "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
@@ -59,21 +61,21 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 	return dmClientMap
 }
 
-// GetPublicKey returns the ecdh Public Key for this [DMClient] in the
+// GetID returns the ecdh Public Key for this [DMClient] in the
 // [DMClient] tracker.
 //
 // Returns:
 //   - Tracker ID (int).
-func (ch *DMClient) GetID(js.Value, []js.Value) any {
-	return ch.api.GetID()
+func (dmc *DMClient) GetID(js.Value, []js.Value) any {
+	return dmc.api.GetID()
 }
 
-func (ch *DMClient) GetPublicKey(js.Value, []js.Value) any {
-	return ch.api.GetPublicKey()
+func (dmc *DMClient) GetPublicKey(js.Value, []js.Value) any {
+	return dmc.api.GetPublicKey()
 }
 
-func (ch *DMClient) GetToken(js.Value, []js.Value) any {
-	return ch.api.GetToken()
+func (dmc *DMClient) GetToken(js.Value, []js.Value) any {
+	return dmc.api.GetToken()
 }
 
 // dmReceiverBuilder adheres to the [bindings.DMReceiverBuilder] interface.
@@ -238,7 +240,7 @@ func newDMClientWithIndexedDb(cmixID int, wasmJsPath string,
 // Channel Sending Methods and Reports                                        //
 ////////////////////////////////////////////////////////////////////////////////
 
-// SendGeneric is used to send a raw message over a channel. In general, it
+// Send is used to send a raw message over a channel. In general, it
 // should be wrapped in a function which defines the wire protocol. If the final
 // message, before being sent over the wire, is too long, this will return an
 // error. Due to the underlying encoding using compression, it isn't possible to
@@ -262,7 +264,7 @@ func newDMClientWithIndexedDb(cmixID int, wasmJsPath string,
 // Returns a promise:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
-func (ch *DMClient) Send(_ js.Value, args []js.Value) any {
+func (dmc *DMClient) Send(_ js.Value, args []js.Value) any {
 	messageType := args[0].Int()
 	partnerPubKeyBytes := utils.CopyBytesToGo(args[1])
 	partnerToken := args[2].Int()
@@ -271,7 +273,7 @@ func (ch *DMClient) Send(_ js.Value, args []js.Value) any {
 	cmixParamsJSON := utils.CopyBytesToGo(args[5])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := ch.api.Send(messageType, partnerPubKeyBytes,
+		sendReport, err := dmc.api.Send(messageType, partnerPubKeyBytes,
 			uint32(partnerToken), message, leaseTimeMS,
 			cmixParamsJSON)
 		if err != nil {
@@ -284,7 +286,7 @@ func (ch *DMClient) Send(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
-// SendMessage is used to send a formatted message over a channel.
+// SendText is used to send a formatted message over a channel.
 // Due to the underlying encoding using compression, it isn't possible to define
 // the largest payload that can be sent, but it will always be possible to send
 // a payload of 798 bytes at minimum.
@@ -306,7 +308,7 @@ func (ch *DMClient) Send(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
-func (ch *DMClient) SendText(_ js.Value, args []js.Value) any {
+func (dmc *DMClient) SendText(_ js.Value, args []js.Value) any {
 	partnerPubKeyBytes := utils.CopyBytesToGo(args[0])
 	partnerToken := args[1].Int()
 	message := args[2].String()
@@ -314,7 +316,7 @@ func (ch *DMClient) SendText(_ js.Value, args []js.Value) any {
 	cmixParamsJSON := utils.CopyBytesToGo(args[4])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := ch.api.SendText(partnerPubKeyBytes,
+		sendReport, err := dmc.api.SendText(partnerPubKeyBytes,
 			uint32(partnerToken), message, leaseTimeMS,
 			cmixParamsJSON)
 		if err != nil {
@@ -358,7 +360,7 @@ func (ch *DMClient) SendText(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
-func (ch *DMClient) SendReply(_ js.Value, args []js.Value) any {
+func (dmc *DMClient) SendReply(_ js.Value, args []js.Value) any {
 	partnerPubKeyBytes := utils.CopyBytesToGo(args[0])
 	partnerToken := args[1].Int()
 	replyID := utils.CopyBytesToGo(args[2])
@@ -367,7 +369,7 @@ func (ch *DMClient) SendReply(_ js.Value, args []js.Value) any {
 	cmixParamsJSON := utils.CopyBytesToGo(args[5])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := ch.api.SendReply(partnerPubKeyBytes,
+		sendReport, err := dmc.api.SendReply(partnerPubKeyBytes,
 			uint32(partnerToken), message, replyID, leaseTimeMS,
 			cmixParamsJSON)
 		if err != nil {
@@ -400,7 +402,7 @@ func (ch *DMClient) SendReply(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
-func (ch *DMClient) SendReaction(_ js.Value, args []js.Value) any {
+func (dmc *DMClient) SendReaction(_ js.Value, args []js.Value) any {
 	partnerPubKeyBytes := utils.CopyBytesToGo(args[0])
 	partnerToken := args[1].Int()
 	replyID := utils.CopyBytesToGo(args[2])
@@ -408,7 +410,7 @@ func (ch *DMClient) SendReaction(_ js.Value, args []js.Value) any {
 	cmixParamsJSON := utils.CopyBytesToGo(args[4])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := ch.api.SendReaction(partnerPubKeyBytes,
+		sendReport, err := dmc.api.SendReaction(partnerPubKeyBytes,
 			uint32(partnerToken), message, replyID,
 			cmixParamsJSON)
 		if err != nil {
@@ -427,8 +429,8 @@ func (ch *DMClient) SendReaction(_ js.Value, args []js.Value) any {
 // Returns:
 //   - JSON of the [channel.Identity] (Uint8Array).
 //   - Throws TypeError if marshalling the identity fails.
-func (ch *DMClient) GetIdentity(js.Value, []js.Value) any {
-	i := ch.api.GetIdentity()
+func (dmc *DMClient) GetIdentity(js.Value, []js.Value) any {
+	i := dmc.api.GetIdentity()
 
 	return utils.CopyBytesToJS(i)
 }
@@ -442,8 +444,8 @@ func (ch *DMClient) GetIdentity(js.Value, []js.Value) any {
 // Returns:
 //   - JSON of the encrypted private identity (Uint8Array).
 //   - Throws TypeError if exporting the identity fails.
-func (ch *DMClient) ExportPrivateIdentity(_ js.Value, args []js.Value) any {
-	i, err := ch.api.ExportPrivateIdentity(args[0].String())
+func (dmc *DMClient) ExportPrivateIdentity(_ js.Value, args []js.Value) any {
+	i, err := dmc.api.ExportPrivateIdentity(args[0].String())
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
@@ -462,8 +464,8 @@ func (ch *DMClient) ExportPrivateIdentity(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Throws TypeError if unmarshalling the ID fails or the nickname is
 //     invalid.
-func (ch *DMClient) SetNickname(_ js.Value, args []js.Value) any {
-	ch.api.SetNickname(args[0].String())
+func (dmc *DMClient) SetNickname(_ js.Value, args []js.Value) any {
+	dmc.api.SetNickname(args[0].String())
 	return nil
 }
 
@@ -473,8 +475,8 @@ func (ch *DMClient) SetNickname(_ js.Value, args []js.Value) any {
 // Returns:
 //   - The nickname (string).
 //   - Throws TypeError if the channel has no nickname set.
-func (ch *DMClient) GetNickname(_ js.Value, args []js.Value) any {
-	nickname, err := ch.api.GetNickname()
+func (dmc *DMClient) GetNickname(_ js.Value, _ []js.Value) any {
+	nickname, err := dmc.api.GetNickname()
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
@@ -490,9 +492,9 @@ func (ch *DMClient) GetNickname(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - The storage tag (string).
-func (dmc *DMClient) GetDatabaseName(_ js.Value, args []js.Value) any {
-	return (base64.RawStdEncoding.EncodeToString(dmc.api.GetPublicKey()) +
-		"_speakeasy_dm")
+func (dmc *DMClient) GetDatabaseName(_ js.Value, _ []js.Value) any {
+	return base64.RawStdEncoding.EncodeToString(dmc.api.GetPublicKey()) +
+		"_speakeasy_dm"
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -536,9 +538,13 @@ type dmReceiver struct {
 	receiveReply     func(args ...any) js.Value
 	receiveReaction  func(args ...any) js.Value
 	updateSentStatus func(args ...any) js.Value
+	blockSender      func(args ...any) js.Value
+	unblockSender    func(args ...any) js.Value
+	getConversation  func(args ...any) js.Value
+	getConversations func(args ...any) js.Value
 }
 
-// ReceiveMessage is called whenever a message is received on a given channel.
+// Receive is called whenever a message is received on a given channel.
 // It may be called multiple times on the same message. It is incumbent on the
 // user of the API to filter such called by message ID.
 //
@@ -728,6 +734,61 @@ func (em *dmReceiver) UpdateSentStatus(uuid int64, messageID []byte,
 	timestamp, roundID, status int64) {
 	em.updateSentStatus(uuid, utils.CopyBytesToJS(messageID),
 		timestamp, roundID, status)
+}
+
+// BlockSender silences messages sent by the indicated sender
+// public key.
+//
+// Parameters:
+//   - senderPubKey - The unique public key for the conversation.
+func (em *dmReceiver) BlockSender(senderPubKey []byte) {
+	em.blockSender(senderPubKey)
+}
+
+// UnblockSender silences messages sent by the indicated sender
+// public key.
+//
+// Parameters:
+//   - senderPubKey - The unique public key for the conversation.
+func (em *dmReceiver) UnblockSender(senderPubKey []byte) {
+	em.unblockSender(senderPubKey)
+}
+
+// GetConversation returns the conversation held by the model (receiver).
+//
+// Parameters:
+//   - senderPubKey - The unique public key for the conversation.
+//
+// Returns:
+//   - JSON of [dm.ModelConversation] (Uint8Array).
+func (em *dmReceiver) GetConversation(senderPubKey []byte) []byte {
+	result := utils.CopyBytesToGo(em.getConversation(senderPubKey))
+
+	var conversation dm.ModelConversation
+	err := json.Unmarshal(result, &conversation)
+	if err != nil {
+		return nil
+	}
+
+	conversationsBytes, _ := json.Marshal(conversation)
+	return conversationsBytes
+}
+
+// GetConversations returns all conversations held by the model (receiver).
+//
+// Returns:
+//   - JSON of [][dm.ModelConversation] (Uint8Array).
+func (em *dmReceiver) GetConversations() []byte {
+	result := utils.CopyBytesToGo(em.getConversations())
+
+	var conversations []dm.ModelConversation
+	err := json.Unmarshal(result, &conversations)
+	if err != nil {
+		return nil
+	}
+
+	conversationsBytes, _ := json.Marshal(conversations)
+	return conversationsBytes
 }
 
 ////////////////////////////////////////////////////////////////////////////////
