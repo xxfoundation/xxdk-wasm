@@ -374,8 +374,7 @@ func (w *wasmModel) setBlocked(senderPubKey ed25519.PublicKey, isBlocked bool) e
 	return err
 }
 
-// GetConversation returns any conversations held by the
-// model (receiver)
+// GetConversation returns the conversation held by the model (receiver).
 func (w *wasmModel) GetConversation(senderPubKey ed25519.PublicKey) *dm.ModelConversation {
 	parentErr := "failed to GetConversation"
 	resultConvo, err := w.getConversation(senderPubKey)

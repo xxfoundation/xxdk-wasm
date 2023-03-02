@@ -11,6 +11,8 @@ package wasm
 
 import (
 	"crypto/ed25519"
+	"encoding/json"
+	"gitlab.com/elixxir/client/v4/dm"
 	"syscall/js"
 
 	indexDB "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
@@ -536,6 +538,10 @@ type dmReceiver struct {
 	receiveReply     func(args ...any) js.Value
 	receiveReaction  func(args ...any) js.Value
 	updateSentStatus func(args ...any) js.Value
+	blockSender      func(args ...any) js.Value
+	unblockSender    func(args ...any) js.Value
+	getConversation  func(args ...any) js.Value
+	getConversations func(args ...any) js.Value
 }
 
 // Receive is called whenever a message is received on a given channel.
@@ -730,24 +736,59 @@ func (em *dmReceiver) UpdateSentStatus(uuid int64, messageID []byte,
 		timestamp, roundID, status)
 }
 
+// BlockSender silences messages sent by the indicated sender
+// public key.
+//
+// Parameters:
+//   - senderPubKey - The unique public key for the conversation.
 func (em *dmReceiver) BlockSender(senderPubKey []byte) {
-	//TODO implement me
-	panic("implement me")
+	em.blockSender(senderPubKey)
 }
 
+// UnblockSender silences messages sent by the indicated sender
+// public key.
+//
+// Parameters:
+//   - senderPubKey - The unique public key for the conversation.
 func (em *dmReceiver) UnblockSender(senderPubKey []byte) {
-	//TODO implement me
-	panic("implement me")
+	em.unblockSender(senderPubKey)
 }
 
+// GetConversation returns the conversation held by the model (receiver).
+//
+// Parameters:
+//   - senderPubKey - The unique public key for the conversation.
+//
+// Returns:
+//   - JSON of [dm.ModelConversation] (Uint8Array).
 func (em *dmReceiver) GetConversation(senderPubKey []byte) []byte {
-	//TODO implement me
-	panic("implement me")
+	result := utils.CopyBytesToGo(em.getConversation(senderPubKey))
+
+	var conversation dm.ModelConversation
+	err := json.Unmarshal(result, &conversation)
+	if err != nil {
+		return nil
+	}
+
+	conversationsBytes, _ := json.Marshal(conversation)
+	return conversationsBytes
 }
 
+// GetConversations returns all conversations held by the model (receiver).
+//
+// Returns:
+//   - JSON of [][dm.ModelConversation] (Uint8Array).
 func (em *dmReceiver) GetConversations() []byte {
-	//TODO implement me
-	panic("implement me")
+	result := utils.CopyBytesToGo(em.getConversations())
+
+	var conversations []dm.ModelConversation
+	err := json.Unmarshal(result, &conversations)
+	if err != nil {
+		return nil
+	}
+
+	conversationsBytes, _ := json.Marshal(conversations)
+	return conversationsBytes
 }
 
 ////////////////////////////////////////////////////////////////////////////////
