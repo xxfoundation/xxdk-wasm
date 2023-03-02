@@ -121,8 +121,7 @@ func GetAll(db *idb.Database, objectStoreName string) ([]js.Value, error) {
 		})
 	cancel()
 	if err != nil {
-		return nil, errors.WithMessagef(parentErr,
-			"Unable to delete Message data: %+v", err)
+		return nil, errors.WithMessagef(parentErr, err.Error())
 	}
 	return result, nil
 }
