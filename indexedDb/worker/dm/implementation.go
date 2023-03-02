@@ -251,21 +251,55 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 }
 
 func (w *wasmModel) BlockSender(senderPubKey ed25519.PublicKey) {
-	//TODO implement me
-	panic("implement me")
+	w.wh.SendMessage(BlockSenderTag, senderPubKey, nil)
 }
 
 func (w *wasmModel) UnblockSender(senderPubKey ed25519.PublicKey) {
-	//TODO implement me
-	panic("implement me")
+	w.wh.SendMessage(UnblockSenderTag, senderPubKey, nil)
 }
 
 func (w *wasmModel) GetConversation(senderPubKey ed25519.PublicKey) *dm.ModelConversation {
-	//TODO implement me
-	panic("implement me")
+	resultChan := make(chan *dm.ModelConversation)
+	w.wh.SendMessage(GetConversationTag, senderPubKey,
+		func(data []byte) {
+			var result *dm.ModelConversation
+			err := json.Unmarshal(data, &result)
+			if err != nil {
+				jww.ERROR.Printf("Could not JSON unmarshal response to "+
+					"GetConversation: %+v", err)
+			}
+			resultChan <- result
+		})
+
+	select {
+	case result := <-resultChan:
+		return result
+	case <-time.After(worker.ResponseTimeout):
+		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
+			"worker about GetConversation", worker.ResponseTimeout)
+		return nil
+	}
 }
 
 func (w *wasmModel) GetConversations() []dm.ModelConversation {
-	//TODO implement me
-	panic("implement me")
+	resultChan := make(chan []dm.ModelConversation)
+	w.wh.SendMessage(GetConversationTag, nil,
+		func(data []byte) {
+			var result []dm.ModelConversation
+			err := json.Unmarshal(data, &result)
+			if err != nil {
+				jww.ERROR.Printf("Could not JSON unmarshal response to "+
+					"GetConversations: %+v", err)
+			}
+			resultChan <- result
+		})
+
+	select {
+	case result := <-resultChan:
+		return result
+	case <-time.After(worker.ResponseTimeout):
+		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
+			"worker about GetConversations", worker.ResponseTimeout)
+		return nil
+	}
 }
