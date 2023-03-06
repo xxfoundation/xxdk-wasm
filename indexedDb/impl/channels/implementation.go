@@ -251,10 +251,13 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 // messageID, timestamp, round, pinned, and hidden are all nillable and may be
 // updated based upon the UUID at a later date. If a nil value is passed, then
 // make no update.
+//
+// Returns an error if the message cannot be updated. It must return
+// channels.NoMessageErr if the message does not exist.
 func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 	timestamp *time.Time, round *rounds.Round, pinned, hidden *bool,
-	status *channels.SentStatus) {
-	parentErr := errors.New("failed to UpdateFromUUID")
+	status *channels.SentStatus) error {
+	parentErr := "failed to UpdateFromUUID"
 
 	// FIXME: this is a bit of race condition without the mux.
 	//        This should be done via the transactions (i.e., make a
@@ -268,17 +271,18 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 	// Use the key to get the existing Message
 	currentMsg, err := impl.Get(w.db, messageStoreName, key)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to get message: %+v", err))
-		return
+		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
+			return errors.WithMessage(channels.NoMessageErr, parentErr)
+		}
+		return errors.WithMessage(err, parentErr)
 	}
 
 	_, err = w.updateMessage(utils.JsToJson(currentMsg), messageID, timestamp,
 		round, pinned, hidden, status)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to updateMessage: %+v", err))
+		return errors.WithMessage(err, parentErr)
 	}
+	return nil
 }
 
 // UpdateFromMessageID is called whenever a message with the message ID is
@@ -290,10 +294,13 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 // timestamp, round, pinned, and hidden are all nillable and may be updated
 // based upon the UUID at a later date. If a nil value is passed, then make
 // no update.
+//
+// Returns an error if the message cannot be updated. It must return
+// channels.NoMessageErr if the message does not exist.
 func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	timestamp *time.Time, round *rounds.Round, pinned, hidden *bool,
-	status *channels.SentStatus) uint64 {
-	parentErr := errors.New("failed to UpdateFromMessageID")
+	status *channels.SentStatus) (uint64, error) {
+	parentErr := "failed to UpdateFromMessageID"
 
 	// FIXME: this is a bit of race condition without the mux.
 	//        This should be done via the transactions (i.e., make a
@@ -304,19 +311,19 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	currentMsgObj, err := impl.GetIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, impl.EncodeBytes(messageID.Marshal()))
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Failed to get message by index: %+v", err))
-		return 0
+		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
+			return 0, errors.WithMessage(channels.NoMessageErr, parentErr)
+		}
+		return 0, errors.WithMessage(err, parentErr)
 	}
 
 	currentMsg := utils.JsToJson(currentMsgObj)
 	uuid, err := w.updateMessage(currentMsg, &messageID, timestamp,
 		round, pinned, hidden, status)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Unable to updateMessage: %+v", err))
+		return 0, errors.WithMessage(err, parentErr)
 	}
-	return uuid
+	return uuid, nil
 }
 
 // updateMessage is a helper for updating a stored message.
