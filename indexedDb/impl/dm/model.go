@@ -25,14 +25,12 @@ const (
 	// Message index names.
 	messageStoreMessageIndex      = "message_id_index"
 	messageStoreConversationIndex = "conversation_pub_key_index"
-	messageStoreParentIndex       = "parent_message_id_index"
-	messageStoreTimestampIndex    = "timestamp_index"
+	messageStoreSenderIndex       = "sender_pub_key_index"
 
 	// Message keyPath names (must match json struct tags).
 	messageStoreMessage      = "message_id"
 	messageStoreConversation = "conversation_pub_key"
-	messageStoreParent       = "parent_message_id"
-	messageStoreTimestamp    = "timestamp"
+	messageStoreSender       = "sender_pub_key"
 )
 
 // Message defines the IndexedDb representation of a single Message.
@@ -43,9 +41,9 @@ type Message struct {
 	ID                 uint64    `json:"id"`                   // Matches msgPkeyName
 	MessageID          []byte    `json:"message_id"`           // Index
 	ConversationPubKey []byte    `json:"conversation_pub_key"` // Index
-	ParentMessageID    []byte    `json:"parent_message_id"`    // Index
-	Timestamp          time.Time `json:"timestamp"`            // Index
-	SenderPubKey       []byte    `json:"sender_pub_key"`
+	ParentMessageID    []byte    `json:"parent_message_id"`
+	Timestamp          time.Time `json:"timestamp"`
+	SenderPubKey       []byte    `json:"sender_pub_key"` // Index
 	CodesetVersion     uint8     `json:"codeset_version"`
 	Status             uint8     `json:"status"`
 	Text               []byte    `json:"text"`
