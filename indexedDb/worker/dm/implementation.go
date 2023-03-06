@@ -34,7 +34,8 @@ type TransferMessage struct {
 	ReactionTo message.ID        `json:"reactionTo"`
 	Nickname   string            `json:"nickname"`
 	Text       []byte            `json:"text"`
-	PubKey     ed25519.PublicKey `json:"pubKey"`
+	PartnerKey ed25519.PublicKey `json:"partnerKey"`
+	SenderKey  ed25519.PublicKey `json:"senderKey"`
 	DmToken    uint32            `json:"dmToken"`
 	Codeset    uint8             `json:"codeset"`
 	Timestamp  time.Time         `json:"timestamp"`
@@ -44,19 +45,20 @@ type TransferMessage struct {
 }
 
 func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
+	partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8, timestamp time.Time,
 	round rounds.Round, mType dm.MessageType, status dm.Status) uint64 {
 	msg := TransferMessage{
-		MessageID: messageID,
-		Nickname:  nickname,
-		Text:      text,
-		PubKey:    pubKey,
-		DmToken:   dmToken,
-		Codeset:   codeset,
-		Timestamp: timestamp,
-		Round:     round,
-		MType:     mType,
-		Status:    status,
+		MessageID:  messageID,
+		Nickname:   nickname,
+		Text:       text,
+		PartnerKey: partnerKey,
+		SenderKey:  senderKey,
+		DmToken:    dmToken,
+		Codeset:    codeset,
+		Timestamp:  timestamp,
+		Round:      round,
+		MType:      mType,
+		Status:     status,
 	}
 
 	data, err := json.Marshal(msg)
@@ -90,18 +92,19 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 }
 
 func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	msg := TransferMessage{
-		MessageID: messageID,
-		Nickname:  nickname,
-		Text:      []byte(text),
-		PubKey:    pubKey,
-		DmToken:   dmToken,
-		Codeset:   codeset,
-		Timestamp: timestamp,
-		Round:     round,
-		Status:    status,
+		MessageID:  messageID,
+		Nickname:   nickname,
+		Text:       []byte(text),
+		PartnerKey: partnerKey,
+		SenderKey:  senderKey,
+		DmToken:    dmToken,
+		Codeset:    codeset,
+		Timestamp:  timestamp,
+		Round:      round,
+		Status:     status,
 	}
 
 	data, err := json.Marshal(msg)
@@ -135,14 +138,15 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 }
 
 func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
-	text string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	text string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	msg := TransferMessage{
 		MessageID:  messageID,
 		ReactionTo: reactionTo,
 		Nickname:   nickname,
 		Text:       []byte(text),
-		PubKey:     pubKey,
+		PartnerKey: partnerKey,
+		SenderKey:  senderKey,
 		DmToken:    dmToken,
 		Codeset:    codeset,
 		Timestamp:  timestamp,
@@ -181,14 +185,15 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 }
 
 func (w *wasmModel) ReceiveReaction(messageID, reactionTo message.ID, nickname,
-	reaction string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	reaction string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, status dm.Status) uint64 {
 	msg := TransferMessage{
 		MessageID:  messageID,
 		ReactionTo: reactionTo,
 		Nickname:   nickname,
 		Text:       []byte(reaction),
-		PubKey:     pubKey,
+		PartnerKey: partnerKey,
+		SenderKey:  senderKey,
 		DmToken:    dmToken,
 		Codeset:    codeset,
 		Timestamp:  timestamp,
@@ -243,4 +248,58 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	}
 
 	w.wh.SendMessage(UpdateSentStatusTag, data, nil)
+}
+
+func (w *wasmModel) BlockSender(senderPubKey ed25519.PublicKey) {
+	w.wh.SendMessage(BlockSenderTag, senderPubKey, nil)
+}
+
+func (w *wasmModel) UnblockSender(senderPubKey ed25519.PublicKey) {
+	w.wh.SendMessage(UnblockSenderTag, senderPubKey, nil)
+}
+
+func (w *wasmModel) GetConversation(senderPubKey ed25519.PublicKey) *dm.ModelConversation {
+	resultChan := make(chan *dm.ModelConversation)
+	w.wh.SendMessage(GetConversationTag, senderPubKey,
+		func(data []byte) {
+			var result *dm.ModelConversation
+			err := json.Unmarshal(data, &result)
+			if err != nil {
+				jww.ERROR.Printf("Could not JSON unmarshal response to "+
+					"GetConversation: %+v", err)
+			}
+			resultChan <- result
+		})
+
+	select {
+	case result := <-resultChan:
+		return result
+	case <-time.After(worker.ResponseTimeout):
+		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
+			"worker about GetConversation", worker.ResponseTimeout)
+		return nil
+	}
+}
+
+func (w *wasmModel) GetConversations() []dm.ModelConversation {
+	resultChan := make(chan []dm.ModelConversation)
+	w.wh.SendMessage(GetConversationTag, nil,
+		func(data []byte) {
+			var result []dm.ModelConversation
+			err := json.Unmarshal(data, &result)
+			if err != nil {
+				jww.ERROR.Printf("Could not JSON unmarshal response to "+
+					"GetConversations: %+v", err)
+			}
+			resultChan <- result
+		})
+
+	select {
+	case result := <-resultChan:
+		return result
+	case <-time.After(worker.ResponseTimeout):
+		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
+			"worker about GetConversations", worker.ResponseTimeout)
+		return nil
+	}
 }
