@@ -11,7 +11,6 @@ package main
 
 import (
 	"crypto/ed25519"
-	"encoding/base64"
 	"encoding/json"
 	"strings"
 	"sync"
@@ -122,8 +121,7 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 	}
 
 	// Perform the operation
-	channelIdStr := base64.StdEncoding.EncodeToString(channelID.Marshal())
-	keyRange, err := idb.NewKeyRangeOnly(js.ValueOf(channelIdStr))
+	keyRange, err := idb.NewKeyRangeOnly(impl.EncodeBytes(channelID.Marshal()))
 	cursorRequest, err := index.OpenCursorRange(keyRange, idb.CursorNext)
 	if err != nil {
 		return errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
@@ -303,9 +301,8 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	w.updateMux.Lock()
 	defer w.updateMux.Unlock()
 
-	msgIDStr := base64.StdEncoding.EncodeToString(messageID.Marshal())
 	currentMsgObj, err := impl.GetIndex(w.db, messageStoreName,
-		messageStoreMessageIndex, js.ValueOf(msgIDStr))
+		messageStoreMessageIndex, impl.EncodeBytes(messageID.Marshal()))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Failed to get message by index: %+v", err))
@@ -420,8 +417,9 @@ func (w *wasmModel) receiveHelper(
 
 	// Store message to database
 	result, err := impl.Put(w.db, messageStoreName, messageObj)
-	if err != nil && !strings.Contains(err.Error(),
-		"at least one key does not satisfy the uniqueness requirements") {
+	// FIXME: The following is almost certainly causing a bug
+	// where all of our upsert operations are failing.
+	if err != nil && !strings.Contains(err.Error(), impl.ErrUniqueConstraint) {
 		// Only return non-unique constraint errors so that the case
 		// below this one can be hit and handle duplicate entries properly.
 		return 0, errors.Errorf("Unable to put Message: %+v", err)
@@ -497,10 +495,8 @@ func (w *wasmModel) GetMessage(
 
 // DeleteMessage removes a message with the given messageID from storage.
 func (w *wasmModel) DeleteMessage(messageID message.ID) error {
-	msgId := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
-
-	err := impl.DeleteIndex(
-		w.db, messageStoreName, messageStoreMessageIndex, pkeyName, msgId)
+	err := impl.DeleteIndex(w.db, messageStoreName,
+		messageStoreMessageIndex, pkeyName, impl.EncodeBytes(messageID.Marshal()))
 	if err != nil {
 		return err
 	}
@@ -518,7 +514,7 @@ func (w *wasmModel) MuteUser(
 
 // msgIDLookup gets the UUID of the Message with the given messageID.
 func (w *wasmModel) msgIDLookup(messageID message.ID) (*Message, error) {
-	msgIDStr := js.ValueOf(base64.StdEncoding.EncodeToString(messageID.Bytes()))
+	msgIDStr := impl.EncodeBytes(messageID.Marshal())
 	resultObj, err := impl.GetIndex(w.db, messageStoreName,
 		messageStoreMessageIndex, msgIDStr)
 	if err != nil {
