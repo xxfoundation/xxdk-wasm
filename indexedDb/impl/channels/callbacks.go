@@ -340,8 +340,12 @@ func (m *manager) updateFromUUIDCB(data []byte) ([]byte, error) {
 		status = &msg.Status
 	}
 
-	m.model.UpdateFromUUID(
+	err = m.model.UpdateFromUUID(
 		msg.UUID, messageID, timestamp, round, pinned, hidden, status)
+	if err != nil {
+		return []byte(err.Error()), nil
+	}
+
 	return nil, nil
 }
 
@@ -374,15 +378,21 @@ func (m *manager) updateFromMessageIDCB(data []byte) ([]byte, error) {
 		status = &msg.Status
 	}
 
-	uuid := m.model.UpdateFromMessageID(
+	var ue wChannels.UuidError
+	uuid, err := m.model.UpdateFromMessageID(
 		msg.MessageID, timestamp, round, pinned, hidden, status)
-
-	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		return nil, errors.Errorf("failed to JSON marshal UUID : %+v", err)
+		ue.Error = []byte(err.Error())
+	} else {
+		ue.UUID = uuid
 	}
 
-	return uuidData, nil
+	data, err = json.Marshal(ue)
+	if err != nil {
+		return nil, errors.Errorf("failed to JSON marshal %T: %+v", ue, err)
+	}
+
+	return data, nil
 }
 
 // getMessageCB is the callback for wasmModel.GetMessage. Returns JSON
