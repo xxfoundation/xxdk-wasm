@@ -12,6 +12,7 @@ package main
 import (
 	"crypto/ed25519"
 	"encoding/json"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall/js"
@@ -382,7 +383,7 @@ func buildMessage(channelID, messageID, parentID []byte, nickname string,
 		ChannelID:       channelID,
 		ParentMessageID: parentID,
 		Timestamp:       timestamp,
-		Lease:           lease.String(),
+		Lease:           strconv.FormatInt(lease.Milliseconds(), 10),
 		Status:          uint8(status),
 		Hidden:          hidden,
 		Pinned:          pinned,
@@ -468,10 +469,11 @@ func (w *wasmModel) GetMessage(
 
 	lease := time.Duration(0)
 	if len(lookupResult.Lease) > 0 {
-		lease, err = time.ParseDuration(lookupResult.Lease)
+		leaseInt, err := strconv.ParseInt(lookupResult.Lease, 10, 64)
 		if err != nil {
 			return channels.ModelMessage{}, err
 		}
+		lease = time.Duration(leaseInt)
 	}
 
 	return channels.ModelMessage{
