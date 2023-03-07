@@ -45,19 +45,19 @@ const (
 // The user's nickname can change each message, but the rest does not. We
 // still duplicate all of it for each entry to simplify code for now.
 type Message struct {
-	ID              uint64        `json:"id"` // Matches pkeyName
-	Nickname        string        `json:"nickname"`
-	MessageID       []byte        `json:"message_id"`        // Index
-	ChannelID       []byte        `json:"channel_id"`        // Index
-	ParentMessageID []byte        `json:"parent_message_id"` // Index
-	Timestamp       time.Time     `json:"timestamp"`         // Index
-	Lease           time.Duration `json:"lease"`
-	Status          uint8         `json:"status"`
-	Hidden          bool          `json:"hidden"`
-	Pinned          bool          `json:"pinned"` // Index
-	Text            []byte        `json:"text"`
-	Type            uint16        `json:"type"`
-	Round           uint64        `json:"round"`
+	ID              uint64    `json:"id"` // Matches pkeyName
+	Nickname        string    `json:"nickname"`
+	MessageID       []byte    `json:"message_id"`        // Index
+	ChannelID       []byte    `json:"channel_id"`        // Index
+	ParentMessageID []byte    `json:"parent_message_id"` // Index
+	Timestamp       time.Time `json:"timestamp"`         // Index
+	Lease           string    `json:"lease_v2"`
+	Status          uint8     `json:"status"`
+	Hidden          bool      `json:"hidden"`
+	Pinned          bool      `json:"pinned"` // Index
+	Text            []byte    `json:"text"`
+	Type            uint16    `json:"type"`
+	Round           uint64    `json:"round"`
 
 	// User cryptographic Identity struct -- could be pulled out
 	Pubkey         []byte `json:"pubkey"`
