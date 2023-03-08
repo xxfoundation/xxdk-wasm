@@ -32,7 +32,7 @@ const (
 
 	// logListenerChanSize is the size of the listener channel that stores log
 	// messages before they are written.
-	logListenerChanSize = 1500
+	logListenerChanSize = 3000
 )
 
 // List of tags that can be used when sending a message or registering a handler
