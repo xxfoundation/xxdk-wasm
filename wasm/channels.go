@@ -1140,29 +1140,21 @@ func (cm *ChannelsManager) SendReply(_ js.Value, args []js.Value) any {
 //     your own. Alternatively, if reacting to another user's message, you may
 //     retrieve it via the ChannelMessageReceptionCallback registered using
 //     RegisterReceiveHandler (Uint8Array).
-//   - args[3] - The lease of the message. This will be how long the
-//     message is available from the network, in milliseconds (int). As per the
-//     [channels.Manager] documentation, this has different meanings depending
-//     on the use case. These use cases may be generic enough that they will not
-//     be enumerated here. Use [ValidForever] to last the max message life.
-//   - args[4] - JSON of [xxdk.CMIXParams]. If left empty
+//   - args[3] - JSON of [xxdk.CMIXParams]. If left empty
 //     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
 //
 // Returns a promise:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
 func (cm *ChannelsManager) SendReaction(_ js.Value, args []js.Value) any {
-	var (
-		marshalledChanId = utils.CopyBytesToGo(args[0])
-		reaction         = args[1].String()
-		messageToReactTo = utils.CopyBytesToGo(args[2])
-		leaseTimeMS      = int64(args[3].Int())
-		cmixParamsJSON   = utils.CopyBytesToGo(args[4])
-	)
+	marshalledChanId := utils.CopyBytesToGo(args[0])
+	reaction := args[1].String()
+	messageToReactTo := utils.CopyBytesToGo(args[2])
+	cmixParamsJSON := utils.CopyBytesToGo(args[3])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := cm.api.SendReaction(marshalledChanId, reaction,
-			messageToReactTo, leaseTimeMS, cmixParamsJSON)
+		sendReport, err := cm.api.SendReaction(
+			marshalledChanId, reaction, messageToReactTo, cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
