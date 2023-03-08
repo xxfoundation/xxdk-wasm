@@ -12,8 +12,9 @@ package wasm
 import (
 	"crypto/ed25519"
 	"encoding/json"
-	"gitlab.com/elixxir/client/v4/dm"
 	"syscall/js"
+
+	"gitlab.com/elixxir/client/v4/dm"
 
 	indexDB "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
 
@@ -22,6 +23,8 @@ import (
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/crypto/codename"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
+
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -315,6 +318,10 @@ func (dmc *DMClient) SendText(_ js.Value, args []js.Value) any {
 	leaseTimeMS := int64(args[3].Int())
 	cmixParamsJSON := utils.CopyBytesToGo(args[4])
 
+	jww.DEBUG.Printf("SendText(%s, %d, %s...)",
+		base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
+		partnerToken, message[:10])
+
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := dmc.api.SendText(partnerPubKeyBytes,
 			uint32(partnerToken), message, leaseTimeMS,
@@ -368,6 +375,12 @@ func (dmc *DMClient) SendReply(_ js.Value, args []js.Value) any {
 	leaseTimeMS := int64(args[4].Int())
 	cmixParamsJSON := utils.CopyBytesToGo(args[5])
 
+	jww.DEBUG.Printf("SendReply(%s, %d, %s: %s...)",
+		base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
+		partnerToken,
+		base64.RawStdEncoding.EncodeToString(replyID),
+		message[:10])
+
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := dmc.api.SendReply(partnerPubKeyBytes,
 			uint32(partnerToken), message, replyID, leaseTimeMS,
@@ -408,6 +421,12 @@ func (dmc *DMClient) SendReaction(_ js.Value, args []js.Value) any {
 	replyID := utils.CopyBytesToGo(args[2])
 	message := args[3].String()
 	cmixParamsJSON := utils.CopyBytesToGo(args[4])
+
+	jww.DEBUG.Printf("SendReaction(%s, %d, %s: %s...)",
+		base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
+		partnerToken,
+		base64.RawStdEncoding.EncodeToString(replyID),
+		message[:10])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := dmc.api.SendReaction(partnerPubKeyBytes,
