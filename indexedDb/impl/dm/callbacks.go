@@ -80,13 +80,14 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 // main thread.
 //
 // messageReceivedCallback adhere to the MessageReceivedCallback type.
-func (m *manager) messageReceivedCallback(
-	uuid uint64, pubKey ed25519.PublicKey, update bool) {
+func (m *manager) messageReceivedCallback(uuid uint64, pubKey ed25519.PublicKey,
+	messageUpdate, conversationUpdate bool) {
 	// Package parameters for sending
 	msg := &wDm.MessageReceivedCallbackMessage{
-		UUID:   uuid,
-		PubKey: pubKey,
-		Update: update,
+		UUID:               uuid,
+		PubKey:             pubKey,
+		MessageUpdate:      messageUpdate,
+		ConversationUpdate: conversationUpdate,
 	}
 	data, err := json.Marshal(msg)
 	if err != nil {

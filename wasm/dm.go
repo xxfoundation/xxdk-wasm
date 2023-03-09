@@ -210,8 +210,9 @@ func newDMClientWithIndexedDb(cmixID int, wasmJsPath string,
 	privateIdentity []byte, cb js.Value, cipher *bindings.DMDbCipher) any {
 
 	messageReceivedCB := func(uuid uint64, pubKey ed25519.PublicKey,
-		update bool) {
-		cb.Invoke(uuid, utils.CopyBytesToJS(pubKey[:]), update)
+		messageUpdate, conversationUpdate bool) {
+		cb.Invoke(uuid, utils.CopyBytesToJS(pubKey[:]),
+			messageUpdate, conversationUpdate)
 	}
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {

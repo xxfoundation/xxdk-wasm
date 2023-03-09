@@ -39,10 +39,10 @@ type wasmModel struct {
 	updateMux         sync.Mutex
 }
 
-// joinConversation is used for joining new conversations.
-func (w *wasmModel) joinConversation(nickname string,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8) error {
-	parentErr := errors.New("failed to joinConversation")
+// upsertConversation is used for joining or updating a Conversation.
+func (w *wasmModel) upsertConversation(nickname string,
+	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, blocked bool) error {
+	parentErr := errors.New("failed to upsertConversation")
 
 	// Build object
 	newConvo := Conversation{
@@ -50,7 +50,7 @@ func (w *wasmModel) joinConversation(nickname string,
 		Nickname:       nickname,
 		Token:          dmToken,
 		CodesetVersion: codeset,
-		Blocked:        false,
+		Blocked:        blocked,
 	}
 
 	// Convert to jsObject
@@ -212,9 +212,10 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 		return
 	}
 
-	jww.TRACE.Printf("[DM indexedDB] Calling ReceiveMessageCB(%v, %v, t)",
+	jww.TRACE.Printf("[DM indexedDB] Calling ReceiveMessageCB(%v, %v, t, f)",
 		uuid, newMessage.ConversationPubKey)
-	go w.receivedMessageCB(uuid, newMessage.ConversationPubKey, true)
+	go w.receivedMessageCB(uuid, newMessage.ConversationPubKey,
+		true, false)
 }
 
 // receiveWrapper is a higher-level wrapper of receiveHelper.
@@ -222,21 +223,34 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	data string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, mType dm.MessageType, status dm.Status) (uint64, error) {
 
-	// If there is no extant Conversation, create one.
-	_, err := impl.Get(w.db, conversationStoreName, impl.EncodeBytes(partnerKey))
+	// Keep track of whether Conversation was altered
+	conversationUpdated := false
+	result, err := w.getConversation(partnerKey)
 	if err != nil {
-		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
-			err = w.joinConversation(nickname, partnerKey, dmToken,
-				codeset)
+		if !strings.Contains(err.Error(), impl.ErrDoesNotExist) {
+			return 0, err
+		} else {
+			// If there is no extant Conversation, create one.
+			err = w.upsertConversation(nickname, partnerKey, dmToken,
+				codeset, false)
 			if err != nil {
 				return 0, err
 			}
-		} else {
-			return 0, err
+			conversationUpdated = true
 		}
 	} else {
 		jww.DEBUG.Printf(
 			"[DM indexedDB] Conversation with %s already joined", nickname)
+
+		// Update Conversation if nickname was altered
+		if result.Nickname != nickname {
+			err = w.upsertConversation(nickname, result.Pubkey, result.Token,
+				result.CodesetVersion, result.Blocked)
+			if err != nil {
+				return 0, err
+			}
+			conversationUpdated = true
+		}
 	}
 
 	// Handle encryption, if it is present
@@ -261,9 +275,9 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 		return 0, err
 	}
 
-	jww.TRACE.Printf("[DM indexedDB] Calling ReceiveMessageCB(%v, %v, f)",
-		uuid, partnerKey)
-	go w.receivedMessageCB(uuid, partnerKey, false)
+	jww.TRACE.Printf("[DM indexedDB] Calling ReceiveMessageCB(%v, %v, f, %t)",
+		uuid, partnerKey, conversationUpdated)
+	go w.receivedMessageCB(uuid, partnerKey, false, conversationUpdated)
 	return uuid, nil
 }
 
@@ -357,21 +371,21 @@ func (w *wasmModel) setBlocked(senderPubKey ed25519.PublicKey, isBlocked bool) e
 	if err != nil {
 		return err
 	}
-	resultConvo.Blocked = isBlocked
 
-	// Convert back to js.Value
-	newMessageJson, err := json.Marshal(resultConvo)
+	return w.upsertConversation(resultConvo.Nickname, resultConvo.Pubkey,
+		resultConvo.Token, resultConvo.CodesetVersion, isBlocked)
+}
+
+// SetNickname allows for updating the nickname field of a Conversation.
+func (w *wasmModel) SetNickname(senderPubKey ed25519.PublicKey, nickname string) error {
+	// Get current Conversation and set blocked
+	resultConvo, err := w.getConversation(senderPubKey)
 	if err != nil {
 		return err
 	}
-	convoObj, err := utils.JsonToJS(newMessageJson)
-	if err != nil {
-		return err
-	}
 
-	// Insert into storage
-	_, err = impl.Put(w.db, conversationStoreName, convoObj)
-	return err
+	return w.upsertConversation(nickname, resultConvo.Pubkey,
+		resultConvo.Token, resultConvo.CodesetVersion, resultConvo.Blocked)
 }
 
 // GetConversation returns the conversation held by the model (receiver).
