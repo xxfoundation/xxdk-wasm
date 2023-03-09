@@ -33,9 +33,10 @@ const (
 
 // MessageReceivedCallback is called any time a message is received or updated.
 //
-// update is true if the row is old and was edited.
+// messageUpdate is true if the Message already exists and was edited.
+// conversationUpdate is true if the Conversation was created or modified.
 type MessageReceivedCallback func(
-	uuid uint64, pubKey ed25519.PublicKey, update bool)
+	uuid uint64, pubKey ed25519.PublicKey, messageUpdate, conversationUpdate bool)
 
 // storeDatabaseNameFn matches storage.StoreIndexedDb so that the data can be
 // sent between the worker and main thread.
