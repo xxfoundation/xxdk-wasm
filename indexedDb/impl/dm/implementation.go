@@ -294,7 +294,7 @@ func (w *wasmModel) receiveHelper(
 		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
 	}
 
-	// Unset the primaryKey for inserts so that it can be auto-populated and
+	// Unset the primaryKey for inserts so that it can be autopopulated and
 	// incremented
 	if !isUpdate {
 		messageObj.Delete("id")
@@ -374,18 +374,6 @@ func (w *wasmModel) setBlocked(senderPubKey ed25519.PublicKey, isBlocked bool) e
 
 	return w.upsertConversation(resultConvo.Nickname, resultConvo.Pubkey,
 		resultConvo.Token, resultConvo.CodesetVersion, isBlocked)
-}
-
-// SetNickname allows for updating the nickname field of a Conversation.
-func (w *wasmModel) SetNickname(senderPubKey ed25519.PublicKey, nickname string) error {
-	// Get current Conversation and set blocked
-	resultConvo, err := w.getConversation(senderPubKey)
-	if err != nil {
-		return err
-	}
-
-	return w.upsertConversation(nickname, resultConvo.Pubkey,
-		resultConvo.Token, resultConvo.CodesetVersion, resultConvo.Blocked)
 }
 
 // GetConversation returns the conversation held by the model (receiver).
