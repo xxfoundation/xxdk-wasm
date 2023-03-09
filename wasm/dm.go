@@ -190,8 +190,9 @@ func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 //     returned as an int and the channelID as a Uint8Array. The row in the
 //     database that was updated can be found using the UUID. The channel ID is
 //     provided so that the recipient can filter if they want to the processes
-//     the update now or not. An "update" bool is present which tells you if
-//     the row is new or if it is an edited old row
+//     the update now or not. messageUpdate is true if the Message already
+//     exists and was edited. conversationUpdate is true if the Conversation
+//     was created or modified.
 //
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [DMClient] object.
