@@ -26,8 +26,8 @@ import (
 // MessageReceivedCallback is called any time a message is received or updated.
 //
 // update is true if the row is old and was edited.
-type MessageReceivedCallback func(
-	uuid uint64, pubKey ed25519.PublicKey, update bool)
+type MessageReceivedCallback func(uuid uint64, pubKey ed25519.PublicKey,
+	messageUpdate, conversationUpdate bool)
 
 // NewWASMEventModelMessage is JSON marshalled and sent to the worker for
 // [NewWASMEventModel].
@@ -91,9 +91,10 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 // MessageReceivedCallbackMessage is JSON marshalled and received from the
 // worker for the [MessageReceivedCallback] callback.
 type MessageReceivedCallbackMessage struct {
-	UUID   uint64            `json:"uuid"`
-	PubKey ed25519.PublicKey `json:"pubKey"`
-	Update bool              `json:"update"`
+	UUID               uint64            `json:"uuid"`
+	PubKey             ed25519.PublicKey `json:"pubKey"`
+	MessageUpdate      bool              `json:"message_update"`
+	ConversationUpdate bool              `json:"conversation_update"`
 }
 
 // messageReceivedCallbackHandler returns a handler to manage messages for the
@@ -107,7 +108,7 @@ func messageReceivedCallbackHandler(cb MessageReceivedCallback) func(data []byte
 				"MessageReceivedCallback message from worker: %+v", err)
 			return
 		}
-		cb(msg.UUID, msg.PubKey, msg.Update)
+		cb(msg.UUID, msg.PubKey, msg.MessageUpdate, msg.ConversationUpdate)
 	}
 }
 
