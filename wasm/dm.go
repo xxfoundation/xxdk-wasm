@@ -322,7 +322,7 @@ func (dmc *DMClient) SendText(_ js.Value, args []js.Value) any {
 
 	jww.DEBUG.Printf("SendText(%s, %d, %s...)",
 		base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
-		partnerToken, message[:10])
+		partnerToken, truncate(message, 10))
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := dmc.api.SendText(partnerPubKeyBytes,
@@ -381,7 +381,7 @@ func (dmc *DMClient) SendReply(_ js.Value, args []js.Value) any {
 		base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
 		partnerToken,
 		base64.RawStdEncoding.EncodeToString(replyID),
-		message[:10])
+		truncate(message, 10))
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := dmc.api.SendReply(partnerPubKeyBytes,
@@ -428,7 +428,7 @@ func (dmc *DMClient) SendReaction(_ js.Value, args []js.Value) any {
 		base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
 		partnerToken,
 		base64.RawStdEncoding.EncodeToString(replyID),
-		message[:10])
+		truncate(message, 10))
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := dmc.api.SendReaction(partnerPubKeyBytes,
@@ -950,4 +950,13 @@ func (c *DMDbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
 		return nil
 	}
 	return nil
+}
+
+// truncate truncates the string to length n. If the string is trimmed, then
+// ellipses (...) are appended.
+func truncate(s string, n int) string {
+	if len(s)-3 <= n {
+		return s
+	}
+	return s[:n] + "..."
 }
