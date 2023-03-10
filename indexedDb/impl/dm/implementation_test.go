@@ -16,8 +16,8 @@ import (
 	"testing"
 )
 
-func dummyReceivedMessageCB(uint64, ed25519.PublicKey, bool) {}
-func dummyStoreDatabaseName(string) error                    { return nil }
+func dummyReceivedMessageCB(uint64, ed25519.PublicKey, bool, bool) {}
+func dummyStoreDatabaseName(string) error                          { return nil }
 func dummyStoreEncryptionStatus(_ string, encryptionStatus bool) (bool, error) {
 	return encryptionStatus, nil
 }
