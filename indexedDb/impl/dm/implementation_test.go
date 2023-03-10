@@ -37,7 +37,7 @@ func TestWasmModel_BlockSender(t *testing.T) {
 
 	// Insert a test convo
 	testPubKey := ed25519.PublicKey{}
-	err = m.joinConversation("test", testPubKey, 0, 0)
+	err = m.upsertConversation("test", testPubKey, 0, 0, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

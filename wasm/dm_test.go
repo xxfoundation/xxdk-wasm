@@ -41,10 +41,17 @@ func Test_DMClientMethods(t *testing.T) {
 	dmcType := reflect.TypeOf(&DMClient{})
 	binDmcType := reflect.TypeOf(&bindings.DMClient{})
 
-	if binDmcType.NumMethod() != dmcType.NumMethod() {
+	var numOfExcludedFields int
+	if _, exists := dmcType.MethodByName("GetDatabaseName"); !exists {
+		t.Errorf("GetDatabaseName was not found.")
+	} else {
+		numOfExcludedFields++
+	}
+
+	nm := dmcType.NumMethod() - numOfExcludedFields
+	if binDmcType.NumMethod() != nm {
 		t.Errorf("WASM DMClient object does not have all methods from "+
-			"bindings.\nexpected: %d\nreceived: %d",
-			binDmcType.NumMethod(), dmcType.NumMethod())
+			"bindings.\nexpected: %d\nreceived: %d", binDmcType.NumMethod(), nm)
 	}
 
 	for i := 0; i < binDmcType.NumMethod(); i++ {
