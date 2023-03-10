@@ -10,6 +10,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
 	"strings"
@@ -42,7 +43,7 @@ type wasmModel struct {
 // upsertConversation is used for joining or updating a Conversation.
 func (w *wasmModel) upsertConversation(nickname string,
 	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, blocked bool) error {
-	parentErr := errors.New("failed to upsertConversation")
+	parentErr := errors.New("[DM indexedDB] failed to upsertConversation")
 
 	// Build object
 	newConvo := Conversation{
@@ -231,6 +232,8 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 			return 0, err
 		} else {
 			// If there is no extant Conversation, create one.
+			jww.DEBUG.Printf(
+				"[DM indexedDB] Joining conversation with %s", nickname)
 			err = w.upsertConversation(nickname, partnerKey, dmToken,
 				codeset, false)
 			if err != nil {
@@ -243,7 +246,12 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 			"[DM indexedDB] Conversation with %s already joined", nickname)
 
 		// Update Conversation if nickname was altered
-		if result.Nickname != nickname {
+		isFromPartner := bytes.Equal(result.Pubkey, senderKey)
+		nicknameChanged := result.Nickname != nickname
+		if isFromPartner && nicknameChanged {
+			jww.DEBUG.Printf(
+				"[DM indexedDB] Updating from nickname %s to %s",
+				result.Nickname, nickname)
 			err = w.upsertConversation(nickname, result.Pubkey, result.Token,
 				result.CodesetVersion, result.Blocked)
 			if err != nil {
