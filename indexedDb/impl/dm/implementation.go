@@ -14,7 +14,6 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"strings"
-	"sync"
 	"syscall/js"
 	"time"
 
@@ -33,11 +32,12 @@ import (
 
 // wasmModel implements dm.EventModel interface, which uses the channels system
 // passed an object that adheres to in order to get events on the channel.
+// NOTE: This model is NOT thread safe - it is the responsibility of the
+// caller to ensure that its methods are called sequentially.
 type wasmModel struct {
 	db                *idb.Database
 	cipher            cryptoChannel.Cipher
 	receivedMessageCB MessageReceivedCallback
-	updateMux         sync.Mutex
 }
 
 // upsertConversation is used for joining or updating a Conversation.
@@ -163,12 +163,6 @@ func (w *wasmModel) ReceiveReaction(messageID, reactionTo message.ID, nickname,
 func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	timestamp time.Time, round rounds.Round, status dm.Status) {
 	parentErr := errors.New("failed to UpdateSentStatus")
-
-	// FIXME: this is a bit of race condition without the mux.
-	//        This should be done via the transactions (i.e., make a
-	//        special version of receiveHelper)
-	w.updateMux.Lock()
-	defer w.updateMux.Unlock()
 	jww.TRACE.Printf(
 		"[DM indexedDB] UpdateSentStatus(%d, %s, ...)", uuid, messageID)
 

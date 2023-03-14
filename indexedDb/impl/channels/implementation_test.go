@@ -74,16 +74,16 @@ func TestWasmModel_msgIDLookup(t *testing.T) {
 			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
-			_, err = eventModel.receiveHelper(testMsg, false)
+			_, err = eventModel.receiveHelper(testMsg)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			msg, err2 := eventModel.msgIDLookup(testMsgId)
+			msg, err2 := eventModel.GetMessage(testMsgId)
 			if err2 != nil {
 				t.Fatal(err2)
 			}
-			if msg.ID == 0 {
+			if msg.UUID == 0 {
 				t.Fatalf("Expected to get a UUID!")
 			}
 		})
@@ -106,7 +106,7 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 		testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
 		time.Second, 0, 0, false, false, channels.Sent)
-	_, err = eventModel.receiveHelper(testMsg, false)
+	_, err = eventModel.receiveHelper(testMsg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +164,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
-			uuid, err2 := eventModel.receiveHelper(testMsg, false)
+			uuid, err2 := eventModel.receiveHelper(testMsg)
 			if err2 != nil {
 				t.Fatal(err2)
 			}
@@ -480,13 +480,13 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
-			uuid, err2 := eventModel.receiveHelper(testMsg, false)
+			uuid, err2 := eventModel.receiveHelper(testMsg)
 			if err2 != nil {
 				t.Fatal(err2)
 			}
 
 			// The duplicate entry should return the same UUID
-			duplicateUuid, err2 := eventModel.receiveHelper(testMsg, false)
+			duplicateUuid, err2 := eventModel.receiveHelper(testMsg)
 			if err2 != nil {
 				t.Fatal(err2)
 			}
@@ -500,7 +500,7 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 			testMsg = buildMessage([]byte(testString), testMsgId2.Bytes(), nil,
 				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
-			uuid2, err2 := eventModel.receiveHelper(testMsg, false)
+			uuid2, err2 := eventModel.receiveHelper(testMsg)
 			if err2 != nil {
 				t.Fatal(err2)
 			}
@@ -512,7 +512,7 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 			// message ID as the first
 			testMsg.ID = uuid
 			testMsg.MessageID = testMsgId.Bytes()
-			duplicateUuid2, err2 := eventModel.receiveHelper(testMsg, true)
+			duplicateUuid2, err2 := eventModel.receiveHelper(testMsg)
 			if err2 != nil {
 				t.Fatal(err2)
 			}
