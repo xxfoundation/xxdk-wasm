@@ -13,7 +13,6 @@ import (
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
-	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/client/v4/channels"
@@ -22,45 +21,27 @@ import (
 	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 )
 
-const (
-	// databaseSuffix is the suffix to be appended to the name of
-	// the database.
-	databaseSuffix = "_speakeasy"
-
-	// currentVersion is the current version of the IndexDb
-	// runtime. Used for migration purposes.
-	currentVersion uint = 1
-)
-
-// storeDatabaseNameFn matches storage.StoreIndexedDb so that the data can be
-// sent between the worker and main thread.
-type storeDatabaseNameFn func(databaseName string) error
-
-// storeEncryptionStatusFn matches storage.StoreIndexedDbEncryptionStatus so
-// that the data can be sent between the worker and main thread.
-type storeEncryptionStatusFn func(
-	databaseName string, encryptionStatus bool) (bool, error)
+// currentVersion is the current version of the IndexedDb runtime. Used for
+// migration purposes.
+const currentVersion uint = 1
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
-// The name should be a base64 encoding of the users public key.
-func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
+// The name should be a base64 encoding of the users public key. Returns the
+// EventModel based on IndexedDb and the database name as reported by IndexedDb.
+func NewWASMEventModel(databaseName string, encryption cryptoChannel.Cipher,
 	messageReceivedCB wChannels.MessageReceivedCallback,
 	deletedMessageCB wChannels.DeletedMessageCallback,
-	mutedUserCB wChannels.MutedUserCallback,
-	storeDatabaseName storeDatabaseNameFn,
-	storeEncryptionStatus storeEncryptionStatusFn) (channels.EventModel, error) {
-	databaseName := path + databaseSuffix
+	mutedUserCB wChannels.MutedUserCallback) (
+	channels.EventModel, string, error) {
 	return newWASMModel(databaseName, encryption, messageReceivedCB,
-		deletedMessageCB, mutedUserCB, storeDatabaseName, storeEncryptionStatus)
+		deletedMessageCB, mutedUserCB)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	messageReceivedCB wChannels.MessageReceivedCallback,
 	deletedMessageCB wChannels.DeletedMessageCallback,
-	mutedUserCB wChannels.MutedUserCallback,
-	storeDatabaseName storeDatabaseNameFn,
-	storeEncryptionStatus storeEncryptionStatusFn) (*wasmModel, error) {
+	mutedUserCB wChannels.MutedUserCallback) (*wasmModel, string, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()
 	defer cancel()
@@ -86,36 +67,19 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 			return nil
 		})
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// Wait for database open to finish
 	db, err := openRequest.Await(ctx)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	// Get the database name and save it to storage
-	if dbName, err2 := db.Name(); err2 != nil {
-		return nil, err2
-	} else if err = storeDatabaseName(dbName); err != nil {
-		return nil, err
-	}
-
-	// Save the encryption status to storage
-	encryptionStatus := encryption != nil
-	loadedEncryptionStatus, err :=
-		storeEncryptionStatus(databaseName, encryptionStatus)
+	// Get the database name as reported by IndexedDb
+	dbName, err := db.Name()
 	if err != nil {
-		return nil, err
-	}
-
-	// Verify encryption status does not change
-	if encryptionStatus != loadedEncryptionStatus {
-		return nil, errors.New(
-			"Cannot load database with different encryption status.")
-	} else if !encryptionStatus {
-		jww.WARN.Printf("IndexedDb encryption disabled!")
+		return nil, "", err
 	}
 
 	wrapper := &wasmModel{
@@ -126,7 +90,7 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 		mutedUserCB:       mutedUserCB,
 	}
 
-	return wrapper, nil
+	return wrapper, dbName, nil
 }
 
 // v1Upgrade performs the v0 -> v1 database upgrade.
