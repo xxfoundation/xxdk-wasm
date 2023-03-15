@@ -200,7 +200,8 @@ func Put(db *idb.Database, objectStoreName string, value js.Value) (js.Value, er
 	result, err := request.Await(ctx)
 	cancel()
 	if err != nil {
-		return js.Undefined(), errors.Errorf("Putting value failed: %+v", err)
+		return js.Undefined(), errors.Errorf("Putting value failed: %+v\n%s",
+			err, utils.JsToJson(value))
 	}
 	jww.DEBUG.Printf("Successfully put value in %s: %s",
 		objectStoreName, utils.JsToJson(value))

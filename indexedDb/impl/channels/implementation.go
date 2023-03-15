@@ -165,7 +165,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
 		false, hidden, status)
 
-	uuid, err := w.receiveHelper(msgToInsert)
+	uuid, err := w.upsertMessage(msgToInsert)
 	if err != nil {
 		jww.ERROR.Printf("Failed to receive Message: %+v", err)
 	}
@@ -201,7 +201,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 		replyTo.Bytes(), nickname, textBytes, pubKey, dmToken, codeset,
 		timestamp, lease, round.ID, mType, hidden, false, status)
 
-	uuid, err := w.receiveHelper(msgToInsert)
+	uuid, err := w.upsertMessage(msgToInsert)
 
 	if err != nil {
 		jww.ERROR.Printf("Failed to receive reply: %+v", err)
@@ -238,7 +238,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
 		false, hidden, status)
 
-	uuid, err := w.receiveHelper(msgToInsert)
+	uuid, err := w.upsertMessage(msgToInsert)
 	if err != nil {
 		jww.ERROR.Printf("Failed to receive reaction: %+v", err)
 	}
@@ -380,7 +380,7 @@ func (w *wasmModel) updateMessage(currentMsg *Message, messageID *message.ID,
 	}
 
 	// Store the updated Message
-	uuid, err := w.receiveHelper(currentMsg)
+	uuid, err := w.upsertMessage(currentMsg)
 	if err != nil {
 		return 0, err
 	}
@@ -391,10 +391,11 @@ func (w *wasmModel) updateMessage(currentMsg *Message, messageID *message.ID,
 	return uuid, nil
 }
 
-// receiveHelper is a private helper for receiving any sort of message.
-func (w *wasmModel) receiveHelper(newMessage *Message) (uint64, error) {
+// upsertMessage is a helper function that will update an existing record
+// if Message.ID is specified. Otherwise, it will perform an insert.
+func (w *wasmModel) upsertMessage(msg *Message) (uint64, error) {
 	// Convert to jsObject
-	newMessageJson, err := json.Marshal(newMessage)
+	newMessageJson, err := json.Marshal(msg)
 	if err != nil {
 		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
 	}
