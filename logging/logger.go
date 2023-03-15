@@ -251,7 +251,7 @@ func (l *Logger) StopLogging() {
 
 	switch l.getMode() {
 	case workerMode:
-		go l.wm.Terminate()
+		l.wm.Stop()
 		jww.DEBUG.Printf("[LOG] Terminated log worker.")
 	case fileMode:
 		jww.DEBUG.Printf("[LOG] Reset circular buffer.")
