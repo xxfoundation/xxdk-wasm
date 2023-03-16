@@ -45,7 +45,7 @@ const (
 // The user's nickname can change each message, but the rest does not. We
 // still duplicate all of it for each entry to simplify code for now.
 type Message struct {
-	ID              uint64    `json:"id"` // Matches pkeyName
+	ID              uint64    `json:"id,omitempty"` // Matches pkeyName
 	Nickname        string    `json:"nickname"`
 	MessageID       []byte    `json:"message_id"`        // Index
 	ChannelID       []byte    `json:"channel_id"`        // Index
