@@ -16,8 +16,8 @@ import (
 	"testing"
 )
 
-func dummyReceivedMessageCB(uint64, ed25519.PublicKey, bool) {}
-func dummyStoreDatabaseName(string) error                    { return nil }
+func dummyReceivedMessageCB(uint64, ed25519.PublicKey, bool, bool) {}
+func dummyStoreDatabaseName(string) error                          { return nil }
 func dummyStoreEncryptionStatus(_ string, encryptionStatus bool) (bool, error) {
 	return encryptionStatus, nil
 }
@@ -37,7 +37,7 @@ func TestWasmModel_BlockSender(t *testing.T) {
 
 	// Insert a test convo
 	testPubKey := ed25519.PublicKey{}
-	err = m.joinConversation("test", testPubKey, 0, 0)
+	err = m.upsertConversation("test", testPubKey, 0, 0, false)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

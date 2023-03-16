@@ -14,7 +14,6 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"strings"
-	"sync"
 	"syscall/js"
 	"time"
 
@@ -33,11 +32,12 @@ import (
 
 // wasmModel implements dm.EventModel interface, which uses the channels system
 // passed an object that adheres to in order to get events on the channel.
+// NOTE: This model is NOT thread safe - it is the responsibility of the
+// caller to ensure that its methods are called sequentially.
 type wasmModel struct {
 	db                *idb.Database
 	cipher            cryptoChannel.Cipher
 	receivedMessageCB MessageReceivedCallback
-	updateMux         sync.Mutex
 }
 
 // upsertConversation is used for joining or updating a Conversation.
@@ -162,13 +162,7 @@ func (w *wasmModel) ReceiveReaction(messageID, reactionTo message.ID, nickname,
 
 func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	timestamp time.Time, round rounds.Round, status dm.Status) {
-	parentErr := errors.New("failed to UpdateSentStatus")
-
-	// FIXME: this is a bit of race condition without the mux.
-	//        This should be done via the transactions (i.e., make a
-	//        special version of receiveHelper)
-	w.updateMux.Lock()
-	defer w.updateMux.Unlock()
+	parentErr := errors.New("[DM indexedDB] failed to UpdateSentStatus")
 	jww.TRACE.Printf(
 		"[DM indexedDB] UpdateSentStatus(%d, %s, ...)", uuid, messageID)
 
@@ -178,7 +172,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	// Use the key to get the existing Message
 	currentMsg, err := impl.Get(w.db, messageStoreName, key)
 	if err != nil {
-		jww.ERROR.Printf("[DM indexedDB] %+v", errors.WithMessagef(parentErr,
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to get message: %+v", err))
 		return
 	}
@@ -187,7 +181,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	newMessage := &Message{}
 	err = json.Unmarshal([]byte(utils.JsToJson(currentMsg)), newMessage)
 	if err != nil {
-		jww.ERROR.Printf("[DM indexedDB] %+v", errors.WithMessagef(parentErr,
+		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Could not JSON unmarshal message: %+v", err))
 		return
 	}
@@ -206,10 +200,9 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	}
 
 	// Store the updated Message
-	_, err = w.receiveHelper(newMessage, true)
+	_, err = w.upsertMessage(newMessage)
 	if err != nil {
-		jww.ERROR.Printf("[DM indexedDB] %+v",
-			errors.Wrap(parentErr, err.Error()))
+		jww.ERROR.Printf("%+v", errors.Wrap(parentErr, err.Error()))
 		return
 	}
 
@@ -219,7 +212,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 		true, false)
 }
 
-// receiveWrapper is a higher-level wrapper of receiveHelper.
+// receiveWrapper is a higher-level wrapper of upsertMessage.
 func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, nickname,
 	data string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, mType dm.MessageType, status dm.Status) (uint64, error) {
@@ -278,7 +271,7 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	msgToInsert := buildMessage(messageID.Bytes(), parentIdBytes, textBytes,
 		partnerKey, senderKey, timestamp, round.ID, mType, codeset, status)
 
-	uuid, err := w.receiveHelper(msgToInsert, false)
+	uuid, err := w.upsertMessage(msgToInsert)
 	if err != nil {
 		return 0, err
 	}
@@ -289,11 +282,11 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	return uuid, nil
 }
 
-// receiveHelper is a private helper for receiving any sort of message.
-func (w *wasmModel) receiveHelper(
-	newMessage *Message, isUpdate bool) (uint64, error) {
+// upsertMessage is a helper function that will update an existing record
+// if Message.ID is specified. Otherwise, it will perform an insert.
+func (w *wasmModel) upsertMessage(msg *Message) (uint64, error) {
 	// Convert to jsObject
-	newMessageJson, err := json.Marshal(newMessage)
+	newMessageJson, err := json.Marshal(msg)
 	if err != nil {
 		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
 	}
@@ -302,54 +295,15 @@ func (w *wasmModel) receiveHelper(
 		return 0, errors.Errorf("Unable to marshal Message: %+v", err)
 	}
 
-	// Unset the primaryKey for inserts so that it can be autopopulated and
-	// incremented
-	if !isUpdate {
-		messageObj.Delete("id")
-	}
-
 	// Store message to database
-	result, err := impl.Put(w.db, messageStoreName, messageObj)
-	// FIXME: The following is almost certainly causing a bug
-	// where all of our upsert operations are failing.
-	if err != nil && !strings.Contains(err.Error(), impl.ErrUniqueConstraint) {
-		// Only return non-unique constraint errors so that the case
-		// below this one can be hit and handle duplicate entries properly.
+	msgIdObj, err := impl.Put(w.db, messageStoreName, messageObj)
+	if err != nil {
 		return 0, errors.Errorf("Unable to put Message: %+v", err)
 	}
 
-	// NOTE: Sometimes the insert fails to return an error but hits a duplicate
-	//  insert, so this fallthrough returns the UUID entry in that case.
-	if result.IsUndefined() {
-		msgID := message.ID{}
-		copy(msgID[:], newMessage.MessageID)
-		uuid, errLookup := w.msgIDLookup(msgID)
-		if uuid != 0 && errLookup == nil {
-			jww.WARN.Printf("[DM indexedDB] Result undefined, but found"+
-				" duplicate? %d, %s", uuid, msgID)
-			return uuid, nil
-		}
-		return 0, errors.Errorf("uuid lookup failure: %+v", err)
-	}
-	uuid := uint64(result.Int())
+	uuid := msgIdObj.Int()
 	jww.DEBUG.Printf("[DM indexedDB] Successfully stored message %d", uuid)
-
-	return uuid, nil
-}
-
-// msgIDLookup gets the UUID of the Message with the given messageID.
-func (w *wasmModel) msgIDLookup(messageID message.ID) (uint64, error) {
-	resultObj, err := impl.GetIndex(w.db, messageStoreName,
-		messageStoreMessageIndex, impl.EncodeBytes(messageID.Marshal()))
-	if err != nil {
-		return 0, err
-	}
-
-	uuid := uint64(0)
-	if !resultObj.IsUndefined() {
-		uuid = uint64(resultObj.Get("id").Int())
-	}
-	return uuid, nil
+	return uint64(uuid), nil
 }
 
 // BlockSender silences messages sent by the indicated sender
