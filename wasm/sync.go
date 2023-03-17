@@ -5,6 +5,8 @@
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
+//go:build js && wasm
+
 package wasm
 
 import (
@@ -12,6 +14,8 @@ import (
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
+
+// TODO: add tests
 
 ////////////////////////////////////////////////////////////////////////////////
 // Local Storage Interface & Implementation(s)                                //
@@ -293,6 +297,7 @@ func newRemoteKvJS(api *bindings.RemoteKV) map[string]any {
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [RemoteKV] object.
 //   - Rejected with an error if initialising the remote KV fails.
+//
 // TODO: fix remote and local
 func NewOrLoadSyncRemoteKV(_ js.Value, args []js.Value) any {
 	e2eID := args[0].Int()
