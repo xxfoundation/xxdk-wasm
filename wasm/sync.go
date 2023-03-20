@@ -10,113 +10,13 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
-	"syscall/js"
 )
 
 // TODO: add tests
-
-////////////////////////////////////////////////////////////////////////////////
-// Local Storage Interface & Implementation(s)                                //
-////////////////////////////////////////////////////////////////////////////////
-
-// LocalStoreEKV wraps the [bindings.LocalStoreEKV] object so its methods can be
-// wrapped to be Javascript compatible.
-type LocalStoreEKV struct {
-	api *bindings.LocalStoreEKV
-}
-
-// newLocalStoreEkvJS creates a new Javascript compatible object
-// (map[string]any) that matches the [LocalStoreEKV] structure.
-func newLocalStoreEkvJS(api *bindings.LocalStoreEKV) map[string]any {
-	ls := LocalStoreEKV{api}
-	lsMap := map[string]any{
-		"Read":  js.FuncOf(ls.Read),
-		"Write": js.FuncOf(ls.Write),
-	}
-
-	return lsMap
-}
-
-// NewEkvLocalStore is a constructor for [LocalStoreEKV].
-//
-// Parameters:
-//   - args[0] - The base directory that all file operations will be performed.
-//     It must contain a file delimiter (i.e., `/`) (string).
-//   - args[1] - Password (string).
-//
-// Returns a promise:
-//   - Resolves to a Javascript representation of the [LocalStoreEKV] object.
-//   - Rejected with an error if initialising the EKV local store fails.
-func NewEkvLocalStore(_ js.Value, args []js.Value) any {
-	baseDir := args[0].String()
-	password := args[1].String()
-
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		api, err := bindings.NewEkvLocalStore(baseDir, password)
-		if err != nil {
-			reject(utils.JsTrace(err))
-		} else {
-			resolve(newLocalStoreEkvJS(api))
-		}
-	}
-
-	return utils.CreatePromise(promiseFn)
-}
-
-// Read reads data from path. This returns an error if it fails to read from the
-// file path.
-//
-// This utilizes [ekv.KeyValue] under the hood.
-//
-// Parameters:
-//   - args[0] - The file path to read from (string).
-//
-// Returns a promise:
-//   - Resolves to the file data (Uint8Array)
-//   - Rejected with an error if reading from the file fails.
-func (ls *LocalStoreEKV) Read(_ js.Value, args []js.Value) any {
-	path := args[0].String()
-
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		data, err := ls.api.Read(path)
-		if err != nil {
-			reject(utils.JsTrace(err))
-		} else {
-			resolve(utils.CopyBytesToJS(data))
-		}
-	}
-
-	return utils.CreatePromise(promiseFn)
-}
-
-// Write writes data to the path. This returns an error if it fails to write.
-//
-// This utilizes [ekv.KeyValue] under the hood.
-//
-// Parameters:
-//   - args[0] - The file path to write to (string).
-//   - args[1] - The file data to write (Uint8Array).
-//
-// Returns a promise:
-//   - Resolves on success (void).
-//   - Rejected with an error if writing to the file fails.
-func (ls *LocalStoreEKV) Write(_ js.Value, args []js.Value) any {
-	path := args[0].String()
-	data := utils.CopyBytesToGo(args[1])
-
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		err := ls.api.Write(path, data)
-		if err != nil {
-			reject(utils.JsTrace(err))
-		} else {
-			resolve()
-		}
-	}
-
-	return utils.CreatePromise(promiseFn)
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Remote Storage Interface and Implementation(s)                             //
@@ -278,36 +178,24 @@ func newRemoteKvJS(api *bindings.RemoteKV) map[string]any {
 //
 // Parameters:
 //   - args[0] - ID of [E2e] object in tracker (int).
-//   - args[1] - The path that the state data for this device will be written to
-//     locally (e.g. sync/txLog.txt) (string).
-//   - args[2] - The key update callback that will be called when the value of
-//     a key is modified by another device. A Javascript object that implements
-//     the functions in the [bindings.KeyUpdateCallback] interface.
-//   - args[3] - A [bindings.RemoteStoreCallback] that will be called to
-//     report the results of a write to the remote storage option AFTER a key
-//     has been saved locally. This will be used to report any previously called
-//     sets that had unsuccessful reports. A Javascript object that implements
-//     the functions in the [bindings.RemoteStoreCallback] interface. newTx
-//     should be a Uint8Array.
-//   - remote - A [RemoteStore]. This should be what the remote storage operation
-//     wrapper wrapped should adhere.
-//   - local - A [LocalStore]. This should be what a local storage option adheres
-//     to.
+//   - args[1] - A Javascript object that implements the functions on
+//     [RemoteKVCallbacks]. These will be the callbacks that are called for
+//     [bindings.RemoteStore] operations.
+//   - args[2] - A [RemoteStoreCallbacks]. This will be a structure the consumer
+//     implements. This acts as a wrapper around the remote storage API
+//     (e.g., Google Drive's API, DropBox's API, etc.).
 //
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [RemoteKV] object.
 //   - Rejected with an error if initialising the remote KV fails.
-//
-// TODO: fix remote and local
 func NewOrLoadSyncRemoteKV(_ js.Value, args []js.Value) any {
 	e2eID := args[0].Int()
-	txLogPath := args[1].String()
-	keyUpdateCb := &keyUpdateCallback{utils.WrapCB(args[2], "Callback")}
-	remoteStoreCb := &remoteStoreCallback{utils.WrapCB(args[3], "Callback")}
+	remoteKvCallbacks := newRemoteKVCallbacks(args[1])
+	remote := newRemoteStoreCallbacks(args[2])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		api, err := bindings.NewOrLoadSyncRemoteKV(e2eID, txLogPath,
-			keyUpdateCb, remoteStoreCb, nil, nil, nil)
+		api, err :=
+			bindings.NewOrLoadSyncRemoteKV(e2eID, remoteKvCallbacks, remote)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -324,9 +212,9 @@ func NewOrLoadSyncRemoteKV(_ js.Value, args []js.Value) any {
 //   - args[0] - The key that this data will be written to (i.e., the device
 //     name) (string).
 //   - args[1] - The data that will be stored (i.e., state data) (Uint8Array).
-//   - args[2] - A Javascript object that implements the functions in the
-//     [bindings.RemoteStoreCallback] interface. newTx should be a Uint8Array.
-//     This may be nil if you do not care about the network report.
+//   - args[2] - A Javascript object that implements the functions on
+//     [RemoteKVCallbacks]. This may be nil if you do not care about the network
+//     report.
 //
 // Returns a promise:
 //   - Resolves on success (void).
@@ -334,7 +222,7 @@ func NewOrLoadSyncRemoteKV(_ js.Value, args []js.Value) any {
 func (rkv *RemoteKV) Write(_ js.Value, args []js.Value) any {
 	path := args[0].String()
 	data := utils.CopyBytesToGo(args[1])
-	cb := &remoteStoreCallback{utils.WrapCB(args[2], "Callback")}
+	cb := newRemoteKVCallbacks(args[1])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := rkv.api.Write(path, data, cb)
@@ -373,32 +261,134 @@ func (rkv *RemoteKV) Read(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
-// remoteStoreCallback wraps Javascript callbacks to adhere to the
-// [bindings.RemoteStoreCallback] interface.
-type remoteStoreCallback struct {
-	callback func(args ...any) js.Value
+// RemoteStoreCallbacks wraps Javascript callbacks to adhere to the
+// [bindings.RemoteStore] interface.
+type RemoteStoreCallbacks struct {
+	read            func(args ...any) js.Value
+	write           func(args ...any) js.Value
+	getLastModified func(args ...any) js.Value
+	getLastWrite    func(args ...any) js.Value
 }
 
-// Callback reports the status of writing the new transaction to remote storage.
+// newRemoteStoreCallbacks maps the functions of the Javascript object matching
+// [bindings.RemoteStore] to a RemoteStoreCallbacks.
+func newRemoteStoreCallbacks(arg js.Value) *RemoteStoreCallbacks {
+	return &RemoteStoreCallbacks{
+		read:            utils.WrapCB(arg, "Read"),
+		write:           utils.WrapCB(arg, "Write"),
+		getLastModified: utils.WrapCB(arg, "GetLastModified"),
+		getLastWrite:    utils.WrapCB(arg, "GetLastWrite"),
+	}
+}
+
+// Read reads from the provided file path and returns the data at that path.
+// An error is returned if it failed to read the file.
 //
 // Parameters:
-//   - newTx - Returns the transaction (Uint8Array).
-//   - err - Returns an error on failure (Error).
-func (rsCB *remoteStoreCallback) Callback(newTx []byte, err string) {
-	rsCB.callback(utils.CopyBytesToJS(newTx), err)
+//   - path - The file path to read from (string).
+//
+// Returns:
+//   - The file data (Uint8Array).
+//   - Catches any thrown errors (of type Error) and returns it as an error.
+func (rsCB *RemoteStoreCallbacks) Read(path string) ([]byte, error) {
+
+	fn := func() js.Value { return rsCB.read(path) }
+	v, err := utils.RunAndCatch(fn)
+	if err != nil {
+		return nil, err
+	}
+	return utils.CopyBytesToGo(v), err
 }
 
-// keyUpdateCallback wraps Javascript callbacks to adhere to the
-// [bindings.KeyUpdateCallback] interface.
-type keyUpdateCallback struct {
-	callback func(args ...any) js.Value
-}
-
-// Callback reports the event.
+// Write writes to the file path the provided data. An error is returned if it
+// fails to write to file.
 //
 // Parameters:
-//   - newTx - Returns the transaction (Uint8Array).
-//   - err - Returns an error on failure (Error).
-func (kuCB *keyUpdateCallback) Callback(key, val string) {
-	kuCB.callback(key, val)
+//   - path - The file path to write to (string).
+//   - data - The file data to write (Uint8Array).
+//
+// Returns:
+//   - Catches any thrown errors (of type Error) and returns it as an error.
+func (rsCB *RemoteStoreCallbacks) Write(path string, data []byte) error {
+	fn := func() js.Value { return rsCB.write(path, utils.CopyBytesToJS(data)) }
+	_, err := utils.RunAndCatch(fn)
+	return err
+}
+
+// GetLastModified returns when the file at the given file path was last
+// modified. If the implementation that adheres to this interface does not
+// support this, [Write] or [Read] should be implemented to either write a
+// separate timestamp file or add a prefix.
+//
+// Parameters:
+//   - path - The file path (string).
+//
+// Returns:
+//   - JSON of [bindings.RemoteStoreReport] (Uint8Array).
+//   - Catches any thrown errors (of type Error) and returns it as an error.
+func (rsCB *RemoteStoreCallbacks) GetLastModified(path string) ([]byte, error) {
+	fn := func() js.Value { return rsCB.getLastModified(path) }
+	v, err := utils.RunAndCatch(fn)
+	if err != nil {
+		return nil, err
+	}
+	return utils.CopyBytesToGo(v), err
+}
+
+// GetLastWrite retrieves the most recent successful write operation that was
+// received by [RemoteStoreFileSystem].
+//
+// Returns:
+//   - JSON of [bindings.RemoteStoreReport] (Uint8Array).
+//   - Catches any thrown errors (of type Error) and returns it as an error.
+func (rsCB *RemoteStoreCallbacks) GetLastWrite() ([]byte, error) {
+	fn := func() js.Value { return rsCB.getLastWrite() }
+	v, err := utils.RunAndCatch(fn)
+	if err != nil {
+		return nil, err
+	}
+	return utils.CopyBytesToGo(v), err
+}
+
+// RemoteKVCallbacks wraps Javascript callbacks to adhere to the
+// [bindings.RemoteKVCallbacks] interface.
+type RemoteKVCallbacks struct {
+	keyUpdated        func(args ...any) js.Value
+	remoteStoreResult func(args ...any) js.Value
+}
+
+// newRemoteKVCallbacks maps the functions of the Javascript object matching
+// [bindings.RemoteKVCallbacks] to a RemoteKVCallbacks.
+func newRemoteKVCallbacks(arg js.Value) *RemoteKVCallbacks {
+	return &RemoteKVCallbacks{
+		keyUpdated:        utils.WrapCB(arg, "KeyUpdated"),
+		remoteStoreResult: utils.WrapCB(arg, "RemoteStoreResult"),
+	}
+}
+
+// KeyUpdated is the callback to be called any time a key is updated by another
+// device tracked by the [RemoteKV] store.
+//
+// Parameters:
+//   - key - (string).
+//   - oldVal - (Uint8Array).
+//   - newVal - (Uint8Array).
+//   - updated - (Boolean)
+func (rkvCB *RemoteKVCallbacks) KeyUpdated(
+	key string, oldVal, newVal []byte, updated bool) {
+	rkvCB.keyUpdated(
+		key, utils.CopyBytesToJS(oldVal), utils.CopyBytesToJS(newVal), updated)
+}
+
+// RemoteStoreResult is called to report network save results after the key has
+// been updated locally.
+//
+// NOTE: Errors originate from the authentication and writing code in regard to
+// remote which is handled by the user of this API. As a result, this callback
+// provides no information in simple implementations.
+//
+// Parameters:
+//   - remoteStoreReport - JSON of [bindings.RemoteStoreReport] (Uint8Array).
+func (rkvCB *RemoteKVCallbacks) RemoteStoreResult(remoteStoreReport []byte) {
+	rkvCB.remoteStoreResult(utils.CopyBytesToJS(remoteStoreReport))
 }

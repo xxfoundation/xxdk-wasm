@@ -188,7 +188,6 @@ func main() {
 	js.Global().Set("Listen", js.FuncOf(wasm.Listen))
 
 	// wasm/sync.go
-	js.Global().Set("NewEkvLocalStore", js.FuncOf(wasm.NewEkvLocalStore))
 	js.Global().Set("NewFileSystemRemoteStorage",
 		js.FuncOf(wasm.NewFileSystemRemoteStorage))
 	js.Global().Set("NewOrLoadSyncRemoteKV",
