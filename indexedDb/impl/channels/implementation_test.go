@@ -60,7 +60,7 @@ func TestWasmModel_msgIDLookup(t *testing.T) {
 			testString := "TestWasmModel_msgIDLookup" + cs
 			testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
 
-			eventModel, _, err2 := newWASMModel(testString, c,
+			eventModel, err2 := newWASMModel(testString, c,
 				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
 			if err2 != nil {
 				t.Fatal(err2)
@@ -90,7 +90,7 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 	storage.GetLocalStorage().Clear()
 	testString := "TestWasmModel_DeleteMessage"
 	testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
-	eventModel, _, err := newWASMModel(testString, nil, dummyReceivedMessageCB,
+	eventModel, err := newWASMModel(testString, nil, dummyReceivedMessageCB,
 		dummyDeletedMessageCB, dummyMutedUserCB)
 	if err != nil {
 		t.Fatal(err)
@@ -147,7 +147,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 			testString := "Test_wasmModel_UpdateSentStatus" + cs
 			testMsgId := message.DeriveChannelMessageID(
 				&id.ID{1}, 0, []byte(testString))
-			eventModel, _, err2 := newWASMModel(testString, c,
+			eventModel, err2 := newWASMModel(testString, c,
 				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
 			if err2 != nil {
 				t.Fatal(err)
@@ -215,7 +215,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 		}
 		t.Run("Test_wasmModel_JoinChannel_LeaveChannel"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
-			eventModel, _, err2 := newWASMModel("test", c, dummyReceivedMessageCB,
+			eventModel, err2 := newWASMModel("test", c, dummyReceivedMessageCB,
 				dummyDeletedMessageCB, dummyMutedUserCB)
 			if err2 != nil {
 				t.Fatal(err2)
@@ -269,7 +269,7 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 		t.Run("Test_wasmModel_UUIDTest"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := "testHello" + cs
-			eventModel, _, err2 := newWASMModel(testString, c,
+			eventModel, err2 := newWASMModel(testString, c,
 				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
 			if err2 != nil {
 				t.Fatal(err2)
@@ -316,7 +316,7 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 		t.Run("Test_wasmModel_DuplicateReceives"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := "testHello"
-			eventModel, _, err2 := newWASMModel(testString, c,
+			eventModel, err2 := newWASMModel(testString, c,
 				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
 			if err2 != nil {
 				t.Fatal(err2)
@@ -366,7 +366,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 			testString := "test_deleteMsgByChannel"
 			totalMessages := 10
 			expectedMessages := 5
-			eventModel, _, err2 := newWASMModel(testString, c,
+			eventModel, err2 := newWASMModel(testString, c,
 				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
 			if err2 != nil {
 				t.Fatal(err2)
@@ -437,7 +437,7 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 		t.Run("TestWasmModel_receiveHelper_UniqueIndex"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := fmt.Sprintf("test_receiveHelper_UniqueIndex_%d", i)
-			eventModel, _, err2 := newWASMModel(testString, c,
+			eventModel, err2 := newWASMModel(testString, c,
 				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
 			if err2 != nil {
 				t.Fatal(err2)

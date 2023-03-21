@@ -40,13 +40,6 @@ type NewWASMEventModelMessage struct {
 	EncryptionJSON string `json:"encryptionJSON"`
 }
 
-// NewWASMEventModelResponseMessage is JSON marshalled and received from the
-// worker for [NewWASMEventModel].
-type NewWASMEventModelResponseMessage struct {
-	DatabaseName string `json:"databaseName,omitempty"`
-	Error        string `json:"error,omitempty"`
-}
-
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
 func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
@@ -61,6 +54,12 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 	// Register handler to manage messages for the MessageReceivedCallback
 	wh.RegisterCallback(
 		MessageReceivedCallbackTag, messageReceivedCallbackHandler(cb))
+
+	// Store the database name
+	err = storage.StoreIndexedDb(databaseName)
+	if err != nil {
+		return nil, err
+	}
 
 	// Check that the encryption status
 	encryptionStatus := encryption != nil
@@ -90,20 +89,8 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 
 	select {
 	case data := <-dataChan:
-		var response NewWASMEventModelResponseMessage
-		if err = json.Unmarshal(data, &response); err != nil {
-			return nil, errors.Errorf("could not JSON unmarshal response to "+
-				"NewWASMEventModel: %+v", err)
-		}
-
-		if response.Error != "" {
-			return nil, errors.New(response.Error)
-		}
-
-		// Store the database name
-		err = storage.StoreIndexedDb(response.DatabaseName)
-		if err != nil {
-			return nil, err
+		if data != nil {
+			return nil, errors.New(string(data))
 		}
 	case <-time.After(worker.ResponseTimeout):
 		return nil, errors.Errorf("timed out after %s waiting for indexedDB "+

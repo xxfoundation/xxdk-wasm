@@ -68,14 +68,13 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 			"cipher from main thread: %+v", err)
 	}
 
-	var response wDm.NewWASMEventModelResponseMessage
-	m.model, response.DatabaseName, err = NewWASMEventModel(
+	m.model, err = NewWASMEventModel(
 		msg.DatabaseName, encryption, m.messageReceivedCallback)
 	if err != nil {
-		response.Error = err.Error()
+		return []byte(err.Error()), nil
 	}
 
-	return json.Marshal(response)
+	return nil, nil
 }
 
 // messageReceivedCallback sends calls to the MessageReceivedCallback in the

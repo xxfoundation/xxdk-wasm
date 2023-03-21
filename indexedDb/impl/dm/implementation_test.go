@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 
 // Test happy path toggling between blocked/unblocked in a Conversation.
 func TestWasmModel_BlockSender(t *testing.T) {
-	m, _, err := newWASMModel("test", nil, dummyReceivedMessageCB)
+	m, err := newWASMModel("test", nil, dummyReceivedMessageCB)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

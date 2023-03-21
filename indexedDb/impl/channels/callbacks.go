@@ -71,15 +71,13 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 			"failed to JSON unmarshal Cipher from main thread: %+v", err)
 	}
 
-	var response wChannels.NewWASMEventModelResponseMessage
-	m.model, response.DatabaseName, err = NewWASMEventModel(msg.DatabaseName,
-		encryption, m.messageReceivedCallback, m.deletedMessageCallback,
-		m.mutedUserCallback)
+	m.model, err = NewWASMEventModel(msg.DatabaseName, encryption,
+		m.messageReceivedCallback, m.deletedMessageCallback, m.mutedUserCallback)
 	if err != nil {
-		response.Error = err.Error()
+		return []byte(err.Error()), nil
 	}
 
-	return json.Marshal(response)
+	return nil, nil
 }
 
 // messageReceivedCallback sends calls to the channels.MessageReceivedCallback

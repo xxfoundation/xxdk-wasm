@@ -31,8 +31,7 @@ const currentVersion uint = 1
 func NewWASMEventModel(databaseName string, encryption cryptoChannel.Cipher,
 	messageReceivedCB wChannels.MessageReceivedCallback,
 	deletedMessageCB wChannels.DeletedMessageCallback,
-	mutedUserCB wChannels.MutedUserCallback) (
-	channels.EventModel, string, error) {
+	mutedUserCB wChannels.MutedUserCallback) (channels.EventModel, error) {
 	return newWASMModel(databaseName, encryption, messageReceivedCB,
 		deletedMessageCB, mutedUserCB)
 }
@@ -41,7 +40,7 @@ func NewWASMEventModel(databaseName string, encryption cryptoChannel.Cipher,
 func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	messageReceivedCB wChannels.MessageReceivedCallback,
 	deletedMessageCB wChannels.DeletedMessageCallback,
-	mutedUserCB wChannels.MutedUserCallback) (*wasmModel, string, error) {
+	mutedUserCB wChannels.MutedUserCallback) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()
 	defer cancel()
@@ -67,19 +66,13 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 			return nil
 		})
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	// Wait for database open to finish
 	db, err := openRequest.Await(ctx)
 	if err != nil {
-		return nil, "", err
-	}
-
-	// Get the database name as reported by IndexedDb
-	dbName, err := db.Name()
-	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	wrapper := &wasmModel{
@@ -90,7 +83,7 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 		mutedUserCB:       mutedUserCB,
 	}
 
-	return wrapper, dbName, nil
+	return wrapper, nil
 }
 
 // v1Upgrade performs the v0 -> v1 database upgrade.

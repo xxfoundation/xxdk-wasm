@@ -36,13 +36,13 @@ type MessageReceivedCallback func(
 // The name should be a base64 encoding of the users public key. Returns the
 // EventModel based on IndexedDb and the database name as reported by IndexedDb.
 func NewWASMEventModel(databaseName string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback) (dm.EventModel, string, error) {
+	cb MessageReceivedCallback) (dm.EventModel, error) {
 	return newWASMModel(databaseName, encryption, cb)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback) (*wasmModel, string, error) {
+	cb MessageReceivedCallback) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()
 	defer cancel()
@@ -68,24 +68,18 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 			return nil
 		})
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	// Wait for database open to finish
 	db, err := openRequest.Await(ctx)
 	if err != nil {
-		return nil, "", err
-	}
-
-	// Get the database name and save it to storage
-	dbName, err := db.Name()
-	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	wrapper := &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}
 
-	return wrapper, dbName, nil
+	return wrapper, nil
 }
 
 // v1Upgrade performs the v0 -> v1 database upgrade.
