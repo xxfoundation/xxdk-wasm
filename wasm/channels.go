@@ -265,8 +265,7 @@ func GetPublicChannelIdentityFromPrivate(_ js.Value, args []js.Value) any {
 //   - Throws a TypeError if creating the manager fails.
 func NewChannelsManager(_ js.Value, args []js.Value) any {
 	privateIdentity := utils.CopyBytesToGo(args[1])
-
-	em := &eventModelBuilder{args[2].Invoke}
+	em := newEventModelBuilder(args[2])
 
 	cm, err := bindings.NewChannelsManager(args[0].Int(), privateIdentity, em)
 	if err != nil {
@@ -298,7 +297,7 @@ func NewChannelsManager(_ js.Value, args []js.Value) any {
 //   - Javascript representation of the [ChannelsManager] object.
 //   - Throws a TypeError if loading the manager fails.
 func LoadChannelsManager(_ js.Value, args []js.Value) any {
-	em := &eventModelBuilder{args[2].Invoke}
+	em := newEventModelBuilder(args[2])
 	cm, err := bindings.LoadChannelsManager(args[0].Int(), args[1].String(), em)
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
@@ -1751,6 +1750,12 @@ func (cm *ChannelsManager) RegisterReceiveHandler(_ js.Value, args []js.Value) a
 // eventModelBuilder adheres to the [bindings.EventModelBuilder] interface.
 type eventModelBuilder struct {
 	build func(args ...any) js.Value
+}
+
+// newEventModelBuilder maps the methods on the Javascript object to a new
+// eventModelBuilder.
+func newEventModelBuilder(arg js.Value) *eventModelBuilder {
+	return &eventModelBuilder{build: arg.Invoke}
 }
 
 // Build initializes and returns the event model.  It wraps a Javascript object

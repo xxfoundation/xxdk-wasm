@@ -85,8 +85,7 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 //   - Throws a TypeError if creating the manager fails.
 func NewDMClient(_ js.Value, args []js.Value) any {
 	privateIdentity := utils.CopyBytesToGo(args[1])
-
-	em := &dmReceiverBuilder{args[2].Invoke}
+	em := newDMReceiverBuilder(args[2])
 
 	cm, err := bindings.NewDMClient(args[0].Int(), privateIdentity, em)
 	if err != nil {
@@ -568,6 +567,12 @@ func (cmrCB *dmReceptionCallback) Callback(
 // dmReceiverBuilder adheres to the [bindings.DMReceiverBuilder] interface.
 type dmReceiverBuilder struct {
 	build func(args ...any) js.Value
+}
+
+// newDMReceiverBuilder maps the methods on the Javascript object to a new
+// dmReceiverBuilder.
+func newDMReceiverBuilder(arg js.Value) *dmReceiverBuilder {
+	return &dmReceiverBuilder{build: arg.Invoke}
 }
 
 // Build initializes and returns the event model. It wraps a Javascript object
