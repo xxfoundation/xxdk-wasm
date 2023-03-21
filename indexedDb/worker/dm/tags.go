@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package channelEventModel
+package dm
 
 import "gitlab.com/elixxir/xxdk-wasm/worker"
 

@@ -43,7 +43,7 @@ func dummyDeletedMessageCB(message.ID)                 {}
 func dummyMutedUserCB(*id.ID, ed25519.PublicKey, bool) {}
 
 // Happy path, insert message and look it up
-func TestWasmModel_msgIDLookup(t *testing.T) {
+func TestWasmModel_GetMessage(t *testing.T) {
 	cipher, err := cryptoChannel.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
@@ -54,31 +54,31 @@ func TestWasmModel_msgIDLookup(t *testing.T) {
 		if c != nil {
 			cs = "_withCipher"
 		}
-		t.Run(fmt.Sprintf("TestWasmModel_msgIDLookup%s", cs), func(t *testing.T) {
-
+		testString := "TestWasmModel_msgIDLookup" + cs
+		t.Run(testString, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
-			testString := "TestWasmModel_msgIDLookup" + cs
 			testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
 
-			eventModel, err2 := newWASMModel(testString, c,
+			eventModel, err := newWASMModel(testString, c,
 				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
-			if err2 != nil {
-				t.Fatal(err2)
-			}
-
-			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
-				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
-				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
-			_, err = eventModel.receiveHelper(testMsg, false)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			msg, err2 := eventModel.msgIDLookup(testMsgId)
-			if err2 != nil {
-				t.Fatal(err2)
+			testMsg := buildMessage(id.NewIdFromBytes([]byte(testString), t).Marshal(),
+				testMsgId.Bytes(), nil, testString, []byte(testString),
+				[]byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
+				time.Second, 0, 0, false, false, channels.Sent)
+			_, err = eventModel.upsertMessage(testMsg)
+			if err != nil {
+				t.Fatal(err)
 			}
-			if msg.ID == 0 {
+
+			msg, err := eventModel.GetMessage(testMsgId)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if msg.UUID == 0 {
 				t.Fatalf("Expected to get a UUID!")
 			}
 		})
@@ -100,7 +100,7 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 		testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
 		time.Second, 0, 0, false, false, channels.Sent)
-	_, err = eventModel.receiveHelper(testMsg, false)
+	_, err = eventModel.upsertMessage(testMsg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +157,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
-			uuid, err2 := eventModel.receiveHelper(testMsg, false)
+			uuid, err2 := eventModel.upsertMessage(testMsg)
 			if err2 != nil {
 				t.Fatal(err2)
 			}
@@ -313,35 +313,34 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 		if c != nil {
 			cs = "_withCipher"
 		}
-		t.Run("Test_wasmModel_DuplicateReceives"+cs, func(t *testing.T) {
+		testString := "Test_wasmModel_DuplicateReceives" + cs
+		t.Run(testString, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
-			testString := "testHello"
-			eventModel, err2 := newWASMModel(testString, c,
+			eventModel, err := newWASMModel(testString, c,
 				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
-			if err2 != nil {
-				t.Fatal(err2)
+			if err != nil {
+				t.Fatal(err)
 			}
 
-			uuids := make([]uint64, 10)
-
+			// Store a test message
 			msgID := message.ID{}
 			copy(msgID[:], testString)
-			for i := 0; i < 10; i++ {
-				// Store a test message
-				channelID := id.NewIdFromBytes([]byte(testString), t)
-				rnd := rounds.Round{ID: id.Round(42)}
-				uuid := eventModel.ReceiveMessage(channelID, msgID, "test",
-					testString+fmt.Sprintf("%d", i), []byte{8, 6, 7, 5}, 0, 0,
-					netTime.Now(), time.Hour, rnd, 0, channels.Sent, false)
-				uuids[i] = uuid
+			channelID := id.NewIdFromBytes([]byte(testString), t)
+			rnd := rounds.Round{ID: id.Round(42)}
+			uuid := eventModel.ReceiveMessage(channelID, msgID, "test",
+				testString, []byte{8, 6, 7, 5}, 0, 0,
+				netTime.Now(), time.Hour, rnd, 0, channels.Sent, false)
+			if uuid != 1 {
+				t.Fatalf("Expected UUID to be one for first receive")
 			}
 
+			// Store duplicate messages with same messageID
 			for i := 0; i < 10; i++ {
-				for j := i + 1; j < 10; j++ {
-					if uuids[i] != uuids[j] {
-						t.Fatalf("uuid failed: %d[%d] != %d[%d]",
-							uuids[i], i, uuids[j], j)
-					}
+				uuid = eventModel.ReceiveMessage(channelID, msgID, "test",
+					testString+fmt.Sprintf("%d", i), []byte{8, 6, 7, 5}, 0, 0,
+					netTime.Now(), time.Hour, rnd, 0, channels.Sent, false)
+				if uuid != 0 {
+					t.Fatalf("Expected UUID to be zero for duplicate receives")
 				}
 			}
 		})
@@ -361,15 +360,15 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 		if c != nil {
 			cs = "_withCipher"
 		}
-		t.Run("Test_wasmModel_deleteMsgByChannel"+cs, func(t *testing.T) {
+		testString := "Test_wasmModel_deleteMsgByChannel" + cs
+		t.Run(testString, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
-			testString := "test_deleteMsgByChannel"
 			totalMessages := 10
 			expectedMessages := 5
-			eventModel, err2 := newWASMModel(testString, c,
+			eventModel, err := newWASMModel(testString, c,
 				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
-			if err2 != nil {
-				t.Fatal(err2)
+			if err != nil {
+				t.Fatal(err)
 			}
 
 			// Create a test channel id
@@ -395,12 +394,12 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 			}
 
 			// Check pre-results
-			result, err2 := impl.Dump(eventModel.db, messageStoreName)
-			if err2 != nil {
-				t.Fatal(err2)
+			result, err := impl.Dump(eventModel.db, messageStoreName)
+			if err != nil {
+				t.Fatal(err)
 			}
 			if len(result) != totalMessages {
-				t.Errorf("Expected %d messages, got %d", totalMessages, len(result))
+				t.Fatalf("Expected %d messages, got %d", totalMessages, len(result))
 			}
 
 			// Do delete
@@ -415,7 +414,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 				t.Fatal(err)
 			}
 			if len(result) != expectedMessages {
-				t.Errorf("Expected %d messages, got %d", expectedMessages, len(result))
+				t.Fatalf("Expected %d messages, got %d", expectedMessages, len(result))
 			}
 		})
 	}
@@ -437,25 +436,25 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 		t.Run("TestWasmModel_receiveHelper_UniqueIndex"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := fmt.Sprintf("test_receiveHelper_UniqueIndex_%d", i)
-			eventModel, err2 := newWASMModel(testString, c,
+			eventModel, err := newWASMModel(testString, c,
 				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
-			if err2 != nil {
-				t.Fatal(err2)
+			if err != nil {
+				t.Fatal(err)
 			}
 
 			// Ensure index is unique
-			txn, err2 := eventModel.db.Transaction(
+			txn, err := eventModel.db.Transaction(
 				idb.TransactionReadOnly, messageStoreName)
-			if err2 != nil {
-				t.Fatal(err2)
+			if err != nil {
+				t.Fatal(err)
 			}
-			store, err2 := txn.ObjectStore(messageStoreName)
-			if err2 != nil {
-				t.Fatal(err2)
+			store, err := txn.ObjectStore(messageStoreName)
+			if err != nil {
+				t.Fatal(err)
 			}
-			idx, err2 := store.Index(messageStoreMessageIndex)
-			if err2 != nil {
-				t.Fatal(err2)
+			idx, err := store.Index(messageStoreMessageIndex)
+			if err != nil {
+				t.Fatal(err)
 			}
 			if isUnique, err3 := idx.Unique(); !isUnique {
 				t.Fatalf("Index is not unique!")
@@ -463,49 +462,49 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 				t.Fatal(err3)
 			}
 
-			// First message insert should succeed
 			testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
 			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
 				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
-			uuid, err2 := eventModel.receiveHelper(testMsg, false)
-			if err2 != nil {
-				t.Fatal(err2)
+
+			testMsgId2 := message.DeriveChannelMessageID(&id.ID{2}, 0, []byte(testString))
+			testMsg2 := buildMessage([]byte(testString), testMsgId2.Bytes(), nil,
+				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
+				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
+
+			// First message insert should succeed
+			uuid, err := eventModel.upsertMessage(testMsg)
+			if err != nil {
+				t.Fatal(err)
 			}
 
-			// The duplicate entry should return the same UUID
-			duplicateUuid, err2 := eventModel.receiveHelper(testMsg, false)
-			if err2 != nil {
-				t.Fatal(err2)
+			// The duplicate entry should fail
+			duplicateUuid, err := eventModel.upsertMessage(testMsg)
+			if err == nil {
+				t.Fatal("Expected error to happen")
 			}
-			if uuid != duplicateUuid {
-				t.Fatalf("Expected UUID %d to match %d", uuid, duplicateUuid)
+			if duplicateUuid != 0 {
+				t.Fatalf("Expected UUID %d to be 0", duplicateUuid)
 			}
 
 			// Now insert a message with a different message ID from the first
-			testMsgId2 := message.DeriveChannelMessageID(
-				&id.ID{2}, 0, []byte(testString))
-			testMsg = buildMessage([]byte(testString), testMsgId2.Bytes(), nil,
-				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
-				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
-			uuid2, err2 := eventModel.receiveHelper(testMsg, false)
-			if err2 != nil {
-				t.Fatal(err2)
+			uuid2, err := eventModel.upsertMessage(testMsg2)
+			if err != nil {
+				t.Fatal(err)
 			}
 			if uuid2 == uuid {
-				t.Fatalf("Expected UUID %d to NOT match %d", uuid, duplicateUuid)
+				t.Fatalf("Expected UUID %d to NOT match %d", uuid, uuid2)
 			}
 
 			// Except this time, we update the second entry to have the same
 			// message ID as the first
-			testMsg.ID = uuid
-			testMsg.MessageID = testMsgId.Bytes()
-			duplicateUuid2, err2 := eventModel.receiveHelper(testMsg, true)
-			if err2 != nil {
-				t.Fatal(err2)
+			testMsg2.MessageID = testMsgId.Bytes()
+			duplicateUuid, err = eventModel.upsertMessage(testMsg)
+			if err == nil {
+				t.Fatal("Expected error to happen")
 			}
-			if duplicateUuid2 != duplicateUuid {
-				t.Fatalf("Expected UUID %d to match %d", uuid, duplicateUuid)
+			if duplicateUuid != 0 {
+				t.Fatalf("Expected UUID %d to be 0", uuid)
 			}
 		})
 	}

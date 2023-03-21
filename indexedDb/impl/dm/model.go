@@ -38,7 +38,7 @@ const (
 // A Message belongs to one Conversation.
 // A Message may belong to one Message (Parent).
 type Message struct {
-	ID                 uint64    `json:"id"`                   // Matches msgPkeyName
+	ID                 uint64    `json:"id,omitempty"`         // Matches msgPkeyName
 	MessageID          []byte    `json:"message_id"`           // Index
 	ConversationPubKey []byte    `json:"conversation_pub_key"` // Index
 	ParentMessageID    []byte    `json:"parent_message_id"`

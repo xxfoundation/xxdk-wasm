@@ -1,7 +1,7 @@
 .PHONY: update master release update_master update_release build clean binary tests wasm_tests go_tests
 
 clean:
-	rm -rf vendor/
+	go mod tidy
 	go mod vendor -e
 
 update:
@@ -9,7 +9,6 @@ update:
 
 build:
 	GOOS=js GOARCH=wasm go build ./...
-	go mod tidy
 
 update_release:
 	GOFLAGS="" go get -d gitlab.com/elixxir/client/v4@release
@@ -41,7 +40,7 @@ binaries: binary worker_binaries
 wasm_tests:
 	cp utils/utils_js.s utils/utils_js.s.bak
 	> utils/utils_js.s
-	-GOOS=js GOARCH=wasm go test ./... -v
+	-GOOS=js GOARCH=wasm go test -v ./...
 	mv utils/utils_js.s.bak utils/utils_js.s
 
 go_tests:
