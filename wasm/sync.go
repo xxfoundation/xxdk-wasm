@@ -167,8 +167,9 @@ type RemoteKV struct {
 func newRemoteKvJS(api *bindings.RemoteKV) map[string]any {
 	rkv := RemoteKV{api}
 	rkvMap := map[string]any{
-		"Write": js.FuncOf(rkv.Write),
-		"Read":  js.FuncOf(rkv.Read),
+		"Write":   js.FuncOf(rkv.Write),
+		"Read":    js.FuncOf(rkv.Read),
+		"GetList": js.FuncOf(rkv.GetList),
 	}
 
 	return rkvMap
