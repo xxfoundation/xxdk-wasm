@@ -168,6 +168,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 	uuid, err := w.upsertMessage(msgToInsert)
 	if err != nil {
 		jww.ERROR.Printf("Failed to receive Message: %+v", err)
+		return 0
 	}
 
 	go w.receivedMessageCB(uuid, channelID, false)
@@ -202,9 +203,9 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 		timestamp, lease, round.ID, mType, hidden, false, status)
 
 	uuid, err := w.upsertMessage(msgToInsert)
-
 	if err != nil {
 		jww.ERROR.Printf("Failed to receive reply: %+v", err)
+		return 0
 	}
 	go w.receivedMessageCB(uuid, channelID, false)
 	return uuid
@@ -241,6 +242,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 	uuid, err := w.upsertMessage(msgToInsert)
 	if err != nil {
 		jww.ERROR.Printf("Failed to receive reaction: %+v", err)
+		return 0
 	}
 	go w.receivedMessageCB(uuid, channelID, false)
 	return uuid
