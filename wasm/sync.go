@@ -210,7 +210,8 @@ func NewOrLoadSyncRemoteKV(_ js.Value, args []js.Value) any {
 //
 // Parameters:
 //   - args[0] - The key that this data will be written to (i.e., the device
-//     name) (string).
+//     name, the channel name, etc.). Certain keys should follow a pattern and
+//     contain special characters (see [RemoteKV.GetList] for details) (string).
 //   - args[1] - The data that will be stored (i.e., state data) (Uint8Array).
 //   - args[2] - A Javascript object that implements the functions on
 //     [RemoteKVCallbacks]. This may be nil if you do not care about the network
@@ -259,6 +260,33 @@ func (rkv *RemoteKV) Read(_ js.Value, args []js.Value) any {
 	}
 
 	return utils.CreatePromise(promiseFn)
+}
+
+// GetList returns all entries for a path (or key) that contain the name
+// parameter from the local store.
+//
+// For example, assuming the usage of the [sync.LocalStoreKeyDelimiter], if both
+// "channels-123" and "channels-abc" are written to [RemoteKV], then
+// GetList("channels") will retrieve the data for both channels. All data that
+// contains no [sync.LocalStoreKeyDelimiter] can be retrieved using GetList("").
+//
+// Parameters:
+//   - args[0] - Some prefix to a Write operation. If no prefix applies, simply
+//     use the empty string. (string).
+//
+// Returns:
+//   - The file data (Uint8Array)
+//   - Throws a TypeError if getting the list fails.
+func (rkv *RemoteKV) GetList(_ js.Value, args []js.Value) any {
+	name := args[0].String()
+
+	data, err := rkv.api.GetList(name)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(data)
 }
 
 // RemoteStoreCallbacks wraps Javascript callbacks to adhere to the
