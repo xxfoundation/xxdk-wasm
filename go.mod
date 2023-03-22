@@ -10,8 +10,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client/v4 v4.6.1
-	gitlab.com/elixxir/crypto v0.0.7-0.20230214180106-72841fd1e426
+	gitlab.com/elixxir/client/v4 v4.6.2-0.20230322180618-5ab6505665da
+	gitlab.com/elixxir/crypto v0.0.7-0.20230322175717-4a3b5a24bdf4
 	gitlab.com/elixxir/primitives v0.0.3-0.20230214180039-9a25e2d3969c
 	gitlab.com/xx_network/crypto v0.0.5-0.20230214003943-8a09396e95dd
 	gitlab.com/xx_network/primitives v0.0.4-0.20230310205521-c440e68e34c4
@@ -65,7 +65,7 @@ require (
 	github.com/ttacon/libphonenumber v1.2.1 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
-	gitlab.com/elixxir/bloomfilter v0.0.0-20211222005329-7d931ceead6f // indirect
+	gitlab.com/elixxir/bloomfilter v0.0.0-20230315224936-a4459418f300 // indirect
 	gitlab.com/elixxir/comms v0.0.4-0.20230310205528-f06faa0d2f0b // indirect
 	gitlab.com/elixxir/ekv v0.2.1 // indirect
 	gitlab.com/xx_network/comms v0.0.4-0.20230214180029-5387fb85736d // indirect
