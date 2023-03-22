@@ -187,6 +187,12 @@ func main() {
 	js.Global().Set("TransmitSingleUse", js.FuncOf(wasm.TransmitSingleUse))
 	js.Global().Set("Listen", js.FuncOf(wasm.Listen))
 
+	// wasm/sync.go
+	js.Global().Set("NewFileSystemRemoteStorage",
+		js.FuncOf(wasm.NewFileSystemRemoteStorage))
+	js.Global().Set("NewOrLoadSyncRemoteKV",
+		js.FuncOf(wasm.NewOrLoadSyncRemoteKV))
+
 	// wasm/timeNow.go
 	js.Global().Set("SetTimeSource", js.FuncOf(wasm.SetTimeSource))
 	js.Global().Set("SetOffset", js.FuncOf(wasm.SetOffset))

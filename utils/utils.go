@@ -104,3 +104,21 @@ func Await(awaitable js.Value) (result []js.Value, err []js.Value) {
 		return nil, err
 	}
 }
+
+// RunAndCatch runs the specified function and catches any errors thrown by
+// Javascript. The errors should be of type Error.
+func RunAndCatch(fn func() js.Value) (js.Value, error) {
+	var err error
+	defer func() {
+		if r := recover(); r != nil {
+			switch x := r.(type) {
+			case js.Value:
+				err = js.Error{Value: x}
+			default:
+				panic(r)
+			}
+		}
+	}()
+
+	return fn(), err
+}
