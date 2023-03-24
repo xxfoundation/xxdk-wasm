@@ -20,5 +20,9 @@ localdev_*
 # Ignore temp files
 *.bak
 
+# Dependencies
 vendor/
+/node_modules
+
+# Binary files
 *.wasm

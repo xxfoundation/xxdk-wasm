@@ -25,12 +25,12 @@ update_master:
 	GOFLAGS="" go get gitlab.com/xx_network/primitives@master
 
 binary:
-	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk.wasm main.go
+	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk.wasm ./src/api/main.go
 
 worker_binaries:
-	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-channelsIndexedDkWorker.wasm ./indexedDb/impl/channels/...
-	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-dmIndexedDkWorker.wasm ./indexedDb/impl/dm/...
-	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-logFileWorker.wasm ./logging/workerThread/...
+	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-channelsIndexedDkWorker.wasm ./src/api/indexedDb/impl/channels/...
+	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-dmIndexedDkWorker.wasm ./src/api/indexedDb/impl/dm/...
+	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-logFileWorker.wasm ./src/api/logging/workerThread/...
 
 emojis:
 	go run -ldflags '-w -s' -trimpath ./emoji/... -o emojiSet.json
@@ -38,10 +38,7 @@ emojis:
 binaries: binary worker_binaries
 
 wasm_tests:
-	cp utils/utils_js.s utils/utils_js.s.bak
-	> utils/utils_js.s
-	-GOOS=js GOARCH=wasm go test -v ./...
-	mv utils/utils_js.s.bak utils/utils_js.s
+	GOOS=js GOARCH=wasm go test -v ./...
 
 go_tests:
 	go test ./... -v

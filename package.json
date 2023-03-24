@@ -1,0 +1,28 @@
+{
+  "name": "xxdk-wasm",
+  "version": "1.0.0",
+  "description": "This repository contains the WebAssembly bindings for xxDK. It also includes\r examples and a test server to serve the compiled WebAssembly module.",
+  "main": "wasm_exec.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack",
+    "start": "webpack serve"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@git.xx.network:elixxir/xxdk-wasm.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "webpack": "^5.76.3",
+    "webpack-cli": "^5.0.1",
+    "webpack-dev-server": "^4.13.1"
+  },
+  "dependencies": {
+    "golang-wasm": "^0.1.0"
+  }
+}
