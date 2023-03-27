@@ -71,13 +71,13 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 			"failed to JSON unmarshal Cipher from main thread: %+v", err)
 	}
 
-	m.model, err = NewWASMEventModel(msg.Path, encryption,
-		m.messageReceivedCallback, m.deletedMessageCallback, m.mutedUserCallback,
-		m.storeDatabaseName, m.storeEncryptionStatus)
+	m.model, err = NewWASMEventModel(msg.DatabaseName, encryption,
+		m.messageReceivedCallback, m.deletedMessageCallback, m.mutedUserCallback)
 	if err != nil {
 		return []byte(err.Error()), nil
 	}
-	return []byte{}, nil
+
+	return nil, nil
 }
 
 // messageReceivedCallback sends calls to the channels.MessageReceivedCallback
@@ -132,88 +132,6 @@ func (m *manager) mutedUserCallback(
 	m.mh.SendMessage(wChannels.MutedUserCallbackTag, data)
 }
 
-// storeDatabaseName sends the database name to the main thread and waits for
-// the response. This function mocks the behavior of storage.StoreIndexedDb.
-//
-// storeDatabaseName adheres to the storeDatabaseNameFn type.
-func (m *manager) storeDatabaseName(databaseName string) error {
-	// Register response callback with channel that will wait for the response
-	responseChan := make(chan []byte)
-	m.mh.RegisterCallback(wChannels.StoreDatabaseNameTag,
-		func(data []byte) ([]byte, error) {
-			responseChan <- data
-			return nil, nil
-		})
-
-	// Send encryption status to main thread
-	m.mh.SendMessage(wChannels.StoreDatabaseNameTag, []byte(databaseName))
-
-	// Wait for response
-	select {
-	case response := <-responseChan:
-		if len(response) > 0 {
-			return errors.New(string(response))
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return errors.Errorf("[WW] Timed out after %s waiting for response "+
-			"about storing the database name in local storage in the main "+
-			"thread", worker.ResponseTimeout)
-	}
-
-	return nil
-}
-
-// storeEncryptionStatus sends the database name and encryption status to the
-// main thread and waits for the response. If the value has not been previously
-// saved, it returns the saves encryption status. This function mocks the
-// behavior of storage.StoreIndexedDbEncryptionStatus.
-//
-// storeEncryptionStatus adheres to the storeEncryptionStatusFn type.
-func (m *manager) storeEncryptionStatus(
-	databaseName string, encryption bool) (bool, error) {
-	// Package parameters for sending
-	msg := &wChannels.EncryptionStatusMessage{
-		DatabaseName:     databaseName,
-		EncryptionStatus: encryption,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return false, err
-	}
-
-	// Register response callback with channel that will wait for the response
-	responseChan := make(chan []byte)
-	m.mh.RegisterCallback(wChannels.EncryptionStatusTag,
-		func(data []byte) ([]byte, error) {
-			responseChan <- data
-			return nil, nil
-		})
-
-	// Send encryption status to main thread
-	m.mh.SendMessage(wChannels.EncryptionStatusTag, data)
-
-	// Wait for response
-	var response wChannels.EncryptionStatusReply
-	select {
-	case responseData := <-responseChan:
-		if err = json.Unmarshal(responseData, &response); err != nil {
-			return false, err
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return false, errors.Errorf("timed out after %s waiting for "+
-			"response about the database encryption status from local "+
-			"storage in the main thread", worker.ResponseTimeout)
-	}
-
-	// If the response contain an error, return it
-	if response.Error != "" {
-		return false, errors.New(response.Error)
-	}
-
-	// Return the encryption status
-	return response.EncryptionStatus, nil
-}
-
 // joinChannelCB is the callback for wasmModel.JoinChannel. Always returns nil;
 // meaning, no response is supplied (or expected).
 func (m *manager) joinChannelCB(data []byte) ([]byte, error) {
@@ -258,7 +176,7 @@ func (m *manager) receiveMessageCB(data []byte) ([]byte, error) {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		return zeroUUID, errors.Errorf("failed to JSON marshal UUID : %+v", err)
+		return zeroUUID, errors.Errorf("failed to JSON marshal UUID: %+v", err)
 	}
 	return uuidData, nil
 }
@@ -280,7 +198,7 @@ func (m *manager) receiveReplyCB(data []byte) ([]byte, error) {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		return zeroUUID, errors.Errorf("failed to JSON marshal UUID : %+v", err)
+		return zeroUUID, errors.Errorf("failed to JSON marshal UUID: %+v", err)
 	}
 	return uuidData, nil
 }
@@ -302,7 +220,7 @@ func (m *manager) receiveReactionCB(data []byte) ([]byte, error) {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		return zeroUUID, errors.Errorf("failed to JSON marshal UUID : %+v", err)
+		return zeroUUID, errors.Errorf("failed to JSON marshal UUID: %+v", err)
 	}
 	return uuidData, nil
 }
@@ -379,7 +297,7 @@ func (m *manager) updateFromMessageIDCB(data []byte) ([]byte, error) {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		return nil, errors.Errorf("failed to JSON marshal UUID : %+v", err)
+		return nil, errors.Errorf("failed to JSON marshal UUID: %+v", err)
 	}
 
 	return uuidData, nil

@@ -11,16 +11,13 @@ package main
 
 import (
 	"crypto/ed25519"
-	jww "github.com/spf13/jwalterweatherman"
 	"os"
 	"testing"
+
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 func dummyReceivedMessageCB(uint64, ed25519.PublicKey, bool, bool) {}
-func dummyStoreDatabaseName(string) error                          { return nil }
-func dummyStoreEncryptionStatus(_ string, encryptionStatus bool) (bool, error) {
-	return encryptionStatus, nil
-}
 
 func TestMain(m *testing.M) {
 	jww.SetStdoutThreshold(jww.LevelDebug)
@@ -29,8 +26,7 @@ func TestMain(m *testing.M) {
 
 // Test happy path toggling between blocked/unblocked in a Conversation.
 func TestWasmModel_BlockSender(t *testing.T) {
-	m, err := newWASMModel("test", nil,
-		dummyReceivedMessageCB, dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+	m, err := newWASMModel("test", nil, dummyReceivedMessageCB)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
