@@ -481,7 +481,7 @@ func (dmc *DMClient) SendReaction(_ js.Value, args []js.Value) any {
 // The meaning of leaseTimeMS depends on the use case.
 //
 // Parameters:
-//   - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
+//   - args[0] - Marshalled bytes of the partner pubkyey  (Uint8Array).
 //   - args[1] - The token used to derive the reception ID for the partner
 //     (int).
 //   - args[2] - The message type of the message. This will be a valid
