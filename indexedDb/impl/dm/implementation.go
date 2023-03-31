@@ -238,6 +238,7 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 		jww.DEBUG.Printf(
 			"[DM indexedDB] Conversation with %s already joined", nickname)
 
+		updateConversation := false
 		// Update Conversation if nickname was altered
 		isFromPartner := bytes.Equal(result.Pubkey, senderKey)
 		nicknameChanged := result.Nickname != nickname
@@ -245,13 +246,28 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 			jww.DEBUG.Printf(
 				"[DM indexedDB] Updating from nickname %s to %s",
 				result.Nickname, nickname)
-			err = w.upsertConversation(nickname, result.Pubkey, result.Token,
-				result.CodesetVersion, result.Blocked)
+			updateConversation = true
+		}
+
+		// Fix conversation if dmToken is altered
+		dmTokenChanged := result.Token != dmToken
+		if isFromPartner && dmTokenChanged {
+			jww.WARN.Printf(
+				"[DM indexedDB] Updating from dmToken %s to %s",
+				result.Token, dmToken)
+			updateConversation = true
+		}
+
+		if updateConversation {
+			err = w.upsertConversation(nickname, result.Pubkey,
+				result.Token, result.CodesetVersion,
+				result.Blocked)
 			if err != nil {
 				return 0, err
 			}
 			conversationUpdated = true
 		}
+
 	}
 
 	// Handle encryption, if it is present
