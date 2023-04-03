@@ -218,6 +218,8 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	timestamp time.Time, round rounds.Round, mType dm.MessageType, status dm.Status) (uint64, error) {
 
 	// Keep track of whether Conversation was altered
+	// FIXME: this is very similar to updateConversation 
+	//.        below. Can we merge them?
 	conversationUpdated := false
 	result, err := w.getConversation(partnerKey)
 	if err != nil {
