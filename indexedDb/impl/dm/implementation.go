@@ -216,7 +216,10 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	data string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, mType dm.MessageType, status dm.Status) (uint64, error) {
 
-	conversationUpdated := false
+	// Keep track of whether a Conversation was altered
+	var convoToUpdate *Conversation
+
+	// Determine whether Conversation needs to be created
 	result, err := w.getConversation(partnerKey)
 	if err != nil {
 		if !strings.Contains(err.Error(), impl.ErrDoesNotExist) {
@@ -225,7 +228,13 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 			// If there is no extant Conversation, create one.
 			jww.DEBUG.Printf(
 				"[DM indexedDB] Joining conversation with %s", nickname)
-			conversationUpdated = true
+			convoToUpdate = &Conversation{
+				Pubkey:         senderKey,
+				Nickname:       nickname,
+				Token:          dmToken,
+				CodesetVersion: codeset,
+				Blocked:        false,
+			}
 		}
 	} else {
 		jww.DEBUG.Printf(
@@ -238,7 +247,8 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 			jww.DEBUG.Printf(
 				"[DM indexedDB] Updating from nickname %s to %s",
 				result.Nickname, nickname)
-			conversationUpdated = true
+			convoToUpdate = result
+			convoToUpdate.Nickname = nickname
 		}
 
 		// Fix conversation if dmToken is altered
@@ -247,14 +257,16 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 			jww.WARN.Printf(
 				"[DM indexedDB] Updating from dmToken %d to %d",
 				result.Token, dmToken)
-			conversationUpdated = true
+			convoToUpdate = result
+			convoToUpdate.Token = dmToken
 		}
 	}
 
 	// Update the conversation in storage, if needed
+	conversationUpdated := convoToUpdate != nil
 	if conversationUpdated {
-		err = w.upsertConversation(nickname, result.Pubkey,
-			result.Token, result.CodesetVersion, result.Blocked)
+		err = w.upsertConversation(convoToUpdate.Nickname, convoToUpdate.Pubkey,
+			convoToUpdate.Token, convoToUpdate.CodesetVersion, convoToUpdate.Blocked)
 		if err != nil {
 			return 0, err
 		}
