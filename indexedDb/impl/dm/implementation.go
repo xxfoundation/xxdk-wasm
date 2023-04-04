@@ -225,11 +225,6 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 			// If there is no extant Conversation, create one.
 			jww.DEBUG.Printf(
 				"[DM indexedDB] Joining conversation with %s", nickname)
-			err = w.upsertConversation(nickname, partnerKey, dmToken,
-				codeset, false)
-			if err != nil {
-				return 0, err
-			}
 			conversationUpdated = true
 		}
 	} else {
@@ -259,12 +254,10 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	// Update the conversation in storage, if needed
 	if conversationUpdated {
 		err = w.upsertConversation(nickname, result.Pubkey,
-			result.Token, result.CodesetVersion,
-			result.Blocked)
+			result.Token, result.CodesetVersion, result.Blocked)
 		if err != nil {
 			return 0, err
 		}
-		conversationUpdated = true
 	}
 
 	// Handle encryption, if it is present
