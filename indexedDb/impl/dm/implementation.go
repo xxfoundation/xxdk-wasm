@@ -30,8 +30,7 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 )
 
-// wasmModel implements dm.EventModel interface, which uses the channels system
-// passed an object that adheres to in order to get events on the channel.
+// wasmModel implements dm.EventModel interface backed by IndexedDb.
 // NOTE: This model is NOT thread safe - it is the responsibility of the
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
@@ -217,9 +216,6 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	data string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, mType dm.MessageType, status dm.Status) (uint64, error) {
 
-	// Keep track of whether Conversation was altered
-	// FIXME: this is very similar to updateConversation 
-	//.        below. Can we merge them?
 	conversationUpdated := false
 	result, err := w.getConversation(partnerKey)
 	if err != nil {
@@ -240,7 +236,6 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 		jww.DEBUG.Printf(
 			"[DM indexedDB] Conversation with %s already joined", nickname)
 
-		updateConversation := false
 		// Update Conversation if nickname was altered
 		isFromPartner := bytes.Equal(result.Pubkey, senderKey)
 		nicknameChanged := result.Nickname != nickname
@@ -248,28 +243,28 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 			jww.DEBUG.Printf(
 				"[DM indexedDB] Updating from nickname %s to %s",
 				result.Nickname, nickname)
-			updateConversation = true
+			conversationUpdated = true
 		}
 
 		// Fix conversation if dmToken is altered
 		dmTokenChanged := result.Token != dmToken
 		if isFromPartner && dmTokenChanged {
 			jww.WARN.Printf(
-				"[DM indexedDB] Updating from dmToken %s to %s",
+				"[DM indexedDB] Updating from dmToken %d to %d",
 				result.Token, dmToken)
-			updateConversation = true
-		}
-
-		if updateConversation {
-			err = w.upsertConversation(nickname, result.Pubkey,
-				result.Token, result.CodesetVersion,
-				result.Blocked)
-			if err != nil {
-				return 0, err
-			}
 			conversationUpdated = true
 		}
+	}
 
+	// Update the conversation in storage, if needed
+	if conversationUpdated {
+		err = w.upsertConversation(nickname, result.Pubkey,
+			result.Token, result.CodesetVersion,
+			result.Blocked)
+		if err != nil {
+			return 0, err
+		}
+		conversationUpdated = true
 	}
 
 	// Handle encryption, if it is present
