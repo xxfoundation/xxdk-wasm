@@ -4,17 +4,14 @@ go 1.19
 
 require (
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
-	github.com/forPelevin/gomoji v1.1.8
 	github.com/hack-pad/go-indexeddb v0.2.0
-	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
 	github.com/pkg/errors v0.9.1
-	github.com/spf13/cobra v1.5.0
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client/v4 v4.3.12-0.20230307194033-15078a6a49d0
-	gitlab.com/elixxir/crypto v0.0.7-0.20230216203124-0c064fe2e78f
+	gitlab.com/elixxir/client/v4 v4.6.2-0.20230405174419-7a880a2be748
+	gitlab.com/elixxir/crypto v0.0.7-0.20230405173828-f811be53be9a
 	gitlab.com/elixxir/primitives v0.0.3-0.20230214180039-9a25e2d3969c
 	gitlab.com/xx_network/crypto v0.0.5-0.20230214003943-8a09396e95dd
-	gitlab.com/xx_network/primitives v0.0.4-0.20230203173415-81c2cb07da44
+	gitlab.com/xx_network/primitives v0.0.4-0.20230310205521-c440e68e34c4
 	golang.org/x/crypto v0.5.0
 )
 
@@ -32,7 +29,6 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -44,18 +40,16 @@ require (
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20221003100820-41fad3beba17 // indirect
 	github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7 // indirect
-	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/rs/cors v1.8.2 // indirect
 	github.com/sethvargo/go-diceware v0.3.0 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/ttacon/builder v0.0.0-20170518171403-c099f663e1c2 // indirect
 	github.com/ttacon/libphonenumber v1.2.1 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
-	gitlab.com/elixxir/bloomfilter v0.0.0-20211222005329-7d931ceead6f // indirect
-	gitlab.com/elixxir/comms v0.0.4-0.20230214180204-3aba2e6795af // indirect
+	gitlab.com/elixxir/bloomfilter v0.0.0-20230315224936-a4459418f300 // indirect
+	gitlab.com/elixxir/comms v0.0.4-0.20230310205528-f06faa0d2f0b // indirect
 	gitlab.com/elixxir/ekv v0.2.1 // indirect
 	gitlab.com/xx_network/comms v0.0.4-0.20230214180029-5387fb85736d // indirect
 	gitlab.com/xx_network/ring v0.0.3-0.20220902183151-a7d3b15bc981 // indirect

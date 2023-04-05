@@ -32,7 +32,7 @@ const (
 
 	// logListenerChanSize is the size of the listener channel that stores log
 	// messages before they are written.
-	logListenerChanSize = 1500
+	logListenerChanSize = 3000
 )
 
 // List of tags that can be used when sending a message or registering a handler
@@ -251,7 +251,7 @@ func (l *Logger) StopLogging() {
 
 	switch l.getMode() {
 	case workerMode:
-		go l.wm.Terminate()
+		l.wm.Stop()
 		jww.DEBUG.Printf("[LOG] Terminated log worker.")
 	case fileMode:
 		jww.DEBUG.Printf("[LOG] Reset circular buffer.")

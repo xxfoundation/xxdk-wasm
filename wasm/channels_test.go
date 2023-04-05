@@ -24,16 +24,16 @@ import (
 func Test_newChannelsManagerJS(t *testing.T) {
 	cmType := reflect.TypeOf(&ChannelsManager{})
 
-	e2e := newChannelsManagerJS(&bindings.ChannelsManager{})
-	if len(e2e) != cmType.NumMethod() {
+	cm := newChannelsManagerJS(&bindings.ChannelsManager{})
+	if len(cm) != cmType.NumMethod() {
 		t.Errorf("ChannelsManager JS object does not have all methods."+
-			"\nexpected: %d\nreceived: %d", cmType.NumMethod(), len(e2e))
+			"\nexpected: %d\nreceived: %d", cmType.NumMethod(), len(cm))
 	}
 
 	for i := 0; i < cmType.NumMethod(); i++ {
 		method := cmType.Method(i)
 
-		if _, exists := e2e[method.Name]; !exists {
+		if _, exists := cm[method.Name]; !exists {
 			t.Errorf("Method %s does not exist.", method.Name)
 		}
 	}
