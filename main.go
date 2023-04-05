@@ -95,6 +95,10 @@ func main() {
 		js.FuncOf(wasm.NewChannelsDatabaseCipher))
 
 	// wasm/dm.go
+	js.Global().Set("InitChannelsFileTransfer",
+		js.FuncOf(wasm.InitChannelsFileTransfer))
+
+	// wasm/dm.go
 	js.Global().Set("NewDMClient", js.FuncOf(wasm.NewDMClient))
 	js.Global().Set("NewDMClientWithIndexedDb",
 		js.FuncOf(wasm.NewDMClientWithIndexedDb))
