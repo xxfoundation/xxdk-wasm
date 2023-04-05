@@ -11,12 +11,14 @@ package worker
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
-	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"sync"
 	"syscall/js"
 	"time"
+
+	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
+
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 )
 
 // initID is the ID for the first item in the callback list. If the list only
@@ -34,6 +36,10 @@ const (
 	// receive a response before timing out.
 	ResponseTimeout = 30 * time.Second
 )
+
+// receiveQueueChanSize is the size of the channel that received messages are
+// put on.
+const receiveQueueChanSize = 100
 
 // ReceptionCallback is the function that handles incoming data from the worker.
 type ReceptionCallback func(data []byte)
@@ -56,6 +62,13 @@ type Manager struct {
 	// original message sent by the main thread.
 	responseIDs map[Tag]uint64
 
+	// receiveQueue is the channel that all received messages are queued on
+	// while they wait to be processed.
+	receiveQueue chan []byte
+
+	// quit, when triggered, stops the thread that processes received messages.
+	quit chan struct{}
+
 	// name describes the worker. It is used for debugging and logging purposes.
 	name string
 
@@ -76,9 +89,14 @@ func NewManager(aURL, name string, messageLogging bool) (*Manager, error) {
 		worker:         js.Global().Get("Worker").New(aURL, opts),
 		callbacks:      make(map[Tag]map[uint64]ReceptionCallback),
 		responseIDs:    make(map[Tag]uint64),
+		receiveQueue:   make(chan []byte, receiveQueueChanSize),
+		quit:           make(chan struct{}),
 		name:           name,
 		messageLogging: messageLogging,
 	}
+
+	// Start thread to process responses from worker
+	go m.processThread()
 
 	// Register listeners on the Javascript worker object that receive messages
 	// and errors from the worker
@@ -99,6 +117,35 @@ func NewManager(aURL, name string, messageLogging bool) (*Manager, error) {
 	}
 
 	return m, nil
+}
+
+// Stop closes the worker manager and terminates the worker.
+func (m *Manager) Stop() {
+	// Stop processThread
+	select {
+	case m.quit <- struct{}{}:
+	}
+
+	// Terminate the worker
+	go m.terminate()
+}
+
+// processThread processes received messages sequentially.
+func (m *Manager) processThread() {
+	jww.INFO.Printf("[WW] [%s] Starting process thread.", m.name)
+	for {
+		select {
+		case <-m.quit:
+			jww.INFO.Printf("[WW] [%s] Quitting process thread.", m.name)
+			return
+		case message := <-m.receiveQueue:
+			err := m.processReceivedMessage(message)
+			if err != nil {
+				jww.ERROR.Printf("[WW] [%s] Failed to process received "+
+					"message from worker: %+v", m.name, err)
+			}
+		}
+	}
 }
 
 // SendMessage sends a message to the worker with the given tag. If a reception
@@ -132,7 +179,14 @@ func (m *Manager) SendMessage(
 
 // receiveMessage is registered with the Javascript event listener and is called
 // every time a new message from the worker is received.
-func (m *Manager) receiveMessage(data []byte) error {
+func (m *Manager) receiveMessage(data []byte) {
+	m.receiveQueue <- data
+}
+
+// processReceivedMessage processes the message received from the worker and
+// calls the associated callback. This functions blocks until the callback
+// returns.
+func (m *Manager) processReceivedMessage(data []byte) error {
 	var msg Message
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -149,7 +203,7 @@ func (m *Manager) receiveMessage(data []byte) error {
 		return err
 	}
 
-	go callback(msg.Data)
+	callback(msg.Data)
 
 	return nil
 }
@@ -249,11 +303,7 @@ func (m *Manager) addEventListeners() {
 	// occurs when a message is received from the worker.
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/message_event
 	messageEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
-		err := m.receiveMessage([]byte(args[0].Get("data").String()))
-		if err != nil {
-			jww.ERROR.Printf("[WW] [%s] Failed to receive message from "+
-				"worker: %+v", m.name, err)
-		}
+		m.receiveMessage([]byte(args[0].Get("data").String()))
 		return nil
 	})
 
@@ -302,11 +352,11 @@ func (m *Manager) postMessage(msg any) {
 	m.worker.Call("postMessage", msg)
 }
 
-// Terminate immediately terminates the Worker. This does not offer the worker
+// terminate immediately terminates the Worker. This does not offer the worker
 // an opportunity to finish its operations; it is stopped at once.
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/terminate
-func (m *Manager) Terminate() {
+func (m *Manager) terminate() {
 	m.worker.Call("terminate")
 }
 

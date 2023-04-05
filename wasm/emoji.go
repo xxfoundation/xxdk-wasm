@@ -10,49 +10,51 @@
 package wasm
 
 import (
-	"encoding/json"
-	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/client/v4/emoji"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
+
+	"gitlab.com/elixxir/client/v4/bindings"
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 )
 
 // SupportedEmojis returns a list of emojis that are supported by the backend.
+// The list includes all emojis described in [UTS #51 section A.1: Data Files].
 //
 // Returns:
-//   - JSON of an array of gomoji.Emoji (Uint8Array).
+//   - JSON of an array of emoji.Emoji (Uint8Array).
 //   - Throws a TypeError if marshalling the JSON fails.
 //
 // Example JSON:
 //
-//	[
-//	  {
-//	    "slug": "smiling-face",
-//	    "character": "☺️",
-//	    "unicode_name": "E0.6 smiling face",
-//	    "code_point": "263A FE0F",
-//	    "group": "Smileys \u0026 Emotion",
-//	    "sub_group": "face-affection"
-//	  },
-//	  {
-//	    "slug": "frowning-face",
-//	    "character": "☹️",
-//	    "unicode_name": "E0.7 frowning face",
-//	    "code_point": "2639 FE0F",
-//	    "group": "Smileys \u0026 Emotion",
-//	    "sub_group": "face-concerned"
-//	  },
-//	  {
-//	    "slug": "banana",
-//	    "character": "�",
-//	    "unicode_name": "E0.6 banana",
-//	    "code_point": "1F34C",
-//	    "group": "Food \u0026 Drink",
-//	    "sub_group": "food-fruit"
-//	  }
-//	]
+//		[
+//		  {
+//	     "character": "☹️",
+//	     "name": "frowning face",
+//	     "comment": "E0.7",
+//	     "codePoint": "2639 FE0F",
+//	     "group": "Smileys \u0026 Emotion",
+//	     "subgroup": "face-concerned"
+//		  },
+//		  {
+//	     "character": "☺️",
+//	     "name": "smiling face",
+//	     "comment": "E0.6",
+//	     "codePoint": "263A FE0F",
+//	     "group": "Smileys \u0026 Emotion",
+//	     "subgroup": "face-affection"
+//		  },
+//		  {
+//	     "character": "☢️",
+//	     "name": "radioactive",
+//	     "comment": "E1.0",
+//	     "codePoint": "2622 FE0F",
+//	     "group": "Symbols",
+//	     "subgroup": "warning"
+//		  }
+//		]
+//
+// [UTS #51 section A.1: Data Files]: https://www.unicode.org/reports/tr51/#Data_Files
 func SupportedEmojis(js.Value, []js.Value) any {
-	data, err := json.Marshal(emoji.SupportedEmojis())
+	data, err := bindings.SupportedEmojis()
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
@@ -61,10 +63,56 @@ func SupportedEmojis(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(data)
 }
 
-// ValidateReaction checks that the reaction only contains a single emoji.
+// SupportedEmojisMap returns a map of emojis that are supported by the backend
+// as described by [SupportedEmojis].
+//
+// Returns:
+//   - JSON of a map of emoji.Emoji (Uint8Array).
+//   - Throws a TypeError if marshalling the JSON fails.
+//
+// Example JSON:
+//
+//		[
+//		  {
+//	     "character": "☹️",
+//	     "name": "frowning face",
+//	     "comment": "E0.7",
+//	     "codePoint": "2639 FE0F",
+//	     "group": "Smileys \u0026 Emotion",
+//	     "subgroup": "face-concerned"
+//		  },
+//		  {
+//	     "character": "☺️",
+//	     "name": "smiling face",
+//	     "comment": "E0.6",
+//	     "codePoint": "263A FE0F",
+//	     "group": "Smileys \u0026 Emotion",
+//	     "subgroup": "face-affection"
+//		  },
+//		  {
+//	     "character": "☢️",
+//	     "name": "radioactive",
+//	     "comment": "E1.0",
+//	     "codePoint": "2622 FE0F",
+//	     "group": "Symbols",
+//	     "subgroup": "warning"
+//		  }
+//		]
+func SupportedEmojisMap(js.Value, []js.Value) any {
+	data, err := bindings.SupportedEmojisMap()
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(data)
+}
+
+// ValidateReaction checks that the reaction only contains a single grapheme
+// (one or more codepoints that appear as a single character to the user).
 //
 // Parameters:
-//   - args[0] - The reaction emoji to validate (string).
+//   - args[0] - The reaction to validate (string).
 //
 // Returns:
 //   - If the reaction is valid, returns null.

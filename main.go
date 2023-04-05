@@ -120,6 +120,7 @@ func main() {
 
 	// wasm/emoji.go
 	js.Global().Set("SupportedEmojis", js.FuncOf(wasm.SupportedEmojis))
+	js.Global().Set("SupportedEmojisMap", js.FuncOf(wasm.SupportedEmojisMap))
 	js.Global().Set("ValidateReaction", js.FuncOf(wasm.ValidateReaction))
 
 	// wasm/errors.go

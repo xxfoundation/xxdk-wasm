@@ -58,6 +58,11 @@ func TestPublicFunctions(t *testing.T) {
 		// Mobile-specific bindings not supported by the browser
 		"NewChannelsManagerMobile":  {},
 		"LoadChannelsManagerMobile": {},
+		"NewDmManagerMobile":        {},
+
+		// C-Library specific bindings not needed by the browser
+		"GetDMInstance":   {},
+		"GetCMixInstance": {},
 	}
 	wasmFuncs := getPublicFunctions("wasm", t)
 	bindingsFuncs := getPublicFunctions(

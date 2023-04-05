@@ -176,7 +176,8 @@ func GetIndex(db *idb.Database, objectStoreName,
 }
 
 // Put is a generic helper for putting values into the given [idb.ObjectStore].
-// Equivalent to insert if not exists else update.
+// Equivalent to insert if not exists else update. Returns the primary key of
+// the stored object as a js.Value.
 func Put(db *idb.Database, objectStoreName string, value js.Value) (js.Value, error) {
 	// Prepare the Transaction
 	txn, err := db.Transaction(idb.TransactionReadWrite, objectStoreName)
@@ -199,7 +200,8 @@ func Put(db *idb.Database, objectStoreName string, value js.Value) (js.Value, er
 	result, err := request.Await(ctx)
 	cancel()
 	if err != nil {
-		return js.Undefined(), errors.Errorf("Putting value failed: %+v", err)
+		return js.Undefined(), errors.Errorf("Putting value failed: %+v\n%s",
+			err, utils.JsToJson(value))
 	}
 	jww.DEBUG.Printf("Successfully put value in %s: %s",
 		objectStoreName, utils.JsToJson(value))

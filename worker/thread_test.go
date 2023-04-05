@@ -15,8 +15,8 @@ import (
 	"time"
 )
 
-// Tests that ThreadManager.receiveMessage calls the expected callback.
-func TestThreadManager_receiveMessage(t *testing.T) {
+// Tests that ThreadManager.processReceivedMessage calls the expected callback.
+func TestThreadManager_processReceivedMessage(t *testing.T) {
 	tm := &ThreadManager{callbacks: make(map[Tag]ThreadReceptionCallback)}
 
 	msg := Message{Tag: readyTag, ID: 5}
@@ -37,14 +37,14 @@ func TestThreadManager_receiveMessage(t *testing.T) {
 		}
 	}()
 
-	err = tm.receiveMessage(data)
+	err = tm.processReceivedMessage(data)
 	if err != nil {
 		t.Errorf("Failed to receive message: %+v", err)
 	}
 }
 
 // Tests that ThreadManager.RegisterCallback registers a callback that is then
-// called by ThreadManager.receiveMessage.
+// called by ThreadManager.processReceivedMessage.
 func TestThreadManager_RegisterCallback(t *testing.T) {
 	tm := &ThreadManager{callbacks: make(map[Tag]ThreadReceptionCallback)}
 
@@ -66,7 +66,7 @@ func TestThreadManager_RegisterCallback(t *testing.T) {
 		}
 	}()
 
-	err = tm.receiveMessage(data)
+	err = tm.processReceivedMessage(data)
 	if err != nil {
 		t.Errorf("Failed to receive message: %+v", err)
 	}

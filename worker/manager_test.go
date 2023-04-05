@@ -16,8 +16,8 @@ import (
 	"time"
 )
 
-// Tests Manager.receiveMessage calls the expected callback.
-func TestManager_receiveMessage(t *testing.T) {
+// Tests Manager.processReceivedMessage calls the expected callback.
+func TestManager_processReceivedMessage(t *testing.T) {
 	m := &Manager{callbacks: make(map[Tag]map[uint64]ReceptionCallback)}
 
 	msg := Message{Tag: readyTag, ID: 5}
@@ -38,7 +38,7 @@ func TestManager_receiveMessage(t *testing.T) {
 		}
 	}()
 
-	err = m.receiveMessage(data)
+	err = m.processReceivedMessage(data)
 	if err != nil {
 		t.Errorf("Failed to receive message: %+v", err)
 	}
@@ -92,7 +92,7 @@ func TestManager_getCallback(t *testing.T) {
 }
 
 // Tests that Manager.RegisterCallback registers a callback that is then called
-// by Manager.receiveMessage.
+// by Manager.processReceivedMessage.
 func TestManager_RegisterCallback(t *testing.T) {
 	m := &Manager{callbacks: make(map[Tag]map[uint64]ReceptionCallback)}
 
@@ -114,14 +114,14 @@ func TestManager_RegisterCallback(t *testing.T) {
 		}
 	}()
 
-	err = m.receiveMessage(data)
+	err = m.processReceivedMessage(data)
 	if err != nil {
 		t.Errorf("Failed to receive message: %+v", err)
 	}
 }
 
 // Tests that Manager.registerReplyCallback registers a callback that is then
-// called by Manager.receiveMessage.
+// called by Manager.processReceivedMessage.
 func TestManager_registerReplyCallback(t *testing.T) {
 	m := &Manager{
 		callbacks:   make(map[Tag]map[uint64]ReceptionCallback),
@@ -147,7 +147,7 @@ func TestManager_registerReplyCallback(t *testing.T) {
 		}
 	}()
 
-	err = m.receiveMessage(data)
+	err = m.processReceivedMessage(data)
 	if err != nil {
 		t.Errorf("Failed to receive message: %+v", err)
 	}
