@@ -15,6 +15,7 @@ import (
 	"gitlab.com/elixxir/client/v4/auth"
 	"gitlab.com/elixxir/client/v4/catalog"
 	"gitlab.com/elixxir/client/v4/channels"
+	"gitlab.com/elixxir/client/v4/channelsFileTransfer"
 	"gitlab.com/elixxir/client/v4/cmix"
 	"gitlab.com/elixxir/client/v4/cmix/message"
 	"gitlab.com/elixxir/client/v4/connect"
@@ -69,4 +70,6 @@ var (
 	_ = broadcast.Channel{}
 	_ = netTime.Now
 	_ = ed25519.PublicKey{}
+	_ = channelsFileTransfer.Params{}
+	_ = fileTransfer.ID{}
 )
