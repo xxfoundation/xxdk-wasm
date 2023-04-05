@@ -13,6 +13,7 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"strconv"
+	"strings"
 	"syscall/js"
 	"time"
 
@@ -275,9 +276,8 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 
 	currentMsg, err := valueToMessage(msgObj)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Failed to marshal Message: %+v", err))
-		return
+		return errors.WithMessagef(err,
+			"%s Failed to marshal Message", parentErr)
 	}
 
 	_, err = w.updateMessage(currentMsg, messageID, timestamp,
@@ -316,9 +316,8 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 
 	currentMsg, err := valueToMessage(msgObj)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Failed to marshal Message: %+v", err))
-		return 0
+		return 0, errors.WithMessagef(err,
+			"%s Failed to marshal Message", parentErr)
 	}
 
 	uuid, err := w.updateMessage(currentMsg, &messageID, timestamp,
