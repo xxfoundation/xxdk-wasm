@@ -136,7 +136,7 @@ func v1Upgrade(db *idb.Database) error {
 	}
 
 	// Build Channel ObjectStore
-	_, err = db.CreateObjectStore(channelsStoreName, storeOpts)
+	_, err = db.CreateObjectStore(channelStoreName, storeOpts)
 	if err != nil {
 		return err
 	}

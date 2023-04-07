@@ -235,7 +235,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 			}
 			eventModel.JoinChannel(testChannel)
 			eventModel.JoinChannel(testChannel2)
-			results, err2 := impl.Dump(eventModel.db, channelsStoreName)
+			results, err2 := impl.Dump(eventModel.db, channelStoreName)
 			if err2 != nil {
 				t.Fatal(err2)
 			}
@@ -243,7 +243,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 				t.Fatalf("Expected 2 channels to exist")
 			}
 			eventModel.LeaveChannel(testChannel.ReceptionID)
-			results, err = impl.Dump(eventModel.db, channelsStoreName)
+			results, err = impl.Dump(eventModel.db, channelStoreName)
 			if err != nil {
 				t.Fatal(err)
 			}
