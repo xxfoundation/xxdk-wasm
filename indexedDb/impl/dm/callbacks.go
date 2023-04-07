@@ -74,7 +74,7 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 		return []byte(err.Error()), nil
 	}
 
-	return nil, nil
+	return []byte{}, nil
 }
 
 // messageReceivedCallback sends calls to the MessageReceivedCallback in the

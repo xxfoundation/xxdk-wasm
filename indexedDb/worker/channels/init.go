@@ -121,7 +121,7 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 
 	select {
 	case data := <-dataChan:
-		if data != nil {
+		if len(data) > 0 {
 			return nil, errors.New(string(data))
 		}
 	case <-time.After(worker.ResponseTimeout):
