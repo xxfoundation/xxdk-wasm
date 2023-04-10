@@ -582,7 +582,7 @@ func (dmc *DMClient) GetShareURL(_ js.Value, args []js.Value) any {
 	return utils.CopyBytesToJS(urlReport)
 }
 
-// DecodeDMShareURL decodes the user's URL into a DMUser.
+// DecodeDMShareURL decodes the user's URL into a [DMUser].
 //
 // Parameters:
 //   - args[0] - The user's share URL. Should be received from another user or
