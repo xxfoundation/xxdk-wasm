@@ -57,7 +57,7 @@ type wasmModel struct {
 //
 // Returns any fatal errors.
 func (w *wasmModel) ReceiveFile(fileID fileTransfer.ID, fileLink,
-	fileData []byte, timestamp time.Time, status cft.FileStatus) error {
+	fileData []byte, timestamp time.Time, status cft.Status) error {
 
 	newFile := &File{
 		Id:        fileID.Marshal(),
@@ -78,7 +78,7 @@ func (w *wasmModel) ReceiveFile(fileID fileTransfer.ID, fileLink,
 // Returns an error if the file cannot be updated. It must return
 // channels.NoMessageErr if the file does not exist.
 func (w *wasmModel) UpdateFile(fileID fileTransfer.ID, fileLink,
-	fileData []byte, timestamp *time.Time, status *cft.FileStatus) error {
+	fileData []byte, timestamp *time.Time, status *cft.Status) error {
 	parentErr := "[Channels indexedDB] failed to UpdateFile"
 
 	// Get the File as it currently exists in storage
@@ -149,11 +149,11 @@ func (w *wasmModel) GetFile(fileID fileTransfer.ID) (
 	}
 
 	result := cft.ModelFile{
-		FileID:    fileTransfer.NewID(resultFile.Data),
-		FileLink:  resultFile.Link,
-		FileData:  resultFile.Data,
+		ID:        fileTransfer.NewID(resultFile.Data),
+		Link:      resultFile.Link,
+		Data:      resultFile.Data,
 		Timestamp: resultFile.Timestamp,
-		Status:    cft.FileStatus(resultFile.Status),
+		Status:    cft.Status(resultFile.Status),
 	}
 	return result, nil
 }
@@ -163,7 +163,7 @@ func (w *wasmModel) GetFile(fileID fileTransfer.ID) (
 // Returns fatal errors. It must return channels.NoMessageErr if the file
 // does not exist.
 func (w *wasmModel) DeleteFile(fileID fileTransfer.ID) error {
-	err := impl.Delete(w.db, fileStoreName, js.ValueOf(fileID.Marshal()))
+	err := impl.Delete(w.db, fileStoreName, impl.EncodeBytes(fileID.Marshal()))
 	if err != nil {
 		if strings.Contains(err.Error(), impl.ErrDoesNotExist) {
 			return channels.NoMessageErr

@@ -10,9 +10,13 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
+	"errors"
 	"fmt"
+	cft "gitlab.com/elixxir/client/v4/channelsFileTransfer"
+	"gitlab.com/elixxir/crypto/fileTransfer"
 	"os"
 	"strconv"
 	"testing"
@@ -42,6 +46,79 @@ func dummyReceivedMessageCB(uint64, *id.ID, bool)      {}
 func dummyDeletedMessageCB(message.ID)                 {}
 func dummyMutedUserCB(*id.ID, ed25519.PublicKey, bool) {}
 
+// Happy path test for receiving, updating, getting, and deleting a File.
+func TestWasmModel_ReceiveFile(t *testing.T) {
+	testString := "TestWasmModel_ReceiveFile"
+	m, err := newWASMModel(testString, nil,
+		dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testTs := time.Now()
+	testBytes := []byte(testString)
+	testStatus := cft.Downloading
+
+	// Insert a test row
+	fId := fileTransfer.NewID(testBytes)
+	err = m.ReceiveFile(fId, testBytes, testBytes, testTs, testStatus)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Attempt to get stored row
+	storedFile, err := m.GetFile(fId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Spot check stored attribute
+	if !bytes.Equal(storedFile.Link, testBytes) {
+		t.Fatalf("Got unequal FileLink values")
+	}
+
+	// Attempt to updated stored row
+	newTs := time.Now()
+	newBytes := []byte("test")
+	newStatus := cft.Complete
+	err = m.UpdateFile(fId, nil, newBytes, &newTs, &newStatus)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check that the update took
+	updatedFile, err := m.GetFile(fId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Link should not have changed
+	if !bytes.Equal(updatedFile.Link, testBytes) {
+		t.Fatalf("Link should not have changed")
+	}
+	// Other attributes should have changed
+	if !bytes.Equal(updatedFile.Data, newBytes) {
+		t.Fatalf("Data should have updated")
+	}
+	if !updatedFile.Timestamp.Equal(newTs) {
+		t.Fatalf("TS should have updated, expected %s got %s",
+			newTs, updatedFile.Timestamp)
+	}
+	if updatedFile.Status != newStatus {
+		t.Fatalf("Status should have updated")
+	}
+
+	// Delete the row
+	err = m.DeleteFile(fId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check that the delete operation took and get provides the expected error
+	_, err = m.GetFile(fId)
+	if err == nil || !errors.Is(channels.NoMessageErr, err) {
+		t.Fatal(err)
+	}
+}
+
 // Happy path, insert message and look it up
 func TestWasmModel_GetMessage(t *testing.T) {
 	cipher, err := cryptoChannel.NewCipher(
@@ -54,7 +131,7 @@ func TestWasmModel_GetMessage(t *testing.T) {
 		if c != nil {
 			cs = "_withCipher"
 		}
-		testString := "TestWasmModel_msgIDLookup" + cs
+		testString := "TestWasmModel_GetMessage" + cs
 		t.Run(testString, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
