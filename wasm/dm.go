@@ -563,14 +563,14 @@ type DMUser struct {
 	PublicKey []byte `json:"publicKey"`
 }
 
-// GetShareURL generates a URL that can be used to share a URL to initiate d
+// GetShareURL generates a URL that can be used to share a URL to initiate a
 // direct messages with this user.
 //
 // Parameters:
-//   - args[0] - The URL to append the DM info to.
+//   - args[0] - The URL to append the DM info to (string).
 //
 // Returns:
-//   - JSON of [DMShareURL].
+//   - JSON of [DMShareURL] (Uint8Array).
 func (dmc *DMClient) GetShareURL(_ js.Value, args []js.Value) any {
 	host := args[0].String()
 	urlReport, err := dmc.api.GetShareURL(host)
@@ -586,10 +586,10 @@ func (dmc *DMClient) GetShareURL(_ js.Value, args []js.Value) any {
 //
 // Parameters:
 //   - args[0] - The user's share URL. Should be received from another user or
-//     generated via [DMClient.GetShareURL].
+//     generated via [DMClient.GetShareURL] (string).
 //
 // Returns:
-//   - JSON of DMUser.
+//   - JSON of [DMUser] (Uint8Array).
 func DecodeDMShareURL(_ js.Value, args []js.Value) any {
 
 	url := args[0].String()
