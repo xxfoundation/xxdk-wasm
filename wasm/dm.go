@@ -532,6 +532,77 @@ func (dmc *DMClient) GetDatabaseName(js.Value, []js.Value) any {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// DM Share URL                                                          //
+////////////////////////////////////////////////////////////////////////////////
+
+// DMShareURL is returned from [DMClient.GetShareURL]. It includes the
+// user's share URL.
+//
+// JSON example for a user:
+//
+//	{
+//	 "url": "https://internet.speakeasy.tech/?l=32&m=5&p=EfDzQDa4fQ5BoqNIMbECFDY9ckRr_fadd8F1jE49qJc%3D&t=4231817746&v=1",
+//	 "password": "hunter2",
+//	}
+type DMShareURL struct {
+	URL      string `json:"url"`
+	Password string `json:"password"`
+}
+
+// DMUser is returned from [DecodeDMShareURL]. It includes the token
+// and public key of the user who created the URL.
+//
+// JSON example for a user:
+//
+//	{
+//	 "token": 4231817746,
+//	 "publicKey": "EfDzQDa4fQ5BoqNIMbECFDY9ckRr/fadd8F1jE49qJc="
+//	}
+type DMUser struct {
+	Token     int32  `json:"token"`
+	PublicKey []byte `json:"publicKey"`
+}
+
+// GetShareURL generates a URL that can be used to share a URL to initiate a
+// direct messages with this user.
+//
+// Parameters:
+//   - args[0] - The URL to append the DM info to (string).
+//
+// Returns:
+//   - JSON of [DMShareURL] (Uint8Array).
+func (dmc *DMClient) GetShareURL(_ js.Value, args []js.Value) any {
+	host := args[0].String()
+	urlReport, err := dmc.api.GetShareURL(host)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(urlReport)
+}
+
+// DecodeDMShareURL decodes the user's URL into a [DMUser].
+//
+// Parameters:
+//   - args[0] - The user's share URL. Should be received from another user or
+//     generated via [DMClient.GetShareURL] (string).
+//
+// Returns:
+//   - JSON of [DMUser] (Uint8Array).
+func DecodeDMShareURL(_ js.Value, args []js.Value) any {
+
+	url := args[0].String()
+	report, err := bindings.DecodeDMShareURL(url)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(report)
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Channel Receiving Logic and Callback Registration                          //
 ////////////////////////////////////////////////////////////////////////////////
 
