@@ -49,11 +49,11 @@ type wasmModel struct {
 
 // ReceiveFile is called when a file upload or download beings.
 //
-// fileLink, fileData, and timestamp are nillable and may be updated based
+// fileLink and fileData are nillable and may be updated based
 // upon the UUID or file ID later.
 //
 // fileID is always unique to the fileData. fileLink is the JSON of
-// File.Link.
+// channelsFileTransfer.FileLink.
 //
 // Returns any fatal errors.
 func (w *wasmModel) ReceiveFile(fileID fileTransfer.ID, fileLink,
