@@ -26,10 +26,11 @@ type ChannelsFileTransfer struct {
 func newChannelsFileTransferJS(api *bindings.ChannelsFileTransfer) map[string]any {
 	cft := ChannelsFileTransfer{api}
 	channelsFileTransferMap := map[string]any{
-		"MaxFileNameLen": js.FuncOf(cft.MaxFileNameLen),
-		"MaxFileTypeLen": js.FuncOf(cft.MaxFileTypeLen),
-		"MaxFileSize":    js.FuncOf(cft.MaxFileSize),
-		"MaxPreviewSize": js.FuncOf(cft.MaxPreviewSize),
+		"GetExtensionBuilderID": js.FuncOf(cft.GetExtensionBuilderID),
+		"MaxFileNameLen":        js.FuncOf(cft.MaxFileNameLen),
+		"MaxFileTypeLen":        js.FuncOf(cft.MaxFileTypeLen),
+		"MaxFileSize":           js.FuncOf(cft.MaxFileSize),
+		"MaxPreviewSize":        js.FuncOf(cft.MaxPreviewSize),
 
 		// Uploading/Sending
 		"Upload":                       js.FuncOf(cft.Upload),
@@ -73,6 +74,16 @@ func InitChannelsFileTransfer(_ js.Value, args []js.Value) any {
 	}
 
 	return utils.CreatePromise(promiseFn)
+}
+
+// GetExtensionBuilderID returns the ID of the extension builder in the tracker.
+// Pass this ID into the channel manager creator to use file transfer manager in
+// conjunction with channels.
+//
+// Returns:
+//   - Extension builder ID (int).
+func (cft *ChannelsFileTransfer) GetExtensionBuilderID(js.Value, []js.Value) any {
+	return cft.api.GetExtensionBuilderID()
 }
 
 // MaxFileNameLen returns the max number of bytes allowed for a file name.
