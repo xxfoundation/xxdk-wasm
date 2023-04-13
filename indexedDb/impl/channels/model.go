@@ -18,8 +18,9 @@ const (
 	pkeyName = "id"
 
 	// Text representation of the names of the various [idb.ObjectStore].
-	messageStoreName  = "messages"
-	channelsStoreName = "channels"
+	messageStoreName = "messages"
+	channelStoreName = "channels"
+	fileStoreName    = "files"
 
 	// Message index names.
 	messageStoreMessageIndex   = "message_id_index"
@@ -72,4 +73,22 @@ type Channel struct {
 	ID          []byte `json:"id"` // Matches pkeyName
 	Name        string `json:"name"`
 	Description string `json:"description"`
+}
+
+// File defines the IndexedDb representation of a single File.
+type File struct {
+	// Id is a unique identifier for a given File.
+	Id []byte `json:"id"` // Matches pkeyName
+
+	// Data stores the actual contents of the File.
+	Data []byte `json:"data"`
+
+	// Link contains all the information needed to download the file data.
+	Link []byte `json:"link"`
+
+	// Timestamp is the last time the file data, link, or status was modified.
+	Timestamp time.Time `json:"timestamp"`
+
+	// Status of the file in the event model.
+	Status uint8 `json:"status"`
 }

@@ -40,6 +40,20 @@ func TestGetIndex_NoMessageError(t *testing.T) {
 	}
 }
 
+// Test simple put on empty DB is successful
+func TestPut(t *testing.T) {
+	objectStoreName := "messages"
+	db := newTestDB(objectStoreName, "index", t)
+	testValue := js.ValueOf(make(map[string]interface{}))
+	result, err := Put(db, objectStoreName, testValue)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	if !result.Equal(js.ValueOf(1)) {
+		t.Fatalf("Failed to generate autoincremented key")
+	}
+}
+
 // newTestDB creates a new idb.Database for testing.
 func newTestDB(name, index string, t *testing.T) *idb.Database {
 	// Attempt to open database object
