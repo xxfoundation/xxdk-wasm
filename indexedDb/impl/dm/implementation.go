@@ -41,14 +41,15 @@ type wasmModel struct {
 
 // upsertConversation is used for joining or updating a Conversation.
 func (w *wasmModel) upsertConversation(nickname string,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, blocked bool) error {
+	pubKey ed25519.PublicKey, partnerToken uint32, codeset uint8,
+	blocked bool) error {
 	parentErr := errors.New("[DM indexedDB] failed to upsertConversation")
 
 	// Build object
 	newConvo := Conversation{
 		Pubkey:         pubKey,
 		Nickname:       nickname,
-		Token:          dmToken,
+		Token:          partnerToken,
 		CodesetVersion: codeset,
 		Blocked:        blocked,
 	}
@@ -213,7 +214,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 
 // receiveWrapper is a higher-level wrapper of upsertMessage.
 func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, nickname,
-	data string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	data string, partnerKey, senderKey ed25519.PublicKey, partnerToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, mType dm.MessageType, status dm.Status) (uint64, error) {
 
 	// Keep track of whether a Conversation was altered
@@ -228,10 +229,11 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 			// If there is no extant Conversation, create one.
 			jww.DEBUG.Printf(
 				"[DM indexedDB] Joining conversation with %s", nickname)
+
 			convoToUpdate = &Conversation{
-				Pubkey:         senderKey,
+				Pubkey:         partnerKey,
 				Nickname:       nickname,
-				Token:          dmToken,
+				Token:          partnerToken,
 				CodesetVersion: codeset,
 				Blocked:        false,
 			}
@@ -252,13 +254,13 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 		}
 
 		// Fix conversation if dmToken is altered
-		dmTokenChanged := result.Token != dmToken
+		dmTokenChanged := result.Token != partnerToken
 		if isFromPartner && dmTokenChanged {
 			jww.WARN.Printf(
 				"[DM indexedDB] Updating from dmToken %d to %d",
-				result.Token, dmToken)
+				result.Token, partnerToken)
 			convoToUpdate = result
-			convoToUpdate.Token = dmToken
+			convoToUpdate.Token = partnerToken
 		}
 	}
 
