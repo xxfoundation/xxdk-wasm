@@ -60,6 +60,7 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]any {
 		"SendMessage":           js.FuncOf(cm.SendMessage),
 		"SendReply":             js.FuncOf(cm.SendReply),
 		"SendReaction":          js.FuncOf(cm.SendReaction),
+		"SendInvite":            js.FuncOf(cm.SendInvite),
 		"DeleteMessage":         js.FuncOf(cm.DeleteMessage),
 		"PinMessage":            js.FuncOf(cm.PinMessage),
 		"MuteUser":              js.FuncOf(cm.MuteUser),
@@ -1038,9 +1039,10 @@ func (cm *ChannelsManager) SendGeneric(_ js.Value, args []js.Value) any {
 	tracked := args[4].Bool()
 	cmixParamsJSON := utils.CopyBytesToGo(args[5])
 
+	// fixme: add pings to wasm
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := cm.api.SendGeneric(marshalledChanId, messageType,
-			msg, leaseTimeMS, tracked, cmixParamsJSON)
+			msg, leaseTimeMS, tracked, cmixParamsJSON, nil)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -1081,8 +1083,9 @@ func (cm *ChannelsManager) SendMessage(_ js.Value, args []js.Value) any {
 	cmixParamsJSON := utils.CopyBytesToGo(args[3])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		// fixme: add pings to wasm
 		sendReport, err := cm.api.SendMessage(
-			marshalledChanId, msg, leaseTimeMS, cmixParamsJSON)
+			marshalledChanId, msg, leaseTimeMS, cmixParamsJSON, nil)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -1131,8 +1134,9 @@ func (cm *ChannelsManager) SendReply(_ js.Value, args []js.Value) any {
 	cmixParamsJSON := utils.CopyBytesToGo(args[4])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		// fixme: add pings to wasm
 		sendReport, err := cm.api.SendReply(marshalledChanId, msg,
-			messageToReactTo, leaseTimeMS, cmixParamsJSON)
+			messageToReactTo, leaseTimeMS, cmixParamsJSON, nil)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -1181,6 +1185,55 @@ func (cm *ChannelsManager) SendReaction(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := cm.api.SendReaction(marshalledChanId, reaction,
 			messageToReactTo, leaseTimeMS, cmixParamsJSON)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// SendInvite is used to send to a channel (invited) an invitation to another
+// channel (invitee).
+//
+// If the channel ID for the invitee channel is not recognized by the Manager,
+// then an error will be returned.
+//
+// Parameters:
+//   - args[0] - Marshalled bytes of the invited channel [id.ID] (Uint8Array).
+//   - args[1] - Marshalled bytes of the invitee channel [id.ID] (Uint8Array).
+//   - args[2] - The contents of the message (string).
+//   - args[3] - The URL to append the channel info to (string).
+//   - args[4] - The maximum number of uses the link can be used (0 for
+//     unlimited) (int).
+//   - args[5] - The lease of the message. This will be how long the
+//     message is available from the network, in milliseconds (int). As per the
+//     [channels.Manager] documentation, this has different meanings depending
+//     on the use case. These use cases may be generic enough that they will not
+//     be enumerated here. Use [ValidForever] to last the max message life.
+//   - args[6] - JSON of [xxdk.CMIXParams]. If left empty
+//     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
+//
+// Returns a promise:
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
+func (cm *ChannelsManager) SendInvite(_ js.Value, args []js.Value) any {
+	var (
+		marshalledChanId     = utils.CopyBytesToGo(args[0])
+		marshalledInviteToId = utils.CopyBytesToGo(args[1])
+		msg                  = args[2].String()
+		host                 = args[3].String()
+		maxUses              = args[4].Int()
+		leaseTimeMS          = int64(args[4].Int())
+		cmixParamsJSON       = utils.CopyBytesToGo(args[5])
+	)
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		sendReport, err := cm.api.SendInvite(marshalledChanId,
+			marshalledInviteToId, msg, host, maxUses, leaseTimeMS,
+			cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
