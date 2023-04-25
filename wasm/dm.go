@@ -57,6 +57,7 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 		"SendText":     js.FuncOf(cm.SendText),
 		"SendReply":    js.FuncOf(cm.SendReply),
 		"SendReaction": js.FuncOf(cm.SendReaction),
+		"SendInvite":   js.FuncOf(cm.SendInvite),
 		"Send":         js.FuncOf(cm.Send),
 	}
 
@@ -429,7 +430,8 @@ func (dmc *DMClient) SendReply(_ js.Value, args []js.Value) any {
 // Users will drop the reaction if they do not recognize the reactTo message.
 //
 // Parameters:
-//   - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
+//   - args[0] - The bytes of the public key of the partner's ED25519 signing
+//     key (Uint8Array).
 //   - args[1] - The token used to derive the reception ID for the partner (int).
 //   - args[2] - The user's reaction. This should be a single emoji with no
 //     other characters. As such, a Unicode string is expected (string).
@@ -460,6 +462,54 @@ func (dmc *DMClient) SendReaction(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := dmc.api.SendReaction(partnerPubKeyBytes,
 			partnerToken, reaction, reactToBytes, cmixParamsJSON)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// SendInvite is used to send to a DM partner an invitation to another
+// channel.
+//
+// If the channel ID for the invitee channel is not recognized by the Manager,
+// then an error will be returned.
+//
+// Parameters:
+//   - args[0] - The ID of [ChannelsManager] object in tracker. This can be
+//     retrieved using [ChannelsManager.GetID].
+//   - args[1] - The bytes of the public key of the partner's ED25519 signing
+//     key (Uint8Array).
+//   - args[2] - The token used to derive the reception ID for the partner (int).
+//   - args[3] - Marshalled bytes of the channel the user is inviting another
+//     user to.
+//   - args[4] - The contents of the message. The message should be at most 510
+//     bytes. This is expected to be Unicode, and thus a string data type is
+//     expected.
+//   - args[5] - The URL to append the channel info to.
+//   - args[6] - The maximum number of uses the link can be used (0 for
+//     unlimited).
+//   - args[7] - A JSON marshalled [xxdk.CMIXParams]. This may be empty,
+//     and GetDefaultCMixParams will be used internally.
+func (dmc *DMClient) SendInvite(_ js.Value, args []js.Value) any {
+	var (
+		channelManagerId     = args[0].Int()
+		partnerPubKeyBytes   = utils.CopyBytesToGo(args[1])
+		partnerToken         = int32(args[2].Int())
+		marshalledInviteToId = utils.CopyBytesToGo(args[3])
+		msg                  = args[4].String()
+		host                 = args[5].String()
+		maxUses              = args[6].Int()
+		cmixParamsJSON       = utils.CopyBytesToGo(args[7])
+	)
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		sendReport, err := dmc.api.SendInvite(channelManagerId,
+			partnerPubKeyBytes, partnerToken, marshalledInviteToId, msg, host,
+			maxUses, cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
