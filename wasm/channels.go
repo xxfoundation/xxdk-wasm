@@ -1230,10 +1230,11 @@ func (cm *ChannelsManager) SendInvite(_ js.Value, args []js.Value) any {
 		cmixParamsJSON       = utils.CopyBytesToGo(args[5])
 	)
 
+	// fixme: add pings to wasm
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := cm.api.SendInvite(marshalledChanId,
 			marshalledInviteToId, msg, host, maxUses, leaseTimeMS,
-			cmixParamsJSON)
+			cmixParamsJSON, nil)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
