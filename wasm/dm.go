@@ -58,6 +58,7 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 		"SendReply":    js.FuncOf(cm.SendReply),
 		"SendReaction": js.FuncOf(cm.SendReaction),
 		"SendInvite":   js.FuncOf(cm.SendInvite),
+		"SendSilent":   js.FuncOf(cm.SendSilent),
 		"Send":         js.FuncOf(cm.Send),
 	}
 
@@ -494,6 +495,10 @@ func (dmc *DMClient) SendReaction(_ js.Value, args []js.Value) any {
 //     unlimited).
 //   - args[7] - A JSON marshalled [xxdk.CMIXParams]. This may be empty,
 //     and GetDefaultCMixParams will be used internally.
+//
+// Returns a promise:
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
 func (dmc *DMClient) SendInvite(_ js.Value, args []js.Value) any {
 	var (
 		channelManagerId     = args[0].Int()
@@ -510,6 +515,38 @@ func (dmc *DMClient) SendInvite(_ js.Value, args []js.Value) any {
 		sendReport, err := dmc.api.SendInvite(channelManagerId,
 			partnerPubKeyBytes, partnerToken, marshalledInviteToId, msg, host,
 			maxUses, cmixParamsJSON)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// SendSilent is used to send to a DM partner an invitation to another
+// channel.
+//
+// If the channel ID for the invitee channel is not recognized by the Manager,
+// then an error will be returned.
+//
+// Parameters:
+//   - args[0] - The bytes of the public key of the partner's ED25519 signing
+//     key (Uint8Array).
+//   - args[1] - The token used to derive the reception ID for the partner (int).
+//   - args[2] - A JSON marshalled [xxdk.CMIXParams]. This may be empty,
+//     and GetDefaultCMixParams will be used internally.
+func (dmc *DMClient) SendSilent(_ js.Value, args []js.Value) any {
+	var (
+		partnerPubKeyBytes = utils.CopyBytesToGo(args[0])
+		partnerToken       = int32(args[1].Int())
+		cmixParamsJSON     = utils.CopyBytesToGo(args[2])
+	)
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		sendReport, err := dmc.api.SendSilent(
+			partnerPubKeyBytes, partnerToken, cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
