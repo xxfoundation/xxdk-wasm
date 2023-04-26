@@ -55,12 +55,14 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]any {
 		"GetShareURL": js.FuncOf(cm.GetShareURL),
 
 		// Channel Sending Methods and Reports
-		"SendGeneric":           js.FuncOf(cm.SendGeneric),
-		"SendAdminGeneric":      js.FuncOf(cm.SendAdminGeneric),
-		"SendMessage":           js.FuncOf(cm.SendMessage),
-		"SendReply":             js.FuncOf(cm.SendReply),
-		"SendReaction":          js.FuncOf(cm.SendReaction),
-		"SendInvite":            js.FuncOf(cm.SendInvite),
+		"SendGeneric":      js.FuncOf(cm.SendGeneric),
+		"SendAdminGeneric": js.FuncOf(cm.SendAdminGeneric),
+		"SendMessage":      js.FuncOf(cm.SendMessage),
+		"SendReply":        js.FuncOf(cm.SendReply),
+		"SendReaction":     js.FuncOf(cm.SendReaction),
+		"SendInvite":       js.FuncOf(cm.SendInvite),
+		"SendSilent":       js.FuncOf(cm.SendSilent),
+
 		"DeleteMessage":         js.FuncOf(cm.DeleteMessage),
 		"PinMessage":            js.FuncOf(cm.PinMessage),
 		"MuteUser":              js.FuncOf(cm.MuteUser),
@@ -1235,6 +1237,46 @@ func (cm *ChannelsManager) SendInvite(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.SendInvite(marshalledChanId,
 			marshalledInviteToId, msg, host, maxUses, leaseTimeMS,
 			cmixParamsJSON, nil)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// SendSilent is used to send to a channel a message with no notifications.
+// Its primary purpose is to communicate new nicknames without calling
+// SendMessage.
+//
+// It takes no payload intentionally as the message should be very
+// lightweight.
+//
+// Parameters:
+//   - args[0] - Marshalled bytes of the invited channel [id.ID] (Uint8Array).
+//   - args[1] - The lease of the message. This will be how long the
+//     message is available from the network, in milliseconds (int). As per the
+//     [channels.Manager] documentation, this has different meanings depending
+//     on the use case. These use cases may be generic enough that they will not
+//     be enumerated here. Use [ValidForever] to last the max message life.
+//   - args[2] - JSON of [xxdk.CMIXParams]. If left empty
+//     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
+//
+// Returns a promise:
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
+func (cm *ChannelsManager) SendSilent(_ js.Value, args []js.Value) any {
+	var (
+		marshalledChanId = utils.CopyBytesToGo(args[0])
+		leaseTimeMS      = int64(args[1].Int())
+		cmixParamsJSON   = utils.CopyBytesToGo(args[2])
+	)
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		sendReport, err := cm.api.SendSilent(
+			marshalledChanId, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
