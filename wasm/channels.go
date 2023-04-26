@@ -1226,8 +1226,8 @@ func (cm *ChannelsManager) SendInvite(_ js.Value, args []js.Value) any {
 		msg                  = args[2].String()
 		host                 = args[3].String()
 		maxUses              = args[4].Int()
-		leaseTimeMS          = int64(args[4].Int())
-		cmixParamsJSON       = utils.CopyBytesToGo(args[5])
+		leaseTimeMS          = int64(args[5].Int())
+		cmixParamsJSON       = utils.CopyBytesToGo(args[6])
 	)
 
 	// fixme: add pings to wasm
