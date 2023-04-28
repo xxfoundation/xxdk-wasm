@@ -23,6 +23,7 @@ stages:
   - tag
   - doc-update
   - version-check
+  - xxdk-npm
 
 go-test:
   stage: test
@@ -151,3 +152,30 @@ version-check:
     - GITTAG=$(git describe --tags)
     - CODEVERS=$(cat storage/version.go | grep "const SEMVER =" | cut -d ' ' -f4 | tr -d '"')
     - if [[ $GITTAG != $CODEVERS ]]; then echo "VERSION NUMBER BAD $GITTAG != $CODEVERS"; exit -1; fi
+
+xxdk-npm-push:
+  stage: xxdk-npm
+  only:
+    - release
+    - dev
+  except:
+    - tags
+  image: $DOCKER_IMAGE
+  script:
+    - 'PIPELINE_JOBS=$(curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/pipelines/$CI_PIPELINE_ID/jobs)'
+    - BUILD_JOB_JSON=$(echo $PIPELINE_JOBS | jq '.[] | select(.name=="build")')
+    - BUILD_JOB_ID=$(echo $BUILD_JOB_JSON | jq -r '.["id"]')
+
+    - git config --global user.email "sydney-anne+azura@elixxir.io"
+    - git config --global user.name "Azura [Bot]"
+
+    - echo IdentityFile $AZURA_SSH_KEY > ~/.ssh/config
+    - git clone $GITLAB_SERVER_SSH:elixxir/xxdk-npm.git
+    - cd xxdk-npm/src
+
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output wasm_exec.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/wasm_exec.js'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output xxdk.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/xxdk.wasm'
+
+    - git add xxdk.wasm wasm_exec.js
+    - git commit -m "[AUTO-PUSH] Latest binaries from xxdk-wasm repo"
+    - git push
