@@ -537,6 +537,10 @@ func (dmc *DMClient) SendInvite(_ js.Value, args []js.Value) any {
 //   - args[1] - The token used to derive the reception ID for the partner (int).
 //   - args[2] - A JSON marshalled [xxdk.CMIXParams]. This may be empty,
 //     and GetDefaultCMixParams will be used internally.
+//
+// Returns a promise:
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
 func (dmc *DMClient) SendSilent(_ js.Value, args []js.Value) any {
 	var (
 		partnerPubKeyBytes = utils.CopyBytesToGo(args[0])
