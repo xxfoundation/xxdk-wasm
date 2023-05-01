@@ -170,7 +170,7 @@ xxdk-npm-push:
     - git config --global user.name "Azura [Bot]"
 
     - echo IdentityFile $AZURA_SSH_KEY > ~/.ssh/config
-    - git clone $GITLAB_SERVER_SSH:elixxir/xxdk-npm.git
+    - git clone $GITLAB_SERVER_SSH:elixxir/xxdk-npm.git -b $CI_COMMIT_REF_NAME
     - cd xxdk-npm/src
 
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output wasm_exec.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/wasm_exec.js'
