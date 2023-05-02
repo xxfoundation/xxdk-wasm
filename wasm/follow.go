@@ -87,6 +87,13 @@ func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) any {
 // SetTrackNetworkPeriod allows changing the frequency that follower threads
 // are started.
 //
+// Note that the frequency of the follower threads affect the power usage
+// of the device following the network.
+//   - Low period -> Higher frequency of polling -> Higher battery usage
+//   - High period -> Lower frequency of polling -> Lower battery usage
+// This may be used to enable a low power (or battery optimization) mode
+// for the end user.
+//
 // Parameters:
 //   - args[0] - The duration of the period, in milliseconds (int).
 func (c *Cmix) SetTrackNetworkPeriod(_ js.Value, args []js.Value) any {
