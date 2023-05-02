@@ -19,6 +19,8 @@ import (
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
 
+// TODO: test
+
 // FileLogger manages the recording of jwalterweatherman logs to the local
 // in-memory file buffer.
 type FileLogger struct {

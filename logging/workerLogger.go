@@ -21,7 +21,8 @@ import (
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
 
-// TODO: add ability to import worker so that multiple threads can send logs
+// TODO: add ability to import worker so that multiple threads can send logs: https://stackoverflow.com/questions/8343781/how-to-do-worker-to-worker-communication
+// TODO: test
 
 // WorkerLogger manages the recording of jwalterweatherman logs to the in-memory
 // file buffer in a remote Worker thread.
