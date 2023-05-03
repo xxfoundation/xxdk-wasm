@@ -24,20 +24,20 @@ import (
 // TODO: add ability to import worker so that multiple threads can send logs: https://stackoverflow.com/questions/8343781/how-to-do-worker-to-worker-communication
 // TODO: test
 
-// WorkerLogger manages the recording of jwalterweatherman logs to the in-memory
+// workerLogger manages the recording of jwalterweatherman logs to the in-memory
 // file buffer in a remote Worker thread.
-type WorkerLogger struct {
+type workerLogger struct {
 	threshold      jww.Threshold
 	maxLogFileSize int
 	wm             *worker.Manager
 }
 
-// NewWorkerLogger starts logging to an in-memory log file in a remote Worker
-// at the specified threshold. Returns a [WorkerLogger] that can be used to get
+// newWorkerLogger starts logging to an in-memory log file in a remote Worker
+// at the specified threshold. Returns a [workerLogger] that can be used to get
 // the log file.
-func NewWorkerLogger(threshold jww.Threshold, maxLogFileSize int,
-	wasmJsPath, workerName string) (*WorkerLogger, error) {
-	wl := &WorkerLogger{
+func newWorkerLogger(threshold jww.Threshold, maxLogFileSize int,
+	wasmJsPath, workerName string) (*workerLogger, error) {
+	wl := &workerLogger{
 		threshold:      threshold,
 		maxLogFileSize: maxLogFileSize,
 	}
@@ -92,14 +92,14 @@ func NewWorkerLogger(threshold jww.Threshold, maxLogFileSize int,
 
 // Write adheres to the io.Writer interface and writes log entries to the
 // buffer.
-func (wl *WorkerLogger) Write(p []byte) (n int, err error) {
+func (wl *workerLogger) Write(p []byte) (n int, err error) {
 	wl.wm.SendMessage(WriteLogTag, p, nil)
 	return len(p), nil
 }
 
 // Listen adheres to the [jwalterweatherman.LogListener] type and returns the
 // log writer when the threshold is within the set threshold limit.
-func (wl *WorkerLogger) Listen(t jww.Threshold) io.Writer {
+func (wl *workerLogger) Listen(t jww.Threshold) io.Writer {
 	if t < wl.threshold {
 		return nil
 	}
@@ -108,7 +108,7 @@ func (wl *WorkerLogger) Listen(t jww.Threshold) io.Writer {
 
 // StopLogging stops log message writes and terminates the worker. Once logging
 // is stopped, it cannot be resumed and the log file cannot be recovered.
-func (wl *WorkerLogger) StopLogging() {
+func (wl *workerLogger) StopLogging() {
 	wl.threshold = 20
 
 	wl.wm.Stop()
@@ -116,7 +116,7 @@ func (wl *WorkerLogger) StopLogging() {
 }
 
 // GetFile returns the entire log file.
-func (wl *WorkerLogger) GetFile() []byte {
+func (wl *workerLogger) GetFile() []byte {
 	fileChan := make(chan []byte)
 	wl.wm.SendMessage(GetFileTag, nil, func(data []byte) { fileChan <- data })
 
@@ -131,17 +131,17 @@ func (wl *WorkerLogger) GetFile() []byte {
 }
 
 // Threshold returns the log level threshold used in the file.
-func (wl *WorkerLogger) Threshold() jww.Threshold {
+func (wl *workerLogger) Threshold() jww.Threshold {
 	return wl.threshold
 }
 
 // MaxSize returns the max size, in bytes, that the log file is allowed to be.
-func (wl *WorkerLogger) MaxSize() int {
+func (wl *workerLogger) MaxSize() int {
 	return wl.maxLogFileSize
 }
 
 // Size returns the number of bytes written to the log file.
-func (wl *WorkerLogger) Size() int {
+func (wl *workerLogger) Size() int {
 	sizeChan := make(chan []byte)
 	wl.wm.SendMessage(SizeTag, nil, func(data []byte) { sizeChan <- data })
 
@@ -156,6 +156,6 @@ func (wl *WorkerLogger) Size() int {
 }
 
 // Worker returns the manager for the Javascript Worker object.
-func (wl *WorkerLogger) Worker() *worker.Manager {
+func (wl *workerLogger) Worker() *worker.Manager {
 	return wl.wm
 }

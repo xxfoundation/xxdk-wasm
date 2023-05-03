@@ -8,7 +8,7 @@
 importScripts('wasm_exec.js');
 
 const isReady = new Promise((resolve) => {
-    window.onWasmInitialized = resolve;
+    self.onWasmInitialized = resolve;
 });
 
 const go = new Go();

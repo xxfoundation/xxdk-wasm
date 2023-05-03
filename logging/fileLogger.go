@@ -21,18 +21,18 @@ import (
 
 // TODO: test
 
-// FileLogger manages the recording of jwalterweatherman logs to the local
+// fileLogger manages the recording of jwalterweatherman logs to the local
 // in-memory file buffer.
-type FileLogger struct {
+type fileLogger struct {
 	threshold      jww.Threshold
 	maxLogFileSize int
 	cb             *circbuf.Buffer
 }
 
-// NewFileLogger starts logging to a local, in-memory log file at the specified
-// threshold. Returns a [FileLogger] that can be used to get the log file.
-func NewFileLogger(threshold jww.Threshold, maxLogFileSize int) (*FileLogger, error) {
-	fl := &FileLogger{
+// newFileLogger starts logging to a local, in-memory log file at the specified
+// threshold. Returns a [fileLogger] that can be used to get the log file.
+func newFileLogger(threshold jww.Threshold, maxLogFileSize int) (*fileLogger, error) {
+	fl := &fileLogger{
 		threshold:      threshold,
 		maxLogFileSize: maxLogFileSize,
 	}
@@ -52,13 +52,13 @@ func NewFileLogger(threshold jww.Threshold, maxLogFileSize int) (*FileLogger, er
 
 // Write adheres to the io.Writer interface and writes log entries to the
 // buffer.
-func (fl *FileLogger) Write(p []byte) (n int, err error) {
+func (fl *fileLogger) Write(p []byte) (n int, err error) {
 	return fl.cb.Write(p)
 }
 
 // Listen adheres to the [jwalterweatherman.LogListener] type and returns the
 // log writer when the threshold is within the set threshold limit.
-func (fl *FileLogger) Listen(t jww.Threshold) io.Writer {
+func (fl *fileLogger) Listen(t jww.Threshold) io.Writer {
 	if t < fl.threshold {
 		return nil
 	}
@@ -67,31 +67,31 @@ func (fl *FileLogger) Listen(t jww.Threshold) io.Writer {
 
 // StopLogging stops log message writes. Once logging is stopped, it cannot be
 // resumed and the log file cannot be recovered.
-func (fl *FileLogger) StopLogging() {
+func (fl *fileLogger) StopLogging() {
 	fl.threshold = 20
 }
 
 // GetFile returns the entire log file.
-func (fl *FileLogger) GetFile() []byte {
+func (fl *fileLogger) GetFile() []byte {
 	return fl.cb.Bytes()
 }
 
 // Threshold returns the log level threshold used in the file.
-func (fl *FileLogger) Threshold() jww.Threshold {
+func (fl *fileLogger) Threshold() jww.Threshold {
 	return fl.threshold
 }
 
 // MaxSize returns the max size, in bytes, that the log file is allowed to be.
-func (fl *FileLogger) MaxSize() int {
+func (fl *fileLogger) MaxSize() int {
 	return fl.maxLogFileSize
 }
 
 // Size returns the current size, in bytes, written to the log file.
-func (fl *FileLogger) Size() int {
+func (fl *fileLogger) Size() int {
 	return int(fl.cb.Size())
 }
 
 // Worker returns nil.
-func (fl *FileLogger) Worker() *worker.Manager {
+func (fl *fileLogger) Worker() *worker.Manager {
 	return nil
 }

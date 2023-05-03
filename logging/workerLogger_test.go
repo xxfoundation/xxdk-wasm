@@ -16,26 +16,26 @@ import (
 func TestNewWorkerLogger(t *testing.T) {
 }
 
-func TestWorkerLogger_Write(t *testing.T) {
+func Test_workerLogger_Write(t *testing.T) {
 }
 
-func TestWorkerLogger_Listen(t *testing.T) {
+func Test_workerLogger_Listen(t *testing.T) {
 }
 
-func TestWorkerLogger_StopLogging(t *testing.T) {
+func Test_workerLogger_StopLogging(t *testing.T) {
 }
 
-func TestWorkerLogger_GetFile(t *testing.T) {
+func Test_workerLogger_GetFile(t *testing.T) {
 }
 
-func TestWorkerLogger_Threshold(t *testing.T) {
+func Test_workerLogger_Threshold(t *testing.T) {
 }
 
-func TestWorkerLogger_MaxSize(t *testing.T) {
+func Test_workerLogger_MaxSize(t *testing.T) {
 }
 
-func TestWorkerLogger_Size(t *testing.T) {
+func Test_workerLogger_Size(t *testing.T) {
 }
 
-func TestWorkerLogger_Worker(t *testing.T) {
+func Test_workerLogger_Worker(t *testing.T) {
 }

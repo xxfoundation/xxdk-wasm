@@ -78,13 +78,13 @@ func EnableLogging(logLevel, fileLogLevel jww.Threshold, maxLogFileSize int,
 
 	if fileLogLevel > -1 {
 		if workerScriptURL == "" {
-			fl, err := NewFileLogger(fileLogLevel, maxLogFileSize)
+			fl, err := newFileLogger(fileLogLevel, maxLogFileSize)
 			if err != nil {
 				return errors.Wrap(err, "could not initialize logging to file")
 			}
 			listeners = append(listeners, fl.Listen)
 		} else {
-			wl, err := NewWorkerLogger(
+			wl, err := newWorkerLogger(
 				fileLogLevel, maxLogFileSize, workerScriptURL, workerName)
 			if err != nil {
 				return errors.Wrap(err, "could not initialize logging to worker file")
