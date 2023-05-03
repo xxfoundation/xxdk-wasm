@@ -20,8 +20,9 @@ import (
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 )
 
-// ThreadReceptionCallback is the function that handles incoming data from the
-// main thread.
+// ThreadReceptionCallback is called with a message received from the main
+// thread. Any bytes returned are sent as a response back to the main thread.
+// Any returned errors are printed to the log.
 type ThreadReceptionCallback func(data []byte) ([]byte, error)
 
 // ThreadManager queues incoming messages from the main thread and handles them
@@ -94,8 +95,8 @@ func (tm *ThreadManager) processThread() {
 			}
 			err := tm.processReceivedMessage(message)
 			if err != nil {
-				jww.ERROR.Printf("[WW] [%s] Failed to receive message from "+
-					"main thread: %+v", tm.name, err)
+				jww.ERROR.Printf("[WW] [%s] Failed to process message received "+
+					"from main thread: %+v", tm.name, err)
 			}
 		}
 	}

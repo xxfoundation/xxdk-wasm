@@ -41,7 +41,7 @@ const (
 // put on.
 const receiveQueueChanSize = 100
 
-// ReceptionCallback is the function that handles incoming data from the worker.
+// ReceptionCallback is called with a message received from the worker.
 type ReceptionCallback func(data []byte)
 
 // Manager manages the handling of messages received from the worker.

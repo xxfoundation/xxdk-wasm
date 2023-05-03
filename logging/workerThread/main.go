@@ -13,25 +13,20 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"os"
+	"syscall/js"
+
 	"github.com/armon/circbuf"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
+
 	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
-	"os"
-	"syscall/js"
 )
 
 // SEMVER is the current semantic version of the xxDK Logger web worker.
 const SEMVER = "0.1.0"
-
-func init() {
-	// Set up Javascript console listener set at level INFO
-	ll := logging.NewJsConsoleLogListener(jww.LevelDebug)
-	logging.AddLogListener(ll.Listen)
-	jww.SetStdoutThreshold(jww.LevelFatal + 1)
-}
 
 // workerLogFile manages communication with the main thread and writing incoming
 // logging messages to the log file.
