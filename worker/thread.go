@@ -129,7 +129,7 @@ func (tm *ThreadManager) SendMessage(tag Tag, data []byte) {
 			"to main: %+v", tm.name, msg, tag, err)
 	}
 
-	go tm.postMessage(string(payload))
+	go tm.postMessage(utils.CopyBytesToJS(payload))
 }
 
 // sendResponse sends a reply to the main thread with the given tag and ID.
@@ -152,7 +152,7 @@ func (tm *ThreadManager) sendResponse(tag Tag, id uint64, data []byte) error {
 			"%d going to main: %+v", msg, tag, id, err)
 	}
 
-	go tm.postMessage(string(payload))
+	go tm.postMessage(utils.CopyBytesToJS(payload))
 
 	return nil
 }
@@ -225,7 +225,7 @@ func (tm *ThreadManager) addEventListeners() {
 	// occurs when a message is received from the main thread.
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/message_event
 	messageEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
-		tm.receiveMessage([]byte(args[0].Get("data").String()))
+		tm.receiveMessage(utils.CopyBytesToGo(args[0].Get("data")))
 		return nil
 	})
 
@@ -261,10 +261,15 @@ func (tm *ThreadManager) addEventListeners() {
 // aMessage must be a js.Value or a primitive type that can be converted via
 // js.ValueOf. The Javascript object must be "any value or JavaScript object
 // handled by the structured clone algorithm". See the doc for more information.
+
+// aMessage is the object to deliver to the main thread; this will be in the
+// data field in the event delivered to the thread. It must be a transferable
+// object because this function transfers ownership of the message instead of
+// copying it for better performance. See the doc for more information.
 //
 // Doc: https://developer.mozilla.org/docs/Web/API/DedicatedWorkerGlobalScope/postMessage
-func (tm *ThreadManager) postMessage(aMessage any) {
-	js.Global().Call("postMessage", aMessage)
+func (tm *ThreadManager) postMessage(aMessage js.Value) {
+	js.Global().Call("postMessage", aMessage, []any{aMessage.Get("buffer")})
 }
 
 // close discards any tasks queued in the worker's event loop, effectively

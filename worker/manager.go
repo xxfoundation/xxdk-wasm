@@ -174,7 +174,7 @@ func (m *Manager) SendMessage(
 			"ID %d going to worker: %+v", m.name, msg, tag, id, err)
 	}
 
-	go m.postMessage(string(payload))
+	go m.postMessage(utils.CopyBytesToJS(payload))
 }
 
 // receiveMessage is registered with the Javascript event listener and is called
@@ -303,7 +303,7 @@ func (m *Manager) addEventListeners() {
 	// occurs when a message is received from the worker.
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/message_event
 	messageEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
-		m.receiveMessage([]byte(args[0].Get("data").String()))
+		m.receiveMessage(utils.CopyBytesToGo(args[0].Get("data")))
 		return nil
 	})
 
@@ -336,20 +336,18 @@ func (m *Manager) addEventListeners() {
 
 // postMessage sends a message to the worker.
 //
-// message is the object to deliver to the worker; this will be in the data
-// field in the event delivered to the worker. It must be a js.Value or a
-// primitive type that can be converted via js.ValueOf. The Javascript object
-// must be "any value or JavaScript object handled by the structured clone
-// algorithm, which includes cyclical references.". See the doc for more
-// information.
+// msg is the object to deliver to the worker; this will be in the data
+// field in the event delivered to the worker. It must be a transferable object
+// because this function transfers ownership of the message instead of copying
+// it for better performance. See the doc for more information.
 //
 // If the message parameter is not provided, a SyntaxError will be thrown by the
 // parser. If the data to be passed to the worker is unimportant, js.Null or
 // js.Undefined can be passed explicitly.
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage
-func (m *Manager) postMessage(msg any) {
-	m.worker.Call("postMessage", msg)
+func (m *Manager) postMessage(msg js.Value) {
+	m.worker.Call("postMessage", msg, []any{msg.Get("buffer")})
 }
 
 // terminate immediately terminates the Worker. This does not offer the worker
