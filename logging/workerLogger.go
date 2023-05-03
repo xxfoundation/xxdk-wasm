@@ -13,6 +13,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"io"
+	"math"
 	"time"
 
 	"github.com/pkg/errors"
@@ -22,7 +23,6 @@ import (
 )
 
 // TODO: add ability to import worker so that multiple threads can send logs: https://stackoverflow.com/questions/8343781/how-to-do-worker-to-worker-communication
-// TODO: test
 
 // workerLogger manages the recording of jwalterweatherman logs to the in-memory
 // file buffer in a remote Worker thread.
@@ -99,8 +99,8 @@ func (wl *workerLogger) Write(p []byte) (n int, err error) {
 
 // Listen adheres to the [jwalterweatherman.LogListener] type and returns the
 // log writer when the threshold is within the set threshold limit.
-func (wl *workerLogger) Listen(t jww.Threshold) io.Writer {
-	if t < wl.threshold {
+func (wl *workerLogger) Listen(threshold jww.Threshold) io.Writer {
+	if threshold < wl.threshold {
 		return nil
 	}
 	return wl
@@ -109,7 +109,7 @@ func (wl *workerLogger) Listen(t jww.Threshold) io.Writer {
 // StopLogging stops log message writes and terminates the worker. Once logging
 // is stopped, it cannot be resumed and the log file cannot be recovered.
 func (wl *workerLogger) StopLogging() {
-	wl.threshold = 20
+	wl.threshold = math.MaxInt
 
 	wl.wm.Stop()
 	jww.DEBUG.Printf("[LOG] Terminated log worker.")
