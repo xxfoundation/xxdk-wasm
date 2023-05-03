@@ -17,7 +17,7 @@ import (
 
 // Tests that the map representing DMClient returned by newDMClientJS contains
 // all of the methods on DMClient.
-/*func Test_newDMClientJS(t *testing.T) {
+func Test_newDMClientJS(t *testing.T) {
 	dmcType := reflect.TypeOf(&DMClient{})
 
 	dmc := newDMClientJS(&bindings.DMClient{})
@@ -33,7 +33,7 @@ import (
 			t.Errorf("Method %s does not exist.", method.Name)
 		}
 	}
-}*/
+}
 
 // Tests that DMClient has all the methods that
 // [bindings.DMClient] has.

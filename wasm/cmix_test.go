@@ -36,7 +36,7 @@ func Test_newCmixJS(t *testing.T) {
 }
 
 // Tests that Cmix has all the methods that [bindings.Cmix] has.
-/*func Test_CmixMethods(t *testing.T) {
+func Test_CmixMethods(t *testing.T) {
 	cmixType := reflect.TypeOf(&Cmix{})
 	binCmixType := reflect.TypeOf(&bindings.Cmix{})
 
@@ -53,4 +53,4 @@ func Test_newCmixJS(t *testing.T) {
 			t.Errorf("Method %s does not exist.", method.Name)
 		}
 	}
-}*/
+}
