@@ -53,6 +53,9 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 		"GetBlockedSenders":     js.FuncOf(cm.GetBlockedSenders),
 		"GetDatabaseName":       js.FuncOf(cm.GetDatabaseName),
 
+		// Share URL
+		"GetShareURL": js.FuncOf(cm.GetShareURL),
+
 		// DM Sending Methods and Reports
 		"SendText":     js.FuncOf(cm.SendText),
 		"SendReply":    js.FuncOf(cm.SendReply),
