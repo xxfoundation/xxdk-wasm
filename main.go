@@ -80,9 +80,6 @@ var wasmCmd = &cobra.Command{
 func setGlobals() {
 	jww.INFO.Printf("Starting xxDK WebAssembly bindings.")
 
-	// logging/worker.go
-	// js.Global().Set("GetLogger", js.FuncOf(logging.GetLoggerJS))
-
 	// storage/password.go
 	js.Global().Set("GetOrInitPassword", js.FuncOf(storage.GetOrInitPassword))
 	js.Global().Set("ChangeExternalPassword",
@@ -197,7 +194,6 @@ func setGlobals() {
 		js.FuncOf(wasm.GetFactsFromContact))
 
 	// wasm/logging.go
-	// js.Global().Set("LogLevel", js.FuncOf(wasm.LogLevel))
 	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
 	js.Global().Set("EnableGrpcLogs", js.FuncOf(wasm.EnableGrpcLogs))
 
@@ -264,10 +260,12 @@ func init() {
 	// Initialize all startup flags
 	wasmCmd.Flags().IntVarP((*int)(&logLevel), "logLevel", "l", 2,
 		"Sets the log level output when outputting to the Javascript console. "+
-			"Set to -1 to disable.")
+			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
+			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
 	wasmCmd.Flags().IntVarP((*int)(&fileLogLevel), "fileLogLevel", "m", -1,
 		"The log level when outputting to the file buffer. "+
-			"Set to -1 to disable.")
+			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
+			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
 	wasmCmd.Flags().IntVarP(&maxLogFileSize, "maxLogFileSize", "s", 5_000_000,
 		"Max file size, in bytes, for the file buffer before it rolls over "+
 			"and starts overwriting the oldest entries.")

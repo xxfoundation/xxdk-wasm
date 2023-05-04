@@ -87,7 +87,8 @@ func init() {
 	// Initialize all startup flags
 	LoggerCmd.Flags().IntVarP((*int)(&logLevel), "logLevel", "l", 2,
 		"Sets the log level output when outputting to the Javascript console. "+
-			"Set to -1 to disable.")
+			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
+			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
 }
 
 // registerCallbacks registers all the necessary callbacks for the main thread

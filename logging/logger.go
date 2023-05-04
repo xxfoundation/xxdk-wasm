@@ -11,10 +11,12 @@ package logging
 
 import (
 	"github.com/pkg/errors"
+	"syscall/js"
+
 	jww "github.com/spf13/jwalterweatherman"
+
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
-	"syscall/js"
 )
 
 // List of tags that can be used when sending a message or registering a handler

@@ -11,12 +11,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/xxdk-wasm/logging"
-	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"os"
 	"syscall/js"
+
+	"github.com/spf13/cobra"
+	jww "github.com/spf13/jwalterweatherman"
+
+	"gitlab.com/elixxir/xxdk-wasm/logging"
+	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
 
 // SEMVER is the current semantic version of the xxDK DM web worker.
@@ -71,5 +73,6 @@ func init() {
 	// Initialize all startup flags
 	dmCmd.Flags().IntVarP((*int)(&logLevel), "logLevel", "l", 2,
 		"Sets the log level output when outputting to the Javascript console. "+
-			"Set to -1 to disable.")
+			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
+			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
 }
