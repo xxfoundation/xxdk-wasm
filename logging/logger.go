@@ -26,7 +26,9 @@ const (
 	WriteLogTag   worker.Tag = "WriteLog"
 	GetFileTag    worker.Tag = "GetFile"
 	GetFileExtTag worker.Tag = "GetFileExt"
+	MaxSizeTag    worker.Tag = "MaxSize"
 	SizeTag       worker.Tag = "Size"
+	WorkerReady   worker.Tag = "Ready"
 )
 
 // logger is the global that all jwalterweatherman logging is sent to.
@@ -89,6 +91,52 @@ func EnableLogging(logLevel, fileLogLevel jww.Threshold, maxLogFileSizeMB int,
 		} else {
 			wl, err := newWorkerLogger(
 				fileLogLevel, maxLogFileSize, workerScriptURL, workerName)
+			if err != nil {
+				return errors.Wrap(err, "could not initialize logging to worker file")
+			}
+
+			listeners = append(listeners, wl.Listen)
+		}
+
+		js.Global().Set("GetLogger", js.FuncOf(GetLoggerJS))
+	}
+	jww.SetLogListeners(listeners...)
+
+	return nil
+}
+
+// EnableWorkerLogging enables logging to the Javascript console and to a local
+// or worker file buffer. This must be called only once at initialisation.
+//
+// This function is specifically for workers so that they can report logs to a
+// single worker logger thread used by all workers and the main thread. That
+// worker must be running before enabling logging.
+//
+// maxLogFileSize only applies when saving a log file to a local buffer.
+func EnableWorkerLogging(logLevel, fileLogLevel jww.Threshold,
+	maxLogFileSize int, wtm *worker.ThreadManager) error {
+
+	var listeners []jww.LogListener
+	if logLevel > -1 {
+		// Overwrites setting the log level to INFO done in bindings so that the
+		// Javascript console can be used
+		ll := NewJsConsoleLogListener(logLevel)
+		listeners = append(listeners, ll.Listen)
+		jww.SetStdoutThreshold(jww.LevelFatal + 1)
+		jww.FEEDBACK.Printf("[LOG] Log level for console set to %s", logLevel)
+	} else {
+		jww.FEEDBACK.Print("[LOG] Disabling logging to console.")
+	}
+
+	if fileLogLevel > -1 {
+		if wtm == nil {
+			fl, err := newFileLogger(fileLogLevel, maxLogFileSize)
+			if err != nil {
+				return errors.Wrap(err, "could not initialize logging to file")
+			}
+			listeners = append(listeners, fl.Listen)
+		} else {
+			wl, err := newThreadLogger(fileLogLevel, wtm)
 			if err != nil {
 				return errors.Wrap(err, "could not initialize logging to worker file")
 			}
@@ -174,10 +222,17 @@ func (l *LoggerJS) Threshold(js.Value, []js.Value) any {
 
 // MaxSize returns the max size, in bytes, that the log file is allowed to be.
 //
-// Returns:
-//   - Max file size (int).
+// If the log file is listening locally, it returns it from the local buffer. If
+// it is listening from the worker, it blocks until the size is returned.
+//
+// Returns a promise:
+//   - Resolves to the current max file size (int).
 func (l *LoggerJS) MaxSize(js.Value, []js.Value) any {
-	return l.api.MaxSize()
+	promiseFn := func(resolve, _ func(args ...any) js.Value) {
+		resolve(l.api.MaxSize())
+	}
+
+	return utils.CreatePromise(promiseFn)
 }
 
 // Size returns the current size, in bytes, written to the log file.

@@ -38,27 +38,24 @@ type workerLogFile struct {
 func main() {
 	// Set to os.Args because the default is os.Args[1:] and in WASM, args start
 	// at 0, not 1.
-	LoggerCmd.SetArgs(os.Args)
+	loggerCmd.SetArgs(os.Args)
 
-	err := LoggerCmd.Execute()
+	err := loggerCmd.Execute()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 }
 
-var LoggerCmd = &cobra.Command{
+var loggerCmd = &cobra.Command{
 	Use:     "Logger",
 	Short:   "Web worker buffer file logger",
 	Example: "const go = new Go();\ngo.argv = [\"--logLevel=1\"]",
 	Run: func(cmd *cobra.Command, args []string) {
-		// Start logger first to capture all logging events
-		err := logging.EnableLogging(logLevel, -1, 0, "", "")
-		if err != nil {
-			fmt.Printf(
-				"Failed to intialize logging in logging worker: %+v", err)
-			os.Exit(1)
-		}
+		// Set up basic logging while the worker thread manager is initialised
+		ll := logging.NewJsConsoleLogListener(jww.LevelInfo)
+		logging.AddLogListener(ll.Listen)
+		jww.SetStdoutThreshold(jww.LevelFatal + 1)
 
 		jww.INFO.Printf("xxDK Logger web worker version: v%s", SEMVER)
 
@@ -69,6 +66,14 @@ var LoggerCmd = &cobra.Command{
 		wlf.registerCallbacks()
 
 		wlf.wtm.SignalReady()
+
+		err := logging.EnableWorkerLogging(
+			logLevel, fileLogLevel, maxLogFileSizeMB, nil)
+		if err != nil {
+			fmt.Printf("Failed to intialize logging in channels indexedDb "+
+				"worker: %+v", err)
+			os.Exit(1)
+		}
 
 		// Indicate to the Javascript caller that the WASM is ready by resolving
 		// a promise created by the caller.
@@ -81,15 +86,23 @@ var LoggerCmd = &cobra.Command{
 }
 
 var (
-	logLevel jww.Threshold
+	logLevel, fileLogLevel jww.Threshold
+	maxLogFileSizeMB       int
 )
 
 func init() {
 	// Initialize all startup flags
-	LoggerCmd.Flags().IntVarP((*int)(&logLevel), "logLevel", "l", 2,
+	loggerCmd.Flags().IntVarP((*int)(&logLevel), "logLevel", "l", 2,
 		"Sets the log level output when outputting to the Javascript console. "+
 			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
 			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
+	loggerCmd.Flags().IntVarP((*int)(&fileLogLevel), "fileLogLevel", "m", -1,
+		"The log level when outputting to the file buffer. "+
+			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
+			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
+	loggerCmd.Flags().IntVarP(&maxLogFileSizeMB, "maxLogFileSize", "s", 5,
+		"Max file size, in MB, for the file buffer before it rolls over "+
+			"over and starts overwriting the oldest entries.")
 }
 
 // registerCallbacks registers all the necessary callbacks for the main thread
@@ -140,10 +153,22 @@ func (wlf *workerLogFile) registerCallbacks() {
 		return wlf.b.Bytes(), nil
 	})
 
+	// Callback for Logging.MaxSize
+	wlf.wtm.RegisterCallback(logging.MaxSizeTag, func([]byte) ([]byte, error) {
+		b := make([]byte, 8)
+		binary.LittleEndian.PutUint64(b, uint64(wlf.b.Size()))
+		return b, nil
+	})
+
 	// Callback for Logging.Size
 	wlf.wtm.RegisterCallback(logging.SizeTag, func([]byte) ([]byte, error) {
 		b := make([]byte, 8)
 		binary.LittleEndian.PutUint64(b, uint64(wlf.b.TotalWritten()))
 		return b, nil
+	})
+
+	// Callback to let another web worker know they are connected.
+	wlf.wtm.RegisterCallback(logging.WorkerReady, func([]byte) ([]byte, error) {
+		return []byte{}, nil
 	})
 }

@@ -98,7 +98,7 @@ func (m *manager) messageReceivedCallback(uuid uint64, pubKey ed25519.PublicKey,
 	}
 
 	// Send it to the main thread
-	m.wtm.SendMessage(wDm.MessageReceivedCallbackTag, data)
+	m.wtm.SendMessage(wDm.MessageReceivedCallbackTag, "", data)
 }
 
 // receiveCB is the callback for wasmModel.Receive. Returns a UUID of 0 on error

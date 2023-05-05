@@ -13,6 +13,7 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"github.com/pkg/errors"
+	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"time"
 
 	jww "github.com/spf13/jwalterweatherman"
@@ -86,6 +87,11 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 	// Register handler to manage messages for the MutedUserCallback
 	wm.RegisterCallback(MutedUserCallbackTag,
 		mutedUserCallbackHandler(mutedUserCB))
+
+	// Create a channel between the indexedDb worker and the logger worker so
+	// that indexedDb logs can be logged to the worker
+	wm.CreateMessageChannel(
+		logging.GetLogger().Worker(), worker.ChannelsIndexedDbLogging)
 
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)

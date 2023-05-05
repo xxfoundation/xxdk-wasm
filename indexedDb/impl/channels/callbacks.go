@@ -99,7 +99,7 @@ func (m *manager) messageReceivedCallback(
 	}
 
 	// Send it to the main thread
-	m.wtm.SendMessage(wChannels.MessageReceivedCallbackTag, data)
+	m.wtm.SendMessage(wChannels.MessageReceivedCallbackTag, "", data)
 }
 
 // deletedMessageCallback sends calls to the channels.DeletedMessageCallback in
@@ -107,7 +107,7 @@ func (m *manager) messageReceivedCallback(
 //
 // storeEncryptionStatus adhere to the channels.MessageReceivedCallback type.
 func (m *manager) deletedMessageCallback(messageID message.ID) {
-	m.wtm.SendMessage(wChannels.DeletedMessageCallbackTag, messageID.Marshal())
+	m.wtm.SendMessage(wChannels.DeletedMessageCallbackTag, "", messageID.Marshal())
 }
 
 // mutedUserCallback sends calls to the channels.MutedUserCallback in the main
@@ -129,7 +129,7 @@ func (m *manager) mutedUserCallback(
 	}
 
 	// Send it to the main thread
-	m.wtm.SendMessage(wChannels.MutedUserCallbackTag, data)
+	m.wtm.SendMessage(wChannels.MutedUserCallbackTag, "", data)
 }
 
 // joinChannelCB is the callback for wasmModel.JoinChannel. Always returns nil;

@@ -14,5 +14,14 @@ type Tag string
 
 // Generic tags used by all workers.
 const (
-	readyTag Tag = "Ready"
+	readyTag Tag = "<WW>Ready</WW>"
+)
+
+// Channel is a tag given to a MessageChannel between two workers to identify
+// traffic sent and received on its ports.
+type Channel string
+
+const (
+	ChannelsIndexedDbLogging = "ChannelsIndexedDbLogging"
+	DmIndexedDbLogging       = "dmIndexedDbLogging"
 )

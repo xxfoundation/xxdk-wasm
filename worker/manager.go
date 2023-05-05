@@ -177,9 +177,11 @@ func (m *Manager) SendMessage(
 	}
 
 	msg := Message{
-		Tag:  tag,
-		ID:   id,
-		Data: data,
+		Tag:      tag,
+		Channel:  "",
+		ID:       id,
+		DeleteCB: false,
+		Data:     data,
 	}
 	payload, err := json.Marshal(msg)
 	if err != nil {
@@ -303,6 +305,25 @@ func (m *Manager) GetWorker() js.Value { return m.worker }
 
 // Name returns the name of the web worker object.
 func (m *Manager) Name() string { return m.name }
+
+// CreateMessageChannel creates a new Javascript MessageChannel between this
+// worker and the provided worker.
+//
+// Doc: https://developer.mozilla.org/en-US/docs/Web/API/MessageChannel
+// Reference: https://2ality.com/2017/01/messagechannel.html#messagechannel
+func (m *Manager) CreateMessageChannel(w *Manager, channelName Channel) {
+	// Create a Javascript MessageChannel
+	channel := js.Global().Get("MessageChannel").New()
+	name := utils.CopyBytesToJS([]byte(channelName))
+
+	obj1 := map[string]any{"port": channel.Get("port1"), "channel": name}
+	arr1 := []any{channel.Get("port1")}
+	m.worker.Call("postMessage", obj1, arr1)
+
+	obj2 := map[string]any{"port": channel.Get("port2"), "channel": name}
+	arr2 := []any{channel.Get("port2")}
+	w.worker.Call("postMessage", obj2, arr2)
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Javascript Call Wrappers                                                   //

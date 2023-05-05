@@ -12,6 +12,7 @@ package dm
 import (
 	"crypto/ed25519"
 	"encoding/json"
+	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"time"
 
 	"github.com/pkg/errors"
@@ -46,14 +47,19 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) (dm.EventModel, error) {
 	databaseName := path + databaseSuffix
 
-	wh, err := worker.NewManager(wasmJsPath, "dmIndexedDb", true)
+	wm, err := worker.NewManager(wasmJsPath, "dmIndexedDb", true)
 	if err != nil {
 		return nil, err
 	}
 
 	// Register handler to manage messages for the MessageReceivedCallback
-	wh.RegisterCallback(
+	wm.RegisterCallback(
 		MessageReceivedCallbackTag, messageReceivedCallbackHandler(cb))
+
+	// Create a channel between the indexedDb worker and the logger worker so
+	// that indexedDb logs can be logged to the worker
+	wm.CreateMessageChannel(
+		logging.GetLogger().Worker(), worker.DmIndexedDbLogging)
 
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)
@@ -84,7 +90,7 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 	}
 
 	dataChan := make(chan []byte)
-	wh.SendMessage(NewWASMEventModelTag, payload,
+	wm.SendMessage(NewWASMEventModelTag, payload,
 		func(data []byte) { dataChan <- data })
 
 	select {
@@ -97,7 +103,7 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 			"database in worker to initialize", worker.ResponseTimeout)
 	}
 
-	return &wasmModel{wh}, nil
+	return &wasmModel{wm}, nil
 }
 
 // MessageReceivedCallbackMessage is JSON marshalled and received from the

@@ -35,6 +35,14 @@ type ThreadManager struct {
 	// main thread keyed on the callback tag.
 	callbacks map[Tag]ThreadReceptionCallback
 
+	// channels is a map of send functions that can be used to send a message to
+	// another worker on a Javascript MessageChannel.
+	channels map[Channel]func(aMessage []byte)
+
+	// channelCreatedCB is a list of user-registered callbacks. When a new
+	// MessageChannel is created for the keyed Channel, the callback is called.
+	channelCreatedCB map[Channel]func()
+
 	// receiveQueue is the channel that all received MessageEvent.data are
 	// queued on while they wait to be processed.
 	receiveQueue chan js.Value
@@ -55,12 +63,14 @@ type ThreadManager struct {
 // NewThreadManager initialises a new ThreadManager.
 func NewThreadManager(name string, messageLogging bool) *ThreadManager {
 	tm := &ThreadManager{
-		messages:       make(chan js.Value, 100),
-		callbacks:      make(map[Tag]ThreadReceptionCallback),
-		receiveQueue:   make(chan js.Value, receiveQueueChanSize),
-		quit:           make(chan struct{}),
-		name:           name,
-		messageLogging: messageLogging,
+		messages:         make(chan js.Value, 100),
+		callbacks:        make(map[Tag]ThreadReceptionCallback),
+		channels:         make(map[Channel]func(aMessage []byte)),
+		channelCreatedCB: make(map[Channel]func()),
+		receiveQueue:     make(chan js.Value, receiveQueueChanSize),
+		quit:             make(chan struct{}),
+		name:             name,
+		messageLogging:   messageLogging,
 	}
 	// Start thread to process messages from the main thread
 	go tm.processThread()
@@ -79,6 +89,20 @@ func (tm *ThreadManager) Stop() {
 
 	// Terminate the worker
 	go tm.close()
+}
+
+// RegisterChannelCreatedCB registers the callback for the given Channel. When
+// a MessageChannel with the Channel is created, this callback is called. If
+// the MessageChannel already exists, the callback is called immediately. It
+// overwrites any previously registered callback for the Channel.
+func (tm *ThreadManager) RegisterChannelCreatedCB(channel Channel, cb func()) {
+	tm.mux.Lock()
+	tm.channelCreatedCB[channel] = cb
+
+	if _, exists := tm.channels[channel]; exists {
+		go cb()
+	}
+	tm.mux.Unlock()
 }
 
 // processThread processes received messages sequentially.
@@ -100,6 +124,31 @@ func (tm *ThreadManager) processThread() {
 							"received from main thread: %+v", tm.name, err)
 					}
 					break
+				} else if port := msgData.Get("port"); !port.IsUndefined() {
+					channel := string(utils.CopyBytesToGo(msgData.Get("channel")))
+					jww.INFO.Printf("[WW] [%s] Received new MessageChannel %q "+
+						"from main thread.", tm.name, channel)
+					port.Set("onmessage", js.FuncOf(func(_ js.Value, args []js.Value) any {
+						err := tm.processReceivedMessage(utils.CopyBytesToGo(args[0].Get("data")))
+						if err != nil {
+							jww.ERROR.Printf("[WW] [%s] Failed to process "+
+								"message received on channel %s: %+v",
+								tm.name, channel, err)
+						}
+						return nil
+					}))
+					tm.mux.Lock()
+					tm.channels[Channel(channel)] = func(aMessage []byte) {
+						buffer := utils.CopyBytesToJS(aMessage)
+						port.Call("postMessage", buffer, []any{buffer.Get("buffer")})
+					}
+
+					// Trigger channel created callback
+					if cb, exists := tm.channelCreatedCB[Channel(channel)]; exists {
+						go cb()
+					}
+					tm.mux.Unlock()
+					break
 				}
 				fallthrough
 
@@ -116,19 +165,34 @@ func (tm *ThreadManager) processThread() {
 // ready. Once the main thread receives this, it will initiate communication.
 // Therefore, this should only be run once all listeners are ready.
 func (tm *ThreadManager) SignalReady() {
-	tm.SendMessage(readyTag, nil)
+	tm.SendMessage(readyTag, "", nil)
 }
 
-// SendMessage sends a message to the main thread for the given tag.
-func (tm *ThreadManager) SendMessage(tag Tag, data []byte) {
+// SendMessage sends a message to the main thread for the given tag and channel.
+// If the channel is empty, the message will be sent to the main thread.
+func (tm *ThreadManager) SendMessage(tag Tag, channel Channel, data []byte) {
+	tm.sendMessage(tag, channel, data, true)
+}
+
+// SendMessageQuiet is the same as SendMessage but prints no messages to log on
+// normal behavior.
+func (tm *ThreadManager) SendMessageQuiet(tag Tag, channel Channel, data []byte) {
+	tm.sendMessage(tag, channel, data, false)
+}
+
+// SendMessage sends a message to the main thread for the given tag and channel.
+// If the channel is empty, the message will be sent to the main thread.
+func (tm *ThreadManager) sendMessage(tag Tag, channel Channel, data []byte,
+	messageLogging bool) {
 	msg := Message{
 		Tag:      tag,
+		Channel:  channel,
 		ID:       initID,
 		DeleteCB: false,
 		Data:     data,
 	}
 
-	if tm.messageLogging {
+	if tm.messageLogging && messageLogging {
 		jww.DEBUG.Printf("[WW] [%s] Worker sending message for %q with data: %s",
 			tm.name, tag, data)
 	}
@@ -139,21 +203,35 @@ func (tm *ThreadManager) SendMessage(tag Tag, data []byte) {
 			"to main: %+v", tm.name, msg, tag, err)
 	}
 
-	go tm.postMessage(payload)
+	if channel == "" {
+		go tm.postMessage(payload)
+	} else {
+		tm.mux.Lock()
+		portPostMessage, exists := tm.channels[channel]
+		tm.mux.Unlock()
+		if exists {
+			go portPostMessage(payload)
+		} else {
+			jww.FATAL.Panicf("[WW] [%s] Worker failed to send %q going to "+
+				"worker on channel %s: does not exist", tm.name, tag, channel)
+		}
+	}
 }
 
 // sendResponse sends a reply to the main thread with the given tag and ID.
-func (tm *ThreadManager) sendResponse(tag Tag, id uint64, data []byte) error {
+func (tm *ThreadManager) sendResponse(
+	tag Tag, channel Channel, id uint64, data []byte) error {
 	msg := Message{
 		Tag:      tag,
+		Channel:  channel,
 		ID:       id,
 		DeleteCB: true,
 		Data:     data,
 	}
 
 	if tm.messageLogging {
-		jww.DEBUG.Printf("[WW] [%s] Worker sending reply for %q and ID %d "+
-			"with data: %s", tm.name, tag, id, data)
+		jww.DEBUG.Printf("[WW] [%s] Worker sending reply for %q and ID %d on "+
+			"channel %s with data: %q", tm.name, tag, id, channel, data)
 	}
 
 	payload, err := json.Marshal(msg)
@@ -162,7 +240,20 @@ func (tm *ThreadManager) sendResponse(tag Tag, id uint64, data []byte) error {
 			"%d going to main: %+v", msg, tag, id, err)
 	}
 
-	go tm.postMessage(payload)
+	if channel == "" {
+		go tm.postMessage(payload)
+	} else {
+		tm.mux.Lock()
+		portPostMessage, exists := tm.channels[channel]
+		tm.mux.Unlock()
+		if exists {
+			go portPostMessage(payload)
+		} else {
+			jww.FATAL.Panicf("[WW] [%s] Worker failed to send reply to %q "+
+				"going to worker on channel %s: does not exist",
+				tm.name, tag, channel)
+		}
+	}
 
 	return nil
 }
@@ -203,7 +294,7 @@ func (tm *ThreadManager) processReceivedMessage(data []byte) error {
 			msg.Tag, msg.ID, err)
 	}
 	if response != nil {
-		return tm.sendResponse(msg.Tag, msg.ID, response)
+		return tm.sendResponse(msg.Tag, msg.Channel, msg.ID, response)
 	}
 
 	return nil
@@ -221,6 +312,14 @@ func (tm *ThreadManager) RegisterCallback(
 	tm.mux.Lock()
 	tm.callbacks[tag] = receptionCallback
 	tm.mux.Unlock()
+}
+
+// ChannelExists returns true if the channel has been registered.
+func (tm *ThreadManager) ChannelExists(channel Channel) bool {
+	tm.mux.Lock()
+	_, exists := tm.channels[channel]
+	tm.mux.Unlock()
+	return exists
 }
 
 ////////////////////////////////////////////////////////////////////////////////

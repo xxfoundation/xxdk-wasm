@@ -14,6 +14,7 @@ const isReady = new Promise((resolve) => {
 const go = new Go();
 const binPath = 'xxdk-logFileWorker.wasm'
 WebAssembly.instantiateStreaming(fetch(binPath), go.importObject).then(async (result) => {
+    go.argv = ['--logLevel=1']
     go.run(result.instance);
     await isReady;
 }).catch((err) => {

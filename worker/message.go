@@ -12,8 +12,9 @@ package worker
 // Message is the outer message that contains the contents of each message sent
 // to the worker. It is transmitted as JSON.
 type Message struct {
-	Tag      Tag    `json:"tag"`
-	ID       uint64 `json:"id"`
-	DeleteCB bool   `json:"deleteCB"`
-	Data     []byte `json:"data"`
+	Tag      Tag     `json:"tag"`
+	Channel  Channel `json:"channel"`
+	ID       uint64  `json:"id"`
+	DeleteCB bool    `json:"deleteCB"`
+	Data     []byte  `json:"data"`
 }
