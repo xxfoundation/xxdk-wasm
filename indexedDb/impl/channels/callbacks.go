@@ -32,24 +32,24 @@ var zeroUUID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
 // manager handles the event model and the message callbacks, which is used to
 // send information between the event model and the main thread.
 type manager struct {
-	mh    *worker.ThreadManager
+	wtm   *worker.ThreadManager
 	model channels.EventModel
 }
 
 // registerCallbacks registers all the reception callbacks to manage messages
 // from the main thread for the channels.EventModel.
 func (m *manager) registerCallbacks() {
-	m.mh.RegisterCallback(wChannels.NewWASMEventModelTag, m.newWASMEventModelCB)
-	m.mh.RegisterCallback(wChannels.JoinChannelTag, m.joinChannelCB)
-	m.mh.RegisterCallback(wChannels.LeaveChannelTag, m.leaveChannelCB)
-	m.mh.RegisterCallback(wChannels.ReceiveMessageTag, m.receiveMessageCB)
-	m.mh.RegisterCallback(wChannels.ReceiveReplyTag, m.receiveReplyCB)
-	m.mh.RegisterCallback(wChannels.ReceiveReactionTag, m.receiveReactionCB)
-	m.mh.RegisterCallback(wChannels.UpdateFromUUIDTag, m.updateFromUUIDCB)
-	m.mh.RegisterCallback(wChannels.UpdateFromMessageIDTag, m.updateFromMessageIDCB)
-	m.mh.RegisterCallback(wChannels.GetMessageTag, m.getMessageCB)
-	m.mh.RegisterCallback(wChannels.DeleteMessageTag, m.deleteMessageCB)
-	m.mh.RegisterCallback(wChannels.MuteUserTag, m.muteUserCB)
+	m.wtm.RegisterCallback(wChannels.NewWASMEventModelTag, m.newWASMEventModelCB)
+	m.wtm.RegisterCallback(wChannels.JoinChannelTag, m.joinChannelCB)
+	m.wtm.RegisterCallback(wChannels.LeaveChannelTag, m.leaveChannelCB)
+	m.wtm.RegisterCallback(wChannels.ReceiveMessageTag, m.receiveMessageCB)
+	m.wtm.RegisterCallback(wChannels.ReceiveReplyTag, m.receiveReplyCB)
+	m.wtm.RegisterCallback(wChannels.ReceiveReactionTag, m.receiveReactionCB)
+	m.wtm.RegisterCallback(wChannels.UpdateFromUUIDTag, m.updateFromUUIDCB)
+	m.wtm.RegisterCallback(wChannels.UpdateFromMessageIDTag, m.updateFromMessageIDCB)
+	m.wtm.RegisterCallback(wChannels.GetMessageTag, m.getMessageCB)
+	m.wtm.RegisterCallback(wChannels.DeleteMessageTag, m.deleteMessageCB)
+	m.wtm.RegisterCallback(wChannels.MuteUserTag, m.muteUserCB)
 }
 
 // newWASMEventModelCB is the callback for NewWASMEventModel. Returns an empty
@@ -99,7 +99,7 @@ func (m *manager) messageReceivedCallback(
 	}
 
 	// Send it to the main thread
-	m.mh.SendMessage(wChannels.MessageReceivedCallbackTag, data)
+	m.wtm.SendMessage(wChannels.MessageReceivedCallbackTag, data)
 }
 
 // deletedMessageCallback sends calls to the channels.DeletedMessageCallback in
@@ -107,7 +107,7 @@ func (m *manager) messageReceivedCallback(
 //
 // storeEncryptionStatus adhere to the channels.MessageReceivedCallback type.
 func (m *manager) deletedMessageCallback(messageID message.ID) {
-	m.mh.SendMessage(wChannels.DeletedMessageCallbackTag, messageID.Marshal())
+	m.wtm.SendMessage(wChannels.DeletedMessageCallbackTag, messageID.Marshal())
 }
 
 // mutedUserCallback sends calls to the channels.MutedUserCallback in the main
@@ -129,7 +129,7 @@ func (m *manager) mutedUserCallback(
 	}
 
 	// Send it to the main thread
-	m.mh.SendMessage(wChannels.MutedUserCallbackTag, data)
+	m.wtm.SendMessage(wChannels.MutedUserCallbackTag, data)
 }
 
 // joinChannelCB is the callback for wasmModel.JoinChannel. Always returns nil;
