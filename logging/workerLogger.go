@@ -37,18 +37,18 @@ type workerLogger struct {
 // the log file.
 func newWorkerLogger(threshold jww.Threshold, maxLogFileSize int,
 	wasmJsPath, workerName string) (*workerLogger, error) {
-	wl := &workerLogger{
-		threshold:      threshold,
-		maxLogFileSize: maxLogFileSize,
-	}
-
 	// Create new worker manager, which will start the worker and wait until
 	// communication has been established
 	wm, err := worker.NewManager(wasmJsPath, workerName, false)
 	if err != nil {
 		return nil, err
 	}
-	wl.wm = wm
+
+	wl := &workerLogger{
+		threshold:      threshold,
+		maxLogFileSize: maxLogFileSize,
+		wm:             wm,
+	}
 
 	// Register the callback used by the Javascript to request the log file.
 	// This prevents an error print when GetFileExtTag is not registered.
@@ -90,8 +90,9 @@ func newWorkerLogger(threshold jww.Threshold, maxLogFileSize int,
 	return wl, nil
 }
 
-// Write adheres to the io.Writer interface and writes log entries to the
-// buffer.
+// Write adheres to the io.Writer interface and sends the log entries to the
+// worker to be added to the file buffer. Always returns the length of p and
+// nil. All errors are printed to the log.
 func (wl *workerLogger) Write(p []byte) (n int, err error) {
 	wl.wm.SendMessage(WriteLogTag, p, nil)
 	return len(p), nil
@@ -147,7 +148,7 @@ func (wl *workerLogger) Size() int {
 
 	select {
 	case data := <-sizeChan:
-		return int(jww.Threshold(binary.LittleEndian.Uint64(data)))
+		return int(binary.LittleEndian.Uint64(data))
 	case <-time.After(worker.ResponseTimeout):
 		jww.FATAL.Panicf("[LOG] Timed out after %s waiting for log "+
 			"file size from worker", worker.ResponseTimeout)

@@ -51,9 +51,11 @@ var channelsCmd = &cobra.Command{
 		jww.INFO.Printf("xxDK channels web worker version: v%s", SEMVER)
 
 		jww.INFO.Print("[WW] Starting xxDK WebAssembly Channels Database Worker.")
-		m := &manager{mh: worker.NewThreadManager("ChannelsIndexedDbWorker", true)}
+		m := &manager{
+			wtm: worker.NewThreadManager("ChannelsIndexedDbWorker", true),
+		}
 		m.registerCallbacks()
-		m.mh.SignalReady()
+		m.wtm.SignalReady()
 
 		// Indicate to the Javascript caller that the WASM is ready by resolving
 		// a promise created by the caller.

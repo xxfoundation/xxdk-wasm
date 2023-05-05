@@ -55,7 +55,8 @@ var LoggerCmd = &cobra.Command{
 		// Start logger first to capture all logging events
 		err := logging.EnableLogging(logLevel, -1, 0, "", "")
 		if err != nil {
-			fmt.Printf("Failed to intialize logging: %+v", err)
+			fmt.Printf(
+				"Failed to intialize logging in logging worker: %+v", err)
 			os.Exit(1)
 		}
 

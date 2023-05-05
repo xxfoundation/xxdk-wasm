@@ -44,16 +44,19 @@ var dmCmd = &cobra.Command{
 		// Start logger first to capture all logging events
 		err := logging.EnableLogging(logLevel, -1, 0, "", "")
 		if err != nil {
-			fmt.Printf("Failed to intialize logging: %+v", err)
+			fmt.Printf(
+				"Failed to intialize logging in DM indexedDb worker: %+v", err)
 			os.Exit(1)
 		}
 
 		jww.INFO.Printf("xxDK DM web worker version: v%s", SEMVER)
 
 		jww.INFO.Print("[WW] Starting xxDK WebAssembly DM Database Worker.")
-		m := &manager{mh: worker.NewThreadManager("DmIndexedDbWorker", true)}
+		m := &manager{
+			wtm: worker.NewThreadManager("DmIndexedDbWorker", true),
+		}
 		m.registerCallbacks()
-		m.mh.SignalReady()
+		m.wtm.SignalReady()
 
 		// Indicate to the Javascript caller that the WASM is ready by resolving
 		// a promise created by the caller.

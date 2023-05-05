@@ -276,5 +276,4 @@ func init() {
 			"thread crashes.")
 	wasmCmd.Flags().StringVar(&workerName, "workerName", "xxdkLogFileWorker",
 		"Name of the logger worker.")
-
 }
