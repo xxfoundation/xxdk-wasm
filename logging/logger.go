@@ -63,7 +63,7 @@ type Logger interface {
 
 // EnableLogging enables logging to the Javascript console and to a local or
 // worker file buffer. This must be called only once at initialisation.
-func EnableLogging(logLevel, fileLogLevel jww.Threshold, maxLogFileSize int,
+func EnableLogging(logLevel, fileLogLevel jww.Threshold, maxLogFileSizeMB int,
 	workerScriptURL, workerName string) error {
 
 	var listeners []jww.LogListener
@@ -79,6 +79,7 @@ func EnableLogging(logLevel, fileLogLevel jww.Threshold, maxLogFileSize int,
 	}
 
 	if fileLogLevel > -1 {
+		maxLogFileSize := maxLogFileSizeMB * 1_000_000
 		if workerScriptURL == "" {
 			fl, err := newFileLogger(fileLogLevel, maxLogFileSize)
 			if err != nil {
