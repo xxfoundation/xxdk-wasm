@@ -41,8 +41,8 @@ var wasmCmd = &cobra.Command{
 	Example: "const go = new Go();\ngo.argv = [\"--logLevel=1\"]",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Start logger first to capture all logging events
-		err := logging.EnableLogging(
-			logLevel, fileLogLevel, maxLogFileSize, workerScriptURL, workerName)
+		err := logging.EnableLogging(logLevel, fileLogLevel, maxLogFileSizeMB,
+			workerScriptURL, workerName)
 		if err != nil {
 			fmt.Printf("Failed to intialize logging: %+v", err)
 			os.Exit(1)
@@ -252,7 +252,7 @@ func setGlobals() {
 
 var (
 	logLevel, fileLogLevel      jww.Threshold
-	maxLogFileSize              int
+	maxLogFileSizeMB              int
 	workerScriptURL, workerName string
 )
 
@@ -266,8 +266,8 @@ func init() {
 		"The log level when outputting to the file buffer. "+
 			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
 			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
-	wasmCmd.Flags().IntVarP(&maxLogFileSize, "maxLogFileSize", "s", 5_000_000,
-		"Max file size, in bytes, for the file buffer before it rolls over "+
+	wasmCmd.Flags().IntVarP(&maxLogFileSizeMB, "maxLogFileSize", "s", 5,
+		"Max file size, in MB, for the file buffer before it rolls over "+
 			"and starts overwriting the oldest entries.")
 	wasmCmd.Flags().StringVarP(&workerScriptURL, "workerScriptURL", "w", "",
 		"URL to the script that executes the worker. If set, it enables the "+
