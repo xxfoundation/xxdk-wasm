@@ -175,6 +175,12 @@ xxdk-npm-push:
 
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output wasm_exec.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/wasm_exec.js'
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output xxdk.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/xxdk.wasm'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output xxdk-channelsIndexedDkWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-channelsIndexedDkWorker.wasm'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output xxdk-dmIndexedDkWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-dmIndexedDkWorker.wasm'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output xxdk-logFileWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-logFileWorker.wasm'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output channelsIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/channelsIndexedDbWorker.js'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output dmIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/dmIndexedDbWorker.js'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output logFileWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/logFileWorker.js'
 
     - git add xxdk.wasm wasm_exec.js
     - git commit -m "[AUTO-PUSH] Latest binaries from xxdk-wasm repo"
