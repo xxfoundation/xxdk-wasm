@@ -252,7 +252,7 @@ func setGlobals() {
 
 var (
 	logLevel, fileLogLevel      jww.Threshold
-	maxLogFileSizeMB            int
+	maxLogFileSizeMB              int
 	workerScriptURL, workerName string
 )
 
@@ -266,7 +266,7 @@ func init() {
 		"The log level when outputting to the file buffer. "+
 			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
 			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
-	wasmCmd.Flags().IntVarP(&maxLogFileSizeMB, "maxLogFileSizeMB", "s", 5,
+	wasmCmd.Flags().IntVarP(&maxLogFileSizeMB, "maxLogFileSize", "s", 5,
 		"Max file size, in MB, for the file buffer before it rolls over "+
 			"and starts overwriting the oldest entries.")
 	wasmCmd.Flags().StringVarP(&workerScriptURL, "workerScriptURL", "w", "",
