@@ -164,7 +164,10 @@ xxdk-npm-push:
   script:
     - 'PIPELINE_JOBS=$(curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/pipelines/$CI_PIPELINE_ID/jobs)'
     - BUILD_JOB_JSON=$(echo $PIPELINE_JOBS | jq '.[] | select(.name=="build")')
+    - BUILD_WORKERS_JOB_JSON=$(echo $PIPELINE_JOBS | jq '.[] | select(.name=="build-workers")')
+
     - BUILD_JOB_ID=$(echo $BUILD_JOB_JSON | jq -r '.["id"]')
+    - BUILD_WORKERS_JOB_ID=$(echo $BUILD_WORKERS_JOB_JSON | jq -r '.["id"]')
 
     - git config --global user.email "sydney-anne+azura@elixxir.io"
     - git config --global user.name "Azura [Bot]"
