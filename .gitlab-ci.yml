@@ -185,6 +185,6 @@ xxdk-npm-push:
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output dmIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/dmIndexedDbWorker.js'
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output logFileWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/logFileWorker.js'
 
-    - git add xxdk.wasm wasm_exec.js
+    - git add -A
     - git commit -m "[AUTO-PUSH] Latest binaries from xxdk-wasm repo"
     - git push
