@@ -13,24 +13,20 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"os"
+	"syscall/js"
+
 	"github.com/armon/circbuf"
 	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
+
 	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
-	"syscall/js"
 )
 
 // SEMVER is the current semantic version of the xxDK Logger web worker.
 const SEMVER = "0.1.0"
-
-func init() {
-	// Set up Javascript console listener set at level INFO
-	ll := logging.NewJsConsoleLogListener(jww.LevelDebug)
-	logging.AddLogListener(ll.Listen)
-	jww.SetStdoutThreshold(jww.LevelFatal + 1)
-	jww.INFO.Printf("xxDK Logger web worker version: v%s", SEMVER)
-}
 
 // workerLogFile manages communication with the main thread and writing incoming
 // logging messages to the log file.
@@ -40,17 +36,60 @@ type workerLogFile struct {
 }
 
 func main() {
-	jww.INFO.Print("[LOG] Starting xxDK WebAssembly Logger Worker.")
+	// Set to os.Args because the default is os.Args[1:] and in WASM, args start
+	// at 0, not 1.
+	LoggerCmd.SetArgs(os.Args)
 
-	js.Global().Set("LogLevel", js.FuncOf(logging.LogLevelJS))
+	err := LoggerCmd.Execute()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
 
-	wlf := workerLogFile{wtm: worker.NewThreadManager("Logger", false)}
+var LoggerCmd = &cobra.Command{
+	Use:     "Logger",
+	Short:   "Web worker buffer file logger",
+	Example: "const go = new Go();\ngo.argv = [\"--logLevel=1\"]",
+	Run: func(cmd *cobra.Command, args []string) {
+		// Start logger first to capture all logging events
+		err := logging.EnableLogging(logLevel, -1, 0, "", "")
+		if err != nil {
+			fmt.Printf(
+				"Failed to intialize logging in logging worker: %+v", err)
+			os.Exit(1)
+		}
 
-	wlf.registerCallbacks()
+		jww.INFO.Printf("xxDK Logger web worker version: v%s", SEMVER)
 
-	wlf.wtm.SignalReady()
-	<-make(chan bool)
-	fmt.Println("[WW] Closing xxDK WebAssembly Log Worker.")
+		jww.INFO.Print("[LOG] Starting xxDK WebAssembly Logger Worker.")
+
+		wlf := workerLogFile{wtm: worker.NewThreadManager("Logger", false)}
+
+		wlf.registerCallbacks()
+
+		wlf.wtm.SignalReady()
+
+		// Indicate to the Javascript caller that the WASM is ready by resolving
+		// a promise created by the caller.
+		js.Global().Get("onWasmInitialized").Invoke()
+
+		<-make(chan bool)
+		fmt.Println("[WW] Closing xxDK WebAssembly Log Worker.")
+		os.Exit(0)
+	},
+}
+
+var (
+	logLevel jww.Threshold
+)
+
+func init() {
+	// Initialize all startup flags
+	LoggerCmd.Flags().IntVarP((*int)(&logLevel), "logLevel", "l", 2,
+		"Sets the log level output when outputting to the Javascript console. "+
+			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
+			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
 }
 
 // registerCallbacks registers all the necessary callbacks for the main thread

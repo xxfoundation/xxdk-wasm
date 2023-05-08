@@ -41,7 +41,7 @@ const (
 // put on.
 const receiveQueueChanSize = 100
 
-// ReceptionCallback is the function that handles incoming data from the worker.
+// ReceptionCallback is called with a message received from the worker.
 type ReceptionCallback func(data []byte)
 
 // Manager manages the handling of messages received from the worker.
@@ -64,7 +64,7 @@ type Manager struct {
 
 	// receiveQueue is the channel that all received messages are queued on
 	// while they wait to be processed.
-	receiveQueue chan []byte
+	receiveQueue chan js.Value
 
 	// quit, when triggered, stops the thread that processes received messages.
 	quit chan struct{}
@@ -89,7 +89,7 @@ func NewManager(aURL, name string, messageLogging bool) (*Manager, error) {
 		worker:         js.Global().Get("Worker").New(aURL, opts),
 		callbacks:      make(map[Tag]map[uint64]ReceptionCallback),
 		responseIDs:    make(map[Tag]uint64),
-		receiveQueue:   make(chan []byte, receiveQueueChanSize),
+		receiveQueue:   make(chan js.Value, receiveQueueChanSize),
 		quit:           make(chan struct{}),
 		name:           name,
 		messageLogging: messageLogging,
@@ -138,11 +138,24 @@ func (m *Manager) processThread() {
 		case <-m.quit:
 			jww.INFO.Printf("[WW] [%s] Quitting process thread.", m.name)
 			return
-		case message := <-m.receiveQueue:
-			err := m.processReceivedMessage(message)
-			if err != nil {
-				jww.ERROR.Printf("[WW] [%s] Failed to process received "+
-					"message from worker: %+v", m.name, err)
+		case msgData := <-m.receiveQueue:
+
+			switch msgData.Type() {
+			case js.TypeObject:
+				if msgData.Get("constructor").Equal(utils.Uint8Array) {
+					err := m.processReceivedMessage(utils.CopyBytesToGo(msgData))
+					if err != nil {
+						jww.ERROR.Printf("[WW] [%s] Failed to process received "+
+							"message from worker: %+v", m.name, err)
+					}
+					break
+				}
+				fallthrough
+
+			default:
+				jww.ERROR.Printf("[WW] [%s] Cannot handle data of type %s "+
+					"from worker: %s", m.name, msgData.Type(),
+					utils.JsToJson(msgData))
 			}
 		}
 	}
@@ -174,12 +187,12 @@ func (m *Manager) SendMessage(
 			"ID %d going to worker: %+v", m.name, msg, tag, id, err)
 	}
 
-	go m.postMessage(string(payload))
+	go m.postMessage(payload)
 }
 
 // receiveMessage is registered with the Javascript event listener and is called
 // every time a new message from the worker is received.
-func (m *Manager) receiveMessage(data []byte) {
+func (m *Manager) receiveMessage(data js.Value) {
 	m.receiveQueue <- data
 }
 
@@ -303,7 +316,7 @@ func (m *Manager) addEventListeners() {
 	// occurs when a message is received from the worker.
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/message_event
 	messageEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
-		m.receiveMessage([]byte(args[0].Get("data").String()))
+		m.receiveMessage(args[0].Get("data"))
 		return nil
 	})
 
@@ -336,20 +349,19 @@ func (m *Manager) addEventListeners() {
 
 // postMessage sends a message to the worker.
 //
-// message is the object to deliver to the worker; this will be in the data
-// field in the event delivered to the worker. It must be a js.Value or a
-// primitive type that can be converted via js.ValueOf. The Javascript object
-// must be "any value or JavaScript object handled by the structured clone
-// algorithm, which includes cyclical references.". See the doc for more
-// information.
+// msg is the object to deliver to the worker; this will be in the data
+// field in the event delivered to the worker. It must be a transferable object
+// because this function transfers ownership of the message instead of copying
+// it for better performance. See the doc for more information.
 //
 // If the message parameter is not provided, a SyntaxError will be thrown by the
 // parser. If the data to be passed to the worker is unimportant, js.Null or
 // js.Undefined can be passed explicitly.
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage
-func (m *Manager) postMessage(msg any) {
-	m.worker.Call("postMessage", msg)
+func (m *Manager) postMessage(msg []byte) {
+	buffer := utils.CopyBytesToJS(msg)
+	m.worker.Call("postMessage", buffer, []any{buffer.Get("buffer")})
 }
 
 // terminate immediately terminates the Worker. This does not offer the worker

@@ -29,24 +29,24 @@ var zeroUUID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
 // manager handles the event model and the message callbacks, which is used to
 // send information between the event model and the main thread.
 type manager struct {
-	mh    *worker.ThreadManager
+	wtm   *worker.ThreadManager
 	model dm.EventModel
 }
 
 // registerCallbacks registers all the reception callbacks to manage messages
 // from the main thread for the channels.EventModel.
 func (m *manager) registerCallbacks() {
-	m.mh.RegisterCallback(wDm.NewWASMEventModelTag, m.newWASMEventModelCB)
-	m.mh.RegisterCallback(wDm.ReceiveTag, m.receiveCB)
-	m.mh.RegisterCallback(wDm.ReceiveTextTag, m.receiveTextCB)
-	m.mh.RegisterCallback(wDm.ReceiveReplyTag, m.receiveReplyCB)
-	m.mh.RegisterCallback(wDm.ReceiveReactionTag, m.receiveReactionCB)
-	m.mh.RegisterCallback(wDm.UpdateSentStatusTag, m.updateSentStatusCB)
+	m.wtm.RegisterCallback(wDm.NewWASMEventModelTag, m.newWASMEventModelCB)
+	m.wtm.RegisterCallback(wDm.ReceiveTag, m.receiveCB)
+	m.wtm.RegisterCallback(wDm.ReceiveTextTag, m.receiveTextCB)
+	m.wtm.RegisterCallback(wDm.ReceiveReplyTag, m.receiveReplyCB)
+	m.wtm.RegisterCallback(wDm.ReceiveReactionTag, m.receiveReactionCB)
+	m.wtm.RegisterCallback(wDm.UpdateSentStatusTag, m.updateSentStatusCB)
 
-	m.mh.RegisterCallback(wDm.BlockSenderTag, m.blockSenderCB)
-	m.mh.RegisterCallback(wDm.UnblockSenderTag, m.unblockSenderCB)
-	m.mh.RegisterCallback(wDm.GetConversationTag, m.getConversationCB)
-	m.mh.RegisterCallback(wDm.GetConversationsTag, m.getConversationsCB)
+	m.wtm.RegisterCallback(wDm.BlockSenderTag, m.blockSenderCB)
+	m.wtm.RegisterCallback(wDm.UnblockSenderTag, m.unblockSenderCB)
+	m.wtm.RegisterCallback(wDm.GetConversationTag, m.getConversationCB)
+	m.wtm.RegisterCallback(wDm.GetConversationsTag, m.getConversationsCB)
 }
 
 // newWASMEventModelCB is the callback for NewWASMEventModel. Returns an empty
@@ -98,7 +98,7 @@ func (m *manager) messageReceivedCallback(uuid uint64, pubKey ed25519.PublicKey,
 	}
 
 	// Send it to the main thread
-	m.mh.SendMessage(wDm.MessageReceivedCallbackTag, data)
+	m.wtm.SendMessage(wDm.MessageReceivedCallbackTag, data)
 }
 
 // receiveCB is the callback for wasmModel.Receive. Returns a UUID of 0 on error
