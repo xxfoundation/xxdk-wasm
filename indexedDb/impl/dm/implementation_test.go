@@ -102,7 +102,7 @@ func TestImpl_GetConversations(t *testing.T) {
 		testBytes := []byte(fmt.Sprintf("%d", i))
 		testPubKey := ed25519.PublicKey(testBytes)
 		err = m.upsertConversation("test", testPubKey,
-			uint32(i), uint8(i), false)
+			uint32(i), uint8(i), nil)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -133,28 +133,28 @@ func TestWasmModel_BlockSender(t *testing.T) {
 
 	// Insert a test convo
 	testPubKey := ed25519.PublicKey{}
-	err = m.upsertConversation("test", testPubKey, 0, 0, false)
+	err = m.upsertConversation("test", testPubKey, 0, 0, nil)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
 	// Default to unblocked
 	result := m.GetConversation(testPubKey)
-	if result.Blocked {
+	if result.BlockedTimestamp != nil {
 		t.Fatal("Expected blocked to be false")
 	}
 
 	// Now toggle blocked
 	m.BlockSender(testPubKey)
 	result = m.GetConversation(testPubKey)
-	if !result.Blocked {
+	if result.BlockedTimestamp == nil {
 		t.Fatal("Expected blocked to be true")
 	}
 
 	// Now toggle blocked again
 	m.UnblockSender(testPubKey)
 	result = m.GetConversation(testPubKey)
-	if result.Blocked {
+	if result.BlockedTimestamp != nil {
 		t.Fatal("Expected blocked to be false")
 	}
 }
