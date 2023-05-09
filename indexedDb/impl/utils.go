@@ -78,6 +78,9 @@ func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, erro
 			"Unable to get from ObjectStore: %+v", err)
 	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
 		return js.Null(), errors.Wrapf(err, "timed out after %s", dbTimeout)
+	} else if resultObj.IsUndefined() {
+		return js.Undefined(), errors.WithMessagef(parentErr,
+			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
 	}
 
 	// Process result into string
@@ -165,6 +168,9 @@ func GetIndex(db *idb.Database, objectStoreName,
 			"Unable to get from ObjectStore: %+v", err)
 	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
 		return js.Null(), errors.Wrapf(err, "timed out after %s", dbTimeout)
+	} else if resultObj.IsUndefined() {
+		return js.Undefined(), errors.WithMessagef(parentErr,
+			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
 	}
 
 	// Process result into string
