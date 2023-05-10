@@ -74,11 +74,11 @@ func EnableLogging(logLevel, fileLogLevel jww.Threshold, maxLogFileSizeMB int,
 		// Javascript console can be used
 		ll := NewJsConsoleLogListener(logLevel)
 		listeners = append(listeners, ll.Listen)
-		jww.SetStdoutThreshold(jww.LevelFatal + 1)
 		jww.FEEDBACK.Printf("[LOG] Log level for console set to %s", logLevel)
 	} else {
 		jww.FEEDBACK.Print("[LOG] Disabling logging to console.")
 	}
+	jww.SetStdoutThreshold(jww.LevelFatal + 1)
 
 	if fileLogLevel > -1 {
 		maxLogFileSize := maxLogFileSizeMB * 1_000_000

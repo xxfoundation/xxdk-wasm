@@ -65,8 +65,8 @@ func CreatePromise(f PromiseFn) any {
 	handler = js.FuncOf(func(this js.Value, args []js.Value) any {
 		// Spawn a new go routine to perform the blocking function
 		go func(resolve, reject js.Value) {
+			go handler.Release()
 			f(resolve.Invoke, reject.Invoke)
-			go func() { handler.Release() }()
 		}(args[0], args[1])
 
 		return nil
