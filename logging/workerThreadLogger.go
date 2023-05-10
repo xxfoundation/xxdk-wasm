@@ -23,29 +23,30 @@ import (
 // the in-memory file buffer in a remote Worker thread.
 type threadLogger struct {
 	threshold jww.Threshold
+	channel   worker.Channel
 	wtm       *worker.ThreadManager
 }
 
 // newThreadLogger starts logging to an in-memory log file in a remote Worker
 // at the specified threshold. Returns a [threadLogger] that can be used to get
 // the log file.
-func newThreadLogger(threshold jww.Threshold, wtm *worker.ThreadManager) (*threadLogger, error) {
+func newThreadLogger(threshold jww.Threshold, channel worker.Channel,
+	wtm *worker.ThreadManager) (*threadLogger, error) {
 	tl := &threadLogger{
 		threshold: threshold,
+		channel:   channel,
 		wtm:       wtm,
 	}
 
 	// Wait for ChannelMessage to be created
 	channelCreatedChan := make(chan struct{})
-	wtm.RegisterChannelCreatedCB(worker.ChannelsIndexedDbLogging, func() {
-		channelCreatedChan <- struct{}{}
-	})
+	wtm.RegisterChannelCreatedCB(
+		channel, func() { channelCreatedChan <- struct{}{} })
 	select {
 	case <-channelCreatedChan:
 	case <-time.After(worker.ResponseTimeout):
 		return nil, errors.Errorf("timed out after %s waiting for "+
-			"ChannelMessage %s to be created",
-			worker.ResponseTimeout, worker.ChannelsIndexedDbLogging)
+			"ChannelMessage %s to be created", worker.ResponseTimeout, channel)
 	}
 
 	readyChan := make(chan []byte)
@@ -54,7 +55,7 @@ func newThreadLogger(threshold jww.Threshold, wtm *worker.ThreadManager) (*threa
 		return nil, nil
 	})
 
-	tl.wtm.SendMessage(WorkerReady, worker.ChannelsIndexedDbLogging, []byte{})
+	tl.wtm.SendMessage(WorkerReady, channel, []byte{})
 
 	select {
 	case <-readyChan:
@@ -75,7 +76,7 @@ func newThreadLogger(threshold jww.Threshold, wtm *worker.ThreadManager) (*threa
 // worker to be added to the file buffer. Always returns the length of p and
 // nil. All errors are printed to the log.
 func (tl *threadLogger) Write(p []byte) (n int, err error) {
-	go tl.wtm.SendMessageQuiet(WriteLogTag, worker.ChannelsIndexedDbLogging, p)
+	go tl.wtm.SendMessageQuiet(WriteLogTag, tl.channel, p)
 	return len(p), nil
 }
 
@@ -103,7 +104,7 @@ func (tl *threadLogger) GetFile() []byte {
 		return nil, nil
 	})
 
-	tl.wtm.SendMessage(GetFileTag, worker.ChannelsIndexedDbLogging, []byte{})
+	tl.wtm.SendMessage(GetFileTag, tl.channel, []byte{})
 
 	select {
 	case file := <-fileChan:
@@ -128,7 +129,7 @@ func (tl *threadLogger) MaxSize() int {
 		return nil, nil
 	})
 
-	tl.wtm.SendMessage(MaxSizeTag, worker.ChannelsIndexedDbLogging, []byte{})
+	tl.wtm.SendMessage(MaxSizeTag, tl.channel, []byte{})
 
 	select {
 	case data := <-maxSizeChan:
@@ -148,7 +149,7 @@ func (tl *threadLogger) Size() int {
 		return nil, nil
 	})
 
-	tl.wtm.SendMessage(MaxSizeTag, worker.ChannelsIndexedDbLogging, []byte{})
+	tl.wtm.SendMessage(MaxSizeTag, tl.channel, []byte{})
 
 	select {
 	case data := <-sizeChan:

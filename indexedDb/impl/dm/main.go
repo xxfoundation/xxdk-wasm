@@ -60,8 +60,8 @@ var dmCmd = &cobra.Command{
 		if workerLogging {
 			wtm = m.wtm
 		}
-		err := logging.EnableWorkerLogging(
-			logLevel, fileLogLevel, maxLogFileSizeMB, wtm)
+		err := logging.EnableWorkerLogging(logLevel, fileLogLevel,
+			maxLogFileSizeMB, worker.DmIndexedDbLogging, wtm)
 		if err != nil {
 			fmt.Printf(
 				"Failed to intialize logging in DMs indexedDb worker: %+v", err)

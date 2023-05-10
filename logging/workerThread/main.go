@@ -68,7 +68,7 @@ var loggerCmd = &cobra.Command{
 		wlf.wtm.SignalReady()
 
 		err := logging.EnableWorkerLogging(
-			logLevel, fileLogLevel, maxLogFileSizeMB, nil)
+			logLevel, fileLogLevel, maxLogFileSizeMB, "", nil)
 		if err != nil {
 			fmt.Printf("Failed to intialize logging in logger worker: %+v", err)
 			os.Exit(1)

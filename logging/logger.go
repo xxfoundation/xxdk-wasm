@@ -114,7 +114,7 @@ func EnableLogging(logLevel, fileLogLevel jww.Threshold, maxLogFileSizeMB int,
 //
 // maxLogFileSize only applies when saving a log file to a local buffer.
 func EnableWorkerLogging(logLevel, fileLogLevel jww.Threshold,
-	maxLogFileSize int, wtm *worker.ThreadManager) error {
+	maxLogFileSize int, channel worker.Channel, wtm *worker.ThreadManager) error {
 
 	var listeners []jww.LogListener
 	if logLevel > -1 {
@@ -136,7 +136,7 @@ func EnableWorkerLogging(logLevel, fileLogLevel jww.Threshold,
 			}
 			listeners = append(listeners, fl.Listen)
 		} else {
-			wl, err := newThreadLogger(fileLogLevel, wtm)
+			wl, err := newThreadLogger(fileLogLevel, channel, wtm)
 			if err != nil {
 				return errors.Wrap(err, "could not initialize logging to worker file")
 			}
