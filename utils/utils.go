@@ -61,10 +61,12 @@ type PromiseFn func(resolve, reject func(args ...any) js.Value)
 // Go function to Javascript.
 func CreatePromise(f PromiseFn) any {
 	// Create handler for promise (this will be a Javascript function)
-	handler := js.FuncOf(func(this js.Value, args []js.Value) any {
+	var handler js.Func
+	handler = js.FuncOf(func(this js.Value, args []js.Value) any {
 		// Spawn a new go routine to perform the blocking function
 		go func(resolve, reject js.Value) {
 			f(resolve.Invoke, reject.Invoke)
+			go func() { handler.Release() }()
 		}(args[0], args[1])
 
 		return nil
