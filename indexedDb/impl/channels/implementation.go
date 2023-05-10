@@ -121,19 +121,19 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 			"Unable to get Index: %+v", err)
 	}
 
-	// Perform the operation
+	// Set up the operation
 	keyRange, err := idb.NewKeyRangeOnly(impl.EncodeBytes(channelID.Marshal()))
 	cursorRequest, err := index.OpenCursorRange(keyRange, idb.CursorNext)
 	if err != nil {
 		return errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
 	}
-	ctx, cancel := impl.NewContext()
-	err = cursorRequest.Iter(ctx,
+
+	// Perform the operation
+	err = impl.SendCursorRequest(cursorRequest,
 		func(cursor *idb.CursorWithValue) error {
 			_, err := cursor.Delete()
 			return err
 		})
-	cancel()
 	if err != nil {
 		return errors.WithMessagef(parentErr,
 			"Unable to delete Message data: %+v", err)

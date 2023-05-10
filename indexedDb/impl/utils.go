@@ -30,9 +30,6 @@ const (
 
 	// ErrDoesNotExist is an error string for got undefined on Get operations.
 	ErrDoesNotExist = "result is undefined"
-
-	// ErrUniqueConstraint is an error string for failed uniqueness inserts.
-	ErrUniqueConstraint = "at least one key does not satisfy the uniqueness requirements"
 )
 
 // NewContext builds a context for indexedDb operations.
@@ -43,6 +40,31 @@ func NewContext() (context.Context, context.CancelFunc) {
 // EncodeBytes returns the proper IndexedDb encoding for a byte slice into js.Value.
 func EncodeBytes(input []byte) js.Value {
 	return js.ValueOf(base64.StdEncoding.EncodeToString(input))
+}
+
+// SendRequest is a wrapper for the request.Await() method providing a timeout.
+func SendRequest(request *idb.Request) (js.Value, error) {
+	ctx, cancel := NewContext()
+	defer cancel()
+	result, err := request.Await(ctx)
+	if err != nil {
+		return js.Undefined(), err
+	} else if ctx.Err() != nil {
+		return js.Undefined(), ctx.Err()
+	}
+	return result, nil
+}
+
+// SendCursorRequest is a wrapper for the cursorRequest.Await() method providing a timeout.
+func SendCursorRequest(cur *idb.CursorWithValueRequest,
+	iterFunc func(cursor *idb.CursorWithValue) error) error {
+	ctx, cancel := NewContext()
+	defer cancel()
+	err := cur.Iter(ctx, iterFunc)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	return err
 }
 
 // Get is a generic helper for getting values from the given [idb.ObjectStore].
@@ -62,22 +84,18 @@ func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, erro
 			"Unable to get ObjectStore: %+v", err)
 	}
 
-	// Perform the operation
+	// Set up the operation
 	getRequest, err := store.Get(key)
 	if err != nil {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to Get from ObjectStore: %+v", err)
 	}
 
-	// Wait for the operation to return
-	ctx, cancel := NewContext()
-	resultObj, err := getRequest.Await(ctx)
-	cancel()
+	// Perform the operation
+	resultObj, err := SendRequest(getRequest)
 	if err != nil {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
-	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
-		return js.Null(), errors.Wrapf(err, "timed out after %s", dbTimeout)
 	} else if resultObj.IsUndefined() {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
@@ -105,14 +123,15 @@ func GetAll(db *idb.Database, objectStoreName string) ([]js.Value, error) {
 			"Unable to get ObjectStore: %+v", err)
 	}
 
-	// Perform the operation
-	result := make([]js.Value, 0)
+	// Set up the operation
 	cursorRequest, err := store.OpenCursor(idb.CursorNext)
 	if err != nil {
 		return nil, errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
 	}
-	ctx, cancel := NewContext()
-	err = cursorRequest.Iter(ctx,
+	result := make([]js.Value, 0)
+
+	// Perform the operation
+	err = SendCursorRequest(cursorRequest,
 		func(cursor *idb.CursorWithValue) error {
 			row, err := cursor.Value()
 			if err != nil {
@@ -121,7 +140,6 @@ func GetAll(db *idb.Database, objectStoreName string) ([]js.Value, error) {
 			result = append(result, row)
 			return nil
 		})
-	cancel()
 	if err != nil {
 		return nil, errors.WithMessagef(parentErr, err.Error())
 	}
@@ -152,22 +170,18 @@ func GetIndex(db *idb.Database, objectStoreName,
 			"Unable to get Index: %+v", err)
 	}
 
-	// Perform the operation
+	// Set up the operation
 	getRequest, err := idx.Get(key)
 	if err != nil {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to Get from ObjectStore: %+v", err)
 	}
 
-	// Wait for the operation to return
-	ctx, cancel := NewContext()
-	resultObj, err := getRequest.Await(ctx)
-	cancel()
+	// Perform the operation
+	resultObj, err := SendRequest(getRequest)
 	if err != nil {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
-	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
-		return js.Null(), errors.Wrapf(err, "timed out after %s", dbTimeout)
 	} else if resultObj.IsUndefined() {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
@@ -193,25 +207,21 @@ func Put(db *idb.Database, objectStoreName string, value js.Value) (js.Value, er
 		return js.Undefined(), errors.Errorf("Unable to get ObjectStore: %+v", err)
 	}
 
-	// Perform the operation
+	// Set up the operation
 	request, err := store.Put(value)
 	if err != nil {
 		return js.Undefined(), errors.Errorf("Unable to Put: %+v", err)
 	}
 
-	// Wait for the operation to return
-	ctx, cancel := NewContext()
-	result, err := request.Await(ctx)
-	cancel()
+	// Perform the operation
+	resultObj, err := SendRequest(request)
 	if err != nil {
 		return js.Undefined(), errors.Errorf("Putting value failed: %+v\n%s",
 			err, utils.JsToJson(value))
-	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
-		return js.Null(), errors.Wrapf(err, "timed out after %s", dbTimeout)
 	}
 	jww.DEBUG.Printf("Successfully put value in %s: %s",
 		objectStoreName, utils.JsToJson(value))
-	return result, nil
+	return resultObj, nil
 }
 
 // Delete is a generic helper for removing values from the given
@@ -232,21 +242,17 @@ func Delete(db *idb.Database, objectStoreName string, key js.Value) error {
 	}
 
 	// Perform the operation
-	_, err = store.Delete(key)
+	deleteRequest, err := store.Delete(key)
 	if err != nil {
 		return errors.WithMessagef(parentErr,
 			"Unable to Delete from ObjectStore: %+v", err)
 	}
 
-	// Wait for the operation to return
-	ctx, cancel := NewContext()
-	err = txn.Await(ctx)
-	cancel()
+	// Perform the operation
+	_, err = SendRequest(deleteRequest.Request)
 	if err != nil {
 		return errors.WithMessagef(parentErr,
 			"Unable to Delete from ObjectStore: %+v", err)
-	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
-		return errors.Wrapf(err, "timed out after %s", dbTimeout)
 	}
 	jww.DEBUG.Printf("Successfully deleted value at %s/%s",
 		objectStoreName, utils.JsToJson(key))
@@ -290,17 +296,18 @@ func Dump(db *idb.Database, objectStoreName string) ([]string, error) {
 		return nil, errors.WithMessagef(parentErr,
 			"Unable to get ObjectStore: %+v", err)
 	}
+
+	// Set up the operation
 	cursorRequest, err := store.OpenCursor(idb.CursorNext)
 	if err != nil {
 		return nil, errors.WithMessagef(parentErr,
 			"Unable to open Cursor: %+v", err)
 	}
-
-	// Run the query
 	jww.DEBUG.Printf("%s values:", objectStoreName)
 	results := make([]string, 0)
-	ctx, cancel := NewContext()
-	err = cursorRequest.Iter(ctx,
+
+	// Perform the operation
+	err = SendCursorRequest(cursorRequest,
 		func(cursor *idb.CursorWithValue) error {
 			value, err := cursor.Value()
 			if err != nil {
@@ -311,7 +318,6 @@ func Dump(db *idb.Database, objectStoreName string) ([]string, error) {
 			jww.DEBUG.Printf("- %v", valueStr)
 			return nil
 		})
-	cancel()
 	if err != nil {
 		return nil, errors.WithMessagef(parentErr,
 			"Unable to dump ObjectStore: %+v", err)
