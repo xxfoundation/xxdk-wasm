@@ -58,8 +58,9 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 
 	// Create a channel between the indexedDb worker and the logger worker so
 	// that indexedDb logs can be logged to the worker
-	wm.CreateMessageChannel(
-		logging.GetLogger().Worker(), worker.DmIndexedDbLogging)
+	if logger := logging.GetLogger(); logger != nil {
+		wm.CreateMessageChannel(logger.Worker(), worker.DmIndexedDbLogging)
+	}
 
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)
