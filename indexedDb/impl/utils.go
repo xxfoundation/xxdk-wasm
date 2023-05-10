@@ -30,9 +30,6 @@ const (
 
 	// ErrDoesNotExist is an error string for got undefined on Get operations.
 	ErrDoesNotExist = "result is undefined"
-
-	// ErrUniqueConstraint is an error string for failed uniqueness inserts.
-	ErrUniqueConstraint = "at least one key does not satisfy the uniqueness requirements"
 )
 
 // NewContext builds a context for indexedDb operations.
@@ -71,13 +68,11 @@ func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, erro
 
 	// Wait for the operation to return
 	ctx, cancel := NewContext()
+	defer cancel()
 	resultObj, err := getRequest.Await(ctx)
-	cancel()
-	if err != nil {
+	if err != nil || ctx.Err() != nil {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
-	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
-		return js.Null(), errors.Wrapf(err, "timed out after %s", dbTimeout)
 	} else if resultObj.IsUndefined() {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
@@ -112,6 +107,7 @@ func GetAll(db *idb.Database, objectStoreName string) ([]js.Value, error) {
 		return nil, errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
 	}
 	ctx, cancel := NewContext()
+	defer cancel()
 	err = cursorRequest.Iter(ctx,
 		func(cursor *idb.CursorWithValue) error {
 			row, err := cursor.Value()
@@ -121,8 +117,7 @@ func GetAll(db *idb.Database, objectStoreName string) ([]js.Value, error) {
 			result = append(result, row)
 			return nil
 		})
-	cancel()
-	if err != nil {
+	if err != nil || ctx.Err() != nil {
 		return nil, errors.WithMessagef(parentErr, err.Error())
 	}
 	return result, nil
@@ -161,13 +156,11 @@ func GetIndex(db *idb.Database, objectStoreName,
 
 	// Wait for the operation to return
 	ctx, cancel := NewContext()
+	defer cancel()
 	resultObj, err := getRequest.Await(ctx)
-	cancel()
-	if err != nil {
+	if err != nil || ctx.Err() != nil {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
-	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
-		return js.Null(), errors.Wrapf(err, "timed out after %s", dbTimeout)
 	} else if resultObj.IsUndefined() {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
@@ -201,13 +194,11 @@ func Put(db *idb.Database, objectStoreName string, value js.Value) (js.Value, er
 
 	// Wait for the operation to return
 	ctx, cancel := NewContext()
+	defer cancel()
 	result, err := request.Await(ctx)
-	cancel()
-	if err != nil {
+	if err != nil || ctx.Err() != nil {
 		return js.Undefined(), errors.Errorf("Putting value failed: %+v\n%s",
 			err, utils.JsToJson(value))
-	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
-		return js.Null(), errors.Wrapf(err, "timed out after %s", dbTimeout)
 	}
 	jww.DEBUG.Printf("Successfully put value in %s: %s",
 		objectStoreName, utils.JsToJson(value))
@@ -240,13 +231,11 @@ func Delete(db *idb.Database, objectStoreName string, key js.Value) error {
 
 	// Wait for the operation to return
 	ctx, cancel := NewContext()
+	defer cancel()
 	err = txn.Await(ctx)
-	cancel()
-	if err != nil {
+	if err != nil || ctx.Err() != nil {
 		return errors.WithMessagef(parentErr,
 			"Unable to Delete from ObjectStore: %+v", err)
-	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
-		return errors.Wrapf(err, "timed out after %s", dbTimeout)
 	}
 	jww.DEBUG.Printf("Successfully deleted value at %s/%s",
 		objectStoreName, utils.JsToJson(key))
@@ -300,6 +289,7 @@ func Dump(db *idb.Database, objectStoreName string) ([]string, error) {
 	jww.DEBUG.Printf("%s values:", objectStoreName)
 	results := make([]string, 0)
 	ctx, cancel := NewContext()
+	defer cancel()
 	err = cursorRequest.Iter(ctx,
 		func(cursor *idb.CursorWithValue) error {
 			value, err := cursor.Value()
@@ -311,8 +301,7 @@ func Dump(db *idb.Database, objectStoreName string) ([]string, error) {
 			jww.DEBUG.Printf("- %v", valueStr)
 			return nil
 		})
-	cancel()
-	if err != nil {
+	if err != nil || ctx.Err() != nil {
 		return nil, errors.WithMessagef(parentErr,
 			"Unable to dump ObjectStore: %+v", err)
 	}
