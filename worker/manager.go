@@ -325,8 +325,8 @@ func (m *Manager) addEventListeners() {
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/error_event
 	errorEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
 		event := args[0]
-		jww.ERROR.Printf("[WW] [%s] Main received error event: %s",
-			m.name, utils.JsErrorToJson(event))
+		jww.FATAL.Panicf("[WW] [%s] Main received error event: %+v",
+			m.name, js.Error{Value: event})
 		return nil
 	})
 
@@ -335,8 +335,8 @@ func (m *Manager) addEventListeners() {
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/messageerror_event
 	messageerrorEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
 		event := args[0]
-		jww.ERROR.Printf("[WW] [%s] Main received message error event: %s",
-			m.name, utils.JsErrorToJson(event))
+		jww.ERROR.Printf("[WW] [%s] Main received message error event: %+v",
+			m.name, js.Error{Value: event})
 		return nil
 	})
 

@@ -76,6 +76,8 @@ func Get(db *idb.Database, objectStoreName string, key js.Value) (js.Value, erro
 	if err != nil {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
+	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		return js.Null(), errors.Wrapf(err, "timed out after %s", dbTimeout)
 	} else if resultObj.IsUndefined() {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
@@ -164,6 +166,8 @@ func GetIndex(db *idb.Database, objectStoreName,
 	if err != nil {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
+	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		return js.Null(), errors.Wrapf(err, "timed out after %s", dbTimeout)
 	} else if resultObj.IsUndefined() {
 		return js.Undefined(), errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %s", ErrDoesNotExist)
@@ -202,6 +206,8 @@ func Put(db *idb.Database, objectStoreName string, value js.Value) (js.Value, er
 	if err != nil {
 		return js.Undefined(), errors.Errorf("Putting value failed: %+v\n%s",
 			err, utils.JsToJson(value))
+	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		return js.Null(), errors.Wrapf(err, "timed out after %s", dbTimeout)
 	}
 	jww.DEBUG.Printf("Successfully put value in %s: %s",
 		objectStoreName, utils.JsToJson(value))
@@ -239,6 +245,8 @@ func Delete(db *idb.Database, objectStoreName string, key js.Value) error {
 	if err != nil {
 		return errors.WithMessagef(parentErr,
 			"Unable to Delete from ObjectStore: %+v", err)
+	} else if err = ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		return errors.Wrapf(err, "timed out after %s", dbTimeout)
 	}
 	jww.DEBUG.Printf("Successfully deleted value at %s/%s",
 		objectStoreName, utils.JsToJson(key))

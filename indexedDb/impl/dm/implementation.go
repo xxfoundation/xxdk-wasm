@@ -317,7 +317,7 @@ func (w *wasmModel) upsertMessage(msg *Message) (uint64, error) {
 
 	// Store message to database
 	msgIdObj, err := impl.Put(w.db, messageStoreName, messageObj)
-	if err != nil || msgIdObj.Equal(js.Undefined()) {
+	if err != nil {
 		return 0, errors.Errorf("Unable to put Message: %+v\n%s",
 			err, newMessageJson)
 	}
