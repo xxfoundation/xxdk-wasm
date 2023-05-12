@@ -43,7 +43,7 @@ wasm-test:
     - unset SSH_PRIVATE_KEY
     - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)
     - echo "WASM TESTS DISABLED FOR XX-4522, but will run them just so you can see output"
-    - GOOS=js GOARCH=wasm go test ./... -v || true
+    - GOOS=js GOARCH=wasm go test ./... -v
 
 build:
   stage: build
@@ -77,22 +77,6 @@ build-workers:
       - release/
     expire_in: 1 hour
 
-emoji-update:
-  stage: build
-  except:
-    - tags
-  only:
-    - release
-    - master
-  script:
-    - go mod vendor -v
-    - mkdir -p release
-    - go run -ldflags '-w -s' -trimpath ./emoji/... -o emojiSet.json -v 0
-    - cp emojiSet.json release/
-  artifacts:
-    paths:
-      - release/
-    expire_in: 1 hour
 
 tag:
   stage: build
@@ -116,11 +100,9 @@ combine-artifacts:
     - echo $PIPELINE_JOBS
     - BUILD_JOB_JSON=$(echo $PIPELINE_JOBS | jq '.[] | select(.name=="build")')
     - BUILD_WORKERS_JOB_JSON=$(echo $PIPELINE_JOBS | jq '.[] | select(.name=="build-workers")')
-    - EMOJI_UPDATE_JOB_JSON=$(echo $PIPELINE_JOBS | jq '.[] | select(.name=="emoji-update")')
 
     - BUILD_JOB_ID=$(echo $BUILD_JOB_JSON | jq -r '.["id"]')
     - BUILD_WORKERS_JOB_ID=$(echo $BUILD_WORKERS_JOB_JSON | jq -r '.["id"]')
-    - EMOJI_UPDATE_JOB_ID=$(echo $EMOJI_UPDATE_JOB_JSON | jq -r '.["id"]')
 
     - rm -rf release
     - mkdir -p release
@@ -133,8 +115,6 @@ combine-artifacts:
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/channelsIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/channelsIndexedDbWorker.js'
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/dmIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/dmIndexedDbWorker.js'
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/logFileWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/logFileWorker.js'
-    - 'if [[ $CI_COMMIT_BRANCH =~ ^(release|master)$ ]]; then curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/emojiSet.json $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$EMOJI_UPDATE_JOB_ID/artifacts/release/emojiSet.json; fi'
-
     - ls release
   artifacts:
     paths:

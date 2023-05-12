@@ -23,6 +23,9 @@ import (
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
 
+// databaseSuffix is the suffix to be appended to the name of the database.
+const databaseSuffix = "_speakeasy_dm"
+
 // MessageReceivedCallback is called any time a message is received or updated.
 //
 // messageUpdate is true if the Message already exists and was edited.
@@ -33,7 +36,7 @@ type MessageReceivedCallback func(uuid uint64, pubKey ed25519.PublicKey,
 // NewWASMEventModelMessage is JSON marshalled and sent to the worker for
 // [NewWASMEventModel].
 type NewWASMEventModelMessage struct {
-	Path           string `json:"path"`
+	DatabaseName   string `json:"databaseName"`
 	EncryptionJSON string `json:"encryptionJSON"`
 }
 
@@ -41,6 +44,7 @@ type NewWASMEventModelMessage struct {
 // The name should be a base64 encoding of the users public key.
 func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) (dm.EventModel, error) {
+	databaseName := path + databaseSuffix
 
 	wh, err := worker.NewManager(wasmJsPath, "dmIndexedDb", true)
 	if err != nil {
@@ -51,11 +55,18 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 	wh.RegisterCallback(
 		MessageReceivedCallbackTag, messageReceivedCallbackHandler(cb))
 
-	// Register handler to manage checking encryption status from local storage
-	wh.RegisterCallback(EncryptionStatusTag, checkDbEncryptionStatusHandler(wh))
+	// Store the database name
+	err = storage.StoreIndexedDb(databaseName)
+	if err != nil {
+		return nil, err
+	}
 
-	// Register handler to manage the storage of the database name
-	wh.RegisterCallback(StoreDatabaseNameTag, storeDatabaseNameHandler(wh))
+	// Check that the encryption status
+	encryptionStatus := encryption != nil
+	err = checkDbEncryptionStatus(databaseName, encryptionStatus)
+	if err != nil {
+		return nil, err
+	}
 
 	encryptionJSON, err := json.Marshal(encryption)
 	if err != nil {
@@ -63,7 +74,7 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 	}
 
 	msg := NewWASMEventModelMessage{
-		Path:           path,
+		DatabaseName:   databaseName,
 		EncryptionJSON: string(encryptionJSON),
 	}
 
@@ -72,14 +83,14 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 		return nil, err
 	}
 
-	errChan := make(chan string)
+	dataChan := make(chan []byte)
 	wh.SendMessage(NewWASMEventModelTag, payload,
-		func(data []byte) { errChan <- string(data) })
+		func(data []byte) { dataChan <- data })
 
 	select {
-	case workerErr := <-errChan:
-		if workerErr != "" {
-			return nil, errors.New(workerErr)
+	case data := <-dataChan:
+		if len(data) > 0 {
+			return nil, errors.New(string(data))
 		}
 	case <-time.After(worker.ResponseTimeout):
 		return nil, errors.Errorf("timed out after %s waiting for indexedDB "+
@@ -113,66 +124,23 @@ func messageReceivedCallbackHandler(cb MessageReceivedCallback) func(data []byte
 	}
 }
 
-// EncryptionStatusMessage is JSON marshalled and received from the worker when
-// the database checks if it is encrypted.
-type EncryptionStatusMessage struct {
-	DatabaseName     string `json:"databaseName"`
-	EncryptionStatus bool   `json:"encryptionStatus"`
-}
-
-// EncryptionStatusReply is JSON marshalled and sent to the worker is response
-// to the [EncryptionStatusMessage].
-type EncryptionStatusReply struct {
-	EncryptionStatus bool   `json:"encryptionStatus"`
-	Error            string `json:"error"`
-}
-
-// checkDbEncryptionStatusHandler returns a handler to manage checking
-// encryption status from local storage.
-func checkDbEncryptionStatusHandler(wh *worker.Manager) func(data []byte) {
-	return func(data []byte) {
-		// Unmarshal received message
-		var msg EncryptionStatusMessage
-		err := json.Unmarshal(data, &msg)
-		if err != nil {
-			jww.ERROR.Printf("Failed to JSON unmarshal "+
-				"EncryptionStatusMessage message from worker: %+v", err)
-			return
-		}
-
-		// Pass message values to storage
-		loadedEncryptionStatus, err := storage.StoreIndexedDbEncryptionStatus(
-			msg.DatabaseName, msg.EncryptionStatus)
-		var reply EncryptionStatusReply
-		if err != nil {
-			reply.Error = err.Error()
-		} else {
-			reply.EncryptionStatus = loadedEncryptionStatus
-		}
-
-		// Return response
-		statusData, err := json.Marshal(reply)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Failed to JSON marshal EncryptionStatusReply: %+v", err)
-			return
-		}
-
-		wh.SendMessage(EncryptionStatusTag, statusData, nil)
+// checkDbEncryptionStatus returns an error if the encryption status provided
+// does not match the stored status for this database name.
+func checkDbEncryptionStatus(databaseName string, encryptionStatus bool) error {
+	// Pass message values to storage
+	loadedEncryptionStatus, err := storage.StoreIndexedDbEncryptionStatus(
+		databaseName, encryptionStatus)
+	if err != nil {
+		return err
 	}
-}
 
-// storeDatabaseNameHandler returns a handler that stores the database name to
-// storage when it is received from the worker.
-func storeDatabaseNameHandler(wh *worker.Manager) func(data []byte) {
-	return func(data []byte) {
-		var returnData []byte
-
-		// Get the database name and save it to storage
-		if err := storage.StoreIndexedDb(string(data)); err != nil {
-			returnData = []byte(err.Error())
-		}
-
-		wh.SendMessage(StoreDatabaseNameTag, returnData, nil)
+	// Verify encryption status does not change
+	if encryptionStatus != loadedEncryptionStatus {
+		return errors.New(
+			"cannot load database with different encryption status")
+	} else if !encryptionStatus {
+		jww.WARN.Printf("IndexedDb encryption disabled!")
 	}
+
+	return nil
 }

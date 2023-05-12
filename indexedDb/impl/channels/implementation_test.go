@@ -10,9 +10,13 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
+	"errors"
 	"fmt"
+	cft "gitlab.com/elixxir/client/v4/channelsFileTransfer"
+	"gitlab.com/elixxir/crypto/fileTransfer"
 	"os"
 	"strconv"
 	"testing"
@@ -41,9 +45,78 @@ func TestMain(m *testing.M) {
 func dummyReceivedMessageCB(uint64, *id.ID, bool)      {}
 func dummyDeletedMessageCB(message.ID)                 {}
 func dummyMutedUserCB(*id.ID, ed25519.PublicKey, bool) {}
-func dummyStoreDatabaseName(string) error              { return nil }
-func dummyStoreEncryptionStatus(_ string, encryptionStatus bool) (bool, error) {
-	return encryptionStatus, nil
+
+// Happy path test for receiving, updating, getting, and deleting a File.
+func TestWasmModel_ReceiveFile(t *testing.T) {
+	testString := "TestWasmModel_ReceiveFile"
+	m, err := newWASMModel(testString, nil,
+		dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testTs := time.Now()
+	testBytes := []byte(testString)
+	testStatus := cft.Downloading
+
+	// Insert a test row
+	fId := fileTransfer.NewID(testBytes)
+	err = m.ReceiveFile(fId, testBytes, testBytes, testTs, testStatus)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Attempt to get stored row
+	storedFile, err := m.GetFile(fId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Spot check stored attribute
+	if !bytes.Equal(storedFile.Link, testBytes) {
+		t.Fatalf("Got unequal FileLink values")
+	}
+
+	// Attempt to updated stored row
+	newTs := time.Now()
+	newBytes := []byte("test")
+	newStatus := cft.Complete
+	err = m.UpdateFile(fId, nil, newBytes, &newTs, &newStatus)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check that the update took
+	updatedFile, err := m.GetFile(fId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Link should not have changed
+	if !bytes.Equal(updatedFile.Link, testBytes) {
+		t.Fatalf("Link should not have changed")
+	}
+	// Other attributes should have changed
+	if !bytes.Equal(updatedFile.Data, newBytes) {
+		t.Fatalf("Data should have updated")
+	}
+	if !updatedFile.Timestamp.Equal(newTs) {
+		t.Fatalf("TS should have updated, expected %s got %s",
+			newTs, updatedFile.Timestamp)
+	}
+	if updatedFile.Status != newStatus {
+		t.Fatalf("Status should have updated")
+	}
+
+	// Delete the row
+	err = m.DeleteFile(fId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check that the delete operation took and get provides the expected error
+	_, err = m.GetFile(fId)
+	if err == nil || !errors.Is(channels.NoMessageErr, err) {
+		t.Fatal(err)
+	}
 }
 
 // Happy path, insert message and look it up
@@ -58,14 +131,13 @@ func TestWasmModel_GetMessage(t *testing.T) {
 		if c != nil {
 			cs = "_withCipher"
 		}
-		testString := "TestWasmModel_msgIDLookup" + cs
+		testString := "TestWasmModel_GetMessage" + cs
 		t.Run(testString, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
 
 			eventModel, err := newWASMModel(testString, c,
-				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB,
-				dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -96,8 +168,7 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 	testString := "TestWasmModel_DeleteMessage"
 	testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
 	eventModel, err := newWASMModel(testString, nil, dummyReceivedMessageCB,
-		dummyDeletedMessageCB, dummyMutedUserCB, dummyStoreDatabaseName,
-		dummyStoreEncryptionStatus)
+		dummyDeletedMessageCB, dummyMutedUserCB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,8 +225,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 			testMsgId := message.DeriveChannelMessageID(
 				&id.ID{1}, 0, []byte(testString))
 			eventModel, err2 := newWASMModel(testString, c,
-				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB,
-				dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
 			if err2 != nil {
 				t.Fatal(err)
 			}
@@ -223,8 +293,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 		t.Run("Test_wasmModel_JoinChannel_LeaveChannel"+cs, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			eventModel, err2 := newWASMModel("test", c, dummyReceivedMessageCB,
-				dummyDeletedMessageCB, dummyMutedUserCB, dummyStoreDatabaseName,
-				dummyStoreEncryptionStatus)
+				dummyDeletedMessageCB, dummyMutedUserCB)
 			if err2 != nil {
 				t.Fatal(err2)
 			}
@@ -243,7 +312,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 			}
 			eventModel.JoinChannel(testChannel)
 			eventModel.JoinChannel(testChannel2)
-			results, err2 := impl.Dump(eventModel.db, channelsStoreName)
+			results, err2 := impl.Dump(eventModel.db, channelStoreName)
 			if err2 != nil {
 				t.Fatal(err2)
 			}
@@ -251,7 +320,7 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 				t.Fatalf("Expected 2 channels to exist")
 			}
 			eventModel.LeaveChannel(testChannel.ReceptionID)
-			results, err = impl.Dump(eventModel.db, channelsStoreName)
+			results, err = impl.Dump(eventModel.db, channelStoreName)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -278,8 +347,7 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := "testHello" + cs
 			eventModel, err2 := newWASMModel(testString, c,
-				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB,
-				dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
 			if err2 != nil {
 				t.Fatal(err2)
 			}
@@ -326,8 +394,7 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 		t.Run(testString, func(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			eventModel, err := newWASMModel(testString, c,
-				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB,
-				dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -376,8 +443,7 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 			totalMessages := 10
 			expectedMessages := 5
 			eventModel, err := newWASMModel(testString, c,
-				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB,
-				dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -448,8 +514,7 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 			storage.GetLocalStorage().Clear()
 			testString := fmt.Sprintf("test_receiveHelper_UniqueIndex_%d", i)
 			eventModel, err := newWASMModel(testString, c,
-				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB,
-				dummyStoreDatabaseName, dummyStoreEncryptionStatus)
+				dummyReceivedMessageCB, dummyDeletedMessageCB, dummyMutedUserCB)
 			if err != nil {
 				t.Fatal(err)
 			}

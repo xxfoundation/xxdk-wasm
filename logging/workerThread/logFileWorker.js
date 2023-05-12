@@ -7,11 +7,15 @@
 
 importScripts('wasm_exec.js');
 
+const isReady = new Promise((resolve) => {
+    self.onWasmInitialized = resolve;
+});
+
 const go = new Go();
 const binPath = 'xxdk-logFileWorker.wasm'
-WebAssembly.instantiateStreaming(fetch(binPath), go.importObject).then((result) => {
+WebAssembly.instantiateStreaming(fetch(binPath), go.importObject).then(async (result) => {
     go.run(result.instance);
-    LogLevel(1);
+    await isReady;
 }).catch((err) => {
     console.error(err);
 });

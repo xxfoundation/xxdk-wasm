@@ -32,24 +32,24 @@ var zeroUUID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
 // manager handles the event model and the message callbacks, which is used to
 // send information between the event model and the main thread.
 type manager struct {
-	mh    *worker.ThreadManager
+	wtm   *worker.ThreadManager
 	model channels.EventModel
 }
 
 // registerCallbacks registers all the reception callbacks to manage messages
 // from the main thread for the channels.EventModel.
 func (m *manager) registerCallbacks() {
-	m.mh.RegisterCallback(wChannels.NewWASMEventModelTag, m.newWASMEventModelCB)
-	m.mh.RegisterCallback(wChannels.JoinChannelTag, m.joinChannelCB)
-	m.mh.RegisterCallback(wChannels.LeaveChannelTag, m.leaveChannelCB)
-	m.mh.RegisterCallback(wChannels.ReceiveMessageTag, m.receiveMessageCB)
-	m.mh.RegisterCallback(wChannels.ReceiveReplyTag, m.receiveReplyCB)
-	m.mh.RegisterCallback(wChannels.ReceiveReactionTag, m.receiveReactionCB)
-	m.mh.RegisterCallback(wChannels.UpdateFromUUIDTag, m.updateFromUUIDCB)
-	m.mh.RegisterCallback(wChannels.UpdateFromMessageIDTag, m.updateFromMessageIDCB)
-	m.mh.RegisterCallback(wChannels.GetMessageTag, m.getMessageCB)
-	m.mh.RegisterCallback(wChannels.DeleteMessageTag, m.deleteMessageCB)
-	m.mh.RegisterCallback(wChannels.MuteUserTag, m.muteUserCB)
+	m.wtm.RegisterCallback(wChannels.NewWASMEventModelTag, m.newWASMEventModelCB)
+	m.wtm.RegisterCallback(wChannels.JoinChannelTag, m.joinChannelCB)
+	m.wtm.RegisterCallback(wChannels.LeaveChannelTag, m.leaveChannelCB)
+	m.wtm.RegisterCallback(wChannels.ReceiveMessageTag, m.receiveMessageCB)
+	m.wtm.RegisterCallback(wChannels.ReceiveReplyTag, m.receiveReplyCB)
+	m.wtm.RegisterCallback(wChannels.ReceiveReactionTag, m.receiveReactionCB)
+	m.wtm.RegisterCallback(wChannels.UpdateFromUUIDTag, m.updateFromUUIDCB)
+	m.wtm.RegisterCallback(wChannels.UpdateFromMessageIDTag, m.updateFromMessageIDCB)
+	m.wtm.RegisterCallback(wChannels.GetMessageTag, m.getMessageCB)
+	m.wtm.RegisterCallback(wChannels.DeleteMessageTag, m.deleteMessageCB)
+	m.wtm.RegisterCallback(wChannels.MuteUserTag, m.muteUserCB)
 }
 
 // newWASMEventModelCB is the callback for NewWASMEventModel. Returns an empty
@@ -71,12 +71,12 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 			"failed to JSON unmarshal Cipher from main thread: %+v", err)
 	}
 
-	m.model, err = NewWASMEventModel(msg.Path, encryption,
-		m.messageReceivedCallback, m.deletedMessageCallback, m.mutedUserCallback,
-		m.storeDatabaseName, m.storeEncryptionStatus)
+	m.model, err = NewWASMEventModel(msg.DatabaseName, encryption,
+		m.messageReceivedCallback, m.deletedMessageCallback, m.mutedUserCallback)
 	if err != nil {
 		return []byte(err.Error()), nil
 	}
+
 	return []byte{}, nil
 }
 
@@ -99,7 +99,7 @@ func (m *manager) messageReceivedCallback(
 	}
 
 	// Send it to the main thread
-	m.mh.SendMessage(wChannels.MessageReceivedCallbackTag, data)
+	m.wtm.SendMessage(wChannels.MessageReceivedCallbackTag, data)
 }
 
 // deletedMessageCallback sends calls to the channels.DeletedMessageCallback in
@@ -107,7 +107,7 @@ func (m *manager) messageReceivedCallback(
 //
 // storeEncryptionStatus adhere to the channels.MessageReceivedCallback type.
 func (m *manager) deletedMessageCallback(messageID message.ID) {
-	m.mh.SendMessage(wChannels.DeletedMessageCallbackTag, messageID.Marshal())
+	m.wtm.SendMessage(wChannels.DeletedMessageCallbackTag, messageID.Marshal())
 }
 
 // mutedUserCallback sends calls to the channels.MutedUserCallback in the main
@@ -129,89 +129,7 @@ func (m *manager) mutedUserCallback(
 	}
 
 	// Send it to the main thread
-	m.mh.SendMessage(wChannels.MutedUserCallbackTag, data)
-}
-
-// storeDatabaseName sends the database name to the main thread and waits for
-// the response. This function mocks the behavior of storage.StoreIndexedDb.
-//
-// storeDatabaseName adheres to the storeDatabaseNameFn type.
-func (m *manager) storeDatabaseName(databaseName string) error {
-	// Register response callback with channel that will wait for the response
-	responseChan := make(chan []byte)
-	m.mh.RegisterCallback(wChannels.StoreDatabaseNameTag,
-		func(data []byte) ([]byte, error) {
-			responseChan <- data
-			return nil, nil
-		})
-
-	// Send encryption status to main thread
-	m.mh.SendMessage(wChannels.StoreDatabaseNameTag, []byte(databaseName))
-
-	// Wait for response
-	select {
-	case response := <-responseChan:
-		if len(response) > 0 {
-			return errors.New(string(response))
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return errors.Errorf("[WW] Timed out after %s waiting for response "+
-			"about storing the database name in local storage in the main "+
-			"thread", worker.ResponseTimeout)
-	}
-
-	return nil
-}
-
-// storeEncryptionStatus sends the database name and encryption status to the
-// main thread and waits for the response. If the value has not been previously
-// saved, it returns the saves encryption status. This function mocks the
-// behavior of storage.StoreIndexedDbEncryptionStatus.
-//
-// storeEncryptionStatus adheres to the storeEncryptionStatusFn type.
-func (m *manager) storeEncryptionStatus(
-	databaseName string, encryption bool) (bool, error) {
-	// Package parameters for sending
-	msg := &wChannels.EncryptionStatusMessage{
-		DatabaseName:     databaseName,
-		EncryptionStatus: encryption,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return false, err
-	}
-
-	// Register response callback with channel that will wait for the response
-	responseChan := make(chan []byte)
-	m.mh.RegisterCallback(wChannels.EncryptionStatusTag,
-		func(data []byte) ([]byte, error) {
-			responseChan <- data
-			return nil, nil
-		})
-
-	// Send encryption status to main thread
-	m.mh.SendMessage(wChannels.EncryptionStatusTag, data)
-
-	// Wait for response
-	var response wChannels.EncryptionStatusReply
-	select {
-	case responseData := <-responseChan:
-		if err = json.Unmarshal(responseData, &response); err != nil {
-			return false, err
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return false, errors.Errorf("timed out after %s waiting for "+
-			"response about the database encryption status from local "+
-			"storage in the main thread", worker.ResponseTimeout)
-	}
-
-	// If the response contain an error, return it
-	if response.Error != "" {
-		return false, errors.New(response.Error)
-	}
-
-	// Return the encryption status
-	return response.EncryptionStatus, nil
+	m.wtm.SendMessage(wChannels.MutedUserCallbackTag, data)
 }
 
 // joinChannelCB is the callback for wasmModel.JoinChannel. Always returns nil;
@@ -258,7 +176,7 @@ func (m *manager) receiveMessageCB(data []byte) ([]byte, error) {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		return zeroUUID, errors.Errorf("failed to JSON marshal UUID : %+v", err)
+		return zeroUUID, errors.Errorf("failed to JSON marshal UUID: %+v", err)
 	}
 	return uuidData, nil
 }
@@ -280,7 +198,7 @@ func (m *manager) receiveReplyCB(data []byte) ([]byte, error) {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		return zeroUUID, errors.Errorf("failed to JSON marshal UUID : %+v", err)
+		return zeroUUID, errors.Errorf("failed to JSON marshal UUID: %+v", err)
 	}
 	return uuidData, nil
 }
@@ -302,7 +220,7 @@ func (m *manager) receiveReactionCB(data []byte) ([]byte, error) {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		return zeroUUID, errors.Errorf("failed to JSON marshal UUID : %+v", err)
+		return zeroUUID, errors.Errorf("failed to JSON marshal UUID: %+v", err)
 	}
 	return uuidData, nil
 }
@@ -340,8 +258,12 @@ func (m *manager) updateFromUUIDCB(data []byte) ([]byte, error) {
 		status = &msg.Status
 	}
 
-	m.model.UpdateFromUUID(
+	err = m.model.UpdateFromUUID(
 		msg.UUID, messageID, timestamp, round, pinned, hidden, status)
+	if err != nil {
+		return []byte(err.Error()), nil
+	}
+
 	return nil, nil
 }
 
@@ -374,15 +296,21 @@ func (m *manager) updateFromMessageIDCB(data []byte) ([]byte, error) {
 		status = &msg.Status
 	}
 
-	uuid := m.model.UpdateFromMessageID(
+	var ue wChannels.UuidError
+	uuid, err := m.model.UpdateFromMessageID(
 		msg.MessageID, timestamp, round, pinned, hidden, status)
-
-	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		return nil, errors.Errorf("failed to JSON marshal UUID : %+v", err)
+		ue.Error = []byte(err.Error())
+	} else {
+		ue.UUID = uuid
 	}
 
-	return uuidData, nil
+	data, err = json.Marshal(ue)
+	if err != nil {
+		return nil, errors.Errorf("failed to JSON marshal %T: %+v", ue, err)
+	}
+
+	return data, nil
 }
 
 // getMessageCB is the callback for wasmModel.GetMessage. Returns JSON

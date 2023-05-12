@@ -18,8 +18,6 @@ const (
 	MessageReceivedCallbackTag worker.Tag = "MessageReceivedCallback"
 	DeletedMessageCallbackTag  worker.Tag = "DeletedMessageCallback"
 	MutedUserCallbackTag       worker.Tag = "MutedUserCallback"
-	EncryptionStatusTag        worker.Tag = "EncryptionStatus"
-	StoreDatabaseNameTag       worker.Tag = "StoreDatabaseName"
 
 	JoinChannelTag         worker.Tag = "JoinChannel"
 	LeaveChannelTag        worker.Tag = "LeaveChannel"

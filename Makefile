@@ -11,11 +11,11 @@ build:
 	GOOS=js GOARCH=wasm go build ./...
 
 update_release:
-	GOFLAGS="" go get -d gitlab.com/elixxir/client/v4@release
-	GOFLAGS="" go get gitlab.com/elixxir/crypto@release
+	GOFLAGS="" go get gitlab.com/xx_network/primitives@release
 	GOFLAGS="" go get gitlab.com/elixxir/primitives@release
 	GOFLAGS="" go get gitlab.com/xx_network/crypto@release
-	GOFLAGS="" go get gitlab.com/xx_network/primitives@release
+	GOFLAGS="" go get gitlab.com/elixxir/crypto@release
+	GOFLAGS="" go get -d gitlab.com/elixxir/client/v4@release
 
 update_master:
 	GOFLAGS="" go get -d gitlab.com/elixxir/client@master
@@ -31,9 +31,6 @@ worker_binaries:
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-channelsIndexedDkWorker.wasm ./indexedDb/impl/channels/...
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-dmIndexedDkWorker.wasm ./indexedDb/impl/dm/...
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-logFileWorker.wasm ./logging/workerThread/...
-
-emojis:
-	go run -ldflags '-w -s' -trimpath ./emoji/... -o emojiSet.json
 
 binaries: binary worker_binaries
 

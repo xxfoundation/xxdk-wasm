@@ -11,15 +11,18 @@ package worker
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
-	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"sync"
 	"syscall/js"
+
+	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
+
+	"gitlab.com/elixxir/xxdk-wasm/utils"
 )
 
-// ThreadReceptionCallback is the function that handles incoming data from the
-// main thread.
+// ThreadReceptionCallback is called with a message received from the main
+// thread. Any bytes returned are sent as a response back to the main thread.
+// Any returned errors are printed to the log.
 type ThreadReceptionCallback func(data []byte) ([]byte, error)
 
 // ThreadManager queues incoming messages from the main thread and handles them
@@ -31,6 +34,13 @@ type ThreadManager struct {
 	// callbacks is a list of callbacks to handle messages that come from the
 	// main thread keyed on the callback tag.
 	callbacks map[Tag]ThreadReceptionCallback
+
+	// receiveQueue is the channel that all received MessageEvent.data are
+	// queued on while they wait to be processed.
+	receiveQueue chan js.Value
+
+	// quit, when triggered, stops the thread that processes received messages.
+	quit chan struct{}
 
 	// name describes the worker. It is used for debugging and logging purposes.
 	name string
@@ -44,16 +54,62 @@ type ThreadManager struct {
 
 // NewThreadManager initialises a new ThreadManager.
 func NewThreadManager(name string, messageLogging bool) *ThreadManager {
-	mh := &ThreadManager{
+	tm := &ThreadManager{
 		messages:       make(chan js.Value, 100),
 		callbacks:      make(map[Tag]ThreadReceptionCallback),
+		receiveQueue:   make(chan js.Value, receiveQueueChanSize),
+		quit:           make(chan struct{}),
 		name:           name,
 		messageLogging: messageLogging,
 	}
+	// Start thread to process messages from the main thread
+	go tm.processThread()
 
-	mh.addEventListeners()
+	tm.addEventListeners()
 
-	return mh
+	return tm
+}
+
+// Stop closes the thread manager and stops the worker.
+func (tm *ThreadManager) Stop() {
+	// Stop processThread
+	select {
+	case tm.quit <- struct{}{}:
+	}
+
+	// Terminate the worker
+	go tm.close()
+}
+
+// processThread processes received messages sequentially.
+func (tm *ThreadManager) processThread() {
+	jww.INFO.Printf("[WW] [%s] Starting worker process thread.", tm.name)
+	for {
+		select {
+		case <-tm.quit:
+			jww.INFO.Printf("[WW] [%s] Quitting worker process thread.", tm.name)
+			return
+		case msgData := <-tm.receiveQueue:
+
+			switch msgData.Type() {
+			case js.TypeObject:
+				if msgData.Get("constructor").Equal(utils.Uint8Array) {
+					err := tm.processReceivedMessage(utils.CopyBytesToGo(msgData))
+					if err != nil {
+						jww.ERROR.Printf("[WW] [%s] Failed to process message "+
+							"received from main thread: %+v", tm.name, err)
+					}
+					break
+				}
+				fallthrough
+
+			default:
+				jww.ERROR.Printf("[WW] [%s] Cannot handle data of type %s "+
+					"from main thread: %s",
+					tm.name, msgData.Type(), utils.JsToJson(msgData))
+			}
+		}
+	}
 }
 
 // SignalReady sends a signal to the main thread indicating that the worker is
@@ -83,12 +139,11 @@ func (tm *ThreadManager) SendMessage(tag Tag, data []byte) {
 			"to main: %+v", tm.name, msg, tag, err)
 	}
 
-	go tm.postMessage(string(payload))
+	go tm.postMessage(payload)
 }
 
 // sendResponse sends a reply to the main thread with the given tag and ID.
-func (tm *ThreadManager) sendResponse(
-	tag Tag, id uint64, data []byte) {
+func (tm *ThreadManager) sendResponse(tag Tag, id uint64, data []byte) error {
 	msg := Message{
 		Tag:      tag,
 		ID:       id,
@@ -103,17 +158,26 @@ func (tm *ThreadManager) sendResponse(
 
 	payload, err := json.Marshal(msg)
 	if err != nil {
-		jww.FATAL.Panicf("[WW] [%s] Worker failed to marshal %T for %q and ID "+
-			"%d going to main: %+v", tm.name, msg, tag, id, err)
+		return errors.Errorf("worker failed to marshal %T for %q and ID "+
+			"%d going to main: %+v", msg, tag, id, err)
 	}
 
-	go tm.postMessage(string(payload))
+	go tm.postMessage(payload)
+
+	return nil
 }
 
 // receiveMessage is registered with the Javascript event listener and is called
-// everytime a message from the main thread is received. If the registered
-// callback returns a response, it is sent to the main thread.
-func (tm *ThreadManager) receiveMessage(data []byte) error {
+// every time a new message from the main thread is received.
+func (tm *ThreadManager) receiveMessage(data js.Value) {
+	tm.receiveQueue <- data
+}
+
+// processReceivedMessage processes the message received from the main thread
+// and calls the associated callback. If the registered callback returns a
+// response, it is sent to the main thread. This functions blocks until the
+// callback returns.
+func (tm *ThreadManager) processReceivedMessage(data []byte) error {
 	var msg Message
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -133,16 +197,14 @@ func (tm *ThreadManager) receiveMessage(data []byte) error {
 	}
 
 	// Call callback and register response with its return
-	go func() {
-		response, err2 := callback(msg.Data)
-		if err2 != nil {
-			jww.ERROR.Printf("[WW] [%s] Callback for for %q and ID %d "+
-				"returned an error: %+v", tm.name, msg.Tag, msg.ID, err)
-		}
-		if response != nil {
-			tm.sendResponse(msg.Tag, msg.ID, response)
-		}
-	}()
+	response, err := callback(msg.Data)
+	if err != nil {
+		return errors.Errorf("callback for %q and ID %d returned an error: %+v",
+			msg.Tag, msg.ID, err)
+	}
+	if response != nil {
+		return tm.sendResponse(msg.Tag, msg.ID, response)
+	}
 
 	return nil
 }
@@ -173,11 +235,7 @@ func (tm *ThreadManager) addEventListeners() {
 	// occurs when a message is received from the main thread.
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/message_event
 	messageEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
-		err := tm.receiveMessage([]byte(args[0].Get("data").String()))
-		if err != nil {
-			jww.ERROR.Printf("[WW] [%s] Failed to receive message from "+
-				"main thread: %+v", tm.name, err)
-		}
+		tm.receiveMessage(args[0].Get("data"))
 		return nil
 	})
 
@@ -213,8 +271,26 @@ func (tm *ThreadManager) addEventListeners() {
 // aMessage must be a js.Value or a primitive type that can be converted via
 // js.ValueOf. The Javascript object must be "any value or JavaScript object
 // handled by the structured clone algorithm". See the doc for more information.
+
+// aMessage is the object to deliver to the main thread; this will be in the
+// data field in the event delivered to the thread. It must be a transferable
+// object because this function transfers ownership of the message instead of
+// copying it for better performance. See the doc for more information.
 //
 // Doc: https://developer.mozilla.org/docs/Web/API/DedicatedWorkerGlobalScope/postMessage
-func (tm *ThreadManager) postMessage(aMessage any) {
-	js.Global().Call("postMessage", aMessage)
+func (tm *ThreadManager) postMessage(aMessage []byte) {
+	buffer := utils.CopyBytesToJS(aMessage)
+	js.Global().Call("postMessage", buffer, []any{buffer.Get("buffer")})
+}
+
+// close discards any tasks queued in the worker's event loop, effectively
+// closing this particular scope.
+//
+// aMessage must be a js.Value or a primitive type that can be converted via
+// js.ValueOf. The Javascript object must be "any value or JavaScript object
+// handled by the structured clone algorithm". See the doc for more information.
+//
+// Doc: https://developer.mozilla.org/en-US/docs/Web/API/DedicatedWorkerGlobalScope/close
+func (tm *ThreadManager) close() {
+	js.Global().Call("close")
 }

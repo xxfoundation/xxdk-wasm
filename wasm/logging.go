@@ -10,35 +10,10 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"syscall/js"
-)
 
-// LogLevel sets level of logging. All logs at the set level and below will be
-// displayed (e.g., when log level is ERROR, only ERROR, CRITICAL, and FATAL
-// messages will be printed).
-//
-// Log level options:
-//
-//	TRACE    - 0
-//	DEBUG    - 1
-//	INFO     - 2
-//	WARN     - 3
-//	ERROR    - 4
-//	CRITICAL - 5
-//	FATAL    - 6
-//
-// The default log level without updates is INFO.
-//
-// Parameters:
-//   - args[0] - Log level (int).
-//
-// Returns:
-//   - Throws TypeError if the log level is invalid.
-func LogLevel(this js.Value, args []js.Value) any {
-	return logging.LogLevelJS(this, args)
-}
+	"gitlab.com/elixxir/client/v4/bindings"
+)
 
 // logWriter wraps Javascript callbacks to adhere to the [bindings.LogWriter]
 // interface.

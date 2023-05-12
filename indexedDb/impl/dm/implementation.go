@@ -30,8 +30,7 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 )
 
-// wasmModel implements dm.EventModel interface, which uses the channels system
-// passed an object that adheres to in order to get events on the channel.
+// wasmModel implements dm.EventModel interface backed by IndexedDb.
 // NOTE: This model is NOT thread safe - it is the responsibility of the
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
@@ -42,14 +41,15 @@ type wasmModel struct {
 
 // upsertConversation is used for joining or updating a Conversation.
 func (w *wasmModel) upsertConversation(nickname string,
-	pubKey ed25519.PublicKey, dmToken uint32, codeset uint8, blocked bool) error {
+	pubKey ed25519.PublicKey, partnerToken uint32, codeset uint8,
+	blocked bool) error {
 	parentErr := errors.New("[DM indexedDB] failed to upsertConversation")
 
 	// Build object
 	newConvo := Conversation{
 		Pubkey:         pubKey,
 		Nickname:       nickname,
-		Token:          dmToken,
+		Token:          partnerToken,
 		CodesetVersion: codeset,
 		Blocked:        blocked,
 	}
@@ -214,11 +214,13 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 
 // receiveWrapper is a higher-level wrapper of upsertMessage.
 func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, nickname,
-	data string, partnerKey, senderKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+	data string, partnerKey, senderKey ed25519.PublicKey, partnerToken uint32, codeset uint8,
 	timestamp time.Time, round rounds.Round, mType dm.MessageType, status dm.Status) (uint64, error) {
 
-	// Keep track of whether Conversation was altered
-	conversationUpdated := false
+	// Keep track of whether a Conversation was altered
+	var convoToUpdate *Conversation
+
+	// Determine whether Conversation needs to be created
 	result, err := w.getConversation(partnerKey)
 	if err != nil {
 		if !strings.Contains(err.Error(), impl.ErrDoesNotExist) {
@@ -227,12 +229,14 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 			// If there is no extant Conversation, create one.
 			jww.DEBUG.Printf(
 				"[DM indexedDB] Joining conversation with %s", nickname)
-			err = w.upsertConversation(nickname, partnerKey, dmToken,
-				codeset, false)
-			if err != nil {
-				return 0, err
+
+			convoToUpdate = &Conversation{
+				Pubkey:         partnerKey,
+				Nickname:       nickname,
+				Token:          partnerToken,
+				CodesetVersion: codeset,
+				Blocked:        false,
 			}
-			conversationUpdated = true
 		}
 	} else {
 		jww.DEBUG.Printf(
@@ -245,12 +249,28 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 			jww.DEBUG.Printf(
 				"[DM indexedDB] Updating from nickname %s to %s",
 				result.Nickname, nickname)
-			err = w.upsertConversation(nickname, result.Pubkey, result.Token,
-				result.CodesetVersion, result.Blocked)
-			if err != nil {
-				return 0, err
-			}
-			conversationUpdated = true
+			convoToUpdate = result
+			convoToUpdate.Nickname = nickname
+		}
+
+		// Fix conversation if dmToken is altered
+		dmTokenChanged := result.Token != partnerToken
+		if isFromPartner && dmTokenChanged {
+			jww.WARN.Printf(
+				"[DM indexedDB] Updating from dmToken %d to %d",
+				result.Token, partnerToken)
+			convoToUpdate = result
+			convoToUpdate.Token = partnerToken
+		}
+	}
+
+	// Update the conversation in storage, if needed
+	conversationUpdated := convoToUpdate != nil
+	if conversationUpdated {
+		err = w.upsertConversation(convoToUpdate.Nickname, convoToUpdate.Pubkey,
+			convoToUpdate.Token, convoToUpdate.CodesetVersion, convoToUpdate.Blocked)
+		if err != nil {
+			return 0, err
 		}
 	}
 
@@ -298,7 +318,8 @@ func (w *wasmModel) upsertMessage(msg *Message) (uint64, error) {
 	// Store message to database
 	msgIdObj, err := impl.Put(w.db, messageStoreName, messageObj)
 	if err != nil {
-		return 0, errors.Errorf("Unable to put Message: %+v", err)
+		return 0, errors.Errorf("Unable to put Message: %+v\n%s",
+			err, newMessageJson)
 	}
 
 	uuid := msgIdObj.Int()

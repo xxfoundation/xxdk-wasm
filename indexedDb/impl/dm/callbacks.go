@@ -12,10 +12,10 @@ package main
 import (
 	"crypto/ed25519"
 	"encoding/json"
-	"time"
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+
 	"gitlab.com/elixxir/client/v4/dm"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/fastRNG"
@@ -29,24 +29,24 @@ var zeroUUID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
 // manager handles the event model and the message callbacks, which is used to
 // send information between the event model and the main thread.
 type manager struct {
-	mh    *worker.ThreadManager
+	wtm   *worker.ThreadManager
 	model dm.EventModel
 }
 
 // registerCallbacks registers all the reception callbacks to manage messages
 // from the main thread for the channels.EventModel.
 func (m *manager) registerCallbacks() {
-	m.mh.RegisterCallback(wDm.NewWASMEventModelTag, m.newWASMEventModelCB)
-	m.mh.RegisterCallback(wDm.ReceiveTag, m.receiveCB)
-	m.mh.RegisterCallback(wDm.ReceiveTextTag, m.receiveTextCB)
-	m.mh.RegisterCallback(wDm.ReceiveReplyTag, m.receiveReplyCB)
-	m.mh.RegisterCallback(wDm.ReceiveReactionTag, m.receiveReactionCB)
-	m.mh.RegisterCallback(wDm.UpdateSentStatusTag, m.updateSentStatusCB)
+	m.wtm.RegisterCallback(wDm.NewWASMEventModelTag, m.newWASMEventModelCB)
+	m.wtm.RegisterCallback(wDm.ReceiveTag, m.receiveCB)
+	m.wtm.RegisterCallback(wDm.ReceiveTextTag, m.receiveTextCB)
+	m.wtm.RegisterCallback(wDm.ReceiveReplyTag, m.receiveReplyCB)
+	m.wtm.RegisterCallback(wDm.ReceiveReactionTag, m.receiveReactionCB)
+	m.wtm.RegisterCallback(wDm.UpdateSentStatusTag, m.updateSentStatusCB)
 
-	m.mh.RegisterCallback(wDm.BlockSenderTag, m.blockSenderCB)
-	m.mh.RegisterCallback(wDm.UnblockSenderTag, m.unblockSenderCB)
-	m.mh.RegisterCallback(wDm.GetConversationTag, m.getConversationCB)
-	m.mh.RegisterCallback(wDm.GetConversationsTag, m.getConversationsCB)
+	m.wtm.RegisterCallback(wDm.BlockSenderTag, m.blockSenderCB)
+	m.wtm.RegisterCallback(wDm.UnblockSenderTag, m.unblockSenderCB)
+	m.wtm.RegisterCallback(wDm.GetConversationTag, m.getConversationCB)
+	m.wtm.RegisterCallback(wDm.GetConversationsTag, m.getConversationsCB)
 }
 
 // newWASMEventModelCB is the callback for NewWASMEventModel. Returns an empty
@@ -68,11 +68,12 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 			"cipher from main thread: %+v", err)
 	}
 
-	m.model, err = NewWASMEventModel(msg.Path, encryption,
-		m.messageReceivedCallback, m.storeDatabaseName, m.storeEncryptionStatus)
+	m.model, err = NewWASMEventModel(
+		msg.DatabaseName, encryption, m.messageReceivedCallback)
 	if err != nil {
 		return []byte(err.Error()), nil
 	}
+
 	return []byte{}, nil
 }
 
@@ -97,89 +98,7 @@ func (m *manager) messageReceivedCallback(uuid uint64, pubKey ed25519.PublicKey,
 	}
 
 	// Send it to the main thread
-	m.mh.SendMessage(wDm.MessageReceivedCallbackTag, data)
-}
-
-// storeDatabaseName sends the database name to the main thread and waits for
-// the response. This function mocks the behavior of storage.StoreIndexedDb.
-//
-// storeDatabaseName adheres to the storeDatabaseNameFn type.
-func (m *manager) storeDatabaseName(databaseName string) error {
-	// Register response callback with channel that will wait for the response
-	responseChan := make(chan []byte)
-	m.mh.RegisterCallback(wDm.StoreDatabaseNameTag,
-		func(data []byte) ([]byte, error) {
-			responseChan <- data
-			return nil, nil
-		})
-
-	// Send encryption status to main thread
-	m.mh.SendMessage(wDm.StoreDatabaseNameTag, []byte(databaseName))
-
-	// Wait for response
-	select {
-	case response := <-responseChan:
-		if len(response) > 0 {
-			return errors.New(string(response))
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return errors.Errorf("[WW] Timed out after %s waiting for response "+
-			"about storing the database name in local storage in the main "+
-			"thread", worker.ResponseTimeout)
-	}
-
-	return nil
-}
-
-// storeEncryptionStatus sends the database name and encryption status to the
-// main thread and waits for the response. If the value has not been previously
-// saved, it returns the saves encryption status. This function mocks the
-// behavior of storage.StoreIndexedDbEncryptionStatus.
-//
-// storeEncryptionStatus adheres to the storeEncryptionStatusFn type.
-func (m *manager) storeEncryptionStatus(
-	databaseName string, encryption bool) (bool, error) {
-	// Package parameters for sending
-	msg := &wDm.EncryptionStatusMessage{
-		DatabaseName:     databaseName,
-		EncryptionStatus: encryption,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return false, err
-	}
-
-	// Register response callback with channel that will wait for the response
-	responseChan := make(chan []byte)
-	m.mh.RegisterCallback(wDm.EncryptionStatusTag,
-		func(data []byte) ([]byte, error) {
-			responseChan <- data
-			return nil, nil
-		})
-
-	// Send encryption status to main thread
-	m.mh.SendMessage(wDm.EncryptionStatusTag, data)
-
-	// Wait for response
-	var response wDm.EncryptionStatusReply
-	select {
-	case responseData := <-responseChan:
-		if err = json.Unmarshal(responseData, &response); err != nil {
-			return false, err
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return false, errors.Errorf("timed out after %s waiting for "+
-			"response about the database encryption status from local "+
-			"storage in the main thread", worker.ResponseTimeout)
-	}
-
-	// If the response contain an error, return it
-	if response.Error != "" {
-		return false, errors.New(response.Error)
-	}
-
-	// Return the encryption status
-	return response.EncryptionStatus, nil
+	m.wtm.SendMessage(wDm.MessageReceivedCallbackTag, data)
 }
 
 // receiveCB is the callback for wasmModel.Receive. Returns a UUID of 0 on error
@@ -198,7 +117,7 @@ func (m *manager) receiveCB(data []byte) ([]byte, error) {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		return zeroUUID, errors.Errorf("failed to JSON marshal UUID : %+v", err)
+		return zeroUUID, errors.Errorf("failed to JSON marshal UUID: %+v", err)
 	}
 	return uuidData, nil
 }
@@ -219,7 +138,7 @@ func (m *manager) receiveTextCB(data []byte) ([]byte, error) {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		return []byte{}, errors.Errorf("failed to JSON marshal UUID : %+v", err)
+		return []byte{}, errors.Errorf("failed to JSON marshal UUID: %+v", err)
 	}
 
 	return uuidData, nil
@@ -241,7 +160,7 @@ func (m *manager) receiveReplyCB(data []byte) ([]byte, error) {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		return zeroUUID, errors.Errorf("failed to JSON marshal UUID : %+v", err)
+		return zeroUUID, errors.Errorf("failed to JSON marshal UUID: %+v", err)
 	}
 
 	return uuidData, nil
@@ -263,7 +182,7 @@ func (m *manager) receiveReactionCB(data []byte) ([]byte, error) {
 
 	uuidData, err := json.Marshal(uuid)
 	if err != nil {
-		return zeroUUID, errors.Errorf("failed to JSON marshal UUID : %+v", err)
+		return zeroUUID, errors.Errorf("failed to JSON marshal UUID: %+v", err)
 	}
 
 	return uuidData, nil

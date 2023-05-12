@@ -263,9 +263,12 @@ type MessageUpdateInfo struct {
 // messageID, timestamp, round, pinned, and hidden are all nillable and may be
 // updated based upon the UUID at a later date. If a nil value is passed, then
 // make no update.
+//
+// Returns an error if the message cannot be updated. It must return
+// [channels.NoMessageErr] if the message does not exist.
 func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 	timestamp *time.Time, round *rounds.Round, pinned, hidden *bool,
-	status *channels.SentStatus) {
+	status *channels.SentStatus) error {
 	msg := MessageUpdateInfo{UUID: uuid}
 	if messageID != nil {
 		msg.MessageID = *messageID
@@ -294,12 +297,33 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 
 	data, err := json.Marshal(msg)
 	if err != nil {
-		jww.ERROR.Printf(
-			"[CH] Could not JSON marshal payload for UpdateFromUUID: %+v", err)
-		return
+		return errors.Errorf(
+			"could not JSON marshal payload for UpdateFromUUID: %+v", err)
 	}
 
-	w.wm.SendMessage(UpdateFromUUIDTag, data, nil)
+	errChan := make(chan error)
+	w.wm.SendMessage(UpdateFromUUIDTag, data, func(data []byte) {
+		if data != nil {
+			errChan <- errors.New(string(data))
+		} else {
+			errChan <- nil
+		}
+	})
+
+	select {
+	case err = <-errChan:
+		return err
+	case <-time.After(worker.ResponseTimeout):
+		return errors.Errorf("timed out after %s waiting for response from "+
+			"the worker about UpdateFromUUID", worker.ResponseTimeout)
+	}
+}
+
+// UuidError is JSON marshalled and sent to the worker for
+// [wasmModel.UpdateFromMessageID].
+type UuidError struct {
+	UUID  uint64 `json:"uuid"`
+	Error []byte `json:"error"`
 }
 
 // UpdateFromMessageID is called whenever a message with the message ID is
@@ -313,7 +337,7 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 // no update.
 func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 	timestamp *time.Time, round *rounds.Round, pinned, hidden *bool,
-	status *channels.SentStatus) uint64 {
+	status *channels.SentStatus) (uint64, error) {
 
 	msg := MessageUpdateInfo{MessageID: messageID, MessageIDSet: true}
 	if timestamp != nil {
@@ -339,33 +363,34 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 
 	data, err := json.Marshal(msg)
 	if err != nil {
-		jww.ERROR.Printf("[CH] Could not JSON marshal payload for "+
+		return 0, errors.Errorf("could not JSON marshal payload for "+
 			"UpdateFromMessageID: %+v", err)
-		return 0
 	}
 
 	uuidChan := make(chan uint64)
+	errChan := make(chan error)
 	w.wm.SendMessage(UpdateFromMessageIDTag, data,
 		func(data []byte) {
-			var uuid uint64
-			err = json.Unmarshal(data, &uuid)
-			if err != nil {
-				jww.ERROR.Printf("[CH] Could not JSON unmarshal response to "+
-					"UpdateFromMessageID: %+v", err)
-				uuidChan <- 0
+			var ue UuidError
+			if err = json.Unmarshal(data, &ue); err != nil {
+				errChan <- errors.Errorf("could not JSON unmarshal response "+
+					"to UpdateFromMessageID: %+v", err)
+			} else if ue.Error != nil {
+				errChan <- errors.New(string(ue.Error))
+			} else {
+				uuidChan <- ue.UUID
 			}
-			uuidChan <- uuid
 		})
 
 	select {
 	case uuid := <-uuidChan:
-		return uuid
+		return uuid, nil
+	case err = <-errChan:
+		return 0, err
 	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("[CH] Timed out after %s waiting for response from "+
+		return 0, errors.Errorf("timed out after %s waiting for response from "+
 			"the worker about UpdateFromMessageID", worker.ResponseTimeout)
 	}
-
-	return 0
 }
 
 // GetMessageMessage is JSON marshalled and sent to the worker for
