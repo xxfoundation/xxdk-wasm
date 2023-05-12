@@ -10,19 +10,19 @@
 package channels
 
 import (
-	"crypto/ed25519"
 	"encoding/json"
-	"github.com/pkg/errors"
 	"time"
 
+	"github.com/pkg/errors"
+
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
 
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
-	"gitlab.com/xx_network/primitives/id"
 )
 
 // databaseSuffix is the suffix to be appended to the name of the database.
@@ -31,26 +31,24 @@ const databaseSuffix = "_speakeasy"
 // MessageReceivedCallback is called any time a message is received or updated.
 //
 // update is true if the row is old and was edited.
-type MessageReceivedCallback func(uuid uint64, channelID *id.ID, update bool)
+type MessageReceivedCallback func(uuid int64, channelID []byte, update bool)
 
 // DeletedMessageCallback is called any time a message is deleted.
-type DeletedMessageCallback func(messageID message.ID)
+type DeletedMessageCallback func(messageID []byte)
 
 // MutedUserCallback is called any time a user is muted or unmuted. unmute is
 // true if the user has been unmuted and false if they have been muted.
-type MutedUserCallback func(
-	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool)
+type MutedUserCallback func(channelID, pubKey []byte, unmute bool)
 
 // NewWASMEventModelBuilder returns an EventModelBuilder which allows
 // the channel manager to define the path but the callback is the same
 // across the board.
 func NewWASMEventModelBuilder(wasmJsPath string,
-	encryption cryptoChannel.Cipher, messageReceivedCB MessageReceivedCallback,
-	deletedMessageCB DeletedMessageCallback,
-	mutedUserCB MutedUserCallback) channels.EventModelBuilder {
+	encryption cryptoChannel.Cipher,
+	channelCbs bindings.ChannelUICallbacks) channels.EventModelBuilder {
 	fn := func(path string) (channels.EventModel, error) {
 		return NewWASMEventModel(path, wasmJsPath, encryption,
-			messageReceivedCB, deletedMessageCB, mutedUserCB)
+			channelCbs)
 	}
 	return fn
 }
@@ -65,8 +63,7 @@ type NewWASMEventModelMessage struct {
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
 func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
-	messageReceivedCB MessageReceivedCallback,
-	deletedMessageCB DeletedMessageCallback, mutedUserCB MutedUserCallback) (
+	channelCbs bindings.ChannelUICallbacks) (
 	channels.EventModel, error) {
 	databaseName := path + databaseSuffix
 
@@ -77,15 +74,15 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 
 	// Register handler to manage messages for the MessageReceivedCallback
 	wm.RegisterCallback(MessageReceivedCallbackTag,
-		messageReceivedCallbackHandler(messageReceivedCB))
+		messageReceivedCallbackHandler(channelCbs.MessageReceived))
 
 	// Register handler to manage messages for the DeletedMessageCallback
 	wm.RegisterCallback(DeletedMessageCallbackTag,
-		deletedMessageCallbackHandler(deletedMessageCB))
+		deletedMessageCallbackHandler(channelCbs.MessageDeleted))
 
 	// Register handler to manage messages for the MutedUserCallback
 	wm.RegisterCallback(MutedUserCallbackTag,
-		mutedUserCallbackHandler(mutedUserCB))
+		mutedUserCallbackHandler(channelCbs.UserMuted))
 
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)
@@ -135,8 +132,8 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 // MessageReceivedCallbackMessage is JSON marshalled and received from the
 // worker for the [MessageReceivedCallback] callback.
 type MessageReceivedCallbackMessage struct {
-	UUID      uint64 `json:"uuid"`
-	ChannelID *id.ID `json:"channelID"`
+	UUID      int64  `json:"uuid"`
+	ChannelID []byte `json:"channelID"`
 	Update    bool   `json:"update"`
 }
 
@@ -166,7 +163,7 @@ func deletedMessageCallbackHandler(cb DeletedMessageCallback) func(data []byte) 
 				"Failed to JSON unmarshal message ID from worker: %+v", err)
 		}
 
-		cb(messageID)
+		cb(messageID.Bytes())
 	}
 }
 

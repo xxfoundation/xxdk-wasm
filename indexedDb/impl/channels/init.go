@@ -15,10 +15,10 @@ import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 )
 
 // currentVersion is the current version of the IndexedDb runtime. Used for
@@ -29,18 +29,13 @@ const currentVersion uint = 2
 // The name should be a base64 encoding of the users public key. Returns the
 // EventModel based on IndexedDb and the database name as reported by IndexedDb.
 func NewWASMEventModel(databaseName string, encryption cryptoChannel.Cipher,
-	messageReceivedCB wChannels.MessageReceivedCallback,
-	deletedMessageCB wChannels.DeletedMessageCallback,
-	mutedUserCB wChannels.MutedUserCallback) (channels.EventModel, error) {
-	return newWASMModel(databaseName, encryption, messageReceivedCB,
-		deletedMessageCB, mutedUserCB)
+	channelsCbs bindings.ChannelUICallbacks) (channels.EventModel, error) {
+	return newWASMModel(databaseName, encryption, channelsCbs)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
-	messageReceivedCB wChannels.MessageReceivedCallback,
-	deletedMessageCB wChannels.DeletedMessageCallback,
-	mutedUserCB wChannels.MutedUserCallback) (*wasmModel, error) {
+	channelsCbs bindings.ChannelUICallbacks) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()
 	defer cancel()
@@ -86,11 +81,9 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	}
 
 	wrapper := &wasmModel{
-		db:                db,
-		cipher:            encryption,
-		receivedMessageCB: messageReceivedCB,
-		deletedMessageCB:  deletedMessageCB,
-		mutedUserCB:       mutedUserCB,
+		db:     db,
+		cipher: encryption,
+		cbs:    channelsCbs,
 	}
 	return wrapper, nil
 }

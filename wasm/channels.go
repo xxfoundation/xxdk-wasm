@@ -10,16 +10,14 @@
 package wasm
 
 import (
-	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"gitlab.com/elixxir/client/v4/channels"
-	"gitlab.com/elixxir/crypto/message"
-	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
-	"gitlab.com/xx_network/primitives/id"
 	"sync"
 	"syscall/js"
+
+	"gitlab.com/elixxir/client/v4/channels"
+	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
@@ -274,7 +272,7 @@ func NewChannelsManager(_ js.Value, args []js.Value) any {
 	em := newEventModelBuilder(args[3])
 
 	cm, err := bindings.NewChannelsManager(
-		cmixId, privateIdentity, extensionBuilderIDsJSON, em)
+		cmixId, privateIdentity, extensionBuilderIDsJSON, em, nil)
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
@@ -299,13 +297,17 @@ func NewChannelsManager(_ js.Value, args []js.Value) any {
 //   - args[2] - A function that initialises and returns a Javascript object
 //     that matches the [bindings.EventModel] interface. The function must match
 //     the Build function in [bindings.EventModelBuilder].
+//   - args[3] - A callback object which implements the
+//     [bindings.ChannelUICallbacks] javascript functions.
 //
 // Returns:
 //   - Javascript representation of the [ChannelsManager] object.
 //   - Throws a TypeError if loading the manager fails.
 func LoadChannelsManager(_ js.Value, args []js.Value) any {
 	em := newEventModelBuilder(args[2])
-	cm, err := bindings.LoadChannelsManager(args[0].Int(), args[1].String(), em)
+	cUI := newChannelUI(args[3])
+	cm, err := bindings.LoadChannelsManager(args[0].Int(), args[1].String(),
+		em, cUI)
 	if err != nil {
 		utils.Throw(utils.TypeError, err)
 		return nil
@@ -335,23 +337,9 @@ func LoadChannelsManager(_ js.Value, args []js.Value) any {
 //     IDs. The ID can be retrieved from an object with an extension builder
 //     (e.g., [ChannelsFileTransfer.GetExtensionBuilderID]). Leave empty if not
 //     using extension builders. Example: `[2,11,5]` (Uint8Array).
-//   - args[4] - The received message callback, which is called everytime a
-//     message is added or changed in the database. It is a function that takes
-//     in the same parameters as [channels.MessageReceivedCallback]. On the
-//     Javascript side, the UUID is returned as an int and the channelID as a
-//     Uint8Array. The row in the database that was updated can be found using
-//     the UUID. The channel ID is provided so that the recipient can filter if
-//     they want to the processes the update now or not. An "update" bool is
-//     present which tells you if the row is new or if it is an edited old row.
-//   - args[5] - The deleted message callback, which is called everytime a
-//     message is deleted from the database. It is a function that takes in the
-//     same parameters as [indexedDb.DeletedMessageCallback]. On the Javascript
-//     side, the message ID is returned as a Uint8Array.
-//   - args[6] - The muted user callback, which is called everytime a user is
-//     muted or unmuted. It is a function that takes in the same parameters as
-//     [indexedDb.MutedUserCallback]. On the Javascript side, the channel ID and
-//     user public key are returned as Uint8Array.
-//   - args[7] - ID of [ChannelDbCipher] object in tracker (int). Create this
+//   - args[4] - A callback object which implements the
+//     [bindings.ChannelUICallbacks] javascript functions.
+//   - args[5] - ID of [ChannelDbCipher] object in tracker (int). Create this
 //     object with [NewChannelsDatabaseCipher] and get its id with
 //     [ChannelDbCipher.GetID].
 //
@@ -364,10 +352,8 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 	wasmJsPath := args[1].String()
 	privateIdentity := utils.CopyBytesToGo(args[2])
 	extensionBuilderIDsJSON := utils.CopyBytesToGo(args[3])
-	messageReceivedCB := args[4]
-	deletedMessageCB := args[5]
-	mutedUserCB := args[6]
-	cipherID := args[7].Int()
+	channelCbs := newChannelUI(args[4])
+	cipherID := args[5].Int()
 
 	cipher, err := bindings.GetChannelDbCipherTrackerFromID(cipherID)
 	if err != nil {
@@ -375,8 +361,7 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 	}
 
 	return newChannelsManagerWithIndexedDb(cmixID, wasmJsPath, privateIdentity,
-		extensionBuilderIDsJSON, messageReceivedCB, deletedMessageCB,
-		mutedUserCB, cipher)
+		extensionBuilderIDsJSON, channelCbs, cipher)
 }
 
 // NewChannelsManagerWithIndexedDbUnsafe creates a new [ChannelsManager] from a
@@ -401,22 +386,8 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 //     IDs. The ID can be retrieved from an object with an extension builder
 //     (e.g., [ChannelsFileTransfer.GetExtensionBuilderID]). Leave empty if not
 //     using extension builders. Example: `[2,11,5]` (Uint8Array).
-//   - args[4] - The received message callback, which is called everytime a
-//     message is added or changed in the database. It is a function that takes
-//     in the same parameters as [indexedDb.MessageReceivedCallback]. On the
-//     Javascript side, the UUID is returned as an int and the channelID as a
-//     Uint8Array. The row in the database that was updated can be found using
-//     the UUID. The channel ID is provided so that the recipient can filter if
-//     they want to the processes the update now or not. An "update" bool is
-//     present which tells you if the row is new or if it is an edited old row.
-//   - args[5] - The deleted message callback, which is called everytime a
-//     message is deleted from the database. It is a function that takes in the
-//     same parameters as [indexedDb.DeletedMessageCallback]. On the Javascript
-//     side, the message ID is returned as a Uint8Array.
-//   - args[6] - The muted user callback, which is called everytime a user is
-//     muted or unmuted. It is a function that takes in the same parameters as
-//     [indexedDb.MutedUserCallback]. On the Javascript side, the channel ID and
-//     user public key are returned as Uint8Array.
+//   - args[4] - A callback object which implements the
+//     [bindings.ChannelUICallbacks] javascript functions.
 //
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [ChannelsManager] object.
@@ -428,38 +399,23 @@ func NewChannelsManagerWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 	wasmJsPath := args[1].String()
 	privateIdentity := utils.CopyBytesToGo(args[2])
 	extensionBuilderIDsJSON := utils.CopyBytesToGo(args[3])
-	messageReceivedCB := args[4]
-	deletedMessageCB := args[5]
-	mutedUserCB := args[6]
+	channelsCbs := newChannelUI(args[4])
 
 	return newChannelsManagerWithIndexedDb(cmixID, wasmJsPath, privateIdentity,
-		extensionBuilderIDsJSON, messageReceivedCB, deletedMessageCB,
-		mutedUserCB, nil)
+		extensionBuilderIDsJSON, channelsCbs, nil)
 }
 
 func newChannelsManagerWithIndexedDb(cmixID int, wasmJsPath string,
-	privateIdentity, extensionBuilderIDsJSON []byte, messageReceivedCB,
-	deletedMessageCB, mutedUserCB js.Value, cipher *bindings.ChannelDbCipher) any {
-
-	messageReceived := func(uuid uint64, channelID *id.ID, update bool) {
-		messageReceivedCB.Invoke(uuid, utils.CopyBytesToJS(channelID.Marshal()), update)
-	}
-
-	deletedMessage := func(messageID message.ID) {
-		deletedMessageCB.Invoke(utils.CopyBytesToJS(messageID.Marshal()))
-	}
-
-	mutedUser := func(channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
-		mutedUserCB.Invoke(utils.CopyBytesToJS(channelID.Marshal()),
-			utils.CopyBytesToJS(pubKey), unmute)
-	}
+	privateIdentity, extensionBuilderIDsJSON []byte,
+	channelsCbs bindings.ChannelUICallbacks,
+	cipher *bindings.ChannelDbCipher) any {
 
 	model := channelsDb.NewWASMEventModelBuilder(
-		wasmJsPath, cipher, messageReceived, deletedMessage, mutedUser)
+		wasmJsPath, cipher, channelsCbs)
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		cm, err := bindings.NewChannelsManagerGoEventModel(
-			cmixID, privateIdentity, extensionBuilderIDsJSON, model)
+			cmixID, privateIdentity, extensionBuilderIDsJSON, model, channelsCbs)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -484,23 +440,9 @@ func newChannelsManagerWithIndexedDb(cmixID int, wasmJsPath string,
 //   - args[1] - Path to Javascript file that starts the worker (string).
 //   - args[2] - The storage tag associated with the previously created channel
 //     manager and retrieved with [ChannelsManager.GetStorageTag] (string).
-//   - args[3] - The received message callback, which is called everytime a
-//     message is added or changed in the database. It is a function that takes
-//     in the same parameters as [indexedDb.MessageReceivedCallback]. On the
-//     Javascript side, the UUID is returned as an int and the channelID as a
-//     Uint8Array. The row in the database that was updated can be found using
-//     the UUID. The channel ID is provided so that the recipient can filter if
-//     they want to the processes the update now or not. An "update" bool is
-//     present which tells you if the row is new or if it is an edited old row.
-//   - args[4] - The deleted message callback, which is called everytime a
-//     message is deleted from the database. It is a function that takes in the
-//     same parameters as [indexedDb.DeletedMessageCallback]. On the Javascript
-//     side, the message ID is returned as a Uint8Array.
-//   - args[5] - The muted user callback, which is called everytime a user is
-//     muted or unmuted. It is a function that takes in the same parameters as
-//     [indexedDb.MutedUserCallback]. On the Javascript side, the channel ID and
-//     user public key are returned as Uint8Array.
-//   - args[6] - ID of [ChannelDbCipher] object in tracker (int). Create this
+//   - args[3] - A callback object which implements the
+//     [bindings.ChannelUICallbacks] javascript functions.
+//   - args[4] - ID of [ChannelDbCipher] object in tracker (int). Create this
 //     object with [NewChannelsDatabaseCipher] and get its id with
 //     [ChannelDbCipher.GetID].
 //
@@ -512,10 +454,8 @@ func LoadChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
 	wasmJsPath := args[1].String()
 	storageTag := args[2].String()
-	messageReceivedCB := args[3]
-	deletedMessageCB := args[4]
-	mutedUserCB := args[5]
-	cipherID := args[6].Int()
+	channelsCbs := newChannelUI(args[3])
+	cipherID := args[4].Int()
 
 	cipher, err := bindings.GetChannelDbCipherTrackerFromID(cipherID)
 	if err != nil {
@@ -523,7 +463,7 @@ func LoadChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 	}
 
 	return loadChannelsManagerWithIndexedDb(cmixID, wasmJsPath, storageTag,
-		messageReceivedCB, deletedMessageCB, mutedUserCB, cipher)
+		channelsCbs, cipher)
 }
 
 // LoadChannelsManagerWithIndexedDbUnsafe loads an existing [ChannelsManager]
@@ -542,22 +482,8 @@ func LoadChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 //   - args[1] - Path to Javascript file that starts the worker (string).
 //   - args[2] - The storage tag associated with the previously created channel
 //     manager and retrieved with [ChannelsManager.GetStorageTag] (string).
-//   - args[3] - The received message callback, which is called everytime a
-//     message is added or changed in the database. It is a function that takes
-//     in the same parameters as [indexedDb.MessageReceivedCallback]. On the
-//     Javascript side, the UUID is returned as an int and the channelID as a
-//     Uint8Array. The row in the database that was updated can be found using
-//     the UUID. The channel ID is provided so that the recipient can filter if
-//     they want to the processes the update now or not. An "update" bool is
-//     present which tells you if the row is new or if it is an edited old row.
-//   - args[4] - The deleted message callback, which is called everytime a
-//     message is deleted from the database. It is a function that takes in the
-//     same parameters as [indexedDb.DeletedMessageCallback]. On the Javascript
-//     side, the message ID is returned as a Uint8Array.
-//   - args[5] - The muted user callback, which is called everytime a user is
-//     muted or unmuted. It is a function that takes in the same parameters as
-//     [indexedDb.MutedUserCallback]. On the Javascript side, the channel ID and
-//     user public key are returned as Uint8Array.
+//   - args[3] - A callback object which implements the
+//     [bindings.ChannelUICallbacks] javascript functions.
 //
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [ChannelsManager] object.
@@ -566,37 +492,22 @@ func LoadChannelsManagerWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
 	wasmJsPath := args[1].String()
 	storageTag := args[2].String()
-	messageReceivedCB := args[3]
-	deletedMessageCB := args[3]
-	mutedUserCB := args[4]
+	cUI := newChannelUI(args[3])
 
 	return loadChannelsManagerWithIndexedDb(cmixID, wasmJsPath, storageTag,
-		messageReceivedCB, deletedMessageCB, mutedUserCB, nil)
+		cUI, nil)
 }
 
 func loadChannelsManagerWithIndexedDb(cmixID int, wasmJsPath, storageTag string,
-	messageReceivedCB, deletedMessageCB, mutedUserCB js.Value,
+	channelsCbs bindings.ChannelUICallbacks,
 	cipher *bindings.ChannelDbCipher) any {
 
-	messageReceived := func(uuid uint64, channelID *id.ID, update bool) {
-		messageReceivedCB.Invoke(uuid, utils.CopyBytesToJS(channelID.Marshal()), update)
-	}
-
-	deletedMessage := func(messageID message.ID) {
-		deletedMessageCB.Invoke(utils.CopyBytesToJS(messageID.Marshal()))
-	}
-
-	mutedUser := func(channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
-		mutedUserCB.Invoke(utils.CopyBytesToJS(channelID.Marshal()),
-			utils.CopyBytesToJS(pubKey), unmute)
-	}
-
 	model := channelsDb.NewWASMEventModelBuilder(
-		wasmJsPath, cipher, messageReceived, deletedMessage, mutedUser)
+		wasmJsPath, cipher, channelsCbs)
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		cm, err := bindings.LoadChannelsManagerGoEventModel(
-			cmixID, storageTag, model, nil)
+			cmixID, storageTag, model, nil, channelsCbs)
 		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
@@ -2273,4 +2184,46 @@ func (c *ChannelDbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
 		return nil
 	}
 	return nil
+}
+
+// newChannelUI maps the methods on the Javascript object to the
+// channelUI callbacks implementation struct.
+func newChannelUI(cbImpl js.Value) *channelUI {
+	return &channelUI{
+		messageReceived: utils.WrapCB(cbImpl, "MessageReceived"),
+		userMuted:       utils.WrapCB(cbImpl, "UserMuted"),
+		messageDeleted:  utils.WrapCB(cbImpl, "MessageDeleted"),
+		nicknameUpdate:  utils.WrapCB(cbImpl, "NicknameUpdate"),
+	}
+}
+
+// eventModel wraps Javascript callbacks to adhere to the
+// [bindings.ChannelUICallbacks] interface.
+type channelUI struct {
+	messageReceived func(args ...any) js.Value
+	userMuted       func(args ...any) js.Value
+	messageDeleted  func(args ...any) js.Value
+	nicknameUpdate  func(args ...any) js.Value
+}
+
+// MessageReceived implements [bindings.ChannelUICallbacks.MessageReceived].
+func (c *channelUI) MessageReceived(uuid int64, channelID []byte, update bool) {
+	c.messageReceived(uuid, utils.CopyBytesToJS(channelID), update)
+}
+
+// UserMuted implements [bindings.ChannelUICallbacks.UserMuted].
+func (c *channelUI) UserMuted(channelID []byte, pubKey []byte, unmute bool) {
+	c.userMuted(utils.CopyBytesToJS(channelID), utils.CopyBytesToJS(pubKey),
+		unmute)
+}
+
+// MessageDeleted implements [bindings.ChannelUICallbacks.MessageDeleted].
+func (c *channelUI) MessageDeleted(messageId []byte) {
+	c.messageDeleted(utils.CopyBytesToJS(messageId))
+}
+
+// NicknameUpdate implements [bindings.ChannelUICallbacks.NicknameUpdate]
+func (c *channelUI) NicknameUpdate(channelIdBytes []byte, nickname string,
+	exists bool) {
+	c.nicknameUpdate(utils.CopyBytesToJS(channelIdBytes), nickname, exists)
 }

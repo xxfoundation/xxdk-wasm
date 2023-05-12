@@ -21,13 +21,13 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
 )
@@ -38,11 +38,9 @@ import (
 // NOTE: This model is NOT thread safe - it is the responsibility of the
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
-	db                *idb.Database
-	cipher            cryptoChannel.Cipher
-	receivedMessageCB wChannels.MessageReceivedCallback
-	deletedMessageCB  wChannels.DeletedMessageCallback
-	mutedUserCB       wChannels.MutedUserCallback
+	db     *idb.Database
+	cipher cryptoChannel.Cipher
+	cbs    bindings.ChannelUICallbacks
 }
 
 // JoinChannel is called whenever a channel is joined locally.
@@ -161,8 +159,10 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 		}
 	}
 
+	channelIDBytes := channelID.Marshal()
+
 	msgToInsert := buildMessage(
-		channelID.Marshal(), messageID.Bytes(), nil, nickname,
+		channelIDBytes, messageID.Bytes(), nil, nickname,
 		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
 		false, hidden, status)
 
@@ -172,7 +172,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 		return 0
 	}
 
-	go w.receivedMessageCB(uuid, channelID, false)
+	go w.cbs.MessageReceived(int64(uuid), channelIDBytes, false)
 	return uuid
 }
 
@@ -199,7 +199,9 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 		}
 	}
 
-	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
+	channelIDBytes := channelID.Marshal()
+
+	msgToInsert := buildMessage(channelIDBytes, messageID.Bytes(),
 		replyTo.Bytes(), nickname, textBytes, pubKey, dmToken, codeset,
 		timestamp, lease, round.ID, mType, hidden, false, status)
 
@@ -208,7 +210,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 		jww.ERROR.Printf("Failed to receive reply: %+v", err)
 		return 0
 	}
-	go w.receivedMessageCB(uuid, channelID, false)
+	go w.cbs.MessageReceived(int64(uuid), channelIDBytes, false)
 	return uuid
 }
 
@@ -235,8 +237,9 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 		}
 	}
 
+	channelIDBytes := channelID.Marshal()
 	msgToInsert := buildMessage(
-		channelID.Marshal(), messageID.Bytes(), reactionTo.Bytes(), nickname,
+		channelIDBytes, messageID.Bytes(), reactionTo.Bytes(), nickname,
 		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
 		false, hidden, status)
 
@@ -245,7 +248,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 		jww.ERROR.Printf("Failed to receive reaction: %+v", err)
 		return 0
 	}
-	go w.receivedMessageCB(uuid, channelID, false)
+	go w.cbs.MessageReceived(int64(uuid), channelIDBytes, false)
 	return uuid
 }
 
@@ -392,9 +395,7 @@ func (w *wasmModel) updateMessage(currentMsg *Message, messageID *message.ID,
 	if err != nil {
 		return 0, err
 	}
-	channelID := &id.ID{}
-	copy(channelID[:], currentMsg.ChannelID)
-	go w.receivedMessageCB(uuid, channelID, true)
+	go w.cbs.MessageReceived(int64(uuid), currentMsg.ChannelID, true)
 
 	return uuid, nil
 }
@@ -492,7 +493,7 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 		return err
 	}
 
-	go w.deletedMessageCB(messageID)
+	go w.cbs.MessageDeleted(messageID.Bytes())
 
 	return nil
 }
@@ -500,7 +501,7 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 // MuteUser is called whenever a user is muted or unmuted.
 func (w *wasmModel) MuteUser(
 	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
-	go w.mutedUserCB(channelID, pubKey, unmute)
+	go w.cbs.UserMuted(channelID.Marshal(), pubKey, unmute)
 }
 
 // valueToMessage is a helper for converting js.Value to Message.
