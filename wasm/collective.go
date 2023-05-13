@@ -35,7 +35,7 @@ func newRemoteKvJS(api *bindings.RemoteKV) map[string]any {
 		"Delete":            js.FuncOf(rkv.Delete),
 		"Set":               js.FuncOf(rkv.Set),
 		"GetPrefix":         js.FuncOf(rkv.GetPrefix),
-		"HasPrefx":          js.FuncOf(rkv.HasPrefix),
+		"HasPrefix":         js.FuncOf(rkv.HasPrefix),
 		"Prefix":            js.FuncOf(rkv.Prefix),
 		"Root":              js.FuncOf(rkv.Root),
 		"IsMemStore":        js.FuncOf(rkv.IsMemStore),
