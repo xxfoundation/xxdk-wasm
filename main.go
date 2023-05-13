@@ -11,9 +11,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
 	"syscall/js"
+
+	"github.com/spf13/cobra"
 
 	jww "github.com/spf13/jwalterweatherman"
 
@@ -147,6 +148,8 @@ func setGlobals() {
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
 	js.Global().Set("LoadCmix", js.FuncOf(wasm.LoadCmix))
+	js.Global().Set("LoadSynchronizedCmix",
+		js.FuncOf(wasm.LoadSyncrhonizedCmix))
 
 	// wasm/delivery.go
 	js.Global().Set("SetDashboardURL", js.FuncOf(wasm.SetDashboardURL))
@@ -231,10 +234,6 @@ func setGlobals() {
 	js.Global().Set("Listen", js.FuncOf(wasm.Listen))
 
 	// wasm/sync.go
-	js.Global().Set("NewFileSystemRemoteStorage",
-		js.FuncOf(wasm.NewFileSystemRemoteStorage))
-	js.Global().Set("NewOrLoadSyncRemoteKV",
-		js.FuncOf(wasm.NewOrLoadSyncRemoteKV))
 
 	// wasm/timeNow.go
 	js.Global().Set("SetTimeSource", js.FuncOf(wasm.SetTimeSource))
@@ -258,7 +257,7 @@ func setGlobals() {
 
 var (
 	logLevel, fileLogLevel      jww.Threshold
-	maxLogFileSizeMB              int
+	maxLogFileSizeMB            int
 	workerScriptURL, workerName string
 )
 
