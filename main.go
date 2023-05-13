@@ -149,7 +149,7 @@ func setGlobals() {
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
 	js.Global().Set("LoadCmix", js.FuncOf(wasm.LoadCmix))
 	js.Global().Set("LoadSynchronizedCmix",
-		js.FuncOf(wasm.LoadSyncrhonizedCmix))
+		js.FuncOf(wasm.LoadSynchronizedCmix))
 
 	// wasm/delivery.go
 	js.Global().Set("SetDashboardURL", js.FuncOf(wasm.SetDashboardURL))

@@ -66,6 +66,9 @@ func TestPublicFunctions(t *testing.T) {
 
 		// Logging has been moved to startup flags
 		"LogLevel": {},
+
+		// NewFilesystemRemoteStorage is internal for bindings.
+		"NewFileSystemRemoteStorage": {},
 	}
 	wasmFuncs := getPublicFunctions("wasm", t)
 	bindingsFuncs := getPublicFunctions(

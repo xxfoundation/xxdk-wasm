@@ -144,7 +144,7 @@ func LoadCmix(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
-// LoadSyncrhonizedCmix will [LoadCmix] using a RemoteStore to establish
+// LoadSynchronizedCmix will [LoadCmix] using a RemoteStore to establish
 // a synchronized RemoteKV.
 //
 // Parameters:
@@ -156,7 +156,7 @@ func LoadCmix(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [Cmix] object.
 //   - Rejected with an error if loading [Cmix] fails.
-func LoadSyncrhonizedCmix(_ js.Value, args []js.Value) any {
+func LoadSynchronizedCmix(_ js.Value, args []js.Value) any {
 	storageDir := args[0].String()
 	password := utils.CopyBytesToGo(args[1])
 	rs := newRemoteStore(args[2])
