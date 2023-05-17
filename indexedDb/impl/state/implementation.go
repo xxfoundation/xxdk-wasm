@@ -18,12 +18,6 @@ import (
 	"syscall/js"
 )
 
-// ClientState
-type ClientState interface {
-	Get(key string) ([]byte, error)
-	Set(key string, value []byte) error
-}
-
 // stateModel implements [ClientState] interface backed by IndexedDb.
 // NOTE: This model is NOT thread safe - it is the responsibility of the
 // caller to ensure that its methods are called sequentially.
