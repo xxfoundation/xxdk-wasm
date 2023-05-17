@@ -10,8 +10,9 @@
 package wasm
 
 import (
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 
@@ -57,7 +58,7 @@ import (
 func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) any {
 	err := c.api.StartNetworkFollower(args[0].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -76,7 +77,7 @@ func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) any {
 func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) any {
 	err := c.api.StopNetworkFollower()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -165,7 +166,7 @@ func (c *Cmix) NetworkFollowerStatus(js.Value, []js.Value) any {
 func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) any {
 	b, err := c.api.GetNodeRegistrationStatus()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -186,7 +187,7 @@ func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) any {
 func (c *Cmix) IsReady(_ js.Value, args []js.Value) any {
 	isReadyInfo, err := c.api.IsReady(args[0].Float())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -205,7 +206,7 @@ func (c *Cmix) IsReady(_ js.Value, args []js.Value) any {
 func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) any {
 	err := c.api.PauseNodeRegistrations(args[0].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -225,7 +226,7 @@ func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) any {
 func (c *Cmix) ChangeNumberOfNodeRegistrations(_ js.Value, args []js.Value) any {
 	err := c.api.ChangeNumberOfNodeRegistrations(args[0].Int(), args[1].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -271,7 +272,7 @@ func (c *Cmix) IsHealthy(js.Value, []js.Value) any {
 func (c *Cmix) GetRunningProcesses(js.Value, []js.Value) any {
 	list, err := c.api.GetRunningProcesses()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -377,7 +378,7 @@ type trackServicesCallback struct {
 //	  },
 //	]
 func (tsc *trackServicesCallback) Callback(marshalData []byte, err error) {
-	tsc.callback(utils.CopyBytesToJS(marshalData), utils.JsTrace(err))
+	tsc.callback(utils.CopyBytesToJS(marshalData), exception.NewTrace(err))
 }
 
 // TrackServicesWithIdentity will return via a callback the list of services the
@@ -396,7 +397,7 @@ func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) any {
 	err := c.api.TrackServicesWithIdentity(args[0].Int(),
 		&trackServicesCallback{utils.WrapCB(args[0], "Callback")})
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 

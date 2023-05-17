@@ -11,7 +11,8 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -99,7 +100,7 @@ func Login(_ js.Value, args []js.Value) any {
 	newE2E, err := bindings.Login(
 		args[0].Int(), callbacks, identity, e2eParamsJSON)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -129,7 +130,7 @@ func LoginEphemeral(_ js.Value, args []js.Value) any {
 	newE2E, err := bindings.LoginEphemeral(
 		args[0].Int(), callbacks, identity, e2eParamsJSON)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -171,7 +172,7 @@ func (e *E2e) GetUdCertFromNdf(js.Value, []js.Value) any {
 func (e *E2e) GetUdContactFromNdf(js.Value, []js.Value) any {
 	b, err := e.api.GetUdContactFromNdf()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 

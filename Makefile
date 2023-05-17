@@ -35,10 +35,7 @@ worker_binaries:
 binaries: binary worker_binaries
 
 wasm_tests:
-	cp utils/utils_js.s utils/utils_js.s.bak
-	> utils/utils_js.s
-	-GOOS=js GOARCH=wasm go test -v ./...
-	mv utils/utils_js.s.bak utils/utils_js.s
+	GOOS=js GOARCH=wasm go test -v ./...
 
 go_tests:
 	go test ./... -v
