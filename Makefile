@@ -43,7 +43,7 @@ wasm_tests:
 	cp $(wasmException)/throws.go $(wasmException)/throws.go.bak
 	> $(wasmException)/throw_js.s
 	cp $(wasmException)/throws.dev $(wasmException)/throws.go
-	-GOOS=js GOARCH=wasm go test -v ./worker/... -run TestManager_[rR]
+	-GOOS=js GOARCH=wasm go test -v ./...
 	mv $(wasmException)/throw_js.s.bak $(wasmException)/throw_js.s
 	mv $(wasmException)/throws.go.bak $(wasmException)/throws.go
 
