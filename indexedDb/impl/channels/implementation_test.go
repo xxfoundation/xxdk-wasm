@@ -50,6 +50,10 @@ func (c *dummyCbs) MessageDeleted(messageId []byte)                           {}
 func (c *dummyCbs) NicknameUpdate(channelIdBytes []byte, nickname string,
 	exists bool) {
 }
+func (c *dummyCbs) NotificationUpdate(notificationFilterListJSON,
+	changedNotificationStatesJSON, deletedNotificationStatesJSON []byte,
+	maxState int) {
+}
 
 // Happy path test for receiving, updating, getting, and deleting a File.
 func TestWasmModel_ReceiveFile(t *testing.T) {

@@ -14,7 +14,7 @@ import (
 
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/notifications"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
 )
 
 type Notifications struct {
@@ -46,7 +46,7 @@ func LoadNotifications(_ js.Value, args []js.Value) any {
 	cMixID := args[0].Int()
 	api, err := bindings.LoadNotifications(cMixID)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -64,7 +64,7 @@ func LoadNotificationsDummy(_ js.Value, args []js.Value) any {
 	cMixID := args[0].Int()
 	api, err := bindings.LoadNotificationsDummy(cMixID)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -89,7 +89,7 @@ func (n *Notifications) AddToken(_ js.Value, args []js.Value) any {
 
 	err := n.api.AddToken(newToken, app)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 	}
 
 	return nil
@@ -101,7 +101,7 @@ func (n *Notifications) AddToken(_ js.Value, args []js.Value) any {
 func (n *Notifications) RemoveToken(_ js.Value, args []js.Value) any {
 	err := n.api.RemoveToken()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 	}
 	return nil
 }
@@ -117,7 +117,7 @@ func (n *Notifications) SetMaxState(_ js.Value, args []js.Value) any {
 
 	err := n.api.SetMaxState(notifications.NotificationState(maxState))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 	}
 
 	return nil

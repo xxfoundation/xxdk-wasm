@@ -10,10 +10,11 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
-	"syscall/js"
 )
 
 // StartNetworkFollower kicks off the tracking of the network. It starts long-
@@ -381,6 +382,53 @@ func (tsc *trackServicesCallback) Callback(marshalData []byte, err error) {
 	tsc.callback(utils.CopyBytesToJS(marshalData), exception.NewTrace(err))
 }
 
+// trackServicesCallback adheres to the [bindings.TrackServicesCallback]
+// interface.
+type trackCompressedServicesCallback struct {
+	callback func(args ...any) js.Value
+}
+
+// Callback is the callback for [Cmix.TrackCompressedServices]. This
+// will pass to the user a JSON-marshalled list of backend
+// services. If there was an error retrieving or marshalling the
+// service list, there is an error for the second parameter, which
+// will be non-null.
+//
+// Parameters:
+//   - marshalData - Returns the JSON of
+//     [message.CompressedServiceList] (Uint8Array).
+//   - err - Returns an error on failure (Error).
+//
+// Example JSON:
+//
+//		{
+//	   "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD": [
+//	     {
+//	       "Identifier": null,
+//	       "Tags": ["test"],
+//	       "Metadata": null
+//	     }
+//	   ],
+//	   "AAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD": [
+//	     {
+//	       "Identifier": null,
+//	       "Tags": ["test"],
+//	       "Metadata": null
+//	     }
+//	   ],
+//	   "AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD": [
+//	     {
+//	       "Identifier": null,
+//	       "Tags": ["test"],
+//	       "Metadata": null
+//	     }
+//	   ]
+//	 }
+func (tcsc *trackCompressedServicesCallback) Callback(marshalData []byte,
+	err error) {
+	tcsc.callback(utils.CopyBytesToJS(marshalData), exception.NewTrace(err))
+}
+
 // TrackServicesWithIdentity will return via a callback the list of services the
 // backend keeps track of for the provided identity. This may be passed into
 // other bindings call which may need context on the available services for this
@@ -389,13 +437,20 @@ func (tsc *trackServicesCallback) Callback(marshalData []byte, err error) {
 // Parameters:
 //   - args[0] - ID of [E2e] object in tracker (int).
 //   - args[1] - Javascript object that has functions that implement the
-//     [bindings.ClientError] interface.
+//     [bindings.TrackServicesCallback] interface.
+//   - args[1] - Javascript object that has functions that implement the
+//     [bindings.TrackCompressedServicesCallback] interface.
 //
 // Returns:
 //   - Throws TypeError if the [E2e] ID is invalid.
 func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) any {
 	err := c.api.TrackServicesWithIdentity(args[0].Int(),
-		&trackServicesCallback{utils.WrapCB(args[0], "Callback")})
+		&trackServicesCallback{
+			utils.WrapCB(args[0], "Callback"),
+		},
+		&trackCompressedServicesCallback{
+			utils.WrapCB(args[0], "Callback"),
+		})
 	if err != nil {
 		exception.ThrowTrace(err)
 		return nil

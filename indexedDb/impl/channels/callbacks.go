@@ -79,6 +79,13 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 	return []byte{}, nil
 }
 
+// NotificationUpdate implements [bindings.ChannelUICallbacks.NotificationUpdate
+func (m *manager) NotificationUpdate(notificationFilterListJSON,
+	changedNotificationStatesJSON, deletedNotificationStatesJSON []byte,
+	maxState int) {
+	jww.FATAL.Panicf("unimplemented")
+}
+
 // MessageReceived implements [bindings.ChannelUICallbacks.MessageReceived].
 func (m *manager) MessageReceived(uuid int64, channelID []byte, update bool) {
 	// Package parameters for sending
