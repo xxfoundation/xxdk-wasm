@@ -21,7 +21,7 @@ func TestManager_processReceivedMessage(t *testing.T) {
 	m := &Manager{callbacks: make(map[Tag]map[uint64]ReceptionCallback)}
 
 	msg := Message{Tag: readyTag, ID: 5}
-	cbChan := make(chan struct{})
+	cbChan := make(chan struct{}, 1)
 	cb := func([]byte) { cbChan <- struct{}{} }
 	m.callbacks[msg.Tag] = map[uint64]ReceptionCallback{msg.ID: cb}
 
@@ -31,16 +31,16 @@ func TestManager_processReceivedMessage(t *testing.T) {
 	}
 
 	go func() {
-		select {
-		case <-cbChan:
-		case <-time.After(10 * time.Millisecond):
-			t.Error("Timed out waiting for callback to be called.")
+		err = m.processReceivedMessage(data)
+		if err != nil {
+			t.Errorf("Failed to receive message: %+v", err)
 		}
 	}()
 
-	err = m.processReceivedMessage(data)
-	if err != nil {
-		t.Errorf("Failed to receive message: %+v", err)
+	select {
+	case <-cbChan:
+	case <-time.After(10 * time.Millisecond):
+		t.Error("Timed out waiting for callback to be called.")
 	}
 }
 
@@ -97,7 +97,7 @@ func TestManager_RegisterCallback(t *testing.T) {
 	m := &Manager{callbacks: make(map[Tag]map[uint64]ReceptionCallback)}
 
 	msg := Message{Tag: readyTag, ID: initID}
-	cbChan := make(chan struct{})
+	cbChan := make(chan struct{}, 1)
 	cb := func([]byte) { cbChan <- struct{}{} }
 	m.RegisterCallback(msg.Tag, cb)
 
@@ -107,16 +107,16 @@ func TestManager_RegisterCallback(t *testing.T) {
 	}
 
 	go func() {
-		select {
-		case <-cbChan:
-		case <-time.After(10 * time.Millisecond):
-			t.Error("Timed out waiting for callback to be called.")
+		err = m.processReceivedMessage(data)
+		if err != nil {
+			t.Errorf("Failed to receive message: %+v", err)
 		}
 	}()
 
-	err = m.processReceivedMessage(data)
-	if err != nil {
-		t.Errorf("Failed to receive message: %+v", err)
+	select {
+	case <-cbChan:
+	case <-time.After(10 * time.Millisecond):
+		t.Error("Timed out waiting for callback to be called.")
 	}
 }
 
@@ -129,7 +129,7 @@ func TestManager_registerReplyCallback(t *testing.T) {
 	}
 
 	msg := Message{Tag: readyTag, ID: 5}
-	cbChan := make(chan struct{})
+	cbChan := make(chan struct{}, 1)
 	cb := func([]byte) { cbChan <- struct{}{} }
 	m.registerReplyCallback(msg.Tag, cb)
 	m.callbacks[msg.Tag] = map[uint64]ReceptionCallback{msg.ID: cb}
@@ -140,16 +140,16 @@ func TestManager_registerReplyCallback(t *testing.T) {
 	}
 
 	go func() {
-		select {
-		case <-cbChan:
-		case <-time.After(10 * time.Millisecond):
-			t.Error("Timed out waiting for callback to be called.")
+		err = m.processReceivedMessage(data)
+		if err != nil {
+			t.Errorf("Failed to receive message: %+v", err)
 		}
 	}()
 
-	err = m.processReceivedMessage(data)
-	if err != nil {
-		t.Errorf("Failed to receive message: %+v", err)
+	select {
+	case <-cbChan:
+	case <-time.After(10 * time.Millisecond):
+		t.Error("Timed out waiting for callback to be called.")
 	}
 }
 

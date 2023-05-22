@@ -11,8 +11,11 @@ package storage
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
 	"os"
+
+	"github.com/pkg/errors"
+
+	"gitlab.com/elixxir/wasm-utils/storage"
 )
 
 const indexedDbListKey = "xxDkWasmIndexedDbList"
@@ -20,7 +23,7 @@ const indexedDbListKey = "xxDkWasmIndexedDbList"
 // GetIndexedDbList returns the list of stored indexedDb databases.
 func GetIndexedDbList() (map[string]struct{}, error) {
 	list := make(map[string]struct{})
-	listBytes, err := GetLocalStorage().GetItem(indexedDbListKey)
+	listBytes, err := storage.GetLocalStorage().Get(indexedDbListKey)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	} else if err == nil {
@@ -47,7 +50,11 @@ func StoreIndexedDb(databaseName string) error {
 		return err
 	}
 
-	GetLocalStorage().SetItem(indexedDbListKey, listBytes)
+	err = storage.GetLocalStorage().Set(indexedDbListKey, listBytes)
+	if err != nil {
+		return errors.Wrapf(err,
+			"localStorage: failed to set %q", indexedDbListKey)
+	}
 
 	return nil
 }

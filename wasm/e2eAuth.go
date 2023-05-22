@@ -10,7 +10,8 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -46,7 +47,7 @@ func (e *E2e) Request(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		rid, err := e.api.Request(partnerContact, factsListJson)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(rid)
 		}
@@ -83,7 +84,7 @@ func (e *E2e) Confirm(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		rid, err := e.api.Confirm(partnerContact)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(rid)
 		}
@@ -118,7 +119,7 @@ func (e *E2e) Reset(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		rid, err := e.api.Reset(partnerContact)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(rid)
 		}
@@ -147,7 +148,7 @@ func (e *E2e) ReplayConfirm(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		rid, err := e.api.ReplayConfirm(partnerContact)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(rid)
 		}
@@ -174,7 +175,7 @@ func (e *E2e) DeleteRequest(_ js.Value, args []js.Value) any {
 	partnerContact := utils.CopyBytesToGo(args[0])
 	err := e.api.DeleteRequest(partnerContact)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -188,7 +189,7 @@ func (e *E2e) DeleteRequest(_ js.Value, args []js.Value) any {
 func (e *E2e) DeleteAllRequests(js.Value, []js.Value) any {
 	err := e.api.DeleteAllRequests()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -202,7 +203,7 @@ func (e *E2e) DeleteAllRequests(js.Value, []js.Value) any {
 func (e *E2e) DeleteSentRequests(js.Value, []js.Value) any {
 	err := e.api.DeleteSentRequests()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -216,7 +217,7 @@ func (e *E2e) DeleteSentRequests(js.Value, []js.Value) any {
 func (e *E2e) DeleteReceiveRequests(js.Value, []js.Value) any {
 	err := e.api.DeleteReceiveRequests()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -235,7 +236,7 @@ func (e *E2e) GetReceivedRequest(_ js.Value, args []js.Value) any {
 	partnerContact := utils.CopyBytesToGo(args[0])
 	c, err := e.api.GetReceivedRequest(partnerContact)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -260,7 +261,7 @@ func (e *E2e) VerifyOwnership(_ js.Value, args []js.Value) any {
 	isValid, err := e.api.VerifyOwnership(
 		receivedContact, verifiedContact, args[2].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -282,7 +283,7 @@ func (e *E2e) AddPartnerCallback(_ js.Value, args []js.Value) any {
 	callbacks := newAuthCallbacks(args[1])
 	err := e.api.AddPartnerCallback(partnerID, callbacks)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -301,7 +302,7 @@ func (e *E2e) DeletePartnerCallback(_ js.Value, args []js.Value) any {
 	partnerID := utils.CopyBytesToGo(args[0])
 	err := e.api.DeletePartnerCallback(partnerID)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 

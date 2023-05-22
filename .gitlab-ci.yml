@@ -38,7 +38,6 @@ wasm-test:
     - tags
   script:
     - export PATH=/root/go/bin:$PATH
-    - echo > utils/utils_js.s
     - go mod vendor
     - unset SSH_PRIVATE_KEY
     - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)

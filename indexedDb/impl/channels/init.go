@@ -23,7 +23,7 @@ import (
 
 // currentVersion is the current version of the IndexedDb runtime. Used for
 // migration purposes.
-const currentVersion uint = 2
+const currentVersion uint = 1
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key. Returns the
@@ -55,14 +55,6 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 					return err
 				}
 				oldVersion = 1
-			}
-
-			if oldVersion == 1 && newVersion >= 2 {
-				err := v2Upgrade(db)
-				if err != nil {
-					return err
-				}
-				oldVersion = 2
 			}
 
 			// if oldVersion == 1 && newVersion >= 2 { v2Upgrade(), oldVersion = 2 }
@@ -143,15 +135,8 @@ func v1Upgrade(db *idb.Database) error {
 		return err
 	}
 
-	return nil
-}
-
-// v1Upgrade performs the v1 -> v2 database upgrade.
-//
-// This can never be changed without permanently breaking backwards
-// compatibility.
-func v2Upgrade(db *idb.Database) error {
-	_, err := db.CreateObjectStore(fileStoreName, idb.ObjectStoreOptions{
+	// Build File ObjectStore
+	_, err = db.CreateObjectStore(fileStoreName, idb.ObjectStoreOptions{
 		KeyPath:       js.ValueOf(pkeyName),
 		AutoIncrement: false,
 	})
