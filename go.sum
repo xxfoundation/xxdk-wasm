@@ -529,6 +529,10 @@ gitlab.com/elixxir/client/v4 v4.6.3 h1:oUsm5cn2Vnfqz+xwGYKrqFkPNN3sDAyp00EPGhUIA
 gitlab.com/elixxir/client/v4 v4.6.3/go.mod h1:G+lN+LvQPGcm5BQnrhnqT1xiRIAzH3OffAM+5oI9SUg=
 gitlab.com/elixxir/client/v4 v4.6.4-0.20230519223444-1d981a1d95aa h1:PJylTJ4ol3p3Si9cipFmhhWo0YD4VXMrbHQODJ9ACKE=
 gitlab.com/elixxir/client/v4 v4.6.4-0.20230519223444-1d981a1d95aa/go.mod h1:rDC4sLKgj5kuuiJRp8bD1M7r0mlb0ib7q8q1Euct9/k=
+gitlab.com/elixxir/client/v4 v4.6.4-0.20230522204511-a198ba2e5749 h1:mFhb9/TDAtmvuDtBL70vvQCwg7OGSWcCLxXcqcfG3rQ=
+gitlab.com/elixxir/client/v4 v4.6.4-0.20230522204511-a198ba2e5749/go.mod h1:rDC4sLKgj5kuuiJRp8bD1M7r0mlb0ib7q8q1Euct9/k=
+gitlab.com/elixxir/client/v4 v4.6.4-0.20230522213235-dc7d3feb05b9 h1:/g+OA8nsI0LwY1NgR7WPOAztengA2UqrY7xXZarmwgk=
+gitlab.com/elixxir/client/v4 v4.6.4-0.20230522213235-dc7d3feb05b9/go.mod h1:trGefpFqH2+kx4/uEV+yyiEWpGq3AhRMnuBQDhDQKMM=
 gitlab.com/elixxir/comms v0.0.4-0.20230310205528-f06faa0d2f0b h1:8AVK93UEs/aufoqtFgyMVt9gf0oJ8F4pA60ZvEVvG+s=
 gitlab.com/elixxir/comms v0.0.4-0.20230310205528-f06faa0d2f0b/go.mod h1:z+qW0D9VpY5QKTd7wRlb5SK4kBNqLYsa4DXBcUXue9Q=
 gitlab.com/elixxir/comms v0.0.4-0.20230519211512-4a998f4b0938 h1:f27+QUFiGWrprKm+fstOg3ABkYLpWcZi3+8Lf5eDnqY=
@@ -537,6 +541,8 @@ gitlab.com/elixxir/crypto v0.0.7-0.20230413162806-a99ec4bfea32 h1:Had0F7rMPgJJ2B
 gitlab.com/elixxir/crypto v0.0.7-0.20230413162806-a99ec4bfea32/go.mod h1:/SLOlvkYVVJf6IU+vEjMLnS7cjjcoTlPV45g6tv6INc=
 gitlab.com/elixxir/crypto v0.0.7-0.20230519214355-b10a9f95d395 h1:aOoL0oyocmLUbCBXgF52QhtBXvAi+eXM1d0DrDsFkIg=
 gitlab.com/elixxir/crypto v0.0.7-0.20230519214355-b10a9f95d395/go.mod h1:IYInxKr5Q7EH3oNhg1QX1/sTTRNi7L0JkcyfdRegoio=
+gitlab.com/elixxir/crypto v0.0.7-0.20230522190154-5cbcf67f4b39 h1:cU8066kdJRH88GUetdoYfT4ATg+uzSyquhHbVcbxw7Q=
+gitlab.com/elixxir/crypto v0.0.7-0.20230522190154-5cbcf67f4b39/go.mod h1:IYInxKr5Q7EH3oNhg1QX1/sTTRNi7L0JkcyfdRegoio=
 gitlab.com/elixxir/ekv v0.2.1 h1:dtwbt6KmAXG2Tik5d60iDz2fLhoFBgWwST03p7T+9Is=
 gitlab.com/elixxir/ekv v0.2.1/go.mod h1:USLD7xeDnuZEavygdrgzNEwZXeLQJK/w1a+htpN+JEU=
 gitlab.com/elixxir/ekv v0.3.1-0.20230504190918-f5e96603c2e0 h1:4d2vg4Sh3N5mR1ta152cg6ybPWHYqsPtkEyJKaDYGnw=

@@ -17,6 +17,7 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/channels"
+	"gitlab.com/elixxir/primitives/notifications"
 	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 
 	"gitlab.com/elixxir/client/v4/bindings"
@@ -1452,6 +1453,88 @@ func (cm *ChannelsManager) GetMutedUsers(_ js.Value, args []js.Value) any {
 	}
 
 	return utils.CopyBytesToJS(mutedUsers)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Notifications                                                              //
+////////////////////////////////////////////////////////////////////////////////
+
+// GetNotificationLevel implements
+// [bindings.ChannelsManager.GetNotificationLevel]
+//
+// Parameters:
+//   - args[0] - channelIDBytes - The marshalled bytes of the
+//     channel's [id.ID] (Uint8Array)
+//
+// Returns:
+//   - int - The [channels.NotificationLevel] for the channel.
+//     throws an error if there is an issue
+func (cm *ChannelsManager) GetNotificationLevel(_ js.Value,
+	args []js.Value) any {
+	channelIDBytes := utils.CopyBytesToGo(args[0])
+
+	level, err := cm.api.GetNotificationLevel(channelIDBytes)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return level
+}
+
+// SetMobileNotificationsLevel implements
+// [bindings.ChannelsManager.SetMobileNotificationsLevel]
+//
+// Parameters:
+//   - args[0] - channelIDBytes - The marshaled bytes of the channel's [id.ID]
+//     (Uint8Array).
+//   - args[1] - level - The [channels.NotificationLevel] to set for
+//     the channel.
+//   - args[2] - status - The [notifications.NotificationState] to set
+//     for the channel.
+//   - args[3] - push - True to enable push notifications and false to
+//     only have in-app notifications.
+//
+// Returns nothing or throws an error
+func (cm *ChannelsManager) SetMobileNotificationsLevel(_ js.Value,
+	args []js.Value) any {
+	channelIDBytes := utils.CopyBytesToGo(args[0])
+	level := args[1].Int()
+	status := args[2].Int()
+	push := args[3].Bool()
+
+	err := cm.api.SetMobileNotificationsLevel(channelIDBytes, level,
+		status, push)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+	}
+	return nil
+}
+
+// GetNotificationReportsForMe implements
+// [bindings.GetNotificationsReportsForMe]
+//
+// Parameters:
+//   - args[0] - notificationFilterJSON - JSON of a slice of
+//     [channels.NotificationFilter] (Uint8Array).
+//   - args[1] - notificationDataJSON - JSON of a slice of
+//     [notifications.Data] (Uint8Array).
+//
+// Returns:
+//   - []byte - JSON of a slice of [channels.NotificationReport].
+//     Throws an error if one occurs
+func GetNotificationReportsForMe(_ js.Value, args []js.Value) any {
+	notificationFilterJSON := utils.CopyBytesToGo(args[0])
+	notificationDataJSON := utils.CopyBytesToGo(args[1])
+
+	nrs, err := bindings.GetNotificationReportsForMe(notificationFilterJSON,
+		notificationDataJSON)
+	if err != nil {
+		utils.Throw(utils.TypeError, err)
+		return nil
+	}
+
+	return utils.CopyBytesToJS(nrs)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
