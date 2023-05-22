@@ -11,6 +11,7 @@ build:
 	GOOS=js GOARCH=wasm go build ./...
 
 update_release:
+	GOFLAGS="" go get gitlab.com/elixxir/wasm-utils@release
 	GOFLAGS="" go get gitlab.com/xx_network/primitives@release
 	GOFLAGS="" go get gitlab.com/elixxir/primitives@release
 	GOFLAGS="" go get gitlab.com/xx_network/crypto@release
@@ -18,11 +19,12 @@ update_release:
 	GOFLAGS="" go get -d gitlab.com/elixxir/client/v4@release
 
 update_master:
-	GOFLAGS="" go get -d gitlab.com/elixxir/client@master
-	GOFLAGS="" go get gitlab.com/elixxir/crypto@master
+	GOFLAGS="" go get gitlab.com/elixxir/wasm-utils@master
+	GOFLAGS="" go get gitlab.com/xx_network/primitives@master
 	GOFLAGS="" go get gitlab.com/elixxir/primitives@master
 	GOFLAGS="" go get gitlab.com/xx_network/crypto@master
-	GOFLAGS="" go get gitlab.com/xx_network/primitives@master
+	GOFLAGS="" go get gitlab.com/elixxir/crypto@master
+	GOFLAGS="" go get -d gitlab.com/elixxir/client/v4@master
 
 binary:
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk.wasm main.go
@@ -34,11 +36,16 @@ worker_binaries:
 
 binaries: binary worker_binaries
 
+wasmException = "vendor/gitlab.com/elixxir/wasm-utils/exception"
+
 wasm_tests:
-	cp utils/utils_js.s utils/utils_js.s.bak
-	> utils/utils_js.s
+	cp $(wasmException)/throw_js.s $(wasmException)/throw_js.s.bak
+	cp $(wasmException)/throws.go $(wasmException)/throws.go.bak
+	> $(wasmException)/throw_js.s
+	cp $(wasmException)/throws.dev $(wasmException)/throws.go
 	-GOOS=js GOARCH=wasm go test -v ./...
-	mv utils/utils_js.s.bak utils/utils_js.s
+	mv $(wasmException)/throw_js.s.bak $(wasmException)/throw_js.s
+	mv $(wasmException)/throws.go.bak $(wasmException)/throws.go
 
 go_tests:
 	go test ./... -v

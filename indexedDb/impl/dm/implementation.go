@@ -26,8 +26,8 @@ import (
 	"gitlab.com/elixxir/client/v4/dm"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
 )
 
@@ -319,7 +319,8 @@ func (w *wasmModel) upsertMessage(msg *Message) (uint64, error) {
 	// Store message to database
 	msgIdObj, err := impl.Put(w.db, messageStoreName, messageObj)
 	if err != nil {
-		return 0, errors.Errorf("Unable to put Message: %+v", err)
+		return 0, errors.Errorf("Unable to put Message: %+v\n%s",
+			err, newMessageJson)
 	}
 
 	uuid := msgIdObj.Int()

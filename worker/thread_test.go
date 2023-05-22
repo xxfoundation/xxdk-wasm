@@ -20,7 +20,7 @@ func TestThreadManager_processReceivedMessage(t *testing.T) {
 	tm := &ThreadManager{callbacks: make(map[Tag]ThreadReceptionCallback)}
 
 	msg := Message{Tag: readyTag, ID: 5}
-	cbChan := make(chan struct{})
+	cbChan := make(chan struct{}, 1)
 	cb := func([]byte) ([]byte, error) { cbChan <- struct{}{}; return nil, nil }
 	tm.callbacks[msg.Tag] = cb
 
@@ -30,16 +30,16 @@ func TestThreadManager_processReceivedMessage(t *testing.T) {
 	}
 
 	go func() {
-		select {
-		case <-cbChan:
-		case <-time.After(10 * time.Millisecond):
-			t.Error("Timed out waiting for callback to be called.")
+		err = tm.processReceivedMessage(data)
+		if err != nil {
+			t.Errorf("Failed to receive message: %+v", err)
 		}
 	}()
 
-	err = tm.processReceivedMessage(data)
-	if err != nil {
-		t.Errorf("Failed to receive message: %+v", err)
+	select {
+	case <-cbChan:
+	case <-time.After(10 * time.Millisecond):
+		t.Error("Timed out waiting for callback to be called.")
 	}
 }
 
@@ -49,7 +49,7 @@ func TestThreadManager_RegisterCallback(t *testing.T) {
 	tm := &ThreadManager{callbacks: make(map[Tag]ThreadReceptionCallback)}
 
 	msg := Message{Tag: readyTag, ID: 5}
-	cbChan := make(chan struct{})
+	cbChan := make(chan struct{}, 1)
 	cb := func([]byte) ([]byte, error) { cbChan <- struct{}{}; return nil, nil }
 	tm.RegisterCallback(msg.Tag, cb)
 
@@ -59,15 +59,15 @@ func TestThreadManager_RegisterCallback(t *testing.T) {
 	}
 
 	go func() {
-		select {
-		case <-cbChan:
-		case <-time.After(10 * time.Millisecond):
-			t.Error("Timed out waiting for callback to be called.")
+		err = tm.processReceivedMessage(data)
+		if err != nil {
+			t.Errorf("Failed to receive message: %+v", err)
 		}
 	}()
 
-	err = tm.processReceivedMessage(data)
-	if err != nil {
-		t.Errorf("Failed to receive message: %+v", err)
+	select {
+	case <-cbChan:
+	case <-time.After(10 * time.Millisecond):
+		t.Error("Timed out waiting for callback to be called.")
 	}
 }
