@@ -14,7 +14,7 @@ import (
 
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/notifications"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
 type Notifications struct {
