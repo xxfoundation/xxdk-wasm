@@ -13,7 +13,9 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
+	"syscall/js"
 )
 
 // Cmix wraps the [bindings.Cmix] object so its methods can be wrapped to be
@@ -100,7 +102,7 @@ func NewCmix(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := bindings.NewCmix(ndfJSON, storageDir, password, registrationCode)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve()
 		}
@@ -135,7 +137,7 @@ func LoadCmix(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		net, err := bindings.LoadCmix(storageDir, password, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(newCmixJS(net))
 		}
@@ -219,7 +221,7 @@ func (c *Cmix) EKVGet(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		val, err := c.api.EKVGet(key)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(val))
 		}
@@ -244,7 +246,7 @@ func (c *Cmix) EKVSet(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := c.api.EKVSet(key, val)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(nil)
 		}

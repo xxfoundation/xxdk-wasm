@@ -18,7 +18,7 @@ package main
 
 import (
 	"fmt"
-	"gitlab.com/elixxir/xxdk-wasm/utils/worker"
+	"gitlab.com/elixxir/wasm-utils/utils/worker"
 )
 
 func main() {

@@ -12,7 +12,8 @@ package wasm
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/xxdk"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -38,7 +39,7 @@ func StoreReceptionIdentity(_ js.Value, args []js.Value) any {
 		args[0].String(), identity, args[2].Int())
 
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -58,7 +59,7 @@ func StoreReceptionIdentity(_ js.Value, args []js.Value) any {
 func LoadReceptionIdentity(_ js.Value, args []js.Value) any {
 	ri, err := bindings.LoadReceptionIdentity(args[0].String(), args[1].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -75,7 +76,7 @@ func (c *Cmix) MakeReceptionIdentity(js.Value, []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		ri, err := c.api.MakeReceptionIdentity()
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(ri))
 		}
@@ -94,7 +95,7 @@ func (c *Cmix) MakeLegacyReceptionIdentity(js.Value, []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		ri, err := c.api.MakeLegacyReceptionIdentity()
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(ri))
 		}
@@ -132,7 +133,7 @@ func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) any {
 	identityJSON := utils.CopyBytesToGo(args[0])
 	identity, err := xxdk.UnmarshalReceptionIdentity(identityJSON)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -150,7 +151,7 @@ func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) any {
 func GetIDFromContact(_ js.Value, args []js.Value) any {
 	cID, err := bindings.GetIDFromContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -169,7 +170,7 @@ func GetIDFromContact(_ js.Value, args []js.Value) any {
 func GetPubkeyFromContact(_ js.Value, args []js.Value) any {
 	key, err := bindings.GetPubkeyFromContact([]byte(args[0].String()))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -195,7 +196,7 @@ func SetFactsOnContact(_ js.Value, args []js.Value) any {
 	factListJSON := utils.CopyBytesToGo(args[1])
 	c, err := bindings.SetFactsOnContact(marshaledContact, factListJSON)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -213,7 +214,7 @@ func SetFactsOnContact(_ js.Value, args []js.Value) any {
 func GetFactsFromContact(_ js.Value, args []js.Value) any {
 	fl, err := bindings.GetFactsFromContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 

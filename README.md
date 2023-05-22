@@ -77,7 +77,7 @@ global.Go = class {
             go: {
                 // ...
                 // func Throw(exception string, message string)
-                'gitlab.com/elixxir/xxdk-wasm/utils.throw': (sp) => {
+                'gitlab.com/elixxir/wasm-utils/utils.throw': (sp) => {
                     const exception = loadString(sp + 8)
                     const message = loadString(sp + 24)
                     throw globalThis[exception](message)

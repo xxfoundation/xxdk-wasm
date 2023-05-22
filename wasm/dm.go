@@ -20,8 +20,9 @@ import (
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/dm"
 	"gitlab.com/elixxir/crypto/codename"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	indexDB "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +93,7 @@ func NewDMClient(_ js.Value, args []js.Value) any {
 
 	cm, err := bindings.NewDMClient(args[0].Int(), privateIdentity, em)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -138,7 +139,7 @@ func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 
 	cipher, err := bindings.GetDMDbCipherTrackerFromID(cipherID)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 	}
 
 	return newDMClientWithIndexedDb(
@@ -196,19 +197,19 @@ func newDMClientWithIndexedDb(cmixID int, wasmJsPath string,
 
 		pi, err := codename.UnmarshalPrivateIdentity(privateIdentity)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		}
 		dmPath := base64.RawStdEncoding.EncodeToString(pi.PubKey[:])
 		model, err := indexDB.NewWASMEventModel(
 			dmPath, wasmJsPath, cipher, messageReceivedCB)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		}
 
 		cm, err := bindings.NewDMClientWithGoEventModel(
 			cmixID, privateIdentity, model)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(newDMClientJS(cm))
 		}
@@ -259,7 +260,7 @@ func (dmc *DMClient) GetIdentity(js.Value, []js.Value) any {
 func (dmc *DMClient) ExportPrivateIdentity(_ js.Value, args []js.Value) any {
 	i, err := dmc.api.ExportPrivateIdentity(args[0].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -275,7 +276,7 @@ func (dmc *DMClient) ExportPrivateIdentity(_ js.Value, args []js.Value) any {
 func (dmc *DMClient) GetNickname(_ js.Value, _ []js.Value) any {
 	nickname, err := dmc.api.GetNickname()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -359,7 +360,7 @@ func (dmc *DMClient) SendText(_ js.Value, args []js.Value) any {
 		sendReport, err := dmc.api.SendText(partnerPubKeyBytes, partnerToken,
 			message, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -417,7 +418,7 @@ func (dmc *DMClient) SendReply(_ js.Value, args []js.Value) any {
 		sendReport, err := dmc.api.SendReply(partnerPubKeyBytes, partnerToken,
 			replyMessage, replyToBytes, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -464,7 +465,7 @@ func (dmc *DMClient) SendReaction(_ js.Value, args []js.Value) any {
 		sendReport, err := dmc.api.SendReaction(partnerPubKeyBytes,
 			partnerToken, reaction, reactToBytes, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -515,7 +516,7 @@ func (dmc *DMClient) Send(_ js.Value, args []js.Value) any {
 		sendReport, err := dmc.api.Send(partnerPubKeyBytes, partnerToken,
 			messageType, plaintext, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -578,7 +579,7 @@ func (dmc *DMClient) GetShareURL(_ js.Value, args []js.Value) any {
 	host := args[0].String()
 	urlReport, err := dmc.api.GetShareURL(host)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -598,7 +599,7 @@ func DecodeDMShareURL(_ js.Value, args []js.Value) any {
 	url := args[0].String()
 	report, err := bindings.DecodeDMShareURL(url)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -629,7 +630,7 @@ func (cmrCB *dmReceptionCallback) Callback(
 	receivedChannelMessageReport []byte, err error) int {
 	uuid := cmrCB.callback(
 		utils.CopyBytesToJS(receivedChannelMessageReport),
-		utils.JsTrace(err))
+		exception.NewTrace(err))
 
 	return uuid.Int()
 }
@@ -970,7 +971,7 @@ func NewDMsDatabaseCipher(_ js.Value, args []js.Value) any {
 	cipher, err := bindings.NewDMsDatabaseCipher(
 		cmixId, password, plaintTextBlockSize)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1000,7 +1001,7 @@ func (c *DMDbCipher) GetID(js.Value, []js.Value) any {
 func (c *DMDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 	ciphertext, err := c.api.Encrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1021,7 +1022,7 @@ func (c *DMDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 func (c *DMDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 	plaintext, err := c.api.Decrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1036,7 +1037,7 @@ func (c *DMDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 func (c *DMDbCipher) MarshalJSON(js.Value, []js.Value) any {
 	data, err := c.api.MarshalJSON()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1058,7 +1059,7 @@ func (c *DMDbCipher) MarshalJSON(js.Value, []js.Value) any {
 func (c *DMDbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
 	err := c.api.UnmarshalJSON(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return nil

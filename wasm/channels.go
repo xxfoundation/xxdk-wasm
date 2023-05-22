@@ -21,7 +21,12 @@ import (
 	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/client/v4/channels"
+	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
+	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
+	"gitlab.com/xx_network/primitives/id"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +113,7 @@ func (cm *ChannelsManager) GetID(js.Value, []js.Value) any {
 func GenerateChannelIdentity(_ js.Value, args []js.Value) any {
 	pi, err := bindings.GenerateChannelIdentity(args[0].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -143,7 +148,7 @@ func ConstructIdentity(_ js.Value, args []js.Value) any {
 	identity, err := bindings.ConstructIdentity(
 		utils.CopyBytesToGo(args[0]), args[1].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -166,7 +171,7 @@ func constructIdentity(_ js.Value, args []js.Value) any {
 	identity, err := bindings.ConstructIdentity(
 		utils.CopyBytesToGo(args[0]), args[1].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -190,7 +195,7 @@ func ImportPrivateIdentity(_ js.Value, args []js.Value) any {
 
 	pi, err := bindings.ImportPrivateIdentity(password, data)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -211,7 +216,7 @@ func GetPublicChannelIdentity(_ js.Value, args []js.Value) any {
 	marshaledPublic := utils.CopyBytesToGo(args[0])
 	pi, err := bindings.GetPublicChannelIdentity(marshaledPublic)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -235,7 +240,7 @@ func GetPublicChannelIdentityFromPrivate(_ js.Value, args []js.Value) any {
 	identity, err :=
 		bindings.GetPublicChannelIdentityFromPrivate(marshaledPrivate)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -275,7 +280,7 @@ func NewChannelsManager(_ js.Value, args []js.Value) any {
 	cm, err := bindings.NewChannelsManager(
 		cmixId, privateIdentity, extensionBuilderIDsJSON, em, nil)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -310,7 +315,7 @@ func LoadChannelsManager(_ js.Value, args []js.Value) any {
 	cm, err := bindings.LoadChannelsManager(args[0].Int(), args[1].String(),
 		em, cUI)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -358,7 +363,7 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 
 	cipher, err := bindings.GetChannelDbCipherTrackerFromID(cipherID)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 	}
 
 	return newChannelsManagerWithIndexedDb(cmixID, wasmJsPath, privateIdentity,
@@ -418,7 +423,7 @@ func newChannelsManagerWithIndexedDb(cmixID int, wasmJsPath string,
 		cm, err := bindings.NewChannelsManagerGoEventModel(
 			cmixID, privateIdentity, extensionBuilderIDsJSON, model, channelsCbs)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(newChannelsManagerJS(cm))
 		}
@@ -460,7 +465,7 @@ func LoadChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 
 	cipher, err := bindings.GetChannelDbCipherTrackerFromID(cipherID)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 	}
 
 	return loadChannelsManagerWithIndexedDb(cmixID, wasmJsPath, storageTag,
@@ -510,7 +515,7 @@ func loadChannelsManagerWithIndexedDb(cmixID int, wasmJsPath, storageTag string,
 		cm, err := bindings.LoadChannelsManagerGoEventModel(
 			cmixID, storageTag, model, nil, channelsCbs)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(newChannelsManagerJS(cm))
 		}
@@ -536,7 +541,7 @@ func loadChannelsManagerWithIndexedDb(cmixID int, wasmJsPath, storageTag string,
 func DecodePublicURL(_ js.Value, args []js.Value) any {
 	c, err := bindings.DecodePublicURL(args[0].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -558,7 +563,7 @@ func DecodePublicURL(_ js.Value, args []js.Value) any {
 func DecodePrivateURL(_ js.Value, args []js.Value) any {
 	c, err := bindings.DecodePrivateURL(args[0].String(), args[1].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -589,7 +594,7 @@ func DecodePrivateURL(_ js.Value, args []js.Value) any {
 func GetChannelJSON(_ js.Value, args []js.Value) any {
 	c, err := bindings.GetChannelJSON(args[0].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -612,7 +617,7 @@ func GetChannelJSON(_ js.Value, args []js.Value) any {
 func GetChannelInfo(_ js.Value, args []js.Value) any {
 	ci, err := bindings.GetChannelInfo(args[0].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -660,7 +665,7 @@ func (cm *ChannelsManager) GenerateChannel(_ js.Value, args []js.Value) any {
 		prettyPrint, err :=
 			cm.api.GenerateChannel(name, description, privacyLevel)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(prettyPrint)
 		}
@@ -690,7 +695,7 @@ func (cm *ChannelsManager) JoinChannel(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		ci, err := cm.api.JoinChannel(channelPretty)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(ci))
 		}
@@ -714,7 +719,7 @@ func (cm *ChannelsManager) LeaveChannel(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := cm.api.LeaveChannel(marshalledChanId)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve()
 		}
@@ -739,7 +744,7 @@ func (cm *ChannelsManager) ReplayChannel(_ js.Value, args []js.Value) any {
 
 	err := cm.api.ReplayChannel(marshalledChanId)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -761,7 +766,7 @@ func (cm *ChannelsManager) ReplayChannel(_ js.Value, args []js.Value) any {
 func (cm *ChannelsManager) GetChannels(js.Value, []js.Value) any {
 	channelList, err := cm.api.GetChannels()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -780,7 +785,7 @@ func (cm *ChannelsManager) EnableDirectMessages(_ js.Value, args []js.Value) any
 	marshalledChanId := utils.CopyBytesToGo(args[0])
 	err := cm.api.EnableDirectMessages(marshalledChanId)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return nil
@@ -798,7 +803,7 @@ func (cm *ChannelsManager) DisableDirectMessages(_ js.Value, args []js.Value) an
 	marshalledChanId := utils.CopyBytesToGo(args[0])
 	err := cm.api.DisableDirectMessages(marshalledChanId)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return nil
@@ -816,7 +821,7 @@ func (cm *ChannelsManager) AreDMsEnabled(_ js.Value, args []js.Value) any {
 	marshalledChanId := utils.CopyBytesToGo(args[0])
 	enabled, err := cm.api.AreDMsEnabled(marshalledChanId)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return false
 	}
 	return enabled
@@ -868,7 +873,7 @@ func (cm *ChannelsManager) GetShareURL(_ js.Value, args []js.Value) any {
 
 	su, err := cm.api.GetShareURL(cmixID, host, maxUses, marshalledChanId)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -894,7 +899,7 @@ func (cm *ChannelsManager) GetShareURL(_ js.Value, args []js.Value) any {
 func GetShareUrlType(_ js.Value, args []js.Value) any {
 	level, err := bindings.GetShareUrlType(args[0].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -954,7 +959,7 @@ func (cm *ChannelsManager) SendGeneric(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.SendGeneric(marshalledChanId, messageType,
 			msg, leaseTimeMS, tracked, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -996,7 +1001,7 @@ func (cm *ChannelsManager) SendMessage(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.SendMessage(
 			marshalledChanId, msg, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1046,7 +1051,7 @@ func (cm *ChannelsManager) SendReply(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.SendReply(marshalledChanId, msg,
 			messageToReactTo, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1094,7 +1099,7 @@ func (cm *ChannelsManager) SendReaction(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.SendReaction(marshalledChanId, reaction,
 			messageToReactTo, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1151,7 +1156,7 @@ func (cm *ChannelsManager) SendAdminGeneric(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.SendAdminGeneric(marshalledChanId,
 			messageType, msg, leaseTimeMS, tracked, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1190,7 +1195,7 @@ func (cm *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.DeleteMessage(
 			channelIdBytes, targetMessageIdBytes, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1232,7 +1237,7 @@ func (cm *ChannelsManager) PinMessage(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.PinMessage(channelIdBytes,
 			targetMessageIdBytes, undoAction, validUntilMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1273,7 +1278,7 @@ func (cm *ChannelsManager) MuteUser(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.MuteUser(channelIdBytes, mutedUserPubKeyBytes,
 			undoAction, validUntilMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1295,7 +1300,7 @@ func (cm *ChannelsManager) MuteUser(_ js.Value, args []js.Value) any {
 func (cm *ChannelsManager) GetIdentity(js.Value, []js.Value) any {
 	i, err := cm.api.GetIdentity()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1314,7 +1319,7 @@ func (cm *ChannelsManager) GetIdentity(js.Value, []js.Value) any {
 func (cm *ChannelsManager) ExportPrivateIdentity(_ js.Value, args []js.Value) any {
 	i, err := cm.api.ExportPrivateIdentity(args[0].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1343,7 +1348,7 @@ func (cm *ChannelsManager) GetStorageTag(js.Value, []js.Value) any {
 func (cm *ChannelsManager) SetNickname(_ js.Value, args []js.Value) any {
 	err := cm.api.SetNickname(args[0].String(), utils.CopyBytesToGo(args[1]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1361,7 +1366,7 @@ func (cm *ChannelsManager) SetNickname(_ js.Value, args []js.Value) any {
 func (cm *ChannelsManager) DeleteNickname(_ js.Value, args []js.Value) any {
 	err := cm.api.DeleteNickname(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1380,7 +1385,7 @@ func (cm *ChannelsManager) DeleteNickname(_ js.Value, args []js.Value) any {
 func (cm *ChannelsManager) GetNickname(_ js.Value, args []js.Value) any {
 	nickname, err := cm.api.GetNickname(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1402,7 +1407,7 @@ func (cm *ChannelsManager) GetNickname(_ js.Value, args []js.Value) any {
 func IsNicknameValid(_ js.Value, args []js.Value) any {
 	err := bindings.IsNicknameValid(args[0].String())
 	if err != nil {
-		return utils.JsError(err)
+		return exception.NewError(err)
 	}
 
 	return nil
@@ -1422,7 +1427,7 @@ func (cm *ChannelsManager) Muted(_ js.Value, args []js.Value) any {
 
 	muted, err := cm.api.Muted(channelIDBytes)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1448,7 +1453,7 @@ func (cm *ChannelsManager) GetMutedUsers(_ js.Value, args []js.Value) any {
 	channelIDBytes := utils.CopyBytesToGo(args[0])
 	mutedUsers, err := cm.api.GetMutedUsers(channelIDBytes)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1553,7 +1558,7 @@ func GetNotificationReportsForMe(_ js.Value, args []js.Value) any {
 func (cm *ChannelsManager) IsChannelAdmin(_ js.Value, args []js.Value) any {
 	isAdmin, err := cm.api.IsChannelAdmin(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1590,7 +1595,7 @@ func (cm *ChannelsManager) ExportChannelAdminKey(_ js.Value, args []js.Value) an
 	pk, err := cm.api.ExportChannelAdminKey(
 		utils.CopyBytesToGo(args[0]), args[1].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return utils.CopyBytesToJS(pk)
@@ -1624,7 +1629,7 @@ func (cm *ChannelsManager) VerifyChannelAdminKey(_ js.Value, args []js.Value) an
 	valid, err := cm.api.VerifyChannelAdminKey(
 		channelID, encryptionPassword, encryptedPrivKey)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1657,7 +1662,7 @@ func (cm *ChannelsManager) ImportChannelAdminKey(_ js.Value, args []js.Value) an
 	err := cm.api.ImportChannelAdminKey(
 		channelID, encryptionPassword, encryptedPrivKey)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1678,7 +1683,7 @@ func (cm *ChannelsManager) ImportChannelAdminKey(_ js.Value, args []js.Value) an
 func (cm *ChannelsManager) DeleteChannelAdminKey(_ js.Value, args []js.Value) any {
 	err := cm.api.DeleteChannelAdminKey(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1708,7 +1713,7 @@ type channelMessageReceptionCallback struct {
 func (cmrCB *channelMessageReceptionCallback) Callback(
 	receivedChannelMessageReport []byte, err error) int {
 	uuid := cmrCB.callback(
-		utils.CopyBytesToJS(receivedChannelMessageReport), utils.JsTrace(err))
+		utils.CopyBytesToJS(receivedChannelMessageReport), exception.NewTrace(err))
 
 	return uuid.Int()
 }
@@ -1749,7 +1754,7 @@ func (cm *ChannelsManager) RegisterReceiveHandler(_ js.Value, args []js.Value) a
 	err := cm.api.RegisterReceiveHandler(
 		messageType, listenerCb, name, userSpace, adminSpace, mutedSpace)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1781,7 +1786,7 @@ func GetNoMessageErr(js.Value, []js.Value) any {
 // Returns
 //   - True if the error contains channels.NoMessageErr (boolean).
 func CheckNoMessageErr(_ js.Value, args []js.Value) any {
-	return bindings.CheckNoMessageErr(utils.JsErrorToJson(args[0]))
+	return bindings.CheckNoMessageErr(js.Error{Value: args[0]}.Error())
 }
 
 // eventModelBuilder adheres to the [bindings.EventModelBuilder] interface.
@@ -2176,7 +2181,7 @@ func NewChannelsDatabaseCipher(_ js.Value, args []js.Value) any {
 	cipher, err := bindings.NewChannelsDatabaseCipher(
 		cmixId, password, plaintTextBlockSize)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -2206,7 +2211,7 @@ func (c *ChannelDbCipher) GetID(js.Value, []js.Value) any {
 func (c *ChannelDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 	ciphertext, err := c.api.Encrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -2227,7 +2232,7 @@ func (c *ChannelDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 func (c *ChannelDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 	plaintext, err := c.api.Decrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -2242,7 +2247,7 @@ func (c *ChannelDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 func (c *ChannelDbCipher) MarshalJSON(js.Value, []js.Value) any {
 	data, err := c.api.MarshalJSON()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -2263,7 +2268,7 @@ func (c *ChannelDbCipher) MarshalJSON(js.Value, []js.Value) any {
 func (c *ChannelDbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
 	err := c.api.UnmarshalJSON(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return nil
