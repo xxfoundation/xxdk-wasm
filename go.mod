@@ -8,7 +8,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client/v4 v4.6.4-0.20230522163353-5f474dc3fe94
+	gitlab.com/elixxir/client/v4 v4.6.4-0.20230522171719-e18201456b7f
 	gitlab.com/elixxir/crypto v0.0.7-0.20230512203519-3aad22b6413b
 	gitlab.com/elixxir/primitives v0.0.3-0.20230214180039-9a25e2d3969c
 	gitlab.com/xx_network/crypto v0.0.5-0.20230214003943-8a09396e95dd
