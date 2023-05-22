@@ -26,9 +26,9 @@ import (
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
 )
 
@@ -121,19 +121,19 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 			"Unable to get Index: %+v", err)
 	}
 
-	// Perform the operation
+	// Set up the operation
 	keyRange, err := idb.NewKeyRangeOnly(impl.EncodeBytes(channelID.Marshal()))
 	cursorRequest, err := index.OpenCursorRange(keyRange, idb.CursorNext)
 	if err != nil {
 		return errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
 	}
-	ctx, cancel := impl.NewContext()
-	err = cursorRequest.Iter(ctx,
+
+	// Perform the operation
+	err = impl.SendCursorRequest(cursorRequest,
 		func(cursor *idb.CursorWithValue) error {
 			_, err := cursor.Delete()
 			return err
 		})
-	cancel()
 	if err != nil {
 		return errors.WithMessagef(parentErr,
 			"Unable to delete Message data: %+v", err)
@@ -415,7 +415,8 @@ func (w *wasmModel) upsertMessage(msg *Message) (uint64, error) {
 	// Store message to database
 	msgIdObj, err := impl.Put(w.db, messageStoreName, messageObj)
 	if err != nil {
-		return 0, errors.Errorf("Unable to put Message: %+v", err)
+		return 0, errors.Errorf("Unable to put Message: %+v\n%s",
+			err, newMessageJson)
 	}
 
 	uuid := msgIdObj.Int()

@@ -17,9 +17,9 @@ import (
 
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
 )
 
@@ -252,7 +252,7 @@ func setGlobals() {
 
 var (
 	logLevel, fileLogLevel      jww.Threshold
-	maxLogFileSizeMB              int
+	maxLogFileSizeMB            int
 	workerScriptURL, workerName string
 )
 

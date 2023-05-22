@@ -11,7 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
 	"syscall/js"
 )
 
@@ -58,7 +58,7 @@ func NewDummyTrafficManager(_ js.Value, args []js.Value) any {
 	dt, err := bindings.NewDummyTrafficManager(
 		args[0].Int(), args[1].Int(), args[2].Int(), args[3].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -80,7 +80,7 @@ func NewDummyTrafficManager(_ js.Value, args []js.Value) any {
 func (dt *DummyTraffic) Pause(js.Value, []js.Value) any {
 	err := dt.api.Pause()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -103,7 +103,7 @@ func (dt *DummyTraffic) Pause(js.Value, []js.Value) any {
 func (dt *DummyTraffic) Start(js.Value, []js.Value) any {
 	err := dt.api.Start()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 

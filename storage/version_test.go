@@ -11,12 +11,14 @@ package storage
 
 import (
 	"testing"
+
+	"gitlab.com/elixxir/wasm-utils/storage"
 )
 
 // Tests that checkAndStoreVersions correct initialises the client and WASM
 // versions on first run and upgrades them correctly on subsequent runs.
 func Test_checkAndStoreVersions(t *testing.T) {
-	ls := GetLocalStorage()
+	ls := storage.GetLocalStorage()
 	ls.Clear()
 	oldWasmVer := "0.1"
 	newWasmVer := "1.0"
@@ -28,7 +30,7 @@ func Test_checkAndStoreVersions(t *testing.T) {
 	}
 
 	// Check client version
-	storedClientVer, err := ls.GetItem(clientVerKey)
+	storedClientVer, err := ls.Get(clientVerKey)
 	if err != nil {
 		t.Errorf("Failed to get client version from storage: %+v", err)
 	}
@@ -38,7 +40,7 @@ func Test_checkAndStoreVersions(t *testing.T) {
 	}
 
 	// Check WASM version
-	storedWasmVer, err := ls.GetItem(semverKey)
+	storedWasmVer, err := ls.Get(semverKey)
 	if err != nil {
 		t.Errorf("Failed to get WASM version from storage: %+v", err)
 	}
@@ -53,7 +55,7 @@ func Test_checkAndStoreVersions(t *testing.T) {
 	}
 
 	// Check client version
-	storedClientVer, err = ls.GetItem(clientVerKey)
+	storedClientVer, err = ls.Get(clientVerKey)
 	if err != nil {
 		t.Errorf("Failed to get client version from storage: %+v", err)
 	}
@@ -63,7 +65,7 @@ func Test_checkAndStoreVersions(t *testing.T) {
 	}
 
 	// Check WASM version
-	storedWasmVer, err = ls.GetItem(semverKey)
+	storedWasmVer, err = ls.Get(semverKey)
 	if err != nil {
 		t.Errorf("Failed to get WASM version from storage: %+v", err)
 	}
@@ -76,7 +78,7 @@ func Test_checkAndStoreVersions(t *testing.T) {
 // Tests that initOrLoadStoredSemver initialises the correct version on first
 // run and returns the same version on subsequent runs.
 func Test_initOrLoadStoredSemver(t *testing.T) {
-	ls := GetLocalStorage()
+	ls := storage.GetLocalStorage()
 	key := "testKey"
 	oldVersion := "0.1"
 

@@ -11,7 +11,8 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -67,7 +68,7 @@ func InitChannelsFileTransfer(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		cft, err := bindings.InitChannelsFileTransfer(e2eID, paramsJson)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(newChannelsFileTransferJS(cft))
 		}
@@ -164,7 +165,7 @@ func (cft *ChannelsFileTransfer) Upload(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		fileID, err := cft.api.Upload(fileData, retry, progressCB, period)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(fileID))
 		}
@@ -211,7 +212,7 @@ func (cft *ChannelsFileTransfer) Send(_ js.Value, args []js.Value) any {
 		fileID, err := cft.api.Send(channelIdBytes, fileLinkJSON, fileName,
 			fileType, preview, validUntilMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(fileID))
 		}
@@ -264,7 +265,7 @@ func (cft *ChannelsFileTransfer) RegisterSentProgressCallback(
 		err := cft.api.RegisterSentProgressCallback(
 			fileIDBytes, progressCB, periodMS)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve()
 		}
@@ -305,7 +306,7 @@ func (cft *ChannelsFileTransfer) RetryUpload(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := cft.api.RetryUpload(fileIDBytes, progressCB, periodMS)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve()
 		}
@@ -334,7 +335,7 @@ func (cft *ChannelsFileTransfer) CloseSend(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := cft.api.CloseSend(fileIDBytes)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve()
 		}
@@ -386,7 +387,7 @@ func (cft *ChannelsFileTransfer) Download(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		fileID, err := cft.api.Download(fileInfoJSON, progressCB, periodMS)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(fileID))
 		}
@@ -438,7 +439,7 @@ func (cft *ChannelsFileTransfer) RegisterReceivedProgressCallback(
 		err := cft.api.RegisterReceivedProgressCallback(
 			fileIDBytes, progressCB, periodMS)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve()
 		}
@@ -490,7 +491,7 @@ type ftSentCallback struct {
 func (fsc *ftSentCallback) Callback(
 	payload []byte, t *bindings.ChFilePartTracker, err error) {
 	fsc.callback(utils.CopyBytesToJS(payload), newChFilePartTrackerJS(t),
-		utils.JsTrace(err))
+		exception.NewTrace(err))
 }
 
 // ftReceivedCallback wraps Javascript callbacks to adhere to the
@@ -518,7 +519,7 @@ type ftReceivedCallback struct {
 func (frc *ftReceivedCallback) Callback(
 	payload []byte, t *bindings.ChFilePartTracker, err error) {
 	frc.callback(utils.CopyBytesToJS(payload), newChFilePartTrackerJS(t),
-		utils.JsTrace(err))
+		exception.NewTrace(err))
 }
 
 ////////////////////////////////////////////////////////////////////////////////
