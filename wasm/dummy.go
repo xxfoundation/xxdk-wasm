@@ -53,7 +53,7 @@ func newDummyTrafficJS(newDT *bindings.DummyTraffic) map[string]any {
 //
 // Returns:
 //   - Javascript representation of the DummyTraffic object.
-//   - Throws a TypeError if creating the manager fails.
+//   - Throws an error if creating the manager fails.
 func NewDummyTrafficManager(_ js.Value, args []js.Value) any {
 	dt, err := bindings.NewDummyTrafficManager(
 		args[0].Int(), args[1].Int(), args[2].Int(), args[3].Int())
@@ -75,7 +75,7 @@ func NewDummyTrafficManager(_ js.Value, args []js.Value) any {
 // thread will then be prevented from beginning another round of sending.
 //
 // Returns:
-//   - Throws a TypeError if it fails to send a pause signal to the sending
+//   - Throws an error if it fails to send a pause signal to the sending
 //     thread.
 func (dt *DummyTraffic) Pause(js.Value, []js.Value) any {
 	err := dt.api.Pause()
@@ -98,7 +98,7 @@ func (dt *DummyTraffic) Pause(js.Value, []js.Value) any {
 // sending interval after a call to Start.
 //
 // Returns:
-//   - Throws a TypeError if it fails to send a start signal to the sending
+//   - Throws an error if it fails to send a start signal to the sending
 //     thread.
 func (dt *DummyTraffic) Start(js.Value, []js.Value) any {
 	err := dt.api.Start()

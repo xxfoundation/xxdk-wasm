@@ -127,6 +127,8 @@ func setGlobals() {
 	js.Global().Set("GetShareUrlType", js.FuncOf(wasm.GetShareUrlType))
 	js.Global().Set("ValidForever", js.FuncOf(wasm.ValidForever))
 	js.Global().Set("IsNicknameValid", js.FuncOf(wasm.IsNicknameValid))
+	js.Global().Set("GetNotificationReportsForMe",
+		js.FuncOf(wasm.GetNotificationReportsForMe))
 	js.Global().Set("GetNoMessageErr", js.FuncOf(wasm.GetNoMessageErr))
 	js.Global().Set("CheckNoMessageErr", js.FuncOf(wasm.CheckNoMessageErr))
 	js.Global().Set("NewChannelsDatabaseCipher",

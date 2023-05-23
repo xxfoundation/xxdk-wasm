@@ -54,7 +54,7 @@ import (
 //   - args[0] - Timeout when stopping threads in milliseconds (int).
 //
 // Returns:
-//   - Throws a TypeError if starting the network follower fails.
+//   - Throws an error if starting the network follower fails.
 func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) any {
 	err := c.api.StartNetworkFollower(args[0].Int())
 	if err != nil {
@@ -72,7 +72,7 @@ func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) any {
 // most likely be in an unrecoverable state and need to be trashed.
 //
 // Returns:
-//   - Throws a TypeError if the follower is in the wrong state to stop or if it
+//   - Throws an error if the follower is in the wrong state to stop or if it
 //     fails to stop.
 func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) any {
 	err := c.api.StopNetworkFollower()
@@ -381,6 +381,51 @@ func (tsc *trackServicesCallback) Callback(marshalData []byte, err error) {
 	tsc.callback(utils.CopyBytesToJS(marshalData), exception.NewTrace(err))
 }
 
+// trackCompressedServicesCallback adheres to the
+// [bindings.TrackCompressedServicesCallback] interface.
+type trackCompressedServicesCallback struct {
+	callback func(args ...any) js.Value
+}
+
+// Callback is the callback for [Cmix.TrackServices] that passes a
+// JSON-marshalled list of compressed backend services. If an error occurs while
+// retrieving or marshalling the service list, then err will be non-null.
+//
+// Parameters:
+//   - marshalData - JSON of [message.CompressedServiceList] (Uint8Array),
+//     which is a map of [id.ID] to an array of [message.CompressedService].
+//   - err - Error that occurs during retrieval or marshalling. Null otherwise
+//     (Error).
+//
+// Example JSON:
+//
+//		{
+//	   "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD": [
+//	     {
+//	       "Identifier": null,
+//	       "Tags": ["test"],
+//	       "Metadata": null
+//	     }
+//	   ],
+//	   "AAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD": [
+//	     {
+//	       "Identifier": null,
+//	       "Tags": ["test"],
+//	       "Metadata": null
+//	     }
+//	   ],
+//	   "AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD": [
+//	     {
+//	       "Identifier": null,
+//	       "Tags": ["test"],
+//	       "Metadata": null
+//	     }
+//	   ]
+//	 }
+func (tsc *trackCompressedServicesCallback) Callback(marshalData []byte, err error) {
+	tsc.callback(utils.CopyBytesToJS(marshalData), exception.NewTrace(err))
+}
+
 // TrackServicesWithIdentity will return via a callback the list of services the
 // backend keeps track of for the provided identity. This may be passed into
 // other bindings call which may need context on the available services for this
@@ -390,12 +435,16 @@ func (tsc *trackServicesCallback) Callback(marshalData []byte, err error) {
 //   - args[0] - ID of [E2e] object in tracker (int).
 //   - args[1] - Javascript object that has functions that implement the
 //     [bindings.ClientError] interface.
+//   - args[2] - Javascript object that has functions that implement the
+//     [bindings.TrackCompressedServicesCallback], which will be passed the JSON
+//     of [message.CompressedServiceList].
 //
 // Returns:
 //   - Throws TypeError if the [E2e] ID is invalid.
 func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) any {
 	err := c.api.TrackServicesWithIdentity(args[0].Int(),
-		&trackServicesCallback{utils.WrapCB(args[0], "Callback")})
+		&trackServicesCallback{utils.WrapCB(args[0], "Callback")},
+		&trackCompressedServicesCallback{utils.WrapCB(args[0], "Callback")})
 	if err != nil {
 		exception.ThrowTrace(err)
 		return nil

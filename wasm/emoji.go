@@ -22,7 +22,7 @@ import (
 //
 // Returns:
 //   - JSON of an array of emoji.Emoji (Uint8Array).
-//   - Throws a TypeError if marshalling the JSON fails.
+//   - Throws an error if marshalling the JSON fails.
 //
 // Example JSON:
 //
@@ -69,7 +69,7 @@ func SupportedEmojis(js.Value, []js.Value) any {
 //
 // Returns:
 //   - JSON of a map of emoji.Emoji (Uint8Array).
-//   - Throws a TypeError if marshalling the JSON fails.
+//   - Throws an error if marshalling the JSON fails.
 //
 // Example JSON:
 //
