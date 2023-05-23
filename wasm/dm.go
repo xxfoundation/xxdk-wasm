@@ -61,6 +61,7 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 		"SendText":     js.FuncOf(cm.SendText),
 		"SendReply":    js.FuncOf(cm.SendReply),
 		"SendReaction": js.FuncOf(cm.SendReaction),
+		"SendSilent":   js.FuncOf(cm.SendSilent),
 		"Send":         js.FuncOf(cm.Send),
 	}
 
