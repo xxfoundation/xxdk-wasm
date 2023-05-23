@@ -38,9 +38,9 @@ import (
 // NOTE: This model is NOT thread safe - it is the responsibility of the
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
-	db     *idb.Database
-	cipher cryptoChannel.Cipher
-	cbs    bindings.ChannelUICallbacks
+	db          *idb.Database
+	cipher      cryptoChannel.Cipher
+	eventUpdate func(eventType int64, jsonMarshallable any)
 }
 
 // JoinChannel is called whenever a channel is joined locally.
@@ -172,17 +172,11 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 		return 0
 	}
 
-	data, err := json.Marshal(bindings.MessageReceivedJson{
+	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJson{
 		Uuid:      int64(uuid),
 		ChannelID: channelID,
 		Update:    false,
 	})
-	if err != nil {
-		jww.ERROR.Printf("Failed to JSON marshal MessageReceivedJson: %+v", err)
-		return 0
-	}
-
-	go w.cbs.EventUpdate(bindings.MessageReceived, data)
 	return uuid
 }
 
@@ -221,17 +215,11 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 		return 0
 	}
 
-	data, err := json.Marshal(bindings.MessageReceivedJson{
+	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJson{
 		Uuid:      int64(uuid),
 		ChannelID: channelID,
 		Update:    false,
 	})
-	if err != nil {
-		jww.ERROR.Printf("Failed to JSON marshal MessageReceivedJson: %+v", err)
-		return 0
-	}
-
-	go w.cbs.EventUpdate(bindings.MessageReceived, data)
 	return uuid
 }
 
@@ -270,17 +258,11 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 		return 0
 	}
 
-	data, err := json.Marshal(bindings.MessageReceivedJson{
+	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJson{
 		Uuid:      int64(uuid),
 		ChannelID: channelID,
 		Update:    false,
 	})
-	if err != nil {
-		jww.ERROR.Printf("Failed to JSON marshal MessageReceivedJson: %+v", err)
-		return 0
-	}
-
-	go w.cbs.EventUpdate(bindings.MessageReceived, data)
 	return uuid
 }
 
@@ -433,16 +415,11 @@ func (w *wasmModel) updateMessage(currentMsg *Message, messageID *message.ID,
 		return 0, err
 	}
 
-	data, err := json.Marshal(bindings.MessageReceivedJson{
+	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJson{
 		Uuid:      int64(uuid),
 		ChannelID: channelID,
 		Update:    true,
 	})
-	if err != nil {
-		return 0, err
-	}
-
-	go w.cbs.EventUpdate(bindings.MessageReceived, data)
 
 	return uuid, nil
 }
@@ -540,13 +517,8 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 		return err
 	}
 
-
-	data, err := json.Marshal(bindings.MessageDeletedJson{MessageID: messageID})
-	if err != nil {
-		return err
-	}
-
-	go w.cbs.EventUpdate(bindings.MessageDeleted, data)
+	go w.eventUpdate(bindings.MessageDeleted,
+		bindings.MessageDeletedJson{MessageID: messageID})
 
 	return nil
 }
@@ -555,18 +527,11 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 func (w *wasmModel) MuteUser(
 	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
 
-
-	data, err := json.Marshal(bindings.UserMutedJson{
+	go w.eventUpdate(bindings.UserMuted, bindings.UserMutedJson{
 		ChannelID: channelID,
 		PubKey:    pubKey,
 		Unmute:    unmute,
 	})
-	if err != nil {
-		jww.ERROR.Printf("Failed to JSON marshal UserMutedJson: %+v", err)
-		return
-	}
-
-	go w.cbs.EventUpdate(bindings.UserMuted, data)
 }
 
 // valueToMessage is a helper for converting js.Value to Message.

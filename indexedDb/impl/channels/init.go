@@ -10,6 +10,7 @@
 package main
 
 import (
+	"encoding/json"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
@@ -75,7 +76,14 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	wrapper := &wasmModel{
 		db:     db,
 		cipher: encryption,
-		cbs:    channelsCbs,
+		eventUpdate: func(eventType int64, jsonMarshallable any) {
+			data, err := json.Marshal(jsonMarshallable)
+			if err != nil {
+				jww.FATAL.Panicf("Failed to JSON marshal %T for EventUpdate "+
+					"callback: %+v", err)
+			}
+			channelsCbs.EventUpdate(eventType, data)
+		},
 	}
 	return wrapper, nil
 }
