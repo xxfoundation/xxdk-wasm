@@ -15,7 +15,6 @@ import (
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"syscall/js"
 )
 
 // Cmix wraps the [bindings.Cmix] object so its methods can be wrapped to be
@@ -168,7 +167,7 @@ func LoadSynchronizedCmix(_ js.Value, args []js.Value) any {
 		net, err := bindings.LoadSynchronizedCmix(storageDir, password,
 			rs, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(newCmixJS(net))
 		}
