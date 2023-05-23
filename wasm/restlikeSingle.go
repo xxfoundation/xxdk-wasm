@@ -11,7 +11,8 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -27,7 +28,7 @@ type restlikeCallback struct {
 //   - payload - JSON of [restlike.Message] (Uint8Array).
 //   - err - Returns an error on failure (Error).
 func (rlc *restlikeCallback) Callback(payload []byte, err error) {
-	rlc.callback(utils.CopyBytesToJS(payload), utils.JsTrace(err))
+	rlc.callback(utils.CopyBytesToJS(payload), exception.NewTrace(err))
 }
 
 // RequestRestLike sends a restlike request to a given contact.
@@ -54,7 +55,7 @@ func RequestRestLike(_ js.Value, args []js.Value) any {
 		msg, err := bindings.RequestRestLike(
 			e2eID, recipient, request, paramsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(msg))
 		}
@@ -91,7 +92,7 @@ func AsyncRequestRestLike(_ js.Value, args []js.Value) any {
 		err := bindings.AsyncRequestRestLike(
 			e2eID, recipient, request, paramsJSON, cb)
 		if err != nil {
-			utils.Throw(utils.TypeError, err)
+			exception.ThrowTrace(err)
 		}
 	}()
 

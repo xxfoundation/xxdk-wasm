@@ -10,8 +10,11 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -29,6 +32,7 @@ func newCmixJS(api *bindings.Cmix) map[string]any {
 		// cmix.go
 		"GetID":          js.FuncOf(c.GetID),
 		"GetReceptionID": js.FuncOf(c.GetReceptionID),
+		"GetRemoteKV":    js.FuncOf(c.GetRemoteKV),
 		"EKVGet":         js.FuncOf(c.EKVGet),
 		"EKVSet":         js.FuncOf(c.EKVSet),
 
@@ -98,7 +102,7 @@ func NewCmix(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := bindings.NewCmix(ndfJSON, storageDir, password, registrationCode)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve()
 		}
@@ -133,6 +137,37 @@ func LoadCmix(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		net, err := bindings.LoadCmix(storageDir, password, cmixParamsJSON)
 		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(newCmixJS(net))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// LoadSynchronizedCmix will [LoadCmix] using a RemoteStore to establish
+// a synchronized RemoteKV.
+//
+// Parameters:
+//   - args[0] - Storage directory path (string).
+//   - args[1] - Password used for storage (Uint8Array).
+//   - args[2] - Javascript [RemoteStore] implementation.
+//   - args[3] - JSON of [xxdk.CMIXParams] (Uint8Array).
+//
+// Returns a promise:
+//   - Resolves to a Javascript representation of the [Cmix] object.
+//   - Rejected with an error if loading [Cmix] fails.
+func LoadSynchronizedCmix(_ js.Value, args []js.Value) any {
+	storageDir := args[0].String()
+	password := utils.CopyBytesToGo(args[1])
+	rs := newRemoteStore(args[2])
+	cmixParamsJSON := utils.CopyBytesToGo(args[3])
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		net, err := bindings.LoadSynchronizedCmix(storageDir, password,
+			rs, cmixParamsJSON)
+		if err != nil {
 			reject(utils.JsTrace(err))
 		} else {
 			resolve(newCmixJS(net))
@@ -158,6 +193,20 @@ func (c *Cmix) GetReceptionID(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(c.api.GetReceptionID())
 }
 
+// GetRemoteKV returns the cMix RemoteKV
+//
+// Returns a promise:
+//   - Resolves with the RemoteKV object.
+func (c *Cmix) GetRemoteKV(_ js.Value, args []js.Value) any {
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		kv := c.api.GetRemoteKV()
+		resolve(newRemoteKvJS(kv))
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
 // EKVGet allows access to a value inside the secure encrypted key value store.
 //
 // Parameters:
@@ -172,7 +221,7 @@ func (c *Cmix) EKVGet(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		val, err := c.api.EKVGet(key)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(val))
 		}
@@ -197,7 +246,7 @@ func (c *Cmix) EKVSet(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := c.api.EKVSet(key, val)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(nil)
 		}

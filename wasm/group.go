@@ -11,7 +11,8 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -62,7 +63,7 @@ func NewGroupChat(_ js.Value, args []js.Value) any {
 
 	api, err := bindings.NewGroupChat(args[0].Int(), requestFunc, p)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -93,7 +94,7 @@ func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := g.api.MakeGroup(membershipBytes, message, name)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -117,7 +118,7 @@ func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := g.api.ResendRequest(groupId)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -139,7 +140,7 @@ func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) any {
 func (g *GroupChat) JoinGroup(_ js.Value, args []js.Value) any {
 	err := g.api.JoinGroup(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -157,7 +158,7 @@ func (g *GroupChat) JoinGroup(_ js.Value, args []js.Value) any {
 func (g *GroupChat) LeaveGroup(_ js.Value, args []js.Value) any {
 	err := g.api.LeaveGroup(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -187,7 +188,7 @@ func (g *GroupChat) Send(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := g.api.Send(groupId, message, tag)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -204,7 +205,7 @@ func (g *GroupChat) Send(_ js.Value, args []js.Value) any {
 func (g *GroupChat) GetGroups(js.Value, []js.Value) any {
 	groups, err := g.api.GetGroups()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -224,7 +225,7 @@ func (g *GroupChat) GetGroups(js.Value, []js.Value) any {
 func (g *GroupChat) GetGroup(_ js.Value, args []js.Value) any {
 	grp, err := g.api.GetGroup(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -318,7 +319,7 @@ func (g *Group) GetCreatedMS(js.Value, []js.Value) any {
 func (g *Group) GetMembership(js.Value, []js.Value) any {
 	membership, err := g.api.GetMembership()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -345,7 +346,7 @@ func (g *Group) Serialize(js.Value, []js.Value) any {
 func DeserializeGroup(_ js.Value, args []js.Value) any {
 	grp, err := bindings.DeserializeGroup(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -393,7 +394,7 @@ func (gcp *groupChatProcessor) Process(decryptedMessage, msg,
 	receptionId []byte, ephemeralId, roundId int64, roundURL string, err error) {
 	gcp.process(utils.CopyBytesToJS(decryptedMessage),
 		utils.CopyBytesToJS(msg), utils.CopyBytesToJS(receptionId), ephemeralId,
-		roundId, roundURL, utils.JsTrace(err))
+		roundId, roundURL, exception.NewTrace(err))
 }
 
 // String returns a name identifying this processor. Used for debugging.

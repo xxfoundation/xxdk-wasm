@@ -452,16 +452,16 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 // MuteUserMessage is JSON marshalled and sent to the worker for
 // [wasmModel.MuteUser].
 type MuteUserMessage struct {
-	ChannelID *id.ID            `json:"channelID"`
-	PubKey    ed25519.PublicKey `json:"pubKey"`
-	Unmute    bool              `json:"unmute"`
+	ChannelID []byte `json:"channelID"`
+	PubKey    []byte `json:"pubKey"`
+	Unmute    bool   `json:"unmute"`
 }
 
 // MuteUser is called whenever a user is muted or unmuted.
 func (w *wasmModel) MuteUser(
 	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
 	msg := MuteUserMessage{
-		ChannelID: channelID,
+		ChannelID: channelID.Marshal(),
 		PubKey:    pubKey,
 		Unmute:    unmute,
 	}

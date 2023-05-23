@@ -10,19 +10,22 @@
 package wasm
 
 import (
-	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"gitlab.com/elixxir/client/v4/channels"
-	"gitlab.com/elixxir/crypto/message"
-	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
-	"gitlab.com/xx_network/primitives/id"
 	"sync"
 	"syscall/js"
 
+	"gitlab.com/elixxir/client/v4/channels"
+	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
+
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/client/v4/channels"
+	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
+	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
+	"gitlab.com/xx_network/primitives/id"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +112,7 @@ func (cm *ChannelsManager) GetID(js.Value, []js.Value) any {
 func GenerateChannelIdentity(_ js.Value, args []js.Value) any {
 	pi, err := bindings.GenerateChannelIdentity(args[0].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -144,7 +147,7 @@ func ConstructIdentity(_ js.Value, args []js.Value) any {
 	identity, err := bindings.ConstructIdentity(
 		utils.CopyBytesToGo(args[0]), args[1].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -167,7 +170,7 @@ func constructIdentity(_ js.Value, args []js.Value) any {
 	identity, err := bindings.ConstructIdentity(
 		utils.CopyBytesToGo(args[0]), args[1].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -191,7 +194,7 @@ func ImportPrivateIdentity(_ js.Value, args []js.Value) any {
 
 	pi, err := bindings.ImportPrivateIdentity(password, data)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -212,7 +215,7 @@ func GetPublicChannelIdentity(_ js.Value, args []js.Value) any {
 	marshaledPublic := utils.CopyBytesToGo(args[0])
 	pi, err := bindings.GetPublicChannelIdentity(marshaledPublic)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -236,7 +239,7 @@ func GetPublicChannelIdentityFromPrivate(_ js.Value, args []js.Value) any {
 	identity, err :=
 		bindings.GetPublicChannelIdentityFromPrivate(marshaledPrivate)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -274,9 +277,9 @@ func NewChannelsManager(_ js.Value, args []js.Value) any {
 	em := newEventModelBuilder(args[3])
 
 	cm, err := bindings.NewChannelsManager(
-		cmixId, privateIdentity, extensionBuilderIDsJSON, em)
+		cmixId, privateIdentity, extensionBuilderIDsJSON, em, nil)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -299,15 +302,19 @@ func NewChannelsManager(_ js.Value, args []js.Value) any {
 //   - args[2] - A function that initialises and returns a Javascript object
 //     that matches the [bindings.EventModel] interface. The function must match
 //     the Build function in [bindings.EventModelBuilder].
+//   - args[3] - A callback object which implements the
+//     [bindings.ChannelUICallbacks] javascript functions.
 //
 // Returns:
 //   - Javascript representation of the [ChannelsManager] object.
 //   - Throws a TypeError if loading the manager fails.
 func LoadChannelsManager(_ js.Value, args []js.Value) any {
 	em := newEventModelBuilder(args[2])
-	cm, err := bindings.LoadChannelsManager(args[0].Int(), args[1].String(), em)
+	cUI := newChannelUI(args[3])
+	cm, err := bindings.LoadChannelsManager(args[0].Int(), args[1].String(),
+		em, cUI)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -335,23 +342,9 @@ func LoadChannelsManager(_ js.Value, args []js.Value) any {
 //     IDs. The ID can be retrieved from an object with an extension builder
 //     (e.g., [ChannelsFileTransfer.GetExtensionBuilderID]). Leave empty if not
 //     using extension builders. Example: `[2,11,5]` (Uint8Array).
-//   - args[4] - The received message callback, which is called everytime a
-//     message is added or changed in the database. It is a function that takes
-//     in the same parameters as [channels.MessageReceivedCallback]. On the
-//     Javascript side, the UUID is returned as an int and the channelID as a
-//     Uint8Array. The row in the database that was updated can be found using
-//     the UUID. The channel ID is provided so that the recipient can filter if
-//     they want to the processes the update now or not. An "update" bool is
-//     present which tells you if the row is new or if it is an edited old row.
-//   - args[5] - The deleted message callback, which is called everytime a
-//     message is deleted from the database. It is a function that takes in the
-//     same parameters as [indexedDb.DeletedMessageCallback]. On the Javascript
-//     side, the message ID is returned as a Uint8Array.
-//   - args[6] - The muted user callback, which is called everytime a user is
-//     muted or unmuted. It is a function that takes in the same parameters as
-//     [indexedDb.MutedUserCallback]. On the Javascript side, the channel ID and
-//     user public key are returned as Uint8Array.
-//   - args[7] - ID of [ChannelDbCipher] object in tracker (int). Create this
+//   - args[4] - A callback object which implements the
+//     [bindings.ChannelUICallbacks] javascript functions.
+//   - args[5] - ID of [ChannelDbCipher] object in tracker (int). Create this
 //     object with [NewChannelsDatabaseCipher] and get its id with
 //     [ChannelDbCipher.GetID].
 //
@@ -364,19 +357,16 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 	wasmJsPath := args[1].String()
 	privateIdentity := utils.CopyBytesToGo(args[2])
 	extensionBuilderIDsJSON := utils.CopyBytesToGo(args[3])
-	messageReceivedCB := args[4]
-	deletedMessageCB := args[5]
-	mutedUserCB := args[6]
-	cipherID := args[7].Int()
+	channelCbs := newChannelUI(args[4])
+	cipherID := args[5].Int()
 
 	cipher, err := bindings.GetChannelDbCipherTrackerFromID(cipherID)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 	}
 
 	return newChannelsManagerWithIndexedDb(cmixID, wasmJsPath, privateIdentity,
-		extensionBuilderIDsJSON, messageReceivedCB, deletedMessageCB,
-		mutedUserCB, cipher)
+		extensionBuilderIDsJSON, channelCbs, cipher)
 }
 
 // NewChannelsManagerWithIndexedDbUnsafe creates a new [ChannelsManager] from a
@@ -401,22 +391,8 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 //     IDs. The ID can be retrieved from an object with an extension builder
 //     (e.g., [ChannelsFileTransfer.GetExtensionBuilderID]). Leave empty if not
 //     using extension builders. Example: `[2,11,5]` (Uint8Array).
-//   - args[4] - The received message callback, which is called everytime a
-//     message is added or changed in the database. It is a function that takes
-//     in the same parameters as [indexedDb.MessageReceivedCallback]. On the
-//     Javascript side, the UUID is returned as an int and the channelID as a
-//     Uint8Array. The row in the database that was updated can be found using
-//     the UUID. The channel ID is provided so that the recipient can filter if
-//     they want to the processes the update now or not. An "update" bool is
-//     present which tells you if the row is new or if it is an edited old row.
-//   - args[5] - The deleted message callback, which is called everytime a
-//     message is deleted from the database. It is a function that takes in the
-//     same parameters as [indexedDb.DeletedMessageCallback]. On the Javascript
-//     side, the message ID is returned as a Uint8Array.
-//   - args[6] - The muted user callback, which is called everytime a user is
-//     muted or unmuted. It is a function that takes in the same parameters as
-//     [indexedDb.MutedUserCallback]. On the Javascript side, the channel ID and
-//     user public key are returned as Uint8Array.
+//   - args[4] - A callback object which implements the
+//     [bindings.ChannelUICallbacks] javascript functions.
 //
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [ChannelsManager] object.
@@ -428,40 +404,25 @@ func NewChannelsManagerWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 	wasmJsPath := args[1].String()
 	privateIdentity := utils.CopyBytesToGo(args[2])
 	extensionBuilderIDsJSON := utils.CopyBytesToGo(args[3])
-	messageReceivedCB := args[4]
-	deletedMessageCB := args[5]
-	mutedUserCB := args[6]
+	channelsCbs := newChannelUI(args[4])
 
 	return newChannelsManagerWithIndexedDb(cmixID, wasmJsPath, privateIdentity,
-		extensionBuilderIDsJSON, messageReceivedCB, deletedMessageCB,
-		mutedUserCB, nil)
+		extensionBuilderIDsJSON, channelsCbs, nil)
 }
 
 func newChannelsManagerWithIndexedDb(cmixID int, wasmJsPath string,
-	privateIdentity, extensionBuilderIDsJSON []byte, messageReceivedCB,
-	deletedMessageCB, mutedUserCB js.Value, cipher *bindings.ChannelDbCipher) any {
-
-	messageReceived := func(uuid uint64, channelID *id.ID, update bool) {
-		messageReceivedCB.Invoke(uuid, utils.CopyBytesToJS(channelID.Marshal()), update)
-	}
-
-	deletedMessage := func(messageID message.ID) {
-		deletedMessageCB.Invoke(utils.CopyBytesToJS(messageID.Marshal()))
-	}
-
-	mutedUser := func(channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
-		mutedUserCB.Invoke(utils.CopyBytesToJS(channelID.Marshal()),
-			utils.CopyBytesToJS(pubKey), unmute)
-	}
+	privateIdentity, extensionBuilderIDsJSON []byte,
+	channelsCbs bindings.ChannelUICallbacks,
+	cipher *bindings.ChannelDbCipher) any {
 
 	model := channelsDb.NewWASMEventModelBuilder(
-		wasmJsPath, cipher, messageReceived, deletedMessage, mutedUser)
+		wasmJsPath, cipher, channelsCbs)
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		cm, err := bindings.NewChannelsManagerGoEventModel(
-			cmixID, privateIdentity, extensionBuilderIDsJSON, model)
+			cmixID, privateIdentity, extensionBuilderIDsJSON, model, channelsCbs)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(newChannelsManagerJS(cm))
 		}
@@ -484,23 +445,9 @@ func newChannelsManagerWithIndexedDb(cmixID int, wasmJsPath string,
 //   - args[1] - Path to Javascript file that starts the worker (string).
 //   - args[2] - The storage tag associated with the previously created channel
 //     manager and retrieved with [ChannelsManager.GetStorageTag] (string).
-//   - args[3] - The received message callback, which is called everytime a
-//     message is added or changed in the database. It is a function that takes
-//     in the same parameters as [indexedDb.MessageReceivedCallback]. On the
-//     Javascript side, the UUID is returned as an int and the channelID as a
-//     Uint8Array. The row in the database that was updated can be found using
-//     the UUID. The channel ID is provided so that the recipient can filter if
-//     they want to the processes the update now or not. An "update" bool is
-//     present which tells you if the row is new or if it is an edited old row.
-//   - args[4] - The deleted message callback, which is called everytime a
-//     message is deleted from the database. It is a function that takes in the
-//     same parameters as [indexedDb.DeletedMessageCallback]. On the Javascript
-//     side, the message ID is returned as a Uint8Array.
-//   - args[5] - The muted user callback, which is called everytime a user is
-//     muted or unmuted. It is a function that takes in the same parameters as
-//     [indexedDb.MutedUserCallback]. On the Javascript side, the channel ID and
-//     user public key are returned as Uint8Array.
-//   - args[6] - ID of [ChannelDbCipher] object in tracker (int). Create this
+//   - args[3] - A callback object which implements the
+//     [bindings.ChannelUICallbacks] javascript functions.
+//   - args[4] - ID of [ChannelDbCipher] object in tracker (int). Create this
 //     object with [NewChannelsDatabaseCipher] and get its id with
 //     [ChannelDbCipher.GetID].
 //
@@ -512,18 +459,16 @@ func LoadChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
 	wasmJsPath := args[1].String()
 	storageTag := args[2].String()
-	messageReceivedCB := args[3]
-	deletedMessageCB := args[4]
-	mutedUserCB := args[5]
-	cipherID := args[6].Int()
+	channelsCbs := newChannelUI(args[3])
+	cipherID := args[4].Int()
 
 	cipher, err := bindings.GetChannelDbCipherTrackerFromID(cipherID)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 	}
 
 	return loadChannelsManagerWithIndexedDb(cmixID, wasmJsPath, storageTag,
-		messageReceivedCB, deletedMessageCB, mutedUserCB, cipher)
+		channelsCbs, cipher)
 }
 
 // LoadChannelsManagerWithIndexedDbUnsafe loads an existing [ChannelsManager]
@@ -542,22 +487,8 @@ func LoadChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 //   - args[1] - Path to Javascript file that starts the worker (string).
 //   - args[2] - The storage tag associated with the previously created channel
 //     manager and retrieved with [ChannelsManager.GetStorageTag] (string).
-//   - args[3] - The received message callback, which is called everytime a
-//     message is added or changed in the database. It is a function that takes
-//     in the same parameters as [indexedDb.MessageReceivedCallback]. On the
-//     Javascript side, the UUID is returned as an int and the channelID as a
-//     Uint8Array. The row in the database that was updated can be found using
-//     the UUID. The channel ID is provided so that the recipient can filter if
-//     they want to the processes the update now or not. An "update" bool is
-//     present which tells you if the row is new or if it is an edited old row.
-//   - args[4] - The deleted message callback, which is called everytime a
-//     message is deleted from the database. It is a function that takes in the
-//     same parameters as [indexedDb.DeletedMessageCallback]. On the Javascript
-//     side, the message ID is returned as a Uint8Array.
-//   - args[5] - The muted user callback, which is called everytime a user is
-//     muted or unmuted. It is a function that takes in the same parameters as
-//     [indexedDb.MutedUserCallback]. On the Javascript side, the channel ID and
-//     user public key are returned as Uint8Array.
+//   - args[3] - A callback object which implements the
+//     [bindings.ChannelUICallbacks] javascript functions.
 //
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [ChannelsManager] object.
@@ -566,39 +497,24 @@ func LoadChannelsManagerWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
 	wasmJsPath := args[1].String()
 	storageTag := args[2].String()
-	messageReceivedCB := args[3]
-	deletedMessageCB := args[3]
-	mutedUserCB := args[4]
+	cUI := newChannelUI(args[3])
 
 	return loadChannelsManagerWithIndexedDb(cmixID, wasmJsPath, storageTag,
-		messageReceivedCB, deletedMessageCB, mutedUserCB, nil)
+		cUI, nil)
 }
 
 func loadChannelsManagerWithIndexedDb(cmixID int, wasmJsPath, storageTag string,
-	messageReceivedCB, deletedMessageCB, mutedUserCB js.Value,
+	channelsCbs bindings.ChannelUICallbacks,
 	cipher *bindings.ChannelDbCipher) any {
 
-	messageReceived := func(uuid uint64, channelID *id.ID, update bool) {
-		messageReceivedCB.Invoke(uuid, utils.CopyBytesToJS(channelID.Marshal()), update)
-	}
-
-	deletedMessage := func(messageID message.ID) {
-		deletedMessageCB.Invoke(utils.CopyBytesToJS(messageID.Marshal()))
-	}
-
-	mutedUser := func(channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
-		mutedUserCB.Invoke(utils.CopyBytesToJS(channelID.Marshal()),
-			utils.CopyBytesToJS(pubKey), unmute)
-	}
-
 	model := channelsDb.NewWASMEventModelBuilder(
-		wasmJsPath, cipher, messageReceived, deletedMessage, mutedUser)
+		wasmJsPath, cipher, channelsCbs)
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		cm, err := bindings.LoadChannelsManagerGoEventModel(
-			cmixID, storageTag, model, nil)
+			cmixID, storageTag, model, nil, channelsCbs)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(newChannelsManagerJS(cm))
 		}
@@ -624,7 +540,7 @@ func loadChannelsManagerWithIndexedDb(cmixID int, wasmJsPath, storageTag string,
 func DecodePublicURL(_ js.Value, args []js.Value) any {
 	c, err := bindings.DecodePublicURL(args[0].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -646,7 +562,7 @@ func DecodePublicURL(_ js.Value, args []js.Value) any {
 func DecodePrivateURL(_ js.Value, args []js.Value) any {
 	c, err := bindings.DecodePrivateURL(args[0].String(), args[1].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -677,7 +593,7 @@ func DecodePrivateURL(_ js.Value, args []js.Value) any {
 func GetChannelJSON(_ js.Value, args []js.Value) any {
 	c, err := bindings.GetChannelJSON(args[0].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -700,7 +616,7 @@ func GetChannelJSON(_ js.Value, args []js.Value) any {
 func GetChannelInfo(_ js.Value, args []js.Value) any {
 	ci, err := bindings.GetChannelInfo(args[0].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -748,7 +664,7 @@ func (cm *ChannelsManager) GenerateChannel(_ js.Value, args []js.Value) any {
 		prettyPrint, err :=
 			cm.api.GenerateChannel(name, description, privacyLevel)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(prettyPrint)
 		}
@@ -778,7 +694,7 @@ func (cm *ChannelsManager) JoinChannel(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		ci, err := cm.api.JoinChannel(channelPretty)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(ci))
 		}
@@ -802,7 +718,7 @@ func (cm *ChannelsManager) LeaveChannel(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := cm.api.LeaveChannel(marshalledChanId)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve()
 		}
@@ -827,7 +743,7 @@ func (cm *ChannelsManager) ReplayChannel(_ js.Value, args []js.Value) any {
 
 	err := cm.api.ReplayChannel(marshalledChanId)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -849,7 +765,7 @@ func (cm *ChannelsManager) ReplayChannel(_ js.Value, args []js.Value) any {
 func (cm *ChannelsManager) GetChannels(js.Value, []js.Value) any {
 	channelList, err := cm.api.GetChannels()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -868,7 +784,7 @@ func (cm *ChannelsManager) EnableDirectMessages(_ js.Value, args []js.Value) any
 	marshalledChanId := utils.CopyBytesToGo(args[0])
 	err := cm.api.EnableDirectMessages(marshalledChanId)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return nil
@@ -886,7 +802,7 @@ func (cm *ChannelsManager) DisableDirectMessages(_ js.Value, args []js.Value) an
 	marshalledChanId := utils.CopyBytesToGo(args[0])
 	err := cm.api.DisableDirectMessages(marshalledChanId)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return nil
@@ -904,7 +820,7 @@ func (cm *ChannelsManager) AreDMsEnabled(_ js.Value, args []js.Value) any {
 	marshalledChanId := utils.CopyBytesToGo(args[0])
 	enabled, err := cm.api.AreDMsEnabled(marshalledChanId)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return false
 	}
 	return enabled
@@ -956,7 +872,7 @@ func (cm *ChannelsManager) GetShareURL(_ js.Value, args []js.Value) any {
 
 	su, err := cm.api.GetShareURL(cmixID, host, maxUses, marshalledChanId)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -982,7 +898,7 @@ func (cm *ChannelsManager) GetShareURL(_ js.Value, args []js.Value) any {
 func GetShareUrlType(_ js.Value, args []js.Value) any {
 	level, err := bindings.GetShareUrlType(args[0].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1042,7 +958,7 @@ func (cm *ChannelsManager) SendGeneric(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.SendGeneric(marshalledChanId, messageType,
 			msg, leaseTimeMS, tracked, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1084,7 +1000,7 @@ func (cm *ChannelsManager) SendMessage(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.SendMessage(
 			marshalledChanId, msg, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1134,7 +1050,7 @@ func (cm *ChannelsManager) SendReply(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.SendReply(marshalledChanId, msg,
 			messageToReactTo, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1182,7 +1098,7 @@ func (cm *ChannelsManager) SendReaction(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.SendReaction(marshalledChanId, reaction,
 			messageToReactTo, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1239,7 +1155,7 @@ func (cm *ChannelsManager) SendAdminGeneric(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.SendAdminGeneric(marshalledChanId,
 			messageType, msg, leaseTimeMS, tracked, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1278,7 +1194,7 @@ func (cm *ChannelsManager) DeleteMessage(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.DeleteMessage(
 			channelIdBytes, targetMessageIdBytes, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1320,7 +1236,7 @@ func (cm *ChannelsManager) PinMessage(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.PinMessage(channelIdBytes,
 			targetMessageIdBytes, undoAction, validUntilMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1361,7 +1277,7 @@ func (cm *ChannelsManager) MuteUser(_ js.Value, args []js.Value) any {
 		sendReport, err := cm.api.MuteUser(channelIdBytes, mutedUserPubKeyBytes,
 			undoAction, validUntilMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -1383,7 +1299,7 @@ func (cm *ChannelsManager) MuteUser(_ js.Value, args []js.Value) any {
 func (cm *ChannelsManager) GetIdentity(js.Value, []js.Value) any {
 	i, err := cm.api.GetIdentity()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1402,7 +1318,7 @@ func (cm *ChannelsManager) GetIdentity(js.Value, []js.Value) any {
 func (cm *ChannelsManager) ExportPrivateIdentity(_ js.Value, args []js.Value) any {
 	i, err := cm.api.ExportPrivateIdentity(args[0].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1431,7 +1347,7 @@ func (cm *ChannelsManager) GetStorageTag(js.Value, []js.Value) any {
 func (cm *ChannelsManager) SetNickname(_ js.Value, args []js.Value) any {
 	err := cm.api.SetNickname(args[0].String(), utils.CopyBytesToGo(args[1]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1449,7 +1365,7 @@ func (cm *ChannelsManager) SetNickname(_ js.Value, args []js.Value) any {
 func (cm *ChannelsManager) DeleteNickname(_ js.Value, args []js.Value) any {
 	err := cm.api.DeleteNickname(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1468,7 +1384,7 @@ func (cm *ChannelsManager) DeleteNickname(_ js.Value, args []js.Value) any {
 func (cm *ChannelsManager) GetNickname(_ js.Value, args []js.Value) any {
 	nickname, err := cm.api.GetNickname(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1490,7 +1406,7 @@ func (cm *ChannelsManager) GetNickname(_ js.Value, args []js.Value) any {
 func IsNicknameValid(_ js.Value, args []js.Value) any {
 	err := bindings.IsNicknameValid(args[0].String())
 	if err != nil {
-		return utils.JsError(err)
+		return exception.NewError(err)
 	}
 
 	return nil
@@ -1510,7 +1426,7 @@ func (cm *ChannelsManager) Muted(_ js.Value, args []js.Value) any {
 
 	muted, err := cm.api.Muted(channelIDBytes)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1536,7 +1452,7 @@ func (cm *ChannelsManager) GetMutedUsers(_ js.Value, args []js.Value) any {
 	channelIDBytes := utils.CopyBytesToGo(args[0])
 	mutedUsers, err := cm.api.GetMutedUsers(channelIDBytes)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1559,7 +1475,7 @@ func (cm *ChannelsManager) GetMutedUsers(_ js.Value, args []js.Value) any {
 func (cm *ChannelsManager) IsChannelAdmin(_ js.Value, args []js.Value) any {
 	isAdmin, err := cm.api.IsChannelAdmin(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1596,7 +1512,7 @@ func (cm *ChannelsManager) ExportChannelAdminKey(_ js.Value, args []js.Value) an
 	pk, err := cm.api.ExportChannelAdminKey(
 		utils.CopyBytesToGo(args[0]), args[1].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return utils.CopyBytesToJS(pk)
@@ -1630,7 +1546,7 @@ func (cm *ChannelsManager) VerifyChannelAdminKey(_ js.Value, args []js.Value) an
 	valid, err := cm.api.VerifyChannelAdminKey(
 		channelID, encryptionPassword, encryptedPrivKey)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1663,7 +1579,7 @@ func (cm *ChannelsManager) ImportChannelAdminKey(_ js.Value, args []js.Value) an
 	err := cm.api.ImportChannelAdminKey(
 		channelID, encryptionPassword, encryptedPrivKey)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1684,7 +1600,7 @@ func (cm *ChannelsManager) ImportChannelAdminKey(_ js.Value, args []js.Value) an
 func (cm *ChannelsManager) DeleteChannelAdminKey(_ js.Value, args []js.Value) any {
 	err := cm.api.DeleteChannelAdminKey(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1714,7 +1630,7 @@ type channelMessageReceptionCallback struct {
 func (cmrCB *channelMessageReceptionCallback) Callback(
 	receivedChannelMessageReport []byte, err error) int {
 	uuid := cmrCB.callback(
-		utils.CopyBytesToJS(receivedChannelMessageReport), utils.JsTrace(err))
+		utils.CopyBytesToJS(receivedChannelMessageReport), exception.NewTrace(err))
 
 	return uuid.Int()
 }
@@ -1755,7 +1671,7 @@ func (cm *ChannelsManager) RegisterReceiveHandler(_ js.Value, args []js.Value) a
 	err := cm.api.RegisterReceiveHandler(
 		messageType, listenerCb, name, userSpace, adminSpace, mutedSpace)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1787,7 +1703,7 @@ func GetNoMessageErr(js.Value, []js.Value) any {
 // Returns
 //   - True if the error contains channels.NoMessageErr (boolean).
 func CheckNoMessageErr(_ js.Value, args []js.Value) any {
-	return bindings.CheckNoMessageErr(utils.JsErrorToJson(args[0]))
+	return bindings.CheckNoMessageErr(js.Error{Value: args[0]}.Error())
 }
 
 // eventModelBuilder adheres to the [bindings.EventModelBuilder] interface.
@@ -2182,7 +2098,7 @@ func NewChannelsDatabaseCipher(_ js.Value, args []js.Value) any {
 	cipher, err := bindings.NewChannelsDatabaseCipher(
 		cmixId, password, plaintTextBlockSize)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -2212,7 +2128,7 @@ func (c *ChannelDbCipher) GetID(js.Value, []js.Value) any {
 func (c *ChannelDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 	ciphertext, err := c.api.Encrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -2233,7 +2149,7 @@ func (c *ChannelDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 func (c *ChannelDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 	plaintext, err := c.api.Decrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -2248,7 +2164,7 @@ func (c *ChannelDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 func (c *ChannelDbCipher) MarshalJSON(js.Value, []js.Value) any {
 	data, err := c.api.MarshalJSON()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -2269,8 +2185,50 @@ func (c *ChannelDbCipher) MarshalJSON(js.Value, []js.Value) any {
 func (c *ChannelDbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
 	err := c.api.UnmarshalJSON(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return nil
+}
+
+// newChannelUI maps the methods on the Javascript object to the
+// channelUI callbacks implementation struct.
+func newChannelUI(cbImpl js.Value) *channelUI {
+	return &channelUI{
+		messageReceived: utils.WrapCB(cbImpl, "MessageReceived"),
+		userMuted:       utils.WrapCB(cbImpl, "UserMuted"),
+		messageDeleted:  utils.WrapCB(cbImpl, "MessageDeleted"),
+		nicknameUpdate:  utils.WrapCB(cbImpl, "NicknameUpdate"),
+	}
+}
+
+// eventModel wraps Javascript callbacks to adhere to the
+// [bindings.ChannelUICallbacks] interface.
+type channelUI struct {
+	messageReceived func(args ...any) js.Value
+	userMuted       func(args ...any) js.Value
+	messageDeleted  func(args ...any) js.Value
+	nicknameUpdate  func(args ...any) js.Value
+}
+
+// MessageReceived implements [bindings.ChannelUICallbacks.MessageReceived].
+func (c *channelUI) MessageReceived(uuid int64, channelID []byte, update bool) {
+	c.messageReceived(uuid, utils.CopyBytesToJS(channelID), update)
+}
+
+// UserMuted implements [bindings.ChannelUICallbacks.UserMuted].
+func (c *channelUI) UserMuted(channelID []byte, pubKey []byte, unmute bool) {
+	c.userMuted(utils.CopyBytesToJS(channelID), utils.CopyBytesToJS(pubKey),
+		unmute)
+}
+
+// MessageDeleted implements [bindings.ChannelUICallbacks.MessageDeleted].
+func (c *channelUI) MessageDeleted(messageId []byte) {
+	c.messageDeleted(utils.CopyBytesToJS(messageId))
+}
+
+// NicknameUpdate implements [bindings.ChannelUICallbacks.NicknameUpdate]
+func (c *channelUI) NicknameUpdate(channelIdBytes []byte, nickname string,
+	exists bool) {
+	c.nicknameUpdate(utils.CopyBytesToJS(channelIdBytes), nickname, exists)
 }
