@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 
 	"gitlab.com/elixxir/client/v4/storage/utility"
-	wDm "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
 	stateWorker "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/state"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -37,7 +36,7 @@ func (m *manager) registerCallbacks() {
 // newStateCB is the callback for NewState. Returns an empty
 // slice on success or an error message on failure.
 func (m *manager) newStateCB(data []byte) ([]byte, error) {
-	var msg wDm.NewWASMEventModelMessage
+	var msg stateWorker.NewStateMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
 		return []byte{}, errors.Errorf(
@@ -68,9 +67,13 @@ func (m *manager) setCB(data []byte) ([]byte, error) {
 // getCB is the callback for stateModel.Get.
 // Returns nil on error or the resulting byte data on success.
 func (m *manager) getCB(data []byte) ([]byte, error) {
-	result, err := m.model.Get(string(data))
-	if err != nil {
-		return nil, err
+	key := string(data)
+	result, err := m.model.Get(key)
+	msg := stateWorker.TransferMessage{
+		Key:   key,
+		Value: result,
+		Error: err.Error(),
 	}
-	return json.Marshal(result)
+
+	return json.Marshal(msg)
 }
