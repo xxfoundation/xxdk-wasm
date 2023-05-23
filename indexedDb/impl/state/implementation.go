@@ -13,8 +13,8 @@ import (
 	"encoding/json"
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
 )
 

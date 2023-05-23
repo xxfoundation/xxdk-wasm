@@ -29,7 +29,6 @@ import (
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 	"gitlab.com/xx_network/primitives/id"
 )
 
