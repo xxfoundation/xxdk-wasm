@@ -67,7 +67,7 @@ type VersionInfo struct {
 //
 // Returns:
 //   - JSON of [VersionInfo] (Uint8Array).
-//   - Throws a TypeError if getting the version failed.
+//   - Throws an error if getting the version failed.
 func GetWasmSemanticVersion(js.Value, []js.Value) any {
 	vi := VersionInfo{
 		Current: storage.SEMVER,
@@ -92,7 +92,7 @@ func GetWasmSemanticVersion(js.Value, []js.Value) any {
 //
 // Returns:
 //   - JSON of [VersionInfo] (Uint8Array).
-//   - Throws a TypeError if getting the version failed.
+//   - Throws an error if getting the version failed.
 func GetXXDKSemanticVersion(js.Value, []js.Value) any {
 	vi := VersionInfo{
 		Current: bindings.GetVersion(),

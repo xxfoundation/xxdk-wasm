@@ -80,7 +80,7 @@ func RequestRestLike(_ js.Value, args []js.Value) any {
 //     [bindings.RestlikeCallback] interface.
 //
 // Returns:
-//   - Throws a TypeError if parsing the parameters or making the request fails.
+//   - Throws an error if parsing the parameters or making the request fails.
 func AsyncRequestRestLike(_ js.Value, args []js.Value) any {
 	e2eID := args[0].Int()
 	recipient := utils.CopyBytesToGo(args[1])

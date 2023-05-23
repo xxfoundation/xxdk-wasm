@@ -79,13 +79,12 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 	return []byte{}, nil
 }
 
-// MessageReceived implements [bindings.ChannelUICallbacks.MessageReceived].
-func (m *manager) MessageReceived(uuid int64, channelID []byte, update bool) {
+// EventUpdate implements [bindings.ChannelUICallbacks.EventUpdate].
+func (m *manager) EventUpdate(eventType int64, jsonData []byte) {
 	// Package parameters for sending
-	msg := &wChannels.MessageReceivedCallbackMessage{
-		UUID:      uuid,
-		ChannelID: channelID,
-		Update:    update,
+	msg := &wChannels.EventUpdateCallbackMessage{
+		EventType: eventType,
+		JsonData:  jsonData,
 	}
 	data, err := json.Marshal(msg)
 	if err != nil {
@@ -94,30 +93,7 @@ func (m *manager) MessageReceived(uuid int64, channelID []byte, update bool) {
 	}
 
 	// Send it to the main thread
-	m.wtm.SendMessage(wChannels.MessageReceivedCallbackTag, data)
-}
-
-// MessageDeleted implements [bindings.ChannelUICallbacks.MessageDeleted].
-func (m *manager) MessageDeleted(messageID []byte) {
-	m.wtm.SendMessage(wChannels.DeletedMessageCallbackTag, messageID)
-}
-
-// UserMuted implements [bindings.ChannelUICallbacks.UserMuted].
-func (m *manager) UserMuted(channelID, pubKey []byte, unmute bool) {
-	// Package parameters for sending
-	msg := &wChannels.MuteUserMessage{
-		ChannelID: channelID,
-		PubKey:    pubKey,
-		Unmute:    unmute,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
-		jww.ERROR.Printf("Could not JSON marshal %T: %+v", msg, err)
-		return
-	}
-
-	// Send it to the main thread
-	m.wtm.SendMessage(wChannels.MutedUserCallbackTag, data)
+	m.wtm.SendMessage(wChannels.EventUpdateCallbackTag, data)
 }
 
 // NicknameUpdate implements [bindings.ChannelUICallbacks.NicknameUpdate]

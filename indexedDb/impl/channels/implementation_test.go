@@ -43,13 +43,7 @@ func TestMain(m *testing.M) {
 }
 
 type dummyCbs struct{}
-
-func (c *dummyCbs) MessageReceived(uuid int64, channelID []byte, update bool) {}
-func (c *dummyCbs) UserMuted(channelID []byte, pubKey []byte, unmute bool)    {}
-func (c *dummyCbs) MessageDeleted(messageId []byte)                           {}
-func (c *dummyCbs) NicknameUpdate(channelIdBytes []byte, nickname string,
-	exists bool) {
-}
+func (c *dummyCbs) EventUpdate(int64, []byte) {}
 
 // Happy path test for receiving, updating, getting, and deleting a File.
 func TestWasmModel_ReceiveFile(t *testing.T) {
