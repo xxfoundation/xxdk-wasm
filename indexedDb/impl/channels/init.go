@@ -11,12 +11,12 @@ package main
 
 import (
 	"encoding/json"
+	"gitlab.com/elixxir/client/v4/bindings"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
@@ -30,13 +30,13 @@ const currentVersion uint = 1
 // The name should be a base64 encoding of the users public key. Returns the
 // EventModel based on IndexedDb and the database name as reported by IndexedDb.
 func NewWASMEventModel(databaseName string, encryption cryptoChannel.Cipher,
-	channelsCbs bindings.ChannelUICallbacks) (channels.EventModel, error) {
-	return newWASMModel(databaseName, encryption, channelsCbs)
+	uiCallbacks bindings.ChannelUICallbacks) (channels.EventModel, error) {
+	return newWASMModel(databaseName, encryption, uiCallbacks)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
-	channelsCbs bindings.ChannelUICallbacks) (*wasmModel, error) {
+	uiCallbacks bindings.ChannelUICallbacks) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()
 	defer cancel()
@@ -82,7 +82,7 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 				jww.FATAL.Panicf("Failed to JSON marshal %T for EventUpdate "+
 					"callback: %+v", err)
 			}
-			channelsCbs.EventUpdate(eventType, data)
+			uiCallbacks.EventUpdate(eventType, data)
 		},
 	}
 	return wrapper, nil
