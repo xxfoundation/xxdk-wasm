@@ -125,7 +125,7 @@ func (rpc *fileTransferReceiveProgressCallback) Callback(
 //
 // Returns:
 //   - Javascript representation of the [FileTransfer] object.
-//   - Throws a TypeError initialising the file transfer manager fails.
+//   - Throws an error initialising the file transfer manager fails.
 func InitFileTransfer(_ js.Value, args []js.Value) any {
 	rfc := &receiveFileCallback{utils.WrapCB(args[1], "Callback")}
 	e2eFileTransferParamsJson := utils.CopyBytesToGo(args[2])
@@ -186,7 +186,7 @@ func (f *FileTransfer) Send(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - File contents (Uint8Array).
-//   - Throws a TypeError the file transfer is incomplete or Receive has already
+//   - Throws an error the file transfer is incomplete or Receive has already
 //     been called.
 func (f *FileTransfer) Receive(_ js.Value, args []js.Value) any {
 	file, err := f.api.Receive(utils.CopyBytesToGo(args[0]))
@@ -209,7 +209,7 @@ func (f *FileTransfer) Receive(_ js.Value, args []js.Value) any {
 //   - args[0] - File transfer [fileTransfer.TransferID] (Uint8Array).
 //
 // Returns:
-//   - Throws a TypeError if the file transfer is incomplete.
+//   - Throws an error if the file transfer is incomplete.
 func (f *FileTransfer) CloseSend(_ js.Value, args []js.Value) any {
 	err := f.api.CloseSend(utils.CopyBytesToGo(args[0]))
 	if err != nil {
@@ -238,7 +238,7 @@ func (f *FileTransfer) CloseSend(_ js.Value, args []js.Value) any {
 //     triggering (int).
 //
 // Returns:
-//   - Throws a TypeError if registering the callback fails.
+//   - Throws an error if registering the callback fails.
 func (f *FileTransfer) RegisterSentProgressCallback(
 	_ js.Value, args []js.Value) any {
 	tidBytes := utils.CopyBytesToGo(args[0])
@@ -266,7 +266,7 @@ func (f *FileTransfer) RegisterSentProgressCallback(
 //     triggering (int).
 //
 // Returns:
-//   - Throws a TypeError if registering the callback fails.
+//   - Throws an error if registering the callback fails.
 func (f *FileTransfer) RegisterReceivedProgressCallback(
 	_ js.Value, args []js.Value) any {
 	tidBytes := utils.CopyBytesToGo(args[0])

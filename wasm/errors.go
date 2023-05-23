@@ -49,7 +49,7 @@ func CreateUserFriendlyErrorMessage(_ js.Value, args []js.Value) any {
 //	}
 //
 // Returns:
-//   - Throws a TypeError if the JSON cannot be unmarshalled.
+//   - Throws an error if the JSON cannot be unmarshalled.
 func UpdateCommonErrors(_ js.Value, args []js.Value) any {
 	err := bindings.UpdateCommonErrors(args[0].String())
 	if err != nil {
