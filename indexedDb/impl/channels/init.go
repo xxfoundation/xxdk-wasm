@@ -80,7 +80,7 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 			data, err := json.Marshal(jsonMarshallable)
 			if err != nil {
 				jww.FATAL.Panicf("Failed to JSON marshal %T for EventUpdate "+
-					"callback: %+v", err)
+					"callback: %+v", jsonMarshallable, err)
 			}
 			uiCallbacks.EventUpdate(eventType, data)
 		},

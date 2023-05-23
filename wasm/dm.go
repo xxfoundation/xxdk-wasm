@@ -86,7 +86,7 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 //
 // Returns:
 //   - Javascript representation of the [DMClient] object.
-//   - Throws a TypeError if creating the manager fails.
+//   - Throws an error if creating the manager fails.
 func NewDMClient(_ js.Value, args []js.Value) any {
 	privateIdentity := utils.CopyBytesToGo(args[1])
 	em := newDMReceiverBuilder(args[2])
@@ -129,7 +129,7 @@ func NewDMClient(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Resolves to a Javascript representation of the [DMClient] object.
 //   - Rejected with an error if loading indexedDbWorker or the manager fails.
-//   - Throws a TypeError if the cipher ID does not correspond to a cipher.
+//   - Throws an error if the cipher ID does not correspond to a cipher.
 func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
 	wasmJsPath := args[1].String()
@@ -464,6 +464,42 @@ func (dmc *DMClient) SendReaction(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := dmc.api.SendReaction(partnerPubKeyBytes,
 			partnerToken, reaction, reactToBytes, cmixParamsJSON)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// SendSilent is used to send to a channel a message with no notifications.
+// Its primary purpose is to communicate new nicknames without calling [Send].
+//
+// It takes no payload intentionally as the message should be very lightweight.
+//
+// Parameters:
+//   - args[0] - The bytes of the public key of the partner's ED25519
+//     signing key (Uint8Array).
+//   - args[1] - The token used to derive the reception ID for the partner
+//     (int).
+//   - args[2] - JSON of [xxdk.CMIXParams]. If left empty
+//     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
+//
+// Returns a promise:
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
+func (dmc *DMClient) SendSilent(_ js.Value, args []js.Value) any {
+	var (
+		partnerPubKeyBytes = utils.CopyBytesToGo(args[0])
+		partnerToken       = int32(args[1].Int())
+		cmixParamsJSON     = utils.CopyBytesToGo(args[2])
+	)
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		sendReport, err := dmc.api.SendSilent(
+			partnerPubKeyBytes, partnerToken, cmixParamsJSON)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
@@ -962,7 +998,7 @@ func newDMDbCipherJS(api *bindings.DMDbCipher) map[string]any {
 //
 // Returns:
 //   - JavaScript representation of the [DMDbCipher] object.
-//   - Throws a TypeError if creating the cipher fails.
+//   - Throws an error if creating the cipher fails.
 func NewDMsDatabaseCipher(_ js.Value, args []js.Value) any {
 	cmixId := args[0].Int()
 	password := utils.CopyBytesToGo(args[1])
@@ -997,7 +1033,7 @@ func (c *DMDbCipher) GetID(js.Value, []js.Value) any {
 //
 // Returns:
 //   - The ciphertext of the plaintext passed in (Uint8Array).
-//   - Throws a TypeError if it fails to encrypt the plaintext.
+//   - Throws an error if it fails to encrypt the plaintext.
 func (c *DMDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 	ciphertext, err := c.api.Encrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
@@ -1018,7 +1054,7 @@ func (c *DMDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - The plaintext of the ciphertext passed in (Uint8Array).
-//   - Throws a TypeError if it fails to encrypt the plaintext.
+//   - Throws an error if it fails to encrypt the plaintext.
 func (c *DMDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 	plaintext, err := c.api.Decrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
@@ -1033,7 +1069,7 @@ func (c *DMDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - JSON of the cipher (Uint8Array).
-//   - Throws a TypeError if marshalling fails.
+//   - Throws an error if marshalling fails.
 func (c *DMDbCipher) MarshalJSON(js.Value, []js.Value) any {
 	data, err := c.api.MarshalJSON()
 	if err != nil {
@@ -1055,7 +1091,7 @@ func (c *DMDbCipher) MarshalJSON(js.Value, []js.Value) any {
 //
 // Returns:
 //   - JSON of the cipher (Uint8Array).
-//   - Throws a TypeError if marshalling fails.
+//   - Throws an error if marshalling fails.
 func (c *DMDbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
 	err := c.api.UnmarshalJSON(utils.CopyBytesToGo(args[0]))
 	if err != nil {
