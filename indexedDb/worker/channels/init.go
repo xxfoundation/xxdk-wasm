@@ -20,7 +20,6 @@ import (
 	"gitlab.com/elixxir/client/v4/channels"
 
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
-	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -28,17 +27,10 @@ import (
 // databaseSuffix is the suffix to be appended to the name of the database.
 const databaseSuffix = "_speakeasy"
 
-// MessageReceivedCallback is called any time a message is received or updated.
-//
-// update is true if the row is old and was edited.
-type MessageReceivedCallback func(uuid int64, channelID []byte, update bool)
-
-// DeletedMessageCallback is called any time a message is deleted.
-type DeletedMessageCallback func(messageID []byte)
-
-// MutedUserCallback is called any time a user is muted or unmuted. unmute is
-// true if the user has been unmuted and false if they have been muted.
-type MutedUserCallback func(channelID, pubKey []byte, unmute bool)
+// eventUpdateCallback is the [bindings.ChannelUICallback] callback function
+// it has a type ([bindings.NickNameUpdate] to [bindings.MessageDeleted]
+// and json data that is the callback information.
+type eventUpdateCallback func(eventType int64, jsonData []byte)
 
 // NewWASMEventModelBuilder returns an EventModelBuilder which allows
 // the channel manager to define the path but the callback is the same
@@ -74,15 +66,15 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 
 	// Register handler to manage messages for the MessageReceivedCallback
 	wm.RegisterCallback(MessageReceivedCallbackTag,
-		messageReceivedCallbackHandler(channelCbs.MessageReceived))
+		messageReceivedCallbackHandler(channelCbs.EventUpdate))
 
 	// Register handler to manage messages for the DeletedMessageCallback
 	wm.RegisterCallback(DeletedMessageCallbackTag,
-		deletedMessageCallbackHandler(channelCbs.MessageDeleted))
+		deletedMessageCallbackHandler(channelCbs.EventUpdate))
 
 	// Register handler to manage messages for the MutedUserCallback
 	wm.RegisterCallback(MutedUserCallbackTag,
-		mutedUserCallbackHandler(channelCbs.UserMuted))
+		mutedUserCallbackHandler(channelCbs.EventUpdate))
 
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)
@@ -139,47 +131,25 @@ type MessageReceivedCallbackMessage struct {
 
 // messageReceivedCallbackHandler returns a handler to manage messages for the
 // MessageReceivedCallback.
-func messageReceivedCallbackHandler(cb MessageReceivedCallback) func(data []byte) {
+func messageReceivedCallbackHandler(cb eventUpdateCallback) func(data []byte) {
 	return func(data []byte) {
-		var msg MessageReceivedCallbackMessage
-		err := json.Unmarshal(data, &msg)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Failed to JSON unmarshal %T from worker: %+v", msg, err)
-			return
-		}
-
-		cb(msg.UUID, msg.ChannelID, msg.Update)
+		cb(bindings.MessageReceived, data)
 	}
 }
 
 // deletedMessageCallbackHandler returns a handler to manage messages for the
 // DeletedMessageCallback.
-func deletedMessageCallbackHandler(cb DeletedMessageCallback) func(data []byte) {
+func deletedMessageCallbackHandler(cb eventUpdateCallback) func(data []byte) {
 	return func(data []byte) {
-		messageID, err := message.UnmarshalID(data)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Failed to JSON unmarshal message ID from worker: %+v", err)
-		}
-
-		cb(messageID.Bytes())
+		cb(bindings.MessageDeleted, data)
 	}
 }
 
 // mutedUserCallbackHandler returns a handler to manage messages for the
 // MutedUserCallback.
-func mutedUserCallbackHandler(cb MutedUserCallback) func(data []byte) {
+func mutedUserCallbackHandler(cb eventUpdateCallback) func(data []byte) {
 	return func(data []byte) {
-		var msg MuteUserMessage
-		err := json.Unmarshal(data, &msg)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Failed to JSON unmarshal %T from worker: %+v", msg, err)
-			return
-		}
-
-		cb(msg.ChannelID, msg.PubKey, msg.Unmute)
+		cb(bindings.UserMuted, data)
 	}
 }
 

@@ -2342,53 +2342,18 @@ func (c *ChannelDbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
 // channelUI callbacks implementation struct.
 func newChannelUI(cbImpl js.Value) *channelUI {
 	return &channelUI{
-		notificationUpdate: utils.WrapCB(cbImpl, "NotificationUpdate"),
-		messageReceived:    utils.WrapCB(cbImpl, "MessageReceived"),
-		userMuted:          utils.WrapCB(cbImpl, "UserMuted"),
-		messageDeleted:     utils.WrapCB(cbImpl, "MessageDeleted"),
-		nicknameUpdate:     utils.WrapCB(cbImpl, "NicknameUpdate"),
+		eventUpdate: utils.WrapCB(cbImpl, "eventUpdate"),
 	}
 }
 
 // eventModel wraps Javascript callbacks to adhere to the
 // [bindings.ChannelUICallbacks] interface.
 type channelUI struct {
-	notificationUpdate func(args ...any) js.Value
-	messageReceived    func(args ...any) js.Value
-	userMuted          func(args ...any) js.Value
-	messageDeleted     func(args ...any) js.Value
-	nicknameUpdate     func(args ...any) js.Value
+	eventUpdate func(args ...any) js.Value
 }
 
-// NotificationUpdate implements
-// [bindings.ChannelUICallbacks.NotificationUpdate].
-func (c *channelUI) NotificationUpdate(notificationFilterListJSON,
-	changedNotificationStatesJSON, deletedNotificationStatesJSON []byte,
-	maxState int) {
-	c.notificationUpdate(notificationFilterListJSON,
-		changedNotificationStatesJSON,
-		deletedNotificationStatesJSON,
-		maxState)
-}
-
-// MessageReceived implements [bindings.ChannelUICallbacks.MessageReceived].
-func (c *channelUI) MessageReceived(uuid int64, channelID []byte, update bool) {
-	c.messageReceived(uuid, utils.CopyBytesToJS(channelID), update)
-}
-
-// UserMuted implements [bindings.ChannelUICallbacks.UserMuted].
-func (c *channelUI) UserMuted(channelID []byte, pubKey []byte, unmute bool) {
-	c.userMuted(utils.CopyBytesToJS(channelID), utils.CopyBytesToJS(pubKey),
-		unmute)
-}
-
-// MessageDeleted implements [bindings.ChannelUICallbacks.MessageDeleted].
-func (c *channelUI) MessageDeleted(messageId []byte) {
-	c.messageDeleted(utils.CopyBytesToJS(messageId))
-}
-
-// NicknameUpdate implements [bindings.ChannelUICallbacks.NicknameUpdate]
-func (c *channelUI) NicknameUpdate(channelIdBytes []byte, nickname string,
-	exists bool) {
-	c.nicknameUpdate(utils.CopyBytesToJS(channelIdBytes), nickname, exists)
+// EventUpdate implements
+// [bindings.ChannelUICallbacks.EventUpdate].
+func (c *channelUI) EventUpdate(eventType int64, dataJson []byte) {
+	c.eventUpdate(eventType, utils.CopyBytesToJS(dataJson))
 }
