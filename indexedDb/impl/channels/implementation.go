@@ -29,7 +29,6 @@ import (
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 	"gitlab.com/xx_network/primitives/id"
 )
 
@@ -39,9 +38,9 @@ import (
 // NOTE: This model is NOT thread safe - it is the responsibility of the
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
-	db     *idb.Database
-	cipher cryptoChannel.Cipher
-	cbs    bindings.ChannelUICallbacks
+	db          *idb.Database
+	cipher      cryptoChannel.Cipher
+	eventUpdate func(eventType int64, jsonMarshallable any)
 }
 
 // JoinChannel is called whenever a channel is joined locally.
@@ -173,7 +172,11 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 		return 0
 	}
 
-	go w.cbs.MessageReceived(int64(uuid), channelIDBytes, false)
+	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJson{
+		Uuid:      int64(uuid),
+		ChannelID: channelID,
+		Update:    false,
+	})
 	return uuid
 }
 
@@ -211,7 +214,12 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 		jww.ERROR.Printf("Failed to receive reply: %+v", err)
 		return 0
 	}
-	go w.cbs.MessageReceived(int64(uuid), channelIDBytes, false)
+
+	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJson{
+		Uuid:      int64(uuid),
+		ChannelID: channelID,
+		Update:    false,
+	})
 	return uuid
 }
 
@@ -249,7 +257,12 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 		jww.ERROR.Printf("Failed to receive reaction: %+v", err)
 		return 0
 	}
-	go w.cbs.MessageReceived(int64(uuid), channelIDBytes, false)
+
+	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJson{
+		Uuid:      int64(uuid),
+		ChannelID: channelID,
+		Update:    false,
+	})
 	return uuid
 }
 
@@ -396,7 +409,17 @@ func (w *wasmModel) updateMessage(currentMsg *Message, messageID *message.ID,
 	if err != nil {
 		return 0, err
 	}
-	go w.cbs.MessageReceived(int64(uuid), currentMsg.ChannelID, true)
+
+	channelID, err := id.Unmarshal(currentMsg.ChannelID)
+	if err != nil {
+		return 0, err
+	}
+
+	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJson{
+		Uuid:      int64(uuid),
+		ChannelID: channelID,
+		Update:    true,
+	})
 
 	return uuid, nil
 }
@@ -494,7 +517,8 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 		return err
 	}
 
-	go w.cbs.MessageDeleted(messageID.Bytes())
+	go w.eventUpdate(bindings.MessageDeleted,
+		bindings.MessageDeletedJson{MessageID: messageID})
 
 	return nil
 }
@@ -502,7 +526,12 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 // MuteUser is called whenever a user is muted or unmuted.
 func (w *wasmModel) MuteUser(
 	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
-	go w.cbs.UserMuted(channelID.Marshal(), pubKey, unmute)
+
+	go w.eventUpdate(bindings.UserMuted, bindings.UserMutedJson{
+		ChannelID: channelID,
+		PubKey:    pubKey,
+		Unmute:    unmute,
+	})
 }
 
 // valueToMessage is a helper for converting js.Value to Message.
