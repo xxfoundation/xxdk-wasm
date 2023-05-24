@@ -32,9 +32,7 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 )
 
-// wasmModel implements [channels.EventModel] interface, which uses the channels
-// system passed an object that adheres to in order to get events on the
-// channel.
+// wasmModel implements [channels.EventModel] interface backed by IndexedDb.
 // NOTE: This model is NOT thread safe - it is the responsibility of the
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {

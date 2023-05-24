@@ -43,12 +43,13 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			if oldVersion == newVersion {
-				jww.INFO.Printf("IndexDb version is current: v%d", newVersion)
+				jww.INFO.Printf("IndexDb version for %s is current: v%d",
+					databaseName, newVersion)
 				return nil
 			}
 
-			jww.INFO.Printf("IndexDb upgrade required: v%d -> v%d",
-				oldVersion, newVersion)
+			jww.INFO.Printf("IndexDb upgrade required for %s: v%d -> v%d",
+				databaseName, oldVersion, newVersion)
 
 			if oldVersion == 0 && newVersion >= 1 {
 				err := v1Upgrade(db)
