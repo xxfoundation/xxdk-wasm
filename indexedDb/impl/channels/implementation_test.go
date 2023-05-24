@@ -19,17 +19,16 @@ import (
 	"testing"
 	"time"
 
-	cft "gitlab.com/elixxir/client/v4/channelsFileTransfer"
-	"gitlab.com/elixxir/crypto/fileTransfer"
-
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/stretchr/testify/require"
 
 	"gitlab.com/elixxir/client/v4/channels"
+	cft "gitlab.com/elixxir/client/v4/channelsFileTransfer"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
+	"gitlab.com/elixxir/crypto/fileTransfer"
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/wasm-utils/storage"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
@@ -45,7 +44,7 @@ func TestMain(m *testing.M) {
 
 type dummyCbs struct{}
 
-func (c *dummyCbs) EventUpdate(eventType int64, dataJson []byte) {}
+func (c *dummyCbs) EventUpdate(int64, []byte) {}
 
 // Happy path test for receiving, updating, getting, and deleting a File.
 func TestWasmModel_ReceiveFile(t *testing.T) {
