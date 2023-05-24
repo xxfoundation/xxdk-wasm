@@ -269,7 +269,7 @@ func GetPublicChannelIdentityFromPrivate(_ js.Value, args []js.Value) any {
 //   - args[4] - A function that initialises and returns a Javascript object
 //     that matches the [bindings.EventModel] interface. The function must match
 //     the Build function in [bindings.EventModelBuilder].
-//   - args[4] - A callback object which implements the
+//   - args[5] - A callback object which implements the
 //     [bindings.ChannelUICallbacks] javascript functions.
 //
 // Returns:
@@ -284,7 +284,7 @@ func NewChannelsManager(_ js.Value, args []js.Value) any {
 	channelCbs := newChannelUI(args[5])
 
 	cm, err := bindings.NewChannelsManager(
-		cmixId, privateIdentity, extensionBuilderIDsJSON, em,
+		cmixId, privateIdentity, em, extensionBuilderIDsJSON,
 		notificationsId, channelCbs)
 	if err != nil {
 		exception.ThrowTrace(err)
@@ -309,10 +309,14 @@ func NewChannelsManager(_ js.Value, args []js.Value) any {
 //     retrieved using [Notifications.GetID].
 //   - args[2] - The storage tag associated with the previously created channel
 //     manager and retrieved with [ChannelsManager.GetStorageTag] (string).
-//   - args[3] - A function that initialises and returns a Javascript object
+//   - args[3] - JSON of an array of integers of [channels.ExtensionBuilder]
+//     IDs. The ID can be retrieved from an object with an extension builder
+//     (e.g., [ChannelsFileTransfer.GetExtensionBuilderID]). Leave empty if not
+//     using extension builders. Example: `[2,11,5]` (Uint8Array).
+//   - args[4] - A function that initialises and returns a Javascript object
 //     that matches the [bindings.EventModel] interface. The function must match
 //     the Build function in [bindings.EventModelBuilder].
-//   - args[4] - A callback object which implements the
+//   - args[5] - A callback object which implements the
 //     [bindings.ChannelUICallbacks] javascript functions.
 //
 // Returns:
@@ -322,10 +326,12 @@ func LoadChannelsManager(_ js.Value, args []js.Value) any {
 	cMixID := args[0].Int()
 	notificationsID := args[1].Int()
 	storageTag := args[2].String()
-	em := newEventModelBuilder(args[3])
-	cUI := newChannelUI(args[4])
+	extensionBuilderIDsJSON := utils.CopyBytesToGo(args[3])
+	em := newEventModelBuilder(args[4])
+	channelCbs := newChannelUI(args[5])
+
 	cm, err := bindings.LoadChannelsManager(cMixID, storageTag, em,
-		notificationsID, cUI)
+		extensionBuilderIDsJSON, notificationsID, channelCbs)
 	if err != nil {
 		exception.ThrowTrace(err)
 		return nil
@@ -988,13 +994,9 @@ func (cm *ChannelsManager) SendGeneric(_ js.Value, args []js.Value) any {
 	leaseTimeMS := int64(args[3].Int())
 	tracked := args[4].Bool()
 	cmixParamsJSON := utils.CopyBytesToGo(args[5])
-	var pingBytes [][]byte
+	pingBytes := utils.CopyBytesToGo(args[6])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		err := json.Unmarshal(utils.CopyBytesToGo(args[6]), pingBytes)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		}
 		sendReport, err := cm.api.SendGeneric(marshalledChanId,
 			messageType, msg, leaseTimeMS, tracked,
 			cmixParamsJSON, pingBytes)
@@ -1039,13 +1041,9 @@ func (cm *ChannelsManager) SendMessage(_ js.Value, args []js.Value) any {
 	msg := args[1].String()
 	leaseTimeMS := int64(args[2].Int())
 	cmixParamsJSON := utils.CopyBytesToGo(args[3])
-	var pingBytes [][]byte
+	pingBytes := utils.CopyBytesToGo(args[4])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		err := json.Unmarshal(utils.CopyBytesToGo(args[6]), pingBytes)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		}
 		sendReport, err := cm.api.SendMessage(
 			marshalledChanId, msg, leaseTimeMS, cmixParamsJSON,
 			pingBytes)
@@ -1098,13 +1096,9 @@ func (cm *ChannelsManager) SendReply(_ js.Value, args []js.Value) any {
 	messageToReactTo := utils.CopyBytesToGo(args[2])
 	leaseTimeMS := int64(args[3].Int())
 	cmixParamsJSON := utils.CopyBytesToGo(args[4])
-	var pingBytes [][]byte
+	pingBytes := utils.CopyBytesToGo(args[5])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		err := json.Unmarshal(utils.CopyBytesToGo(args[6]), pingBytes)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		}
 		sendReport, err := cm.api.SendReply(marshalledChanId, msg,
 			messageToReactTo, leaseTimeMS, cmixParamsJSON,
 			pingBytes)
@@ -1600,8 +1594,6 @@ func (cm *ChannelsManager) GetNotificationLevel(_ js.Value,
 //     the channel.
 //   - args[2] - status - The [notifications.NotificationState] to set
 //     for the channel.
-//   - args[3] - push - True to enable push notifications and false to
-//     only have in-app notifications.
 //
 // Returns nothing or throws an error
 func (cm *ChannelsManager) SetMobileNotificationsLevel(_ js.Value,
@@ -1609,10 +1601,9 @@ func (cm *ChannelsManager) SetMobileNotificationsLevel(_ js.Value,
 	channelIDBytes := utils.CopyBytesToGo(args[0])
 	level := args[1].Int()
 	status := args[2].Int()
-	push := args[3].Bool()
 
 	err := cm.api.SetMobileNotificationsLevel(channelIDBytes, level,
-		status, push)
+		status)
 	if err != nil {
 		exception.ThrowTrace(err)
 	}
