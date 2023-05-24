@@ -17,8 +17,10 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
+	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
+	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,30 +53,28 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]any {
 		"GetShareURL": js.FuncOf(cm.GetShareURL),
 
 		// Channel Sending Methods and Reports
-		"SendGeneric":                 js.FuncOf(cm.SendGeneric),
-		"SendAdminGeneric":            js.FuncOf(cm.SendAdminGeneric),
-		"SendMessage":                 js.FuncOf(cm.SendMessage),
-		"SendReply":                   js.FuncOf(cm.SendReply),
-		"SendReaction":                js.FuncOf(cm.SendReaction),
-		"SendSilent":                  js.FuncOf(cm.SendSilent),
-		"DeleteMessage":               js.FuncOf(cm.DeleteMessage),
-		"PinMessage":                  js.FuncOf(cm.PinMessage),
-		"MuteUser":                    js.FuncOf(cm.MuteUser),
-		"GetIdentity":                 js.FuncOf(cm.GetIdentity),
-		"ExportPrivateIdentity":       js.FuncOf(cm.ExportPrivateIdentity),
-		"GetStorageTag":               js.FuncOf(cm.GetStorageTag),
-		"SetNickname":                 js.FuncOf(cm.SetNickname),
-		"DeleteNickname":              js.FuncOf(cm.DeleteNickname),
-		"GetNickname":                 js.FuncOf(cm.GetNickname),
-		"Muted":                       js.FuncOf(cm.Muted),
-		"GetMutedUsers":               js.FuncOf(cm.GetMutedUsers),
-		"GetNotificationLevel":        js.FuncOf(cm.GetNotificationLevel),
-		"SetMobileNotificationsLevel": js.FuncOf(cm.SetMobileNotificationsLevel),
-		"IsChannelAdmin":              js.FuncOf(cm.IsChannelAdmin),
-		"ExportChannelAdminKey":       js.FuncOf(cm.ExportChannelAdminKey),
-		"VerifyChannelAdminKey":       js.FuncOf(cm.VerifyChannelAdminKey),
-		"ImportChannelAdminKey":       js.FuncOf(cm.ImportChannelAdminKey),
-		"DeleteChannelAdminKey":       js.FuncOf(cm.DeleteChannelAdminKey),
+		"SendGeneric":           js.FuncOf(cm.SendGeneric),
+		"SendAdminGeneric":      js.FuncOf(cm.SendAdminGeneric),
+		"SendMessage":           js.FuncOf(cm.SendMessage),
+		"SendReply":             js.FuncOf(cm.SendReply),
+		"SendReaction":          js.FuncOf(cm.SendReaction),
+		"SendSilent":            js.FuncOf(cm.SendSilent),
+		"DeleteMessage":         js.FuncOf(cm.DeleteMessage),
+		"PinMessage":            js.FuncOf(cm.PinMessage),
+		"MuteUser":              js.FuncOf(cm.MuteUser),
+		"GetIdentity":           js.FuncOf(cm.GetIdentity),
+		"ExportPrivateIdentity": js.FuncOf(cm.ExportPrivateIdentity),
+		"GetStorageTag":         js.FuncOf(cm.GetStorageTag),
+		"SetNickname":           js.FuncOf(cm.SetNickname),
+		"DeleteNickname":        js.FuncOf(cm.DeleteNickname),
+		"GetNickname":           js.FuncOf(cm.GetNickname),
+		"Muted":                 js.FuncOf(cm.Muted),
+		"GetMutedUsers":         js.FuncOf(cm.GetMutedUsers),
+		"IsChannelAdmin":        js.FuncOf(cm.IsChannelAdmin),
+		"ExportChannelAdminKey": js.FuncOf(cm.ExportChannelAdminKey),
+		"VerifyChannelAdminKey": js.FuncOf(cm.VerifyChannelAdminKey),
+		"ImportChannelAdminKey": js.FuncOf(cm.ImportChannelAdminKey),
+		"DeleteChannelAdminKey": js.FuncOf(cm.DeleteChannelAdminKey),
 
 		// Channel Receiving Logic and Callback Registration
 		"RegisterReceiveHandler": js.FuncOf(cm.RegisterReceiveHandler),

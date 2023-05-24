@@ -500,7 +500,7 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 		jww.WARN.Printf("couldn't marshal MessageDeleted: %s, %+v",
 			messageID, err)
 	} else {
-		go w.cbs.EventUpdate(bindings.MessageDeleted, eventData)
+		go w.eventUpdate(bindings.MessageDeleted, eventData)
 	}
 	return nil
 }
@@ -517,7 +517,7 @@ func (w *wasmModel) MuteUser(
 		jww.WARN.Printf("couldn't marshal UserMuted: %s, %+v",
 			pubKey, err)
 	} else {
-		go w.cbs.EventUpdate(bindings.UserMuted, eventData)
+		go w.eventUpdate(bindings.UserMuted, eventData)
 	}
 }
 
@@ -533,7 +533,7 @@ func (w *wasmModel) sendReceiveMessageUpdate(uuid uint64, channelID *id.ID,
 		jww.WARN.Printf("couldn't marshal MessageReceive: %v, %+v",
 			eventMsg, err)
 	} else {
-		go w.cbs.EventUpdate(bindings.MessageReceived, eventData)
+		go w.eventUpdate(bindings.MessageReceived, eventData)
 	}
 }
 

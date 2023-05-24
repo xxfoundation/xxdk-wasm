@@ -59,7 +59,6 @@ require (
 	gitlab.com/elixxir/bloomfilter v0.0.0-20230322223210-fa84f6842de8 // indirect
 	gitlab.com/elixxir/comms v0.0.4-0.20230519211512-4a998f4b0938 // indirect
 	gitlab.com/elixxir/ekv v0.3.1-0.20230504190918-f5e96603c2e0 // indirect
-	gitlab.com/elixxir/wasm-utils v0.0.0-20230522231408-a43b2c1481b2 // indirect
 	gitlab.com/xx_network/comms v0.0.4-0.20230214180029-5387fb85736d // indirect
 	gitlab.com/xx_network/ring v0.0.3-0.20220902183151-a7d3b15bc981 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
