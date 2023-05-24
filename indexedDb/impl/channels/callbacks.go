@@ -15,7 +15,6 @@ import (
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
@@ -82,25 +81,25 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 
 // EventUpdate implements [bindings.ChannelUICallbacks.EventUpdate].
 func (m *manager) EventUpdate(eventType int64, jsonData []byte) {
-	var callbackTag worker.Tag
-	isValid := false
-	switch eventType {
-	case bindings.MessageReceived:
-		callbackTag = wChannels.MessageReceivedCallbackTag
-		isValid = true
-	case bindings.MessageDeleted:
-		callbackTag = wChannels.DeletedMessageCallbackTag
-		isValid = true
-	case bindings.UserMuted:
-		callbackTag = wChannels.MutedUserCallbackTag
-		isValid = true
-	default:
-		jww.ERROR.Printf("invalid indexedDB EventUpdate type %d: %+v)",
-			eventType, jsonData)
+	// Package parameters for sending
+	msg := &wChannels.EventUpdateCallbackMessage{
+		EventType: eventType,
+		JsonData:  jsonData,
 	}
-	if isValid {
-		m.wtm.SendMessage(callbackTag, jsonData)
+	data, err := json.Marshal(msg)
+	if err != nil {
+		jww.ERROR.Printf("Could not JSON marshal %T: %+v", msg, err)
+		return
 	}
+
+	// Send it to the main thread
+	m.wtm.SendMessage(wChannels.EventUpdateCallbackTag, data)
+}
+
+// NicknameUpdate implements [bindings.ChannelUICallbacks.NicknameUpdate]
+func (m *manager) NicknameUpdate(channelIdBytes []byte, nickname string,
+	exists bool) {
+	jww.FATAL.Panicf("unimplemented")
 }
 
 // joinChannelCB is the callback for wasmModel.JoinChannel. Always returns nil;

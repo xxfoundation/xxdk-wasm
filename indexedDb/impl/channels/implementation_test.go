@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"os"
 	"strconv"
 	"testing"
@@ -24,7 +25,6 @@ import (
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
-	"github.com/stretchr/testify/require"
 
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
@@ -44,8 +44,7 @@ func TestMain(m *testing.M) {
 }
 
 type dummyCbs struct{}
-
-func (c *dummyCbs) EventUpdate(eventType int64, dataJson []byte) {}
+func (c *dummyCbs) EventUpdate(int64, []byte) {}
 
 // Happy path test for receiving, updating, getting, and deleting a File.
 func TestWasmModel_ReceiveFile(t *testing.T) {
