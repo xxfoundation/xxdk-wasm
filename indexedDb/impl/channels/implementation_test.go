@@ -43,7 +43,8 @@ func TestMain(m *testing.M) {
 }
 
 type dummyCbs struct{}
-func (c *dummyCbs) EventUpdate(int64, []byte) {}
+
+func (c *dummyCbs) EventUpdate(eventType int64, dataJson []byte) {}
 
 // Happy path test for receiving, updating, getting, and deleting a File.
 func TestWasmModel_ReceiveFile(t *testing.T) {

@@ -27,8 +27,10 @@ import (
 // databaseSuffix is the suffix to be appended to the name of the database.
 const databaseSuffix = "_speakeasy"
 
-// EventUpdate is called any time an event occurs.
-type EventUpdate func(eventType int64, jsonData []byte)
+// eventUpdateCallback is the [bindings.ChannelUICallback] callback function
+// it has a type ([bindings.NickNameUpdate] to [bindings.MessageDeleted]
+// and json data that is the callback information.
+type eventUpdateCallback func(eventType int64, jsonData []byte)
 
 // NewWASMEventModelBuilder returns an EventModelBuilder which allows
 // the channel manager to define the path but the callback is the same
@@ -62,9 +64,17 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 		return nil, err
 	}
 
-	// Register handler to manage messages for the EventUpdate
-	wm.RegisterCallback(EventUpdateCallbackTag,
+	// Register handler to manage messages for the MessageReceivedCallback
+	wm.RegisterCallback(MessageReceivedCallbackTag,
 		messageReceivedCallbackHandler(channelCbs.EventUpdate))
+
+	// Register handler to manage messages for the DeletedMessageCallback
+	wm.RegisterCallback(DeletedMessageCallbackTag,
+		deletedMessageCallbackHandler(channelCbs.EventUpdate))
+
+	// Register handler to manage messages for the MutedUserCallback
+	wm.RegisterCallback(MutedUserCallbackTag,
+		mutedUserCallbackHandler(channelCbs.EventUpdate))
 
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)
@@ -120,17 +130,25 @@ type EventUpdateCallbackMessage struct {
 
 // messageReceivedCallbackHandler returns a handler to manage messages for the
 // MessageReceivedCallback.
-func messageReceivedCallbackHandler(cb EventUpdate) func(data []byte) {
+func messageReceivedCallbackHandler(cb eventUpdateCallback) func(data []byte) {
 	return func(data []byte) {
-		var msg EventUpdateCallbackMessage
-		err := json.Unmarshal(data, &msg)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Failed to JSON unmarshal %T from worker: %+v", msg, err)
-			return
-		}
+		cb(bindings.MessageReceived, data)
+	}
+}
 
-		cb(msg.EventType, msg.JsonData)
+// deletedMessageCallbackHandler returns a handler to manage messages for the
+// DeletedMessageCallback.
+func deletedMessageCallbackHandler(cb eventUpdateCallback) func(data []byte) {
+	return func(data []byte) {
+		cb(bindings.MessageDeleted, data)
+	}
+}
+
+// mutedUserCallbackHandler returns a handler to manage messages for the
+// MutedUserCallback.
+func mutedUserCallbackHandler(cb eventUpdateCallback) func(data []byte) {
+	return func(data []byte) {
+		cb(bindings.UserMuted, data)
 	}
 }
 

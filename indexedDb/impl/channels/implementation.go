@@ -172,11 +172,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 		return 0
 	}
 
-	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJson{
-		Uuid:      int64(uuid),
-		ChannelID: channelID,
-		Update:    false,
-	})
+	w.sendReceiveMessageUpdate(uuid, channelID, false)
 	return uuid
 }
 
@@ -215,11 +211,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 		return 0
 	}
 
-	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJson{
-		Uuid:      int64(uuid),
-		ChannelID: channelID,
-		Update:    false,
-	})
+	w.sendReceiveMessageUpdate(uuid, channelID, false)
 	return uuid
 }
 
@@ -257,12 +249,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 		jww.ERROR.Printf("Failed to receive reaction: %+v", err)
 		return 0
 	}
-
-	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJson{
-		Uuid:      int64(uuid),
-		ChannelID: channelID,
-		Update:    false,
-	})
+	w.sendReceiveMessageUpdate(uuid, channelID, false)
 	return uuid
 }
 
@@ -409,18 +396,7 @@ func (w *wasmModel) updateMessage(currentMsg *Message, messageID *message.ID,
 	if err != nil {
 		return 0, err
 	}
-
-	channelID, err := id.Unmarshal(currentMsg.ChannelID)
-	if err != nil {
-		return 0, err
-	}
-
-	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJson{
-		Uuid:      int64(uuid),
-		ChannelID: channelID,
-		Update:    true,
-	})
-
+	w.sendReceiveMessageUpdate(uuid, (*id.ID)(currentMsg.ChannelID), true)
 	return uuid, nil
 }
 
@@ -517,21 +493,48 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 		return err
 	}
 
-	go w.eventUpdate(bindings.MessageDeleted,
-		bindings.MessageDeletedJson{MessageID: messageID})
-
+	eventData, err := json.Marshal(bindings.MessageDeletedJson{
+		MessageID: messageID,
+	})
+	if err != nil {
+		jww.WARN.Printf("couldn't marshal MessageDeleted: %s, %+v",
+			messageID, err)
+	} else {
+		go w.cbs.EventUpdate(bindings.MessageDeleted, eventData)
+	}
 	return nil
 }
 
 // MuteUser is called whenever a user is muted or unmuted.
 func (w *wasmModel) MuteUser(
 	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
-
-	go w.eventUpdate(bindings.UserMuted, bindings.UserMutedJson{
+	eventData, err := json.Marshal(bindings.UserMutedJson{
 		ChannelID: channelID,
 		PubKey:    pubKey,
 		Unmute:    unmute,
 	})
+	if err != nil {
+		jww.WARN.Printf("couldn't marshal UserMuted: %s, %+v",
+			pubKey, err)
+	} else {
+		go w.cbs.EventUpdate(bindings.UserMuted, eventData)
+	}
+}
+
+func (w *wasmModel) sendReceiveMessageUpdate(uuid uint64, channelID *id.ID,
+	update bool) {
+	eventMsg := bindings.MessageReceivedJson{
+		Uuid:      int64(uuid),
+		ChannelID: channelID,
+		Update:    update,
+	}
+	eventData, err := json.Marshal(eventMsg)
+	if err != nil {
+		jww.WARN.Printf("couldn't marshal MessageReceive: %v, %+v",
+			eventMsg, err)
+	} else {
+		go w.cbs.EventUpdate(bindings.MessageReceived, eventData)
+	}
 }
 
 // valueToMessage is a helper for converting js.Value to Message.

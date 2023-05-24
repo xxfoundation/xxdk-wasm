@@ -100,6 +100,11 @@ func setGlobals() {
 	js.Global().Set("InitializeBackup", js.FuncOf(wasm.InitializeBackup))
 	js.Global().Set("ResumeBackup", js.FuncOf(wasm.ResumeBackup))
 
+	// wasm/notifications.go
+	js.Global().Set("LoadNotifications", js.FuncOf(wasm.LoadNotifications))
+	js.Global().Set("LoadNotificationsDummy",
+		js.FuncOf(wasm.LoadNotificationsDummy))
+
 	// wasm/channels.go
 	js.Global().Set("GenerateChannelIdentity",
 		js.FuncOf(wasm.GenerateChannelIdentity))
@@ -133,6 +138,8 @@ func setGlobals() {
 	js.Global().Set("CheckNoMessageErr", js.FuncOf(wasm.CheckNoMessageErr))
 	js.Global().Set("NewChannelsDatabaseCipher",
 		js.FuncOf(wasm.NewChannelsDatabaseCipher))
+	js.Global().Set("GetNotificationReportsForMe",
+		js.FuncOf(wasm.GetNotificationReportsForMe))
 
 	// wasm/dm.go
 	js.Global().Set("InitChannelsFileTransfer",
