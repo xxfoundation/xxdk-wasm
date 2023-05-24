@@ -382,22 +382,21 @@ func (tsc *trackServicesCallback) Callback(marshalData []byte, err error) {
 	tsc.callback(utils.CopyBytesToJS(marshalData), exception.NewTrace(err))
 }
 
-// trackServicesCallback adheres to the [bindings.TrackServicesCallback]
-// interface.
+// trackCompressedServicesCallback adheres to the
+// [bindings.TrackCompressedServicesCallback] interface.
 type trackCompressedServicesCallback struct {
 	callback func(args ...any) js.Value
 }
 
-// Callback is the callback for [Cmix.TrackCompressedServices]. This
-// will pass to the user a JSON-marshalled list of backend
-// services. If there was an error retrieving or marshalling the
-// service list, there is an error for the second parameter, which
-// will be non-null.
+// Callback is the callback for [Cmix.TrackServices] that passes a
+// JSON-marshalled list of compressed backend services. If an error occurs while
+// retrieving or marshalling the service list, then err will be non-null.
 //
 // Parameters:
-//   - marshalData - Returns the JSON of
-//     [message.CompressedServiceList] (Uint8Array).
-//   - err - Returns an error on failure (Error).
+//   - marshalData - JSON of [message.CompressedServiceList] (Uint8Array),
+//     which is a map of [id.ID] to an array of [message.CompressedService].
+//   - err - Error that occurs during retrieval or marshalling. Null otherwise
+//     (Error).
 //
 // Example JSON:
 //
@@ -424,9 +423,8 @@ type trackCompressedServicesCallback struct {
 //	     }
 //	   ]
 //	 }
-func (tcsc *trackCompressedServicesCallback) Callback(marshalData []byte,
-	err error) {
-	tcsc.callback(utils.CopyBytesToJS(marshalData), exception.NewTrace(err))
+func (tsc *trackCompressedServicesCallback) Callback(marshalData []byte, err error) {
+	tsc.callback(utils.CopyBytesToJS(marshalData), exception.NewTrace(err))
 }
 
 // TrackServicesWithIdentity will return via a callback the list of services the
@@ -437,20 +435,17 @@ func (tcsc *trackCompressedServicesCallback) Callback(marshalData []byte,
 // Parameters:
 //   - args[0] - ID of [E2e] object in tracker (int).
 //   - args[1] - Javascript object that has functions that implement the
-//     [bindings.TrackServicesCallback] interface.
-//   - args[1] - Javascript object that has functions that implement the
-//     [bindings.TrackCompressedServicesCallback] interface.
+//     [bindings.ClientError] interface.
+//   - args[2] - Javascript object that has functions that implement the
+//     [bindings.TrackCompressedServicesCallback], which will be passed the JSON
+//     of [message.CompressedServiceList].
 //
 // Returns:
 //   - Throws TypeError if the [E2e] ID is invalid.
 func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) any {
 	err := c.api.TrackServicesWithIdentity(args[0].Int(),
-		&trackServicesCallback{
-			utils.WrapCB(args[0], "Callback"),
-		},
-		&trackCompressedServicesCallback{
-			utils.WrapCB(args[0], "Callback"),
-		})
+		&trackServicesCallback{utils.WrapCB(args[0], "Callback")},
+		&trackCompressedServicesCallback{utils.WrapCB(args[0], "Callback")})
 	if err != nil {
 		exception.ThrowTrace(err)
 		return nil

@@ -64,17 +64,9 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 		return nil, err
 	}
 
-	// Register handler to manage messages for the MessageReceivedCallback
-	wm.RegisterCallback(MessageReceivedCallbackTag,
+	// Register handler to manage messages for the EventUpdate
+	wm.RegisterCallback(EventUpdateCallbackTag,
 		messageReceivedCallbackHandler(channelCbs.EventUpdate))
-
-	// Register handler to manage messages for the DeletedMessageCallback
-	wm.RegisterCallback(DeletedMessageCallbackTag,
-		deletedMessageCallbackHandler(channelCbs.EventUpdate))
-
-	// Register handler to manage messages for the MutedUserCallback
-	wm.RegisterCallback(MutedUserCallbackTag,
-		mutedUserCallbackHandler(channelCbs.EventUpdate))
 
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)
@@ -132,23 +124,15 @@ type EventUpdateCallbackMessage struct {
 // MessageReceivedCallback.
 func messageReceivedCallbackHandler(cb eventUpdateCallback) func(data []byte) {
 	return func(data []byte) {
-		cb(bindings.MessageReceived, data)
-	}
-}
+		var msg EventUpdateCallbackMessage
+		err := json.Unmarshal(data, &msg)
+		if err != nil {
+			jww.ERROR.Printf(
+				"Failed to JSON unmarshal %T from worker: %+v", msg, err)
+			return
+		}
 
-// deletedMessageCallbackHandler returns a handler to manage messages for the
-// DeletedMessageCallback.
-func deletedMessageCallbackHandler(cb eventUpdateCallback) func(data []byte) {
-	return func(data []byte) {
-		cb(bindings.MessageDeleted, data)
-	}
-}
-
-// mutedUserCallbackHandler returns a handler to manage messages for the
-// MutedUserCallback.
-func mutedUserCallbackHandler(cb eventUpdateCallback) func(data []byte) {
-	return func(data []byte) {
-		cb(bindings.UserMuted, data)
+		cb(msg.EventType, msg.JsonData)
 	}
 }
 
