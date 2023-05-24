@@ -96,12 +96,6 @@ func (m *manager) EventUpdate(eventType int64, jsonData []byte) {
 	m.wtm.SendMessage(wChannels.EventUpdateCallbackTag, data)
 }
 
-// NicknameUpdate implements [bindings.ChannelUICallbacks.NicknameUpdate]
-func (m *manager) NicknameUpdate(channelIdBytes []byte, nickname string,
-	exists bool) {
-	jww.FATAL.Panicf("unimplemented")
-}
-
 // joinChannelCB is the callback for wasmModel.JoinChannel. Always returns nil;
 // meaning, no response is supplied (or expected).
 func (m *manager) joinChannelCB(data []byte) ([]byte, error) {
