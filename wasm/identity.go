@@ -32,7 +32,7 @@ import (
 //   - args[2] - ID of [Cmix] object in tracker (int).
 //
 // Returns:
-//   - Throws a TypeError if the identity cannot be stored in storage.
+//   - Throws an error if the identity cannot be stored in storage.
 func StoreReceptionIdentity(_ js.Value, args []js.Value) any {
 	identity := utils.CopyBytesToGo(args[1])
 	err := bindings.StoreReceptionIdentity(
@@ -55,7 +55,7 @@ func StoreReceptionIdentity(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - JSON of the stored [xxdk.ReceptionIdentity] object (Uint8Array).
-//   - Throws a TypeError if the identity cannot be retrieved from storage.
+//   - Throws an error if the identity cannot be retrieved from storage.
 func LoadReceptionIdentity(_ js.Value, args []js.Value) any {
 	ri, err := bindings.LoadReceptionIdentity(args[0].String(), args[1].Int())
 	if err != nil {
@@ -127,7 +127,7 @@ func (c *Cmix) GetReceptionRegistrationValidationSignature(
 //
 // Returns:
 //   - Marshalled bytes of [contact.Contact] (string).
-//   - Throws a TypeError if unmarshalling the identity fails.
+//   - Throws an error if unmarshalling the identity fails.
 func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) any {
 	// Note that this function does not appear in normal bindings
 	identityJSON := utils.CopyBytesToGo(args[0])
@@ -147,7 +147,7 @@ func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Marshalled bytes of [id.ID] (Uint8Array).
-//   - Throws a TypeError if loading the ID from the contact file fails.
+//   - Throws an error if loading the ID from the contact file fails.
 func GetIDFromContact(_ js.Value, args []js.Value) any {
 	cID, err := bindings.GetIDFromContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
@@ -166,7 +166,7 @@ func GetIDFromContact(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Bytes of the [cyclic.Int] object (Uint8Array).
-//   - Throws a TypeError if loading the public key from the contact file fails.
+//   - Throws an error if loading the public key from the contact file fails.
 func GetPubkeyFromContact(_ js.Value, args []js.Value) any {
 	key, err := bindings.GetPubkeyFromContact([]byte(args[0].String()))
 	if err != nil {
@@ -190,7 +190,7 @@ func GetPubkeyFromContact(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Marshalled bytes of the modified [contact.Contact] (string).
-//   - Throws a TypeError if loading or modifying the contact fails.
+//   - Throws an error if loading or modifying the contact fails.
 func SetFactsOnContact(_ js.Value, args []js.Value) any {
 	marshaledContact := utils.CopyBytesToGo(args[0])
 	factListJSON := utils.CopyBytesToGo(args[1])
@@ -210,7 +210,7 @@ func SetFactsOnContact(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - JSON of [fact.FactList] (Uint8Array).
-//   - Throws a TypeError if loading the contact fails.
+//   - Throws an error if loading the contact fails.
 func GetFactsFromContact(_ js.Value, args []js.Value) any {
 	fl, err := bindings.GetFactsFromContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {

@@ -51,7 +51,7 @@ func DecrementNumClientsRunning() {
 //     passed into [wasm.NewCmix].
 //
 // Returns:
-//   - Throws a TypeError if the password is incorrect or if not all cMix
+//   - Throws an error if the password is incorrect or if not all cMix
 //     followers have been stopped.
 func Purge(_ js.Value, args []js.Value) any {
 	storageDirectory := args[0].String()

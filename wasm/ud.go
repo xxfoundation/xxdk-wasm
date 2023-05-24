@@ -100,7 +100,7 @@ func (uns *udNetworkStatus) UdNetworkStatus() int {
 // Returns:
 //   - Javascript representation of the [UserDiscovery] object that is
 //     registered to the specified UD service.
-//   - Throws a TypeError if creating or loading fails.
+//   - Throws an error if creating or loading fails.
 func NewOrLoadUd(_ js.Value, args []js.Value) any {
 	e2eID := args[0].Int()
 	follower := &udNetworkStatus{utils.WrapCB(args[1], "UdNetworkStatus")}
@@ -146,7 +146,7 @@ func NewOrLoadUd(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Javascript representation of the [UserDiscovery] object that is loaded
 //     from backup.
-//   - Throws a TypeError if getting UD from backup fails.
+//   - Throws an error if getting UD from backup fails.
 func NewUdManagerFromBackup(_ js.Value, args []js.Value) any {
 	e2eID := args[0].Int()
 	follower := &udNetworkStatus{utils.WrapCB(args[1], "UdNetworkStatus")}

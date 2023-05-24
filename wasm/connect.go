@@ -108,7 +108,7 @@ func (c *Connection) SendE2E(_ js.Value, args []js.Value) any {
 // Close deletes this [Connection]'s [partner.Manager] and releases resources.
 //
 // Returns:
-//   - Throws a TypeError if closing fails.
+//   - Throws an error if closing fails.
 func (c *Connection) Close(js.Value, []js.Value) any {
 	err := c.api.Close()
 	if err != nil {
@@ -154,7 +154,7 @@ func (l *listener) Name() string { return l.name().String() }
 //     [bindings.Listener] interface.
 //
 // Returns:
-//   - Throws a TypeError is registering the listener fails.
+//   - Throws an error is registering the listener fails.
 func (c *Connection) RegisterListener(_ js.Value, args []js.Value) any {
 	err := c.api.RegisterListener(args[0].Int(),
 		&listener{utils.WrapCB(args[1], "Hear"), utils.WrapCB(args[1], "Name")})

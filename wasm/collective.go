@@ -12,6 +12,8 @@ package wasm
 import (
 	"syscall/js"
 
+	"gitlab.com/elixxir/wasm-utils/exception"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/utils"
 )
@@ -72,7 +74,7 @@ func (r *RemoteKV) Get(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		value, err := r.api.Get(key, version)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(value))
 		}
@@ -97,7 +99,7 @@ func (r *RemoteKV) Delete(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := r.api.Delete(key, version)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve()
 		}
@@ -128,7 +130,7 @@ func (r *RemoteKV) Set(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := r.api.Set(key, value)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve()
 		}
@@ -178,7 +180,7 @@ func (r *RemoteKV) Prefix(_ js.Value, args []js.Value) any {
 		newAPI, err := r.api.Prefix(prefix)
 
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(newRemoteKvJS(newAPI))
 		}
@@ -193,7 +195,7 @@ func (r *RemoteKV) Root(_ js.Value, args []js.Value) any {
 		newAPI, err := r.api.Root()
 
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(newRemoteKvJS(newAPI))
 		}
@@ -260,7 +262,7 @@ func (r *RemoteKV) StoreMapElement(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := r.api.StoreMapElement(mapName, elementKey, val, version)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve()
 		}
@@ -291,7 +293,7 @@ func (r *RemoteKV) StoreMap(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := r.api.StoreMap(mapName, val, version)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve()
 		}
@@ -321,7 +323,7 @@ func (r *RemoteKV) DeleteMapElement(_ js.Value, args []js.Value) any {
 		deleted, err := r.api.DeleteMapElement(mapName, elementKey,
 			version)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(deleted))
 		}
@@ -350,7 +352,7 @@ func (r *RemoteKV) GetMap(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		mapJSON, err := r.api.GetMap(mapName, version)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(mapJSON))
 		}
@@ -381,7 +383,7 @@ func (r *RemoteKV) GetMapElement(_ js.Value, args []js.Value) any {
 		deleted, err := r.api.GetMapElement(mapName, elementKey,
 			version)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(deleted))
 		}
@@ -411,7 +413,7 @@ func (r *RemoteKV) ListenOnRemoteKey(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		deleted, err := r.api.ListenOnRemoteKey(key, version, cb)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(deleted))
 		}
@@ -441,7 +443,7 @@ func (r *RemoteKV) ListenOnRemoteMap(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		deleted, err := r.api.ListenOnRemoteMap(mapName, version, cb)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(deleted))
 		}
@@ -487,7 +489,7 @@ func newRemoteStore(arg js.Value) *RemoteStore {
 func (rsCB *RemoteStore) Read(path string) ([]byte, error) {
 
 	fn := func() js.Value { return rsCB.read(path) }
-	v, err := utils.RunAndCatch(fn)
+	v, err := exception.RunAndCatch(fn)
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +506,7 @@ func (rsCB *RemoteStore) Read(path string) ([]byte, error) {
 //   - Catches any thrown errors (of type Error) and returns it as an error.
 func (rsCB *RemoteStore) Write(path string, data []byte) error {
 	fn := func() js.Value { return rsCB.write(path, utils.CopyBytesToJS(data)) }
-	_, err := utils.RunAndCatch(fn)
+	_, err := exception.RunAndCatch(fn)
 	return err
 }
 
@@ -518,7 +520,7 @@ func (rsCB *RemoteStore) Write(path string, data []byte) error {
 //   - Catches any thrown errors (of type Error) and returns it as an error.
 func (rsCB *RemoteStore) GetLastModified(path string) ([]byte, error) {
 	fn := func() js.Value { return rsCB.getLastModified(path) }
-	v, err := utils.RunAndCatch(fn)
+	v, err := exception.RunAndCatch(fn)
 	if err != nil {
 		return nil, err
 	}
@@ -532,7 +534,7 @@ func (rsCB *RemoteStore) GetLastModified(path string) ([]byte, error) {
 //   - Catches any thrown errors (of type Error) and returns it as an error.
 func (rsCB *RemoteStore) GetLastWrite() ([]byte, error) {
 	fn := func() js.Value { return rsCB.getLastWrite() }
-	v, err := utils.RunAndCatch(fn)
+	v, err := exception.RunAndCatch(fn)
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +551,7 @@ func (rsCB *RemoteStore) GetLastWrite() ([]byte, error) {
 //   - Catches any thrown errors (of type Error) and returns it as an error.
 func (rsCB *RemoteStore) ReadDir(path string) ([]byte, error) {
 	fn := func() js.Value { return rsCB.readDir(path) }
-	v, err := utils.RunAndCatch(fn)
+	v, err := exception.RunAndCatch(fn)
 	if err != nil {
 		return nil, err
 	}

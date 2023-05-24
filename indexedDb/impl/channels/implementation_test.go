@@ -24,6 +24,7 @@ import (
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
+	"github.com/stretchr/testify/require"
 
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
@@ -44,12 +45,7 @@ func TestMain(m *testing.M) {
 
 type dummyCbs struct{}
 
-func (c *dummyCbs) MessageReceived(uuid int64, channelID []byte, update bool) {}
-func (c *dummyCbs) UserMuted(channelID []byte, pubKey []byte, unmute bool)    {}
-func (c *dummyCbs) MessageDeleted(messageId []byte)                           {}
-func (c *dummyCbs) NicknameUpdate(channelIdBytes []byte, nickname string,
-	exists bool) {
-}
+func (c *dummyCbs) EventUpdate(eventType int64, dataJson []byte) {}
 
 // Happy path test for receiving, updating, getting, and deleting a File.
 func TestWasmModel_ReceiveFile(t *testing.T) {
@@ -233,8 +229,12 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			cid, err := id.NewRandomID(csprng.NewSystemRNG(),
+				id.DummyUser.GetType())
+			require.NoError(t, err)
+
 			// Store a test message
-			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
+			testMsg := buildMessage(cid.Bytes(), testMsgId.Bytes(), nil,
 				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
 			uuid, err2 := eventModel.upsertMessage(testMsg)

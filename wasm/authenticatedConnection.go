@@ -87,7 +87,7 @@ func (ac *AuthenticatedConnection) SendE2E(_ js.Value, args []js.Value) any {
 // resources.
 //
 // Returns:
-//   - Throws a TypeError if closing fails.
+//   - Throws an error if closing fails.
 func (ac *AuthenticatedConnection) Close(js.Value, []js.Value) any {
 	return ac.api.Close()
 }
@@ -109,7 +109,7 @@ func (ac *AuthenticatedConnection) GetPartner(js.Value, []js.Value) any {
 //     [bindings.Listener] interface.
 //
 // Returns:
-//   - Throws a TypeError is registering the listener fails.
+//   - Throws an error is registering the listener fails.
 func (ac *AuthenticatedConnection) RegisterListener(
 	_ js.Value, args []js.Value) any {
 	err := ac.api.RegisterListener(args[0].Int(),

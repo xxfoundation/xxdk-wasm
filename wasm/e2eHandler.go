@@ -10,9 +10,10 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"syscall/js"
 )
 
 // GetReceptionID returns the marshalled default IDs.
@@ -200,13 +201,19 @@ type processor struct {
 //
 // Parameters:
 //   - message - Returns the message contents (Uint8Array).
+//   - tags - a byte array representing the tags on the message (Uint8Array)
+//   - metadata - other arbitrary metadata (Uint8Array)
 //   - receptionId - Returns the marshalled bytes of the sender's [id.ID]
 //     (Uint8Array).
 //   - ephemeralId - Returns the ephemeral ID of the sender (int).
 //   - roundId - Returns the ID of the round sent on (int).
-func (p *processor) Process(
-	message, receptionId []byte, ephemeralId, roundId int64) {
-	p.process(utils.CopyBytesToJS(message), utils.CopyBytesToJS(receptionId),
+func (p *processor) Process(message, tags, metadata, receptionId []byte,
+	ephemeralId int64, roundId int64) {
+
+	p.process(utils.CopyBytesToJS(message),
+		utils.CopyBytesToJS(tags),
+		utils.CopyBytesToJS(metadata),
+		utils.CopyBytesToJS(receptionId),
 		ephemeralId, roundId)
 }
 
@@ -233,7 +240,9 @@ func (p *processor) String() string {
 //   - Throws TypeError if registering the service fails.
 func (e *E2e) AddService(_ js.Value, args []js.Value) any {
 	p := &processor{
-		utils.WrapCB(args[1], "Process"), utils.WrapCB(args[1], "String")}
+		utils.WrapCB(args[1], "Process"),
+		utils.WrapCB(args[1], "String"),
+	}
 
 	err := e.api.AddService(args[0].String(), p)
 	if err != nil {
