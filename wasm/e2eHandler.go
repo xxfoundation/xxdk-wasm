@@ -201,15 +201,14 @@ type processor struct {
 //
 // Parameters:
 //   - message - Returns the message contents (Uint8Array).
-//   - tags - a byte array representing the tags on the message (Uint8Array)
-//   - metadata - other arbitrary metadata (Uint8Array)
+//   - tags - The tags on the message (Uint8Array).
+//   - metadata - Other arbitrary metadata (Uint8Array).
 //   - receptionId - Returns the marshalled bytes of the sender's [id.ID]
 //     (Uint8Array).
 //   - ephemeralId - Returns the ephemeral ID of the sender (int).
 //   - roundId - Returns the ID of the round sent on (int).
 func (p *processor) Process(message, tags, metadata, receptionId []byte,
-	ephemeralId int64, roundId int64) {
-
+	ephemeralId, roundId int64) {
 	p.process(utils.CopyBytesToJS(message),
 		utils.CopyBytesToJS(tags),
 		utils.CopyBytesToJS(metadata),

@@ -8,8 +8,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client/v4 v4.6.4-0.20230523181720-70dea644d559
-	gitlab.com/elixxir/crypto v0.0.7-0.20230522190154-5cbcf67f4b39
+	github.com/stretchr/testify v1.8.2
+	gitlab.com/elixxir/client/v4 v4.6.4-0.20230524163547-0691d7515af0
+	gitlab.com/elixxir/crypto v0.0.7-0.20230522162218-45433d877235
 	gitlab.com/elixxir/primitives v0.0.3-0.20230214180039-9a25e2d3969c
 	gitlab.com/elixxir/wasm-utils v0.0.0-20230522231408-a43b2c1481b2
 	gitlab.com/xx_network/crypto v0.0.5-0.20230214003943-8a09396e95dd
@@ -50,7 +51,6 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.8.2 // indirect
 	github.com/ttacon/builder v0.0.0-20170518171403-c099f663e1c2 // indirect
 	github.com/ttacon/libphonenumber v1.2.1 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
