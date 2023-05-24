@@ -24,6 +24,7 @@ import (
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
+	"github.com/stretchr/testify/require"
 
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
@@ -228,8 +229,12 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			cid, err := id.NewRandomID(csprng.NewSystemRNG(),
+				id.DummyUser.GetType())
+			require.NoError(t, err)
+
 			// Store a test message
-			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
+			testMsg := buildMessage(cid.Bytes(), testMsgId.Bytes(), nil,
 				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
 			uuid, err2 := eventModel.upsertMessage(testMsg)
