@@ -72,7 +72,7 @@ func TransmitSingleUse(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Javascript representation of the [Stopper] object, an interface
 //     containing a function used to stop the listener.
-//   - Throws a TypeError if listening fails.
+//   - Throws an error if listening fails.
 func Listen(_ js.Value, args []js.Value) any {
 	cb := &singleUseCallback{utils.WrapCB(args[2], "Callback")}
 	api, err := bindings.Listen(args[0].Int(), args[1].String(), cb)

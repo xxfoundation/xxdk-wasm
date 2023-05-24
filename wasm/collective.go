@@ -10,6 +10,7 @@
 package wasm
 
 import (
+	"gitlab.com/elixxir/wasm-utils/exception"
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"

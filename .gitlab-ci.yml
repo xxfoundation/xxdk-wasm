@@ -41,7 +41,8 @@ wasm-test:
     - go mod vendor
     - unset SSH_PRIVATE_KEY
     - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)
-    - echo "WASM TESTS DISABLED FOR XX-4522, but will run them just so you can see output"
+    - rm vendor/gitlab.com/elixxir/wasm-utils/exception/throw_js.s
+    - mv vendor/gitlab.com/elixxir/wasm-utils/exception/throws.dev vendor/gitlab.com/elixxir/wasm-utils/exception/throws.go
     - GOOS=js GOARCH=wasm go test ./... -v
 
 build:

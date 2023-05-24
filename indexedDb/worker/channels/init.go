@@ -121,12 +121,11 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 	return &wasmModel{wm}, nil
 }
 
-// MessageReceivedCallbackMessage is JSON marshalled and received from the
-// worker for the [MessageReceivedCallback] callback.
-type MessageReceivedCallbackMessage struct {
-	UUID      int64  `json:"uuid"`
-	ChannelID []byte `json:"channelID"`
-	Update    bool   `json:"update"`
+// EventUpdateCallbackMessage is JSON marshalled and received from the worker
+// for the [EventUpdate] callback.
+type EventUpdateCallbackMessage struct {
+	EventType int64  `json:"eventType"`
+	JsonData  []byte `json:"jsonData"`
 }
 
 // messageReceivedCallbackHandler returns a handler to manage messages for the

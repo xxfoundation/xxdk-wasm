@@ -16,9 +16,6 @@ import (
 	"sync"
 	"syscall/js"
 
-	"gitlab.com/elixxir/client/v4/channels"
-	channelsDb "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
-
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
@@ -54,27 +51,30 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]any {
 		"GetShareURL": js.FuncOf(cm.GetShareURL),
 
 		// Channel Sending Methods and Reports
-		"SendGeneric":           js.FuncOf(cm.SendGeneric),
-		"SendAdminGeneric":      js.FuncOf(cm.SendAdminGeneric),
-		"SendMessage":           js.FuncOf(cm.SendMessage),
-		"SendReply":             js.FuncOf(cm.SendReply),
-		"SendReaction":          js.FuncOf(cm.SendReaction),
-		"DeleteMessage":         js.FuncOf(cm.DeleteMessage),
-		"PinMessage":            js.FuncOf(cm.PinMessage),
-		"MuteUser":              js.FuncOf(cm.MuteUser),
-		"GetIdentity":           js.FuncOf(cm.GetIdentity),
-		"ExportPrivateIdentity": js.FuncOf(cm.ExportPrivateIdentity),
-		"GetStorageTag":         js.FuncOf(cm.GetStorageTag),
-		"SetNickname":           js.FuncOf(cm.SetNickname),
-		"DeleteNickname":        js.FuncOf(cm.DeleteNickname),
-		"GetNickname":           js.FuncOf(cm.GetNickname),
-		"Muted":                 js.FuncOf(cm.Muted),
-		"GetMutedUsers":         js.FuncOf(cm.GetMutedUsers),
-		"IsChannelAdmin":        js.FuncOf(cm.IsChannelAdmin),
-		"ExportChannelAdminKey": js.FuncOf(cm.ExportChannelAdminKey),
-		"VerifyChannelAdminKey": js.FuncOf(cm.VerifyChannelAdminKey),
-		"ImportChannelAdminKey": js.FuncOf(cm.ImportChannelAdminKey),
-		"DeleteChannelAdminKey": js.FuncOf(cm.DeleteChannelAdminKey),
+		"SendGeneric":                 js.FuncOf(cm.SendGeneric),
+		"SendAdminGeneric":            js.FuncOf(cm.SendAdminGeneric),
+		"SendMessage":                 js.FuncOf(cm.SendMessage),
+		"SendReply":                   js.FuncOf(cm.SendReply),
+		"SendReaction":                js.FuncOf(cm.SendReaction),
+		"SendSilent":                  js.FuncOf(cm.SendSilent),
+		"DeleteMessage":               js.FuncOf(cm.DeleteMessage),
+		"PinMessage":                  js.FuncOf(cm.PinMessage),
+		"MuteUser":                    js.FuncOf(cm.MuteUser),
+		"GetIdentity":                 js.FuncOf(cm.GetIdentity),
+		"ExportPrivateIdentity":       js.FuncOf(cm.ExportPrivateIdentity),
+		"GetStorageTag":               js.FuncOf(cm.GetStorageTag),
+		"SetNickname":                 js.FuncOf(cm.SetNickname),
+		"DeleteNickname":              js.FuncOf(cm.DeleteNickname),
+		"GetNickname":                 js.FuncOf(cm.GetNickname),
+		"Muted":                       js.FuncOf(cm.Muted),
+		"GetMutedUsers":               js.FuncOf(cm.GetMutedUsers),
+		"GetNotificationLevel":        js.FuncOf(cm.GetNotificationLevel),
+		"SetMobileNotificationsLevel": js.FuncOf(cm.SetMobileNotificationsLevel),
+		"IsChannelAdmin":              js.FuncOf(cm.IsChannelAdmin),
+		"ExportChannelAdminKey":       js.FuncOf(cm.ExportChannelAdminKey),
+		"VerifyChannelAdminKey":       js.FuncOf(cm.VerifyChannelAdminKey),
+		"ImportChannelAdminKey":       js.FuncOf(cm.ImportChannelAdminKey),
+		"DeleteChannelAdminKey":       js.FuncOf(cm.DeleteChannelAdminKey),
 
 		// Channel Receiving Logic and Callback Registration
 		"RegisterReceiveHandler": js.FuncOf(cm.RegisterReceiveHandler),
@@ -109,7 +109,7 @@ func (cm *ChannelsManager) GetID(js.Value, []js.Value) any {
 //
 // Returns:
 //   - Marshalled bytes of [channel.PrivateIdentity] (Uint8Array).
-//   - Throws a TypeError if generating the identity fails.
+//   - Throws an error if generating the identity fails.
 func GenerateChannelIdentity(_ js.Value, args []js.Value) any {
 	pi, err := bindings.GenerateChannelIdentity(args[0].Int())
 	if err != nil {
@@ -132,7 +132,7 @@ var identityMap sync.Map
 //
 // Returns:
 //   - JSON of [channel.Identity] (Uint8Array).
-//   - Throws a TypeError if constructing the identity fails.
+//   - Throws an error if constructing the identity fails.
 func ConstructIdentity(_ js.Value, args []js.Value) any {
 	// Note: This function is similar to constructIdentity below except that it
 	//  uses a sync.Map backend to increase efficiency for identities that were
@@ -166,7 +166,7 @@ func ConstructIdentity(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - JSON of [channel.Identity] (Uint8Array).
-//   - Throws a TypeError if constructing the identity fails.
+//   - Throws an error if constructing the identity fails.
 func constructIdentity(_ js.Value, args []js.Value) any {
 	identity, err := bindings.ConstructIdentity(
 		utils.CopyBytesToGo(args[0]), args[1].Int())
@@ -188,7 +188,7 @@ func constructIdentity(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - JSON of [channel.PrivateIdentity] (Uint8Array).
-//   - Throws a TypeError if importing the identity fails.
+//   - Throws an error if importing the identity fails.
 func ImportPrivateIdentity(_ js.Value, args []js.Value) any {
 	password := args[0].String()
 	data := utils.CopyBytesToGo(args[1])
@@ -210,7 +210,7 @@ func ImportPrivateIdentity(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - JSON of the constructed [channel.Identity] (Uint8Array).
-//   - Throws a TypeError if unmarshalling the bytes or marshalling the identity
+//   - Throws an error if unmarshalling the bytes or marshalling the identity
 //     fails.
 func GetPublicChannelIdentity(_ js.Value, args []js.Value) any {
 	marshaledPublic := utils.CopyBytesToGo(args[0])
@@ -233,7 +233,7 @@ func GetPublicChannelIdentity(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - JSON of the public identity ([channel.Identity]) (Uint8Array).
-//   - Throws a TypeError if unmarshalling the bytes or marshalling the identity
+//   - Throws an error if unmarshalling the bytes or marshalling the identity
 //     fails.
 func GetPublicChannelIdentityFromPrivate(_ js.Value, args []js.Value) any {
 	marshaledPrivate := utils.CopyBytesToGo(args[0])
@@ -274,7 +274,7 @@ func GetPublicChannelIdentityFromPrivate(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Javascript representation of the [ChannelsManager] object.
-//   - Throws a TypeError if creating the manager fails.
+//   - Throws an error if creating the manager fails.
 func NewChannelsManager(_ js.Value, args []js.Value) any {
 	cmixId := args[0].Int()
 	notificationsId := args[1].Int()
@@ -317,7 +317,7 @@ func NewChannelsManager(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Javascript representation of the [ChannelsManager] object.
-//   - Throws a TypeError if loading the manager fails.
+//   - Throws an error if loading the manager fails.
 func LoadChannelsManager(_ js.Value, args []js.Value) any {
 	cMixID := args[0].Int()
 	notificationsID := args[1].Int()
@@ -366,7 +366,7 @@ func LoadChannelsManager(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [ChannelsManager] object.
 //   - Rejected with an error if loading indexedDb or the manager fails.
-//   - Throws a TypeError if the cipher ID does not correspond to a cipher.
+//   - Throws an error if the cipher ID does not correspond to a cipher.
 func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
 	notificationsID := args[1].Int()
@@ -478,7 +478,7 @@ func newChannelsManagerWithIndexedDb(cmixID, notificationsID int,
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [ChannelsManager] object.
 //   - Rejected with an error if loading indexedDb or the manager fails.
-//   - Throws a TypeError if the cipher ID does not correspond to a cipher.
+//   - Throws an error if the cipher ID does not correspond to a cipher.
 func LoadChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
 	notificationsID := args[1].Int()
@@ -644,7 +644,7 @@ func GetChannelJSON(_ js.Value, args []js.Value) any {
 // Returns:
 //   - JSON of [bindings.ChannelInfo], which describes all relevant channel info
 //     (Uint8Array).
-//   - Throws a TypeError if getting the channel info fails.
+//   - Throws an error if getting the channel info fails.
 func GetChannelInfo(_ js.Value, args []js.Value) any {
 	ci, err := bindings.GetChannelInfo(args[0].String())
 	if err != nil {
@@ -769,7 +769,7 @@ func (cm *ChannelsManager) LeaveChannel(_ js.Value, args []js.Value) any {
 //   - args[0] - Marshalled bytes of the channel's [id.ID] (Uint8Array).
 //
 // Returns:
-//   - Throws a TypeError if the replay fails.
+//   - Throws an error if the replay fails.
 func (cm *ChannelsManager) ReplayChannel(_ js.Value, args []js.Value) any {
 	marshalledChanId := utils.CopyBytesToGo(args[0])
 
@@ -786,7 +786,7 @@ func (cm *ChannelsManager) ReplayChannel(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - JSON of an array of marshalled [id.ID] (Uint8Array).
-//   - Throws a TypeError if getting the channels fails.
+//   - Throws an error if getting the channels fails.
 //
 // JSON Example:
 //
@@ -811,7 +811,7 @@ func (cm *ChannelsManager) GetChannels(js.Value, []js.Value) any {
 //   - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //
 // Returns:
-//   - Throws a TypeError if saving the DM token fails.
+//   - Throws an error if saving the DM token fails.
 func (cm *ChannelsManager) EnableDirectMessages(_ js.Value, args []js.Value) any {
 	marshalledChanId := utils.CopyBytesToGo(args[0])
 	err := cm.api.EnableDirectMessages(marshalledChanId)
@@ -829,7 +829,7 @@ func (cm *ChannelsManager) EnableDirectMessages(_ js.Value, args []js.Value) any
 //   - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
 //
 // Returns:
-//   - Throws a TypeError if saving the DM token fails
+//   - Throws an error if saving the DM token fails
 func (cm *ChannelsManager) DisableDirectMessages(_ js.Value, args []js.Value) any {
 	marshalledChanId := utils.CopyBytesToGo(args[0])
 	err := cm.api.DisableDirectMessages(marshalledChanId)
@@ -847,7 +847,7 @@ func (cm *ChannelsManager) DisableDirectMessages(_ js.Value, args []js.Value) an
 //
 // Returns:
 //   - enabled (bool) - status of dms for passed in channel ID, true if enabled
-//   - Throws a TypeError if unmarshalling the channel ID
+//   - Throws an error if unmarshalling the channel ID
 func (cm *ChannelsManager) AreDMsEnabled(_ js.Value, args []js.Value) any {
 	marshalledChanId := utils.CopyBytesToGo(args[0])
 	enabled, err := cm.api.AreDMsEnabled(marshalledChanId)
@@ -895,7 +895,7 @@ type ShareURL struct {
 //
 // Returns:
 //   - JSON of [bindings.ShareURL] (Uint8Array).
-//   - Throws a TypeError if generating the URL fails.
+//   - Throws an error if generating the URL fails.
 func (cm *ChannelsManager) GetShareURL(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
 	host := args[1].String()
@@ -920,7 +920,7 @@ func (cm *ChannelsManager) GetShareURL(_ js.Value, args []js.Value) any {
 // Returns:
 //   - An int that corresponds to the [broadcast.PrivacyLevel] as outlined
 //     below (int).
-//   - Throws a TypeError if parsing the URL fails.
+//   - Throws an error if parsing the URL fails.
 //
 // Possible returns:
 //
@@ -1162,6 +1162,45 @@ func (cm *ChannelsManager) SendReaction(_ js.Value, args []js.Value) any {
 		}
 		sendReport, err := cm.api.SendReaction(marshalledChanId, reaction,
 			messageToReactTo, leaseTimeMS, cmixParamsJSON)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// SendSilent is used to send to a channel a message with no notifications.
+// Its primary purpose is to communicate new nicknames without calling
+// [SendMessage].
+//
+// It takes no payload intentionally as the message should be very lightweight.
+//
+// Parameters:
+//   - args[0] - Marshalled bytes of the channel [id.ID] (Uint8Array).
+//   - args[1] - The lease of the message. This will be how long the
+//     message is available from the network, in milliseconds (int). As per the
+//     [channels.Manager] documentation, this has different meanings depending
+//     on the use case. These use cases may be generic enough that they will not
+//     be enumerated here. Use [ValidForever] to last the max message life.
+//   - args[2] - JSON of [xxdk.CMIXParams]. If left empty
+//     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
+//
+// Returns a promise:
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
+func (cm *ChannelsManager) SendSilent(_ js.Value, args []js.Value) any {
+	var (
+		marshalledChanId = utils.CopyBytesToGo(args[0])
+		leaseTimeMS      = int64(args[1].Int())
+		cmixParamsJSON   = utils.CopyBytesToGo(args[2])
+	)
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		sendReport, err := cm.api.SendSilent(
+			marshalledChanId, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
@@ -1485,7 +1524,7 @@ func IsNicknameValid(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Returns true if the user is muted in the channel and false otherwise
 //     (boolean).
-//   - Throws a TypeError if the channel ID cannot be unmarshalled.
+//   - Throws an error if the channel ID cannot be unmarshalled.
 func (cm *ChannelsManager) Muted(_ js.Value, args []js.Value) any {
 	channelIDBytes := utils.CopyBytesToGo(args[0])
 
@@ -1508,7 +1547,7 @@ func (cm *ChannelsManager) Muted(_ js.Value, args []js.Value) any {
 // Returns:
 //   - JSON of an array of ed25519.PublicKey (Uint8Array). Look below for an
 //     example.
-//   - Throws a TypeError if the channel ID cannot be unmarshalled.
+//   - Throws an error if the channel ID cannot be unmarshalled.
 //
 // Example return:
 //
@@ -1618,7 +1657,7 @@ func GetNotificationReportsForMe(_ js.Value, args []js.Value) any {
 // Returns:
 //   - True if the user is an admin in the channel and false otherwise
 //     (boolean).
-//   - Throws a TypeError if the channel ID cannot be unmarshalled.
+//   - Throws an error if the channel ID cannot be unmarshalled.
 func (cm *ChannelsManager) IsChannelAdmin(_ js.Value, args []js.Value) any {
 	isAdmin, err := cm.api.IsChannelAdmin(utils.CopyBytesToGo(args[0]))
 	if err != nil {
@@ -1654,7 +1693,7 @@ func (cm *ChannelsManager) IsChannelAdmin(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Portable string of the channel private key encrypted with the password
 //     (Uint8Array).
-//   - Throws a TypeError if the user is not an admin for the channel.
+//   - Throws an error if the user is not an admin for the channel.
 func (cm *ChannelsManager) ExportChannelAdminKey(_ js.Value, args []js.Value) any {
 	pk, err := cm.api.ExportChannelAdminKey(
 		utils.CopyBytesToGo(args[0]), args[1].String())
@@ -1677,14 +1716,14 @@ func (cm *ChannelsManager) ExportChannelAdminKey(_ js.Value, args []js.Value) an
 // Returns:
 //   - Returns false if private key does not belong to the given channel ID
 //     (boolean).
-//   - Throws a TypeError if the password is invalid.
+//   - Throws an error if the password is invalid.
 //
 // Returns:
 //   - bool - True if the private key belongs to the channel and false
 //     otherwise.
-//   - Throws a TypeError with the message [channels.WrongPasswordErr] for an
+//   - Throws an error with the message [channels.WrongPasswordErr] for an
 //     invalid password.
-//   - Throws a TypeError with the message [channels.ChannelDoesNotExistsErr] i
+//   - Throws an error with the message [channels.ChannelDoesNotExistsErr] i
 //     the channel has not already been joined.
 func (cm *ChannelsManager) VerifyChannelAdminKey(_ js.Value, args []js.Value) any {
 	channelID := utils.CopyBytesToGo(args[0])
@@ -1711,13 +1750,13 @@ func (cm *ChannelsManager) VerifyChannelAdminKey(_ js.Value, args []js.Value) an
 //   - args[2] - The encrypted channel private key packet (Uint8Array).
 //
 // Returns:
-//   - Throws a TypeError if the password is invalid or the private key does
+//   - Throws an error if the password is invalid or the private key does
 //     not match the channel ID.
-//   - Throws a TypeError with the message [channels.WrongPasswordErr] for an
+//   - Throws an error with the message [channels.WrongPasswordErr] for an
 //     invalid password.
-//   - Throws a TypeError with the message [channels.ChannelDoesNotExistsErr] if
+//   - Throws an error with the message [channels.ChannelDoesNotExistsErr] if
 //     the channel has not already been joined.
-//   - Throws a TypeError with the message [channels.WrongPrivateKeyErr] if the
+//   - Throws an error with the message [channels.WrongPrivateKeyErr] if the
 //     private key does not belong to the channel.
 func (cm *ChannelsManager) ImportChannelAdminKey(_ js.Value, args []js.Value) any {
 	channelID := utils.CopyBytesToGo(args[0])
@@ -1743,7 +1782,7 @@ func (cm *ChannelsManager) ImportChannelAdminKey(_ js.Value, args []js.Value) an
 //   - args[0] - The marshalled bytes of the channel's [id.ID] (Uint8Array)
 //
 // Returns:
-//   - Throws a TypeError if the deletion fails.
+//   - Throws an error if the deletion fails.
 func (cm *ChannelsManager) DeleteChannelAdminKey(_ js.Value, args []js.Value) any {
 	err := cm.api.DeleteChannelAdminKey(utils.CopyBytesToGo(args[0]))
 	if err != nil {
@@ -1805,7 +1844,7 @@ func (cmrCB *channelMessageReceptionCallback) Callback(
 //     users (boolean).
 //
 // Returns:
-//   - Throws a TypeError if registering the handler fails.
+//   - Throws an error if registering the handler fails.
 func (cm *ChannelsManager) RegisterReceiveHandler(_ js.Value, args []js.Value) any {
 	messageType := args[0].Int()
 	listenerCb := &channelMessageReceptionCallback{
@@ -2236,7 +2275,7 @@ func newChannelDbCipherJS(api *bindings.ChannelDbCipher) map[string]any {
 //
 // Returns:
 //   - JavaScript representation of the [ChannelDbCipher] object.
-//   - Throws a TypeError if creating the cipher fails.
+//   - Throws an error if creating the cipher fails.
 func NewChannelsDatabaseCipher(_ js.Value, args []js.Value) any {
 	cmixId := args[0].Int()
 	password := utils.CopyBytesToGo(args[1])
@@ -2271,7 +2310,7 @@ func (c *ChannelDbCipher) GetID(js.Value, []js.Value) any {
 //
 // Returns:
 //   - The ciphertext of the plaintext passed in (Uint8Array).
-//   - Throws a TypeError if it fails to encrypt the plaintext.
+//   - Throws an error if it fails to encrypt the plaintext.
 func (c *ChannelDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 	ciphertext, err := c.api.Encrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
@@ -2292,7 +2331,7 @@ func (c *ChannelDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - The plaintext of the ciphertext passed in (Uint8Array).
-//   - Throws a TypeError if it fails to encrypt the plaintext.
+//   - Throws an error if it fails to encrypt the plaintext.
 func (c *ChannelDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 	plaintext, err := c.api.Decrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
@@ -2307,7 +2346,7 @@ func (c *ChannelDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - JSON of the cipher (Uint8Array).
-//   - Throws a TypeError if marshalling fails.
+//   - Throws an error if marshalling fails.
 func (c *ChannelDbCipher) MarshalJSON(js.Value, []js.Value) any {
 	data, err := c.api.MarshalJSON()
 	if err != nil {
@@ -2328,7 +2367,7 @@ func (c *ChannelDbCipher) MarshalJSON(js.Value, []js.Value) any {
 //
 // Returns:
 //   - JSON of the cipher (Uint8Array).
-//   - Throws a TypeError if marshalling fails.
+//   - Throws an error if marshalling fails.
 func (c *ChannelDbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
 	err := c.api.UnmarshalJSON(utils.CopyBytesToGo(args[0]))
 	if err != nil {
@@ -2342,7 +2381,7 @@ func (c *ChannelDbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
 // channelUI callbacks implementation struct.
 func newChannelUI(cbImpl js.Value) *channelUI {
 	return &channelUI{
-		eventUpdate: utils.WrapCB(cbImpl, "eventUpdate"),
+		eventUpdate: utils.WrapCB(cbImpl, "EventUpdate"),
 	}
 }
 

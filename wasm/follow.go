@@ -55,7 +55,7 @@ import (
 //   - args[0] - Timeout when stopping threads in milliseconds (int).
 //
 // Returns:
-//   - Throws a TypeError if starting the network follower fails.
+//   - Throws an error if starting the network follower fails.
 func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) any {
 	err := c.api.StartNetworkFollower(args[0].Int())
 	if err != nil {
@@ -73,7 +73,7 @@ func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) any {
 // most likely be in an unrecoverable state and need to be trashed.
 //
 // Returns:
-//   - Throws a TypeError if the follower is in the wrong state to stop or if it
+//   - Throws an error if the follower is in the wrong state to stop or if it
 //     fails to stop.
 func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) any {
 	err := c.api.StopNetworkFollower()

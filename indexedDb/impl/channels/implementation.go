@@ -38,9 +38,9 @@ import (
 // NOTE: This model is NOT thread safe - it is the responsibility of the
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
-	db     *idb.Database
-	cipher cryptoChannel.Cipher
-	cbs    bindings.ChannelUICallbacks
+	db          *idb.Database
+	cipher      cryptoChannel.Cipher
+	eventUpdate func(eventType int64, jsonMarshallable any)
 }
 
 // JoinChannel is called whenever a channel is joined locally.

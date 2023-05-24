@@ -91,7 +91,7 @@ func (e *E2e) GetID(js.Value, []js.Value) any {
 //
 // Returns:
 //   - Javascript representation of the [E2e] object.
-//   - Throws a TypeError if logging in fails.
+//   - Throws an error if logging in fails.
 func Login(_ js.Value, args []js.Value) any {
 	callbacks := newAuthCallbacks(args[1])
 	identity := utils.CopyBytesToGo(args[2])
@@ -121,7 +121,7 @@ func Login(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Javascript representation of the [E2e] object.
-//   - Throws a TypeError if logging in fails.
+//   - Throws an error if logging in fails.
 func LoginEphemeral(_ js.Value, args []js.Value) any {
 	callbacks := newAuthCallbacks(args[1])
 	identity := utils.CopyBytesToGo(args[2])
@@ -168,7 +168,7 @@ func (e *E2e) GetUdCertFromNdf(js.Value, []js.Value) any {
 //
 // Returns
 //   - Marshalled bytes of [contact.Contact] (Uint8Array).
-//   - Throws a TypeError if the contact file cannot be loaded.
+//   - Throws an error if the contact file cannot be loaded.
 func (e *E2e) GetUdContactFromNdf(js.Value, []js.Value) any {
 	b, err := e.api.GetUdContactFromNdf()
 	if err != nil {
