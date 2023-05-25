@@ -13,17 +13,16 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/client/v4/notifications"
 	"gitlab.com/elixxir/wasm-utils/exception"
 )
 
 type Notifications struct {
-	api bindings.Notifications
+	api *bindings.Notifications
 }
 
 // newNotificationsJS wrapts the bindings Noticiation object and implements
 // wrappers in JS for all it's functionality.
-func newNotificationsJS(api bindings.Notifications) map[string]any {
+func newNotificationsJS(api *bindings.Notifications) map[string]any {
 	n := Notifications{api}
 	notificationsImplJS := map[string]any{
 		"AddToken":    js.FuncOf(n.AddToken),
@@ -115,7 +114,7 @@ func (n *Notifications) RemoveToken(_ js.Value, args []js.Value) any {
 func (n *Notifications) SetMaxState(_ js.Value, args []js.Value) any {
 	maxState := int64(args[0].Int())
 
-	err := n.api.SetMaxState(notifications.NotificationState(maxState))
+	err := n.api.SetMaxState(maxState)
 	if err != nil {
 		exception.ThrowTrace(err)
 	}
