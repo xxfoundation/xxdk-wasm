@@ -15,8 +15,8 @@ import (
 	"gitlab.com/elixxir/client/v4/channels"
 	cft "gitlab.com/elixxir/client/v4/channelsFileTransfer"
 	"gitlab.com/elixxir/crypto/fileTransfer"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"strings"
 	"time"
 )

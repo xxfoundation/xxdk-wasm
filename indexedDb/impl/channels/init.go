@@ -10,49 +10,46 @@
 package main
 
 import (
+	"encoding/json"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 )
 
 // currentVersion is the current version of the IndexedDb runtime. Used for
 // migration purposes.
-const currentVersion uint = 2
+const currentVersion uint = 1
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key. Returns the
 // EventModel based on IndexedDb and the database name as reported by IndexedDb.
 func NewWASMEventModel(databaseName string, encryption cryptoChannel.Cipher,
-	messageReceivedCB wChannels.MessageReceivedCallback,
-	deletedMessageCB wChannels.DeletedMessageCallback,
-	mutedUserCB wChannels.MutedUserCallback) (channels.EventModel, error) {
-	return newWASMModel(databaseName, encryption, messageReceivedCB,
-		deletedMessageCB, mutedUserCB)
+	uiCallbacks bindings.ChannelUICallbacks) (channels.EventModel, error) {
+	return newWASMModel(databaseName, encryption, uiCallbacks)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
-	messageReceivedCB wChannels.MessageReceivedCallback,
-	deletedMessageCB wChannels.DeletedMessageCallback,
-	mutedUserCB wChannels.MutedUserCallback) (*wasmModel, error) {
+	uiCallbacks bindings.ChannelUICallbacks) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()
 	defer cancel()
 	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			if oldVersion == newVersion {
-				jww.INFO.Printf("IndexDb version is current: v%d", newVersion)
+				jww.INFO.Printf("IndexDb version for %s is current: v%d",
+					databaseName, newVersion)
 				return nil
 			}
 
-			jww.INFO.Printf("IndexDb upgrade required: v%d -> v%d",
-				oldVersion, newVersion)
+			jww.INFO.Printf("IndexDb upgrade required for %s: v%d -> v%d",
+				databaseName, oldVersion, newVersion)
 
 			if oldVersion == 0 && newVersion >= 1 {
 				err := v1Upgrade(db)
@@ -60,14 +57,6 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 					return err
 				}
 				oldVersion = 1
-			}
-
-			if oldVersion == 1 && newVersion >= 2 {
-				err := v2Upgrade(db)
-				if err != nil {
-					return err
-				}
-				oldVersion = 2
 			}
 
 			// if oldVersion == 1 && newVersion >= 2 { v2Upgrade(), oldVersion = 2 }
@@ -81,16 +70,22 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	db, err := openRequest.Await(ctx)
 	if err != nil {
 		return nil, err
+	} else if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
 	wrapper := &wasmModel{
-		db:                db,
-		cipher:            encryption,
-		receivedMessageCB: messageReceivedCB,
-		deletedMessageCB:  deletedMessageCB,
-		mutedUserCB:       mutedUserCB,
+		db:     db,
+		cipher: encryption,
+		eventUpdate: func(eventType int64, jsonMarshallable any) {
+			data, err := json.Marshal(jsonMarshallable)
+			if err != nil {
+				jww.FATAL.Panicf("Failed to JSON marshal %T for EventUpdate "+
+					"callback: %+v", jsonMarshallable, err)
+			}
+			uiCallbacks.EventUpdate(eventType, data)
+		},
 	}
-
 	return wrapper, nil
 }
 
@@ -149,15 +144,8 @@ func v1Upgrade(db *idb.Database) error {
 		return err
 	}
 
-	return nil
-}
-
-// v1Upgrade performs the v1 -> v2 database upgrade.
-//
-// This can never be changed without permanently breaking backwards
-// compatibility.
-func v2Upgrade(db *idb.Database) error {
-	_, err := db.CreateObjectStore(fileStoreName, idb.ObjectStoreOptions{
+	// Build File ObjectStore
+	_, err = db.CreateObjectStore(fileStoreName, idb.ObjectStoreOptions{
 		KeyPath:       js.ValueOf(pkeyName),
 		AutoIncrement: false,
 	})

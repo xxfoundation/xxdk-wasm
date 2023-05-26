@@ -10,8 +10,10 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
+
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
 // GetReceptionID returns the marshalled default IDs.
@@ -32,7 +34,7 @@ func (e *E2e) GetReceptionID(js.Value, []js.Value) any {
 func (e *E2e) DeleteContact(_ js.Value, args []js.Value) any {
 	err := e.api.DeleteContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return nil
@@ -47,7 +49,7 @@ func (e *E2e) DeleteContact(_ js.Value, args []js.Value) any {
 func (e *E2e) GetAllPartnerIDs(js.Value, []js.Value) any {
 	partnerIDs, err := e.api.GetAllPartnerIDs()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return utils.CopyBytesToJS(partnerIDs)
@@ -100,7 +102,7 @@ func (e *E2e) FirstPartitionSize(js.Value, []js.Value) any {
 func (e *E2e) GetHistoricalDHPrivkey(js.Value, []js.Value) any {
 	privKey, err := e.api.GetHistoricalDHPrivkey()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return utils.CopyBytesToJS(privKey)
@@ -115,7 +117,7 @@ func (e *E2e) GetHistoricalDHPrivkey(js.Value, []js.Value) any {
 func (e *E2e) GetHistoricalDHPubkey(js.Value, []js.Value) any {
 	pubKey, err := e.api.GetHistoricalDHPubkey()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return utils.CopyBytesToJS(pubKey)
@@ -133,7 +135,7 @@ func (e *E2e) GetHistoricalDHPubkey(js.Value, []js.Value) any {
 func (e *E2e) HasAuthenticatedChannel(_ js.Value, args []js.Value) any {
 	exists, err := e.api.HasAuthenticatedChannel(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return exists
@@ -149,7 +151,7 @@ func (e *E2e) HasAuthenticatedChannel(_ js.Value, args []js.Value) any {
 func (e *E2e) RemoveService(_ js.Value, args []js.Value) any {
 	err := e.api.RemoveService(args[0].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -178,7 +180,7 @@ func (e *E2e) SendE2E(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := e.api.SendE2E(mt, recipientId, payload, e2eParams)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -199,13 +201,18 @@ type processor struct {
 //
 // Parameters:
 //   - message - Returns the message contents (Uint8Array).
+//   - tags - The tags on the message (Uint8Array).
+//   - metadata - Other arbitrary metadata (Uint8Array).
 //   - receptionId - Returns the marshalled bytes of the sender's [id.ID]
 //     (Uint8Array).
 //   - ephemeralId - Returns the ephemeral ID of the sender (int).
 //   - roundId - Returns the ID of the round sent on (int).
-func (p *processor) Process(
-	message, receptionId []byte, ephemeralId, roundId int64) {
-	p.process(utils.CopyBytesToJS(message), utils.CopyBytesToJS(receptionId),
+func (p *processor) Process(message, tags, metadata, receptionId []byte,
+	ephemeralId, roundId int64) {
+	p.process(utils.CopyBytesToJS(message),
+		utils.CopyBytesToJS(tags),
+		utils.CopyBytesToJS(metadata),
+		utils.CopyBytesToJS(receptionId),
 		ephemeralId, roundId)
 }
 
@@ -232,11 +239,13 @@ func (p *processor) String() string {
 //   - Throws TypeError if registering the service fails.
 func (e *E2e) AddService(_ js.Value, args []js.Value) any {
 	p := &processor{
-		utils.WrapCB(args[1], "Process"), utils.WrapCB(args[1], "String")}
+		utils.WrapCB(args[1], "Process"),
+		utils.WrapCB(args[1], "String"),
+	}
 
 	err := e.api.AddService(args[0].String(), p)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -261,7 +270,7 @@ func (e *E2e) RegisterListener(_ js.Value, args []js.Value) any {
 
 	err := e.api.RegisterListener(recipientId, args[1].Int(), l)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 

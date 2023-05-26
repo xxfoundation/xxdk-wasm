@@ -11,7 +11,8 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -69,7 +70,7 @@ func (ubf *updateBackupFunc) UpdateBackup(encryptedBackup []byte) {
 //
 // Returns:
 //   - JSON of [bindings.BackupReport] (Uint8Array).
-//   - Throws a TypeError if creating [Cmix] from backup fails.
+//   - Throws an error if creating [Cmix] from backup fails.
 func NewCmixFromBackup(_ js.Value, args []js.Value) any {
 	ndfJSON := args[0].String()
 	storageDir := args[1].String()
@@ -80,7 +81,7 @@ func NewCmixFromBackup(_ js.Value, args []js.Value) any {
 	report, err := bindings.NewCmixFromBackup(ndfJSON, storageDir,
 		backupPassphrase, sessionPassword, backupFileContents)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -104,13 +105,13 @@ func NewCmixFromBackup(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Javascript representation of the [Backup] object.
-//   - Throws a TypeError if initializing the [Backup] fails.
+//   - Throws an error if initializing the [Backup] fails.
 func InitializeBackup(_ js.Value, args []js.Value) any {
 	cb := &updateBackupFunc{utils.WrapCB(args[3], "UpdateBackup")}
 	api, err := bindings.InitializeBackup(
 		args[0].Int(), args[1].Int(), args[2].String(), cb)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -133,12 +134,12 @@ func InitializeBackup(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Javascript representation of the [Backup] object.
-//   - Throws a TypeError if initializing the [Backup] fails.
+//   - Throws an error if initializing the [Backup] fails.
 func ResumeBackup(_ js.Value, args []js.Value) any {
 	cb := &updateBackupFunc{utils.WrapCB(args[2], "UpdateBackup")}
 	api, err := bindings.ResumeBackup(args[0].Int(), args[1].Int(), cb)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -149,11 +150,11 @@ func ResumeBackup(_ js.Value, args []js.Value) any {
 // storage. To enable backups again, call [InitializeBackup].
 //
 // Returns:
-//   - Throws a TypeError if stopping the backup fails.
+//   - Throws an error if stopping the backup fails.
 func (b *Backup) StopBackup(js.Value, []js.Value) any {
 	err := b.api.StopBackup()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 

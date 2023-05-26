@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
+	"gitlab.com/xx_network/primitives/netTime"
 	"strings"
 	"syscall/js"
 	"time"
@@ -25,8 +26,8 @@ import (
 	"gitlab.com/elixxir/client/v4/dm"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
 )
 
@@ -42,16 +43,16 @@ type wasmModel struct {
 // upsertConversation is used for joining or updating a Conversation.
 func (w *wasmModel) upsertConversation(nickname string,
 	pubKey ed25519.PublicKey, partnerToken uint32, codeset uint8,
-	blocked bool) error {
+	blockedTimestamp *time.Time) error {
 	parentErr := errors.New("[DM indexedDB] failed to upsertConversation")
 
 	// Build object
 	newConvo := Conversation{
-		Pubkey:         pubKey,
-		Nickname:       nickname,
-		Token:          partnerToken,
-		CodesetVersion: codeset,
-		Blocked:        blocked,
+		Pubkey:           pubKey,
+		Nickname:         nickname,
+		Token:            partnerToken,
+		CodesetVersion:   codeset,
+		BlockedTimestamp: blockedTimestamp,
 	}
 
 	// Convert to jsObject
@@ -231,11 +232,11 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 				"[DM indexedDB] Joining conversation with %s", nickname)
 
 			convoToUpdate = &Conversation{
-				Pubkey:         partnerKey,
-				Nickname:       nickname,
-				Token:          partnerToken,
-				CodesetVersion: codeset,
-				Blocked:        false,
+				Pubkey:           partnerKey,
+				Nickname:         nickname,
+				Token:            partnerToken,
+				CodesetVersion:   codeset,
+				BlockedTimestamp: nil,
 			}
 		}
 	} else {
@@ -268,7 +269,7 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	conversationUpdated := convoToUpdate != nil
 	if conversationUpdated {
 		err = w.upsertConversation(convoToUpdate.Nickname, convoToUpdate.Pubkey,
-			convoToUpdate.Token, convoToUpdate.CodesetVersion, convoToUpdate.Blocked)
+			convoToUpdate.Token, convoToUpdate.CodesetVersion, convoToUpdate.BlockedTimestamp)
 		if err != nil {
 			return 0, err
 		}
@@ -318,7 +319,8 @@ func (w *wasmModel) upsertMessage(msg *Message) (uint64, error) {
 	// Store message to database
 	msgIdObj, err := impl.Put(w.db, messageStoreName, messageObj)
 	if err != nil {
-		return 0, errors.Errorf("Unable to put Message: %+v", err)
+		return 0, errors.Errorf("Unable to put Message: %+v\n%s",
+			err, newMessageJson)
 	}
 
 	uuid := msgIdObj.Int()
@@ -348,14 +350,20 @@ func (w *wasmModel) UnblockSender(senderPubKey ed25519.PublicKey) {
 
 // setBlocked is a helper for blocking/unblocking a given Conversation.
 func (w *wasmModel) setBlocked(senderPubKey ed25519.PublicKey, isBlocked bool) error {
-	// Get current Conversation and set blocked
+	// Get current Conversation and set blocked accordingly
 	resultConvo, err := w.getConversation(senderPubKey)
 	if err != nil {
 		return err
 	}
 
+	var timeBlocked *time.Time
+	if isBlocked {
+		blockUser := netTime.Now()
+		timeBlocked = &blockUser
+	}
+
 	return w.upsertConversation(resultConvo.Nickname, resultConvo.Pubkey,
-		resultConvo.Token, resultConvo.CodesetVersion, isBlocked)
+		resultConvo.Token, resultConvo.CodesetVersion, timeBlocked)
 }
 
 // GetConversation returns the conversation held by the model (receiver).
@@ -368,11 +376,11 @@ func (w *wasmModel) GetConversation(senderPubKey ed25519.PublicKey) *dm.ModelCon
 	}
 
 	return &dm.ModelConversation{
-		Pubkey:         resultConvo.Pubkey,
-		Nickname:       resultConvo.Nickname,
-		Token:          resultConvo.Token,
-		CodesetVersion: resultConvo.CodesetVersion,
-		Blocked:        resultConvo.Blocked,
+		Pubkey:           resultConvo.Pubkey,
+		Nickname:         resultConvo.Nickname,
+		Token:            resultConvo.Token,
+		CodesetVersion:   resultConvo.CodesetVersion,
+		BlockedTimestamp: resultConvo.BlockedTimestamp,
 	}
 }
 
@@ -410,11 +418,11 @@ func (w *wasmModel) GetConversations() []dm.ModelConversation {
 			return nil
 		}
 		conversations[i] = dm.ModelConversation{
-			Pubkey:         resultConvo.Pubkey,
-			Nickname:       resultConvo.Nickname,
-			Token:          resultConvo.Token,
-			CodesetVersion: resultConvo.CodesetVersion,
-			Blocked:        resultConvo.Blocked,
+			Pubkey:           resultConvo.Pubkey,
+			Nickname:         resultConvo.Nickname,
+			Token:            resultConvo.Token,
+			CodesetVersion:   resultConvo.CodesetVersion,
+			BlockedTimestamp: resultConvo.BlockedTimestamp,
 		}
 	}
 	return conversations

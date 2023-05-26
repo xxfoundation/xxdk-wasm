@@ -63,6 +63,12 @@ func TestPublicFunctions(t *testing.T) {
 		// C-Library specific bindings not needed by the browser
 		"GetDMInstance":   {},
 		"GetCMixInstance": {},
+
+		// Logging has been moved to startup flags
+		"LogLevel": {},
+
+		// NewFilesystemRemoteStorage is internal for bindings.
+		"NewFileSystemRemoteStorage": {},
 	}
 	wasmFuncs := getPublicFunctions("wasm", t)
 	bindingsFuncs := getPublicFunctions(

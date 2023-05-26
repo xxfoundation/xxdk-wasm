@@ -10,9 +10,11 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/xxdk-wasm/storage"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"syscall/js"
+
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
+	"gitlab.com/elixxir/xxdk-wasm/storage"
 )
 
 // StartNetworkFollower kicks off the tracking of the network. It starts long-
@@ -53,11 +55,11 @@ import (
 //   - args[0] - Timeout when stopping threads in milliseconds (int).
 //
 // Returns:
-//   - Throws a TypeError if starting the network follower fails.
+//   - Throws an error if starting the network follower fails.
 func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) any {
 	err := c.api.StartNetworkFollower(args[0].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -71,12 +73,12 @@ func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) any {
 // most likely be in an unrecoverable state and need to be trashed.
 //
 // Returns:
-//   - Throws a TypeError if the follower is in the wrong state to stop or if it
+//   - Throws an error if the follower is in the wrong state to stop or if it
 //     fails to stop.
 func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) any {
 	err := c.api.StopNetworkFollower()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -86,6 +88,21 @@ func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) any {
 
 // SetTrackNetworkPeriod allows changing the frequency that follower threads
 // are started.
+//
+// Note that the frequency of the follower threads affect the power usage
+// of the device following the network.
+//   - Low period -> Higher frequency of polling -> Higher battery usage
+//   - High period -> Lower frequency of polling -> Lower battery usage
+//
+// This may be used to enable a low power (or battery optimization) mode
+// for the end user.
+//
+// Suggested values are provided, however there are no guarantees that these
+// values will perfectly fit what the end user's device would require to match
+// the user's expectations:
+//   - Low Power Usage: 5000 milliseconds
+//   - High Power Usage: 1000 milliseconds (default, see
+//     [cmix.DefaultFollowPeriod]
 //
 // Parameters:
 //   - args[0] - The duration of the period, in milliseconds (int).
@@ -150,7 +167,7 @@ func (c *Cmix) NetworkFollowerStatus(js.Value, []js.Value) any {
 func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) any {
 	b, err := c.api.GetNodeRegistrationStatus()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -171,7 +188,7 @@ func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) any {
 func (c *Cmix) IsReady(_ js.Value, args []js.Value) any {
 	isReadyInfo, err := c.api.IsReady(args[0].Float())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -190,7 +207,7 @@ func (c *Cmix) IsReady(_ js.Value, args []js.Value) any {
 func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) any {
 	err := c.api.PauseNodeRegistrations(args[0].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -210,7 +227,7 @@ func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) any {
 func (c *Cmix) ChangeNumberOfNodeRegistrations(_ js.Value, args []js.Value) any {
 	err := c.api.ChangeNumberOfNodeRegistrations(args[0].Int(), args[1].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -256,7 +273,7 @@ func (c *Cmix) IsHealthy(js.Value, []js.Value) any {
 func (c *Cmix) GetRunningProcesses(js.Value, []js.Value) any {
 	list, err := c.api.GetRunningProcesses()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -362,7 +379,52 @@ type trackServicesCallback struct {
 //	  },
 //	]
 func (tsc *trackServicesCallback) Callback(marshalData []byte, err error) {
-	tsc.callback(utils.CopyBytesToJS(marshalData), utils.JsTrace(err))
+	tsc.callback(utils.CopyBytesToJS(marshalData), exception.NewTrace(err))
+}
+
+// trackCompressedServicesCallback adheres to the
+// [bindings.TrackCompressedServicesCallback] interface.
+type trackCompressedServicesCallback struct {
+	callback func(args ...any) js.Value
+}
+
+// Callback is the callback for [Cmix.TrackServices] that passes a
+// JSON-marshalled list of compressed backend services. If an error occurs while
+// retrieving or marshalling the service list, then err will be non-null.
+//
+// Parameters:
+//   - marshalData - JSON of [message.CompressedServiceList] (Uint8Array),
+//     which is a map of [id.ID] to an array of [message.CompressedService].
+//   - err - Error that occurs during retrieval or marshalling. Null otherwise
+//     (Error).
+//
+// Example JSON:
+//
+//		{
+//	   "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD": [
+//	     {
+//	       "Identifier": null,
+//	       "Tags": ["test"],
+//	       "Metadata": null
+//	     }
+//	   ],
+//	   "AAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD": [
+//	     {
+//	       "Identifier": null,
+//	       "Tags": ["test"],
+//	       "Metadata": null
+//	     }
+//	   ],
+//	   "AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD": [
+//	     {
+//	       "Identifier": null,
+//	       "Tags": ["test"],
+//	       "Metadata": null
+//	     }
+//	   ]
+//	 }
+func (tsc *trackCompressedServicesCallback) Callback(marshalData []byte, err error) {
+	tsc.callback(utils.CopyBytesToJS(marshalData), exception.NewTrace(err))
 }
 
 // TrackServicesWithIdentity will return via a callback the list of services the
@@ -374,14 +436,18 @@ func (tsc *trackServicesCallback) Callback(marshalData []byte, err error) {
 //   - args[0] - ID of [E2e] object in tracker (int).
 //   - args[1] - Javascript object that has functions that implement the
 //     [bindings.ClientError] interface.
+//   - args[2] - Javascript object that has functions that implement the
+//     [bindings.TrackCompressedServicesCallback], which will be passed the JSON
+//     of [message.CompressedServiceList].
 //
 // Returns:
 //   - Throws TypeError if the [E2e] ID is invalid.
 func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) any {
 	err := c.api.TrackServicesWithIdentity(args[0].Int(),
-		&trackServicesCallback{utils.WrapCB(args[0], "Callback")})
+		&trackServicesCallback{utils.WrapCB(args[0], "Callback")},
+		&trackCompressedServicesCallback{utils.WrapCB(args[0], "Callback")})
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 

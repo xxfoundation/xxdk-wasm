@@ -6,12 +6,15 @@ require (
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
 	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/pkg/errors v0.9.1
+	github.com/spf13/cobra v1.7.0
 	github.com/spf13/jwalterweatherman v1.1.0
-	gitlab.com/elixxir/client/v4 v4.6.4-0.20230426210017-366b4270492e
-	gitlab.com/elixxir/crypto v0.0.7-0.20230424221508-14c052d4b967
+	github.com/stretchr/testify v1.8.2
+	gitlab.com/elixxir/client/v4 v4.6.4-0.20230526193945-9f195a236f77
+	gitlab.com/elixxir/crypto v0.0.7-0.20230526183834-62f8f49617bc
 	gitlab.com/elixxir/primitives v0.0.3-0.20230214180039-9a25e2d3969c
+	gitlab.com/elixxir/wasm-utils v0.0.0-20230522231408-a43b2c1481b2
 	gitlab.com/xx_network/crypto v0.0.5-0.20230214003943-8a09396e95dd
-	gitlab.com/xx_network/primitives v0.0.4-0.20230310205521-c440e68e34c4
+	gitlab.com/xx_network/primitives v0.0.4-0.20230522171102-940cdd68e516
 	golang.org/x/crypto v0.5.0
 )
 
@@ -22,6 +25,7 @@ require (
 	github.com/badoux/checkmail v1.2.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/cloudflare/circl v1.2.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/elliotchance/orderedmap v1.4.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
@@ -31,12 +35,13 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
+	github.com/kr/pretty v0.3.0 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-sqlite3 v1.14.15 // indirect
@@ -48,13 +53,13 @@ require (
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.2 // indirect
 	github.com/pkg/profile v1.6.0 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/cors v1.8.2 // indirect
 	github.com/sethvargo/go-diceware v0.3.0 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/spf13/afero v1.9.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/spf13/cobra v1.5.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.12.0 // indirect
 	github.com/subosito/gotenv v1.4.0 // indirect
@@ -63,8 +68,8 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	gitlab.com/elixxir/bloomfilter v0.0.0-20230322223210-fa84f6842de8 // indirect
-	gitlab.com/elixxir/comms v0.0.4-0.20230322130755-e59b16bce601 // indirect
-	gitlab.com/elixxir/ekv v0.2.2 // indirect
+	gitlab.com/elixxir/comms v0.0.4-0.20230519211512-4a998f4b0938 // indirect
+	gitlab.com/elixxir/ekv v0.3.1-0.20230525213559-f9da13f4fce1 // indirect
 	gitlab.com/xx_network/comms v0.0.4-0.20230214180029-5387fb85736d // indirect
 	gitlab.com/xx_network/ring v0.0.3-0.20220902183151-a7d3b15bc981 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect

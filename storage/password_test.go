@@ -14,9 +14,11 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"gitlab.com/xx_network/crypto/csprng"
 	"strings"
 	"testing"
+
+	"gitlab.com/elixxir/wasm-utils/storage"
+	"gitlab.com/xx_network/crypto/csprng"
 )
 
 // Tests that running getOrInit twice returns the same internal password both
@@ -77,7 +79,7 @@ func Test_changeExternalPassword(t *testing.T) {
 // Tests that verifyPassword returns true for a valid password and false for an
 // invalid password
 func Test_verifyPassword(t *testing.T) {
-	GetLocalStorage().Clear()
+	storage.GetLocalStorage().Clear()
 	externalPassword := "myPassword"
 
 	if _, err := getOrInit(externalPassword); err != nil {
@@ -97,7 +99,7 @@ func Test_verifyPassword(t *testing.T) {
 // the encrypted one saved to local storage.
 func Test_initInternalPassword(t *testing.T) {
 	externalPassword := "myPassword"
-	ls := GetLocalStorage()
+	ls := storage.GetLocalStorage()
 	rng := csprng.NewSystemRNG()
 
 	internalPassword, err := initInternalPassword(
@@ -107,14 +109,14 @@ func Test_initInternalPassword(t *testing.T) {
 	}
 
 	// Attempt to retrieve encrypted internal password from storage
-	encryptedInternalPassword, err := ls.GetItem(passwordKey)
+	encryptedInternalPassword, err := ls.Get(passwordKey)
 	if err != nil {
 		t.Errorf(
 			"Failed to load encrypted internal password from storage: %+v", err)
 	}
 
 	// Attempt to retrieve salt from storage
-	salt, err := ls.GetItem(saltKey)
+	salt, err := ls.Get(saltKey)
 	if err != nil {
 		t.Errorf("Failed to load salt from storage: %+v", err)
 	}
@@ -138,7 +140,7 @@ func Test_initInternalPassword(t *testing.T) {
 // error when read.
 func Test_initInternalPassword_CsprngReadError(t *testing.T) {
 	externalPassword := "myPassword"
-	ls := GetLocalStorage()
+	ls := storage.GetLocalStorage()
 	b := bytes.NewBuffer([]byte{})
 
 	expectedErr := strings.Split(readInternalPasswordErr, "%")[0]
@@ -154,7 +156,7 @@ func Test_initInternalPassword_CsprngReadError(t *testing.T) {
 // return enough bytes.
 func Test_initInternalPassword_CsprngReadNumBytesError(t *testing.T) {
 	externalPassword := "myPassword"
-	ls := GetLocalStorage()
+	ls := storage.GetLocalStorage()
 	b := bytes.NewBuffer(make([]byte, internalPasswordLen/2))
 
 	expectedErr := fmt.Sprintf(
@@ -171,7 +173,7 @@ func Test_initInternalPassword_CsprngReadNumBytesError(t *testing.T) {
 // to local storage by initInternalPassword.
 func Test_getInternalPassword(t *testing.T) {
 	externalPassword := "myPassword"
-	ls := GetLocalStorage()
+	ls := storage.GetLocalStorage()
 	rng := csprng.NewSystemRNG()
 
 	internalPassword, err := initInternalPassword(
@@ -196,7 +198,7 @@ func Test_getInternalPassword(t *testing.T) {
 // loaded from local storage.
 func Test_getInternalPassword_LocalStorageGetPasswordError(t *testing.T) {
 	externalPassword := "myPassword"
-	ls := GetLocalStorage()
+	ls := storage.GetLocalStorage()
 	ls.Clear()
 
 	expectedErr := strings.Split(getPasswordStorageErr, "%")[0]
@@ -212,9 +214,11 @@ func Test_getInternalPassword_LocalStorageGetPasswordError(t *testing.T) {
 // loaded from local storage.
 func Test_getInternalPassword_LocalStorageGetError(t *testing.T) {
 	externalPassword := "myPassword"
-	ls := GetLocalStorage()
+	ls := storage.GetLocalStorage()
 	ls.Clear()
-	ls.SetItem(passwordKey, []byte("password"))
+	if err := ls.Set(passwordKey, []byte("password")); err != nil {
+		t.Fatalf("Failed to set %q: %+v", passwordKey, err)
+	}
 
 	expectedErr := strings.Split(getSaltStorageErr, "%")[0]
 
@@ -229,11 +233,17 @@ func Test_getInternalPassword_LocalStorageGetError(t *testing.T) {
 // decrypted.
 func Test_getInternalPassword_DecryptPasswordError(t *testing.T) {
 	externalPassword := "myPassword"
-	ls := GetLocalStorage()
+	ls := storage.GetLocalStorage()
 	ls.Clear()
-	ls.SetItem(saltKey, []byte("salt"))
-	ls.SetItem(passwordKey, []byte("password"))
-	ls.SetItem(argonParamsKey, []byte(`{"Time": 1, "Memory": 65536, "Threads": 4}`))
+	if err := ls.Set(saltKey, []byte("salt")); err != nil {
+		t.Errorf("failed to set %q: %+v", saltKey, err)
+	}
+	if err := ls.Set(passwordKey, []byte("password")); err != nil {
+		t.Errorf("failed to set %q: %+v", passwordKey, err)
+	}
+	if err := ls.Set(argonParamsKey, []byte(`{"Time": 1, "Memory": 65536, "Threads": 4}`)); err != nil {
+		t.Errorf("failed to set %q: %+v", argonParamsKey, err)
+	}
 
 	expectedErr := strings.Split(decryptPasswordErr, "%")[0]
 

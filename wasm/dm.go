@@ -20,8 +20,9 @@ import (
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/dm"
 	"gitlab.com/elixxir/crypto/codename"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	indexDB "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,12 +54,20 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 		"GetBlockedSenders":     js.FuncOf(cm.GetBlockedSenders),
 		"GetDatabaseName":       js.FuncOf(cm.GetDatabaseName),
 
+		// Share URL
+		"GetShareURL": js.FuncOf(cm.GetShareURL),
+
 		// DM Sending Methods and Reports
 		"SendText":     js.FuncOf(cm.SendText),
 		"SendReply":    js.FuncOf(cm.SendReply),
 		"SendReaction": js.FuncOf(cm.SendReaction),
 		"SendInvite":   js.FuncOf(cm.SendInvite),
+		"SendSilent":   js.FuncOf(cm.SendSilent),
 		"Send":         js.FuncOf(cm.Send),
+
+		// User Mute/Unmute
+		"BlockSender":   js.FuncOf(cm.BlockSender),
+		"UnblockSender": js.FuncOf(cm.UnblockSender),
 	}
 
 	return dmClientMap
@@ -83,14 +92,14 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 //
 // Returns:
 //   - Javascript representation of the [DMClient] object.
-//   - Throws a TypeError if creating the manager fails.
+//   - Throws an error if creating the manager fails.
 func NewDMClient(_ js.Value, args []js.Value) any {
 	privateIdentity := utils.CopyBytesToGo(args[1])
 	em := newDMReceiverBuilder(args[2])
 
 	cm, err := bindings.NewDMClient(args[0].Int(), privateIdentity, em)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -126,7 +135,7 @@ func NewDMClient(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Resolves to a Javascript representation of the [DMClient] object.
 //   - Rejected with an error if loading indexedDbWorker or the manager fails.
-//   - Throws a TypeError if the cipher ID does not correspond to a cipher.
+//   - Throws an error if the cipher ID does not correspond to a cipher.
 func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 	cmixID := args[0].Int()
 	wasmJsPath := args[1].String()
@@ -136,7 +145,7 @@ func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 
 	cipher, err := bindings.GetDMDbCipherTrackerFromID(cipherID)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 	}
 
 	return newDMClientWithIndexedDb(
@@ -194,19 +203,19 @@ func newDMClientWithIndexedDb(cmixID int, wasmJsPath string,
 
 		pi, err := codename.UnmarshalPrivateIdentity(privateIdentity)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		}
 		dmPath := base64.RawStdEncoding.EncodeToString(pi.PubKey[:])
 		model, err := indexDB.NewWASMEventModel(
 			dmPath, wasmJsPath, cipher, messageReceivedCB)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		}
 
 		cm, err := bindings.NewDMClientWithGoEventModel(
 			cmixID, privateIdentity, model)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(newDMClientJS(cm))
 		}
@@ -257,7 +266,7 @@ func (dmc *DMClient) GetIdentity(js.Value, []js.Value) any {
 func (dmc *DMClient) ExportPrivateIdentity(_ js.Value, args []js.Value) any {
 	i, err := dmc.api.ExportPrivateIdentity(args[0].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -273,7 +282,7 @@ func (dmc *DMClient) ExportPrivateIdentity(_ js.Value, args []js.Value) any {
 func (dmc *DMClient) GetNickname(_ js.Value, _ []js.Value) any {
 	nickname, err := dmc.api.GetNickname()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -357,7 +366,7 @@ func (dmc *DMClient) SendText(_ js.Value, args []js.Value) any {
 		sendReport, err := dmc.api.SendText(partnerPubKeyBytes, partnerToken,
 			message, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -415,7 +424,7 @@ func (dmc *DMClient) SendReply(_ js.Value, args []js.Value) any {
 		sendReport, err := dmc.api.SendReply(partnerPubKeyBytes, partnerToken,
 			replyMessage, replyToBytes, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -463,7 +472,43 @@ func (dmc *DMClient) SendReaction(_ js.Value, args []js.Value) any {
 		sendReport, err := dmc.api.SendReaction(partnerPubKeyBytes,
 			partnerToken, reaction, reactToBytes, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// SendSilent is used to send to a channel a message with no notifications.
+// Its primary purpose is to communicate new nicknames without calling [Send].
+//
+// It takes no payload intentionally as the message should be very lightweight.
+//
+// Parameters:
+//   - args[0] - The bytes of the public key of the partner's ED25519
+//     signing key (Uint8Array).
+//   - args[1] - The token used to derive the reception ID for the partner
+//     (int).
+//   - args[2] - JSON of [xxdk.CMIXParams]. If left empty
+//     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
+//
+// Returns a promise:
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
+func (dmc *DMClient) SendSilent(_ js.Value, args []js.Value) any {
+	var (
+		partnerPubKeyBytes = utils.CopyBytesToGo(args[0])
+		partnerToken       = int32(args[1].Int())
+		cmixParamsJSON     = utils.CopyBytesToGo(args[2])
+	)
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		sendReport, err := dmc.api.SendSilent(
+			partnerPubKeyBytes, partnerToken, cmixParamsJSON)
+		if err != nil {
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -511,7 +556,7 @@ func (dmc *DMClient) SendInvite(_ js.Value, args []js.Value) any {
 			partnerPubKeyBytes, partnerToken, marshalledInviteToId, msg, host,
 			maxUses, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -562,7 +607,7 @@ func (dmc *DMClient) Send(_ js.Value, args []js.Value) any {
 		sendReport, err := dmc.api.Send(partnerPubKeyBytes, partnerToken,
 			messageType, plaintext, leaseTimeMS, cmixParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -579,6 +624,30 @@ func (dmc *DMClient) Send(_ js.Value, args []js.Value) any {
 func (dmc *DMClient) GetDatabaseName(js.Value, []js.Value) any {
 	return base64.RawStdEncoding.EncodeToString(dmc.api.GetPublicKey()) +
 		"_speakeasy_dm"
+}
+
+// BlockSender blocks the provided sender public key from sending DMs
+//
+// Parameters:
+//   - args[0] - [ed25519.PublicKey] (Uint8Array)
+//
+// Returns nothing
+func (dmc *DMClient) BlockSender(_ js.Value, args []js.Value) any {
+	senderKey := utils.CopyBytesToGo(args[0])
+	dmc.api.BlockSender(senderKey)
+	return nil
+}
+
+// UnblockSender unblocks the provided sender public key to allow sending DMs
+//
+// Parameters:
+//   - args[0] - [ed25519.PublicKey] (Uint8Array)
+//
+// Returns nothing
+func (dmc *DMClient) UnblockSender(_ js.Value, args []js.Value) any {
+	senderKey := utils.CopyBytesToGo(args[0])
+	dmc.api.UnblockSender(senderKey)
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -625,7 +694,7 @@ func (dmc *DMClient) GetShareURL(_ js.Value, args []js.Value) any {
 	host := args[0].String()
 	urlReport, err := dmc.api.GetShareURL(host)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -645,7 +714,7 @@ func DecodeDMShareURL(_ js.Value, args []js.Value) any {
 	url := args[0].String()
 	report, err := bindings.DecodeDMShareURL(url)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -676,7 +745,7 @@ func (cmrCB *dmReceptionCallback) Callback(
 	receivedChannelMessageReport []byte, err error) int {
 	uuid := cmrCB.callback(
 		utils.CopyBytesToJS(receivedChannelMessageReport),
-		utils.JsTrace(err))
+		exception.NewTrace(err))
 
 	return uuid.Int()
 }
@@ -1008,7 +1077,7 @@ func newDMDbCipherJS(api *bindings.DMDbCipher) map[string]any {
 //
 // Returns:
 //   - JavaScript representation of the [DMDbCipher] object.
-//   - Throws a TypeError if creating the cipher fails.
+//   - Throws an error if creating the cipher fails.
 func NewDMsDatabaseCipher(_ js.Value, args []js.Value) any {
 	cmixId := args[0].Int()
 	password := utils.CopyBytesToGo(args[1])
@@ -1017,7 +1086,7 @@ func NewDMsDatabaseCipher(_ js.Value, args []js.Value) any {
 	cipher, err := bindings.NewDMsDatabaseCipher(
 		cmixId, password, plaintTextBlockSize)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1043,11 +1112,11 @@ func (c *DMDbCipher) GetID(js.Value, []js.Value) any {
 //
 // Returns:
 //   - The ciphertext of the plaintext passed in (Uint8Array).
-//   - Throws a TypeError if it fails to encrypt the plaintext.
+//   - Throws an error if it fails to encrypt the plaintext.
 func (c *DMDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 	ciphertext, err := c.api.Encrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1064,11 +1133,11 @@ func (c *DMDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - The plaintext of the ciphertext passed in (Uint8Array).
-//   - Throws a TypeError if it fails to encrypt the plaintext.
+//   - Throws an error if it fails to encrypt the plaintext.
 func (c *DMDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 	plaintext, err := c.api.Decrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1079,11 +1148,11 @@ func (c *DMDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - JSON of the cipher (Uint8Array).
-//   - Throws a TypeError if marshalling fails.
+//   - Throws an error if marshalling fails.
 func (c *DMDbCipher) MarshalJSON(js.Value, []js.Value) any {
 	data, err := c.api.MarshalJSON()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -1101,11 +1170,11 @@ func (c *DMDbCipher) MarshalJSON(js.Value, []js.Value) any {
 //
 // Returns:
 //   - JSON of the cipher (Uint8Array).
-//   - Throws a TypeError if marshalling fails.
+//   - Throws an error if marshalling fails.
 func (c *DMDbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
 	err := c.api.UnmarshalJSON(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 	return nil

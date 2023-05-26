@@ -11,7 +11,8 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -49,7 +50,7 @@ func TransmitSingleUse(_ js.Value, args []js.Value) any {
 		sendReport, err := bindings.TransmitSingleUse(
 			e2eID, recipient, tag, payload, paramsJSON, responseCB)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -71,12 +72,12 @@ func TransmitSingleUse(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Javascript representation of the [Stopper] object, an interface
 //     containing a function used to stop the listener.
-//   - Throws a TypeError if listening fails.
+//   - Throws an error if listening fails.
 func Listen(_ js.Value, args []js.Value) any {
 	cb := &singleUseCallback{utils.WrapCB(args[2], "Callback")}
 	api, err := bindings.Listen(args[0].Int(), args[1].String(), cb)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -128,7 +129,7 @@ type singleUseCallback struct {
 //     (Uint8Array).
 //   - err - Returns an error on failure (Error).
 func (suc *singleUseCallback) Callback(callbackReport []byte, err error) {
-	suc.callback(utils.CopyBytesToJS(callbackReport), utils.JsTrace(err))
+	suc.callback(utils.CopyBytesToJS(callbackReport), exception.NewTrace(err))
 }
 
 // singleUseResponse wraps Javascript callbacks to adhere to the
@@ -145,5 +146,5 @@ type singleUseResponse struct {
 //     (Uint8Array).
 //   - err - Returns an error on failure (Error).
 func (sur *singleUseResponse) Callback(responseReport []byte, err error) {
-	sur.callback(utils.CopyBytesToJS(responseReport), utils.JsTrace(err))
+	sur.callback(utils.CopyBytesToJS(responseReport), exception.NewTrace(err))
 }

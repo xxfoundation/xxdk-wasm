@@ -11,7 +11,8 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -39,7 +40,7 @@ func RestlikeRequest(_ js.Value, args []js.Value) any {
 		msg, err := bindings.RestlikeRequest(
 			cmixId, connectionID, request, e2eParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(msg))
 		}
@@ -72,7 +73,7 @@ func RestlikeRequestAuth(_ js.Value, args []js.Value) any {
 		msg, err := bindings.RestlikeRequestAuth(
 			cmixId, authConnectionID, request, e2eParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(msg))
 		}

@@ -10,38 +10,76 @@
 package main
 
 import (
-	"gitlab.com/elixxir/xxdk-wasm/logging"
+	"fmt"
 	"os"
 	"syscall/js"
 
+	"github.com/spf13/cobra"
+
 	jww "github.com/spf13/jwalterweatherman"
+
+	"gitlab.com/elixxir/wasm-utils/utils"
+	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
 )
 
-func init() {
-	// Start logger first to capture all logging events
-	logging.InitLogger()
+func main() {
+	// Set to os.Args because the default is os.Args[1:] and in WASM, args start
+	// at 0, not 1.
+	wasmCmd.SetArgs(os.Args)
 
-	// Overwrites setting the log level to INFO done in bindings so that the
-	// Javascript console can be used
-	ll := logging.NewJsConsoleLogListener(jww.LevelInfo)
-	logging.AddLogListener(ll.Listen)
-	jww.SetStdoutThreshold(jww.LevelFatal + 1)
-
-	// Check that the WASM binary version is correct
-	err := storage.CheckAndStoreVersions()
+	err := wasmCmd.Execute()
 	if err != nil {
-		jww.FATAL.Panicf("WASM binary version error: %+v", err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
 
-func main() {
-	jww.INFO.Printf("Starting xxDK WebAssembly bindings.")
+var wasmCmd = &cobra.Command{
+	Use:     "xxdk-wasm",
+	Short:   "WebAssembly bindings for xxDK.",
+	Example: "const go = new Go();\ngo.argv = [\"--logLevel=1\"]",
+	Run: func(cmd *cobra.Command, args []string) {
+		// Start logger first to capture all logging events
+		err := logging.EnableLogging(logLevel, fileLogLevel, maxLogFileSizeMB,
+			workerScriptURL, workerName)
+		if err != nil {
+			fmt.Printf("Failed to intialize logging: %+v", err)
+			os.Exit(1)
+		}
 
-	// logging/worker.go
-	js.Global().Set("GetLogger", js.FuncOf(logging.GetLoggerJS))
+		// Check that the WASM binary version is correct
+		err = storage.CheckAndStoreVersions()
+		if err != nil {
+			jww.FATAL.Panicf("WASM binary version error: %+v", err)
+		}
+
+		// Enable all top level bindings functions
+		setGlobals()
+
+		// Indicate to the Javascript caller that the WASM is ready by resolving
+		// a promise created by the caller, as shown below:
+		//
+		//  let isReady = new Promise((resolve) => {
+		//    window.onWasmInitialized = resolve;
+		//  });
+		//
+		//  const go = new Go();
+		//  go.run(result.instance);
+		//  await isReady;
+		//
+		// Source: https://github.com/golang/go/issues/49710#issuecomment-986484758
+		js.Global().Get("onWasmInitialized").Invoke()
+
+		<-make(chan bool)
+		os.Exit(0)
+	},
+}
+
+// setGlobals enables all global functions to be accessible to Javascript.
+func setGlobals() {
+	jww.INFO.Printf("Starting xxDK WebAssembly bindings.")
 
 	// storage/password.go
 	js.Global().Set("GetOrInitPassword", js.FuncOf(storage.GetOrInitPassword))
@@ -61,6 +99,11 @@ func main() {
 	js.Global().Set("NewCmixFromBackup", js.FuncOf(wasm.NewCmixFromBackup))
 	js.Global().Set("InitializeBackup", js.FuncOf(wasm.InitializeBackup))
 	js.Global().Set("ResumeBackup", js.FuncOf(wasm.ResumeBackup))
+
+	// wasm/notifications.go
+	js.Global().Set("LoadNotifications", js.FuncOf(wasm.LoadNotifications))
+	js.Global().Set("LoadNotificationsDummy",
+		js.FuncOf(wasm.LoadNotificationsDummy))
 
 	// wasm/channels.go
 	js.Global().Set("GenerateChannelIdentity",
@@ -89,10 +132,14 @@ func main() {
 	js.Global().Set("GetShareUrlType", js.FuncOf(wasm.GetShareUrlType))
 	js.Global().Set("ValidForever", js.FuncOf(wasm.ValidForever))
 	js.Global().Set("IsNicknameValid", js.FuncOf(wasm.IsNicknameValid))
+	js.Global().Set("GetNotificationReportsForMe",
+		js.FuncOf(wasm.GetNotificationReportsForMe))
 	js.Global().Set("GetNoMessageErr", js.FuncOf(wasm.GetNoMessageErr))
 	js.Global().Set("CheckNoMessageErr", js.FuncOf(wasm.CheckNoMessageErr))
 	js.Global().Set("NewChannelsDatabaseCipher",
 		js.FuncOf(wasm.NewChannelsDatabaseCipher))
+	js.Global().Set("GetNotificationReportsForMe",
+		js.FuncOf(wasm.GetNotificationReportsForMe))
 
 	// wasm/dm.go
 	js.Global().Set("InitChannelsFileTransfer",
@@ -110,6 +157,8 @@ func main() {
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
 	js.Global().Set("LoadCmix", js.FuncOf(wasm.LoadCmix))
+	js.Global().Set("LoadSynchronizedCmix",
+		js.FuncOf(wasm.LoadSynchronizedCmix))
 
 	// wasm/delivery.go
 	js.Global().Set("SetDashboardURL", js.FuncOf(wasm.SetDashboardURL))
@@ -157,7 +206,6 @@ func main() {
 		js.FuncOf(wasm.GetFactsFromContact))
 
 	// wasm/logging.go
-	js.Global().Set("LogLevel", js.FuncOf(wasm.LogLevel))
 	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
 	js.Global().Set("EnableGrpcLogs", js.FuncOf(wasm.EnableGrpcLogs))
 
@@ -194,6 +242,8 @@ func main() {
 	js.Global().Set("TransmitSingleUse", js.FuncOf(wasm.TransmitSingleUse))
 	js.Global().Set("Listen", js.FuncOf(wasm.Listen))
 
+	// wasm/sync.go
+
 	// wasm/timeNow.go
 	js.Global().Set("SetTimeSource", js.FuncOf(wasm.SetTimeSource))
 	js.Global().Set("SetOffset", js.FuncOf(wasm.SetOffset))
@@ -212,7 +262,32 @@ func main() {
 	js.Global().Set("GetClientDependencies", js.FuncOf(wasm.GetClientDependencies))
 	js.Global().Set("GetWasmSemanticVersion", js.FuncOf(wasm.GetWasmSemanticVersion))
 	js.Global().Set("GetXXDKSemanticVersion", js.FuncOf(wasm.GetXXDKSemanticVersion))
+}
 
-	<-make(chan bool)
-	os.Exit(0)
+var (
+	logLevel, fileLogLevel      jww.Threshold
+	maxLogFileSizeMB            int
+	workerScriptURL, workerName string
+)
+
+func init() {
+	// Initialize all startup flags
+	wasmCmd.Flags().IntVarP((*int)(&logLevel), "logLevel", "l", 2,
+		"Sets the log level output when outputting to the Javascript console. "+
+			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
+			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
+	wasmCmd.Flags().IntVarP((*int)(&fileLogLevel), "fileLogLevel", "m", -1,
+		"The log level when outputting to the file buffer. "+
+			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
+			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
+	wasmCmd.Flags().IntVarP(&maxLogFileSizeMB, "maxLogFileSize", "s", 5,
+		"Max file size, in MB, for the file buffer before it rolls over "+
+			"and starts overwriting the oldest entries.")
+	wasmCmd.Flags().StringVarP(&workerScriptURL, "workerScriptURL", "w", "",
+		"URL to the script that executes the worker. If set, it enables the "+
+			"saving of log file to buffer in Worker instead of in the local "+
+			"thread. This allows logging to be available after the main WASM "+
+			"thread crashes.")
+	wasmCmd.Flags().StringVar(&workerName, "workerName", "xxdkLogFileWorker",
+		"Name of the logger worker.")
 }

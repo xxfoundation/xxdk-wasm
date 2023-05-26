@@ -12,6 +12,8 @@ package storage
 import (
 	"github.com/pkg/errors"
 	"os"
+
+	"gitlab.com/elixxir/wasm-utils/storage"
 )
 
 // Key to store if the database is encrypted or not
@@ -22,12 +24,15 @@ const databaseEncryptionToggleKey = "xxdkWasmDatabaseEncryptionToggle/"
 func StoreIndexedDbEncryptionStatus(
 	databaseName string, encryptionStatus bool) (
 	loadedEncryptionStatus bool, err error) {
-	data, err := GetLocalStorage().GetItem(
-		databaseEncryptionToggleKey + databaseName)
+	ls := storage.GetLocalStorage()
+	data, err := ls.Get(databaseEncryptionToggleKey + databaseName)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			GetLocalStorage().SetItem(
-				databaseEncryptionToggleKey+databaseName, []byte{1})
+			keyName := databaseEncryptionToggleKey + databaseName
+			if err = ls.Set(keyName, []byte{1}); err != nil {
+				return false,
+					errors.Wrapf(err, "localStorage: failed to set %q", keyName)
+			}
 			return encryptionStatus, nil
 		} else {
 			return false, err

@@ -11,7 +11,8 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -73,7 +74,7 @@ func (ac *AuthenticatedConnection) SendE2E(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := ac.api.SendE2E(mt, payload)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -86,7 +87,7 @@ func (ac *AuthenticatedConnection) SendE2E(_ js.Value, args []js.Value) any {
 // resources.
 //
 // Returns:
-//   - Throws a TypeError if closing fails.
+//   - Throws an error if closing fails.
 func (ac *AuthenticatedConnection) Close(js.Value, []js.Value) any {
 	return ac.api.Close()
 }
@@ -108,13 +109,13 @@ func (ac *AuthenticatedConnection) GetPartner(js.Value, []js.Value) any {
 //     [bindings.Listener] interface.
 //
 // Returns:
-//   - Throws a TypeError is registering the listener fails.
+//   - Throws an error is registering the listener fails.
 func (ac *AuthenticatedConnection) RegisterListener(
 	_ js.Value, args []js.Value) any {
 	err := ac.api.RegisterListener(args[0].Int(),
 		&listener{utils.WrapCB(args[1], "Hear"), utils.WrapCB(args[1], "Name")})
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -143,7 +144,7 @@ func (c *Cmix) ConnectWithAuthentication(_ js.Value, args []js.Value) any {
 		ac, err := c.api.ConnectWithAuthentication(
 			e2eID, recipientContact, e2eParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(newAuthenticatedConnectionJS(ac))
 		}
