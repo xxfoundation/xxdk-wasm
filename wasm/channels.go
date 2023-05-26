@@ -58,6 +58,8 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]any {
 		"SendMessage":           js.FuncOf(cm.SendMessage),
 		"SendReply":             js.FuncOf(cm.SendReply),
 		"SendReaction":          js.FuncOf(cm.SendReaction),
+		"SendSilent":            js.FuncOf(cm.SendSilent),
+		"SendInvite":            js.FuncOf(cm.SendInvite),
 		"DeleteMessage":         js.FuncOf(cm.DeleteMessage),
 		"PinMessage":            js.FuncOf(cm.PinMessage),
 		"MuteUser":              js.FuncOf(cm.MuteUser),
