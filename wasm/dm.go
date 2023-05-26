@@ -539,6 +539,10 @@ func (dmc *DMClient) SendSilent(_ js.Value, args []js.Value) any {
 //     unlimited).
 //   - args[7] - A JSON marshalled [xxdk.CMIXParams]. This may be empty,
 //     and GetDefaultCMixParams will be used internally.
+//
+// Returns a promise:
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
 func (dmc *DMClient) SendInvite(_ js.Value, args []js.Value) any {
 	var (
 		channelManagerId     = args[0].Int()
