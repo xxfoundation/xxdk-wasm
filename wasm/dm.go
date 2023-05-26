@@ -63,6 +63,10 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 		"SendReaction": js.FuncOf(cm.SendReaction),
 		"SendSilent":   js.FuncOf(cm.SendSilent),
 		"Send":         js.FuncOf(cm.Send),
+
+		// User Mute/Unmute
+		"BlockSender":   js.FuncOf(cm.BlockSender),
+		"UnblockSender": js.FuncOf(cm.UnblockSender),
 	}
 
 	return dmClientMap
@@ -570,6 +574,30 @@ func (dmc *DMClient) Send(_ js.Value, args []js.Value) any {
 func (dmc *DMClient) GetDatabaseName(js.Value, []js.Value) any {
 	return base64.RawStdEncoding.EncodeToString(dmc.api.GetPublicKey()) +
 		"_speakeasy_dm"
+}
+
+// BlockSender blocks the provided sender public key from sending DMs
+//
+// Parameters:
+//   - args[0] - [ed25519.PublicKey] (Uint8Array)
+//
+// Returns nothing
+func (dmc *DMClient) BlockSender(_ js.Value, args []js.Value) any {
+	senderKey := utils.CopyBytesToGo(args[0])
+	dmc.api.BlockSender(senderKey)
+	return nil
+}
+
+// UnblockSender unblocks the provided sender public key to allow sending DMs
+//
+// Parameters:
+//   - args[0] - [ed25519.PublicKey] (Uint8Array)
+//
+// Returns nothing
+func (dmc *DMClient) UnblockSender(_ js.Value, args []js.Value) any {
+	senderKey := utils.CopyBytesToGo(args[0])
+	dmc.api.UnblockSender(senderKey)
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
