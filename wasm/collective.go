@@ -41,7 +41,6 @@ func newRemoteKvJS(api *bindings.RemoteKV) map[string]any {
 		"Root":              js.FuncOf(rkv.Root),
 		"IsMemStore":        js.FuncOf(rkv.IsMemStore),
 		"GetFullKey":        js.FuncOf(rkv.GetFullKey),
-		"Transaction":       js.FuncOf(rkv.Transaction),
 		"StoreMapElement":   js.FuncOf(rkv.StoreMapElement),
 		"StoreMap":          js.FuncOf(rkv.StoreMap),
 		"DeleteMapElement":  js.FuncOf(rkv.DeleteMapElement),
@@ -220,18 +219,6 @@ func (r *RemoteKV) GetFullKey(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		fullKey := r.api.GetFullKey(key, version)
 		resolve(fullKey)
-	}
-
-	return utils.CreatePromise(promiseFn)
-}
-
-// Transaction locks a key while it is being mutated then stores the result
-// and returns the old value and if it existed in a JSON object.
-// Transactions cannot be remote operations
-// If the op returns an error, the operation will be aborted.
-func (r *RemoteKV) Transaction(_ js.Value, args []js.Value) any {
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		reject("unimplemented")
 	}
 
 	return utils.CreatePromise(promiseFn)
