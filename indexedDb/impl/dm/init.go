@@ -75,10 +75,11 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	db, err := openRequest.Await(ctx)
 	if err != nil {
 		return nil, err
+	} else if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
 	wrapper := &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}
-
 	return wrapper, nil
 }
 
