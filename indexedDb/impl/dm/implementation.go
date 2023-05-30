@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
+	"gitlab.com/elixxir/crypto/database"
 	"gitlab.com/xx_network/primitives/netTime"
 	"strings"
 	"syscall/js"
@@ -24,7 +25,6 @@ import (
 
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	"gitlab.com/elixxir/client/v4/dm"
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
@@ -36,7 +36,7 @@ import (
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
 	db                *idb.Database
-	cipher            cryptoChannel.Cipher
+	cipher            database.Cipher
 	receivedMessageCB MessageReceivedCallback
 }
 

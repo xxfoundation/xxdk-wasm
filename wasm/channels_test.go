@@ -63,9 +63,9 @@ func Test_ChannelsManagerMethods(t *testing.T) {
 // Tests that the map representing ChannelDbCipher returned by
 // newChannelDbCipherJS contains all of the methods on ChannelDbCipher.
 func Test_newChannelDbCipherJS(t *testing.T) {
-	cipherType := reflect.TypeOf(&ChannelDbCipher{})
+	cipherType := reflect.TypeOf(&DbCipher{})
 
-	cipher := newChannelDbCipherJS(&bindings.ChannelDbCipher{})
+	cipher := newDbCipherJS(&bindings.DbCipher{})
 	if len(cipher) != cipherType.NumMethod() {
 		t.Errorf("ChannelDbCipher JS object does not have all methods."+
 			"\nexpected: %d\nreceived: %d", cipherType.NumMethod(), len(cipher))
@@ -83,8 +83,8 @@ func Test_newChannelDbCipherJS(t *testing.T) {
 // Tests that ChannelDbCipher has all the methods that
 // [bindings.ChannelDbCipher] has.
 func Test_ChannelDbCipherMethods(t *testing.T) {
-	cipherType := reflect.TypeOf(&ChannelDbCipher{})
-	binCipherType := reflect.TypeOf(&bindings.ChannelDbCipher{})
+	cipherType := reflect.TypeOf(&DbCipher{})
+	binCipherType := reflect.TypeOf(&bindings.DbCipher{})
 
 	if binCipherType.NumMethod() != cipherType.NumMethod() {
 		t.Errorf("WASM ChannelDbCipher object does not have all methods from "+

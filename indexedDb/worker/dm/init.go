@@ -12,13 +12,13 @@ package dm
 import (
 	"crypto/ed25519"
 	"encoding/json"
+	"gitlab.com/elixxir/crypto/database"
 	"time"
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/client/v4/dm"
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -42,7 +42,7 @@ type NewWASMEventModelMessage struct {
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
-func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
+func NewWASMEventModel(path, wasmJsPath string, encryption database.Cipher,
 	cb MessageReceivedCallback) (dm.EventModel, error) {
 	databaseName := path + databaseSuffix
 

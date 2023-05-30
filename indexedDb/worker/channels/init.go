@@ -11,6 +11,7 @@ package channels
 
 import (
 	"encoding/json"
+	"gitlab.com/elixxir/crypto/database"
 	"time"
 
 	"github.com/pkg/errors"
@@ -19,7 +20,6 @@ import (
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
 
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -36,7 +36,7 @@ type eventUpdateCallback func(eventType int64, jsonData []byte)
 // the channel manager to define the path but the callback is the same
 // across the board.
 func NewWASMEventModelBuilder(wasmJsPath string,
-	encryption cryptoChannel.Cipher,
+	encryption database.Cipher,
 	channelCbs bindings.ChannelUICallbacks) channels.EventModelBuilder {
 	fn := func(path string) (channels.EventModel, error) {
 		return NewWASMEventModel(path, wasmJsPath, encryption,
@@ -54,7 +54,7 @@ type NewWASMEventModelMessage struct {
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
-func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
+func NewWASMEventModel(path, wasmJsPath string, encryption database.Cipher,
 	channelCbs bindings.ChannelUICallbacks) (
 	channels.EventModel, error) {
 	databaseName := path + databaseSuffix

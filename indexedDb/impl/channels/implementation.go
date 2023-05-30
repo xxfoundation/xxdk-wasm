@@ -12,6 +12,7 @@ package main
 import (
 	"crypto/ed25519"
 	"encoding/json"
+	"gitlab.com/elixxir/crypto/database"
 	"strconv"
 	"strings"
 	"syscall/js"
@@ -25,7 +26,6 @@ import (
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
@@ -37,7 +37,7 @@ import (
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
 	db          *idb.Database
-	cipher      cryptoChannel.Cipher
+	cipher      database.Cipher
 	eventUpdate func(eventType int64, jsonMarshallable any)
 }
 
