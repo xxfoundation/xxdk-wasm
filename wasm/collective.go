@@ -473,13 +473,11 @@ func newRemoteStore(arg js.Value) *RemoteStore {
 //   - The file data (Uint8Array).
 //   - Catches any thrown errors (of type Error) and returns it as an error.
 func (rsCB *RemoteStore) Read(path string) ([]byte, error) {
-
-	fn := func() js.Value { return rsCB.read(path) }
-	v, err := exception.RunAndCatch(fn)
-	if err != nil {
-		return nil, err
+	v, awaitErr := utils.Await(rsCB.read(path))
+	if awaitErr != nil {
+		return nil, js.Error{Value: awaitErr[0]}
 	}
-	return utils.CopyBytesToGo(v), err
+	return utils.CopyBytesToGo(v[0]), nil
 }
 
 // Write implements [bindings.RemoteStore.Write]
@@ -491,9 +489,11 @@ func (rsCB *RemoteStore) Read(path string) ([]byte, error) {
 // Returns:
 //   - Catches any thrown errors (of type Error) and returns it as an error.
 func (rsCB *RemoteStore) Write(path string, data []byte) error {
-	fn := func() js.Value { return rsCB.write(path, utils.CopyBytesToJS(data)) }
-	_, err := exception.RunAndCatch(fn)
-	return err
+	_, awaitErr := utils.Await(rsCB.write(path, utils.CopyBytesToJS(data)))
+	if awaitErr != nil {
+		return js.Error{Value: awaitErr[0]}
+	}
+	return nil
 }
 
 // GetLastModified implements [bindings.RemoteStore.GetLastModified]
@@ -536,12 +536,11 @@ func (rsCB *RemoteStore) GetLastWrite() ([]byte, error) {
 //   - JSON of []string (Uint8Array).
 //   - Catches any thrown errors (of type Error) and returns it as an error.
 func (rsCB *RemoteStore) ReadDir(path string) ([]byte, error) {
-	fn := func() js.Value { return rsCB.readDir(path) }
-	v, err := exception.RunAndCatch(fn)
-	if err != nil {
-		return nil, err
+	v, awaitErr := utils.Await(rsCB.readDir(path))
+	if awaitErr != nil {
+		return nil, js.Error{Value: awaitErr[0]}
 	}
-	return utils.CopyBytesToGo(v), err
+	return utils.CopyBytesToGo(v[0]), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
