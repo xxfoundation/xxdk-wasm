@@ -142,7 +142,7 @@ func TestWasmModel_GetMessage(t *testing.T) {
 			}
 
 			testMsg := buildMessage(id.NewIdFromBytes([]byte(testString), t).Marshal(),
-				testMsgId.Bytes(), nil, testString, []byte(testString),
+				testMsgId.Bytes(), nil, testString, testString,
 				[]byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
 				time.Second, 0, 0, false, false, channels.Sent)
 			_, err = eventModel.upsertMessage(testMsg)
@@ -173,7 +173,7 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 
 	// Insert a message
 	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
-		testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
+		testString, testString, []byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
 		time.Second, 0, 0, false, false, channels.Sent)
 	_, err = eventModel.upsertMessage(testMsg)
 	if err != nil {
@@ -234,7 +234,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 
 			// Store a test message
 			testMsg := buildMessage(cid.Bytes(), testMsgId.Bytes(), nil,
-				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
+				testString, testString, []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
 			uuid, err2 := eventModel.upsertMessage(testMsg)
 			if err2 != nil {
@@ -542,12 +542,12 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 
 			testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
 			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
-				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
+				testString, testString, []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
 
 			testMsgId2 := message.DeriveChannelMessageID(&id.ID{2}, 0, []byte(testString))
 			testMsg2 := buildMessage([]byte(testString), testMsgId2.Bytes(), nil,
-				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
+				testString, testString, []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
 
 			// First message insert should succeed
