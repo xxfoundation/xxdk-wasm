@@ -369,9 +369,9 @@ func LoadChannelsManager(_ js.Value, args []js.Value) any {
 //     [bindings.ChannelUICallbacks]. It is a callback that informs the UI about
 //     various events. The entire interface can be nil, but if defined, each
 //     method must be implemented.
-//   - args[6] - ID of [ChannelDbCipher] object in tracker (int). Create this
+//   - args[6] - ID of [DbCipher] object in tracker (int). Create this
 //     object with [NewChannelsDatabaseCipher] and get its id with
-//     [ChannelDbCipher.GetID].
+//     [DbCipher.GetID].
 //
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [ChannelsManager] object.
@@ -386,7 +386,7 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 	cUI := newChannelUI(args[5])
 	cipherID := args[6].Int()
 
-	cipher, err := bindings.GetChannelDbCipherTrackerFromID(cipherID)
+	cipher, err := bindings.GetDbCipherTrackerFromID(cipherID)
 	if err != nil {
 		exception.ThrowTrace(err)
 	}
@@ -444,7 +444,7 @@ func NewChannelsManagerWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 func newChannelsManagerWithIndexedDb(cmixID int, wasmJsPath string,
 	privateIdentity, extensionBuilderIDsJSON []byte, notificationsID int,
 	channelsCbs bindings.ChannelUICallbacks,
-	cipher *bindings.ChannelDbCipher) any {
+	cipher *bindings.DbCipher) any {
 
 	model := channelsDb.NewWASMEventModelBuilder(
 		wasmJsPath, cipher, channelsCbs)
@@ -487,9 +487,9 @@ func newChannelsManagerWithIndexedDb(cmixID int, wasmJsPath string,
 //     [bindings.ChannelUICallbacks]. It is a callback that informs the UI about
 //     various events. The entire interface can be nil, but if defined, each
 //     method must be implemented.
-//   - args[6] - ID of [ChannelDbCipher] object in tracker (int). Create this
+//   - args[6] - ID of [DbCipher] object in tracker (int). Create this
 //     object with [NewChannelsDatabaseCipher] and get its id with
-//     [ChannelDbCipher.GetID].
+//     [DbCipher.GetID].
 //
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [ChannelsManager] object.
@@ -504,7 +504,7 @@ func LoadChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 	channelsCbs := newChannelUI(args[5])
 	cipherID := args[6].Int()
 
-	cipher, err := bindings.GetChannelDbCipherTrackerFromID(cipherID)
+	cipher, err := bindings.GetDbCipherTrackerFromID(cipherID)
 	if err != nil {
 		exception.ThrowTrace(err)
 	}
@@ -557,7 +557,7 @@ func LoadChannelsManagerWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 
 func loadChannelsManagerWithIndexedDb(cmixID int, wasmJsPath, storageTag string,
 	extensionBuilderIDsJSON []byte, notificationsID int, channelsCbs bindings.ChannelUICallbacks,
-	cipher *bindings.ChannelDbCipher) any {
+	cipher *bindings.DbCipher) any {
 
 	model := channelsDb.NewWASMEventModelBuilder(
 		wasmJsPath, cipher, channelsCbs)
@@ -2319,17 +2319,17 @@ type MessageAndError struct {
 // Channel Cipher                                                             //
 ////////////////////////////////////////////////////////////////////////////////
 
-// ChannelDbCipher wraps the [bindings.ChannelDbCipher] object so its methods
+// DbCipher wraps the [bindings.DbCipher] object so its methods
 // can be wrapped to be Javascript compatible.
-type ChannelDbCipher struct {
-	api *bindings.ChannelDbCipher
+type DbCipher struct {
+	api *bindings.DbCipher
 }
 
-// newChannelDbCipherJS creates a new Javascript compatible object
-// (map[string]any) that matches the [ChannelDbCipher] structure.
-func newChannelDbCipherJS(api *bindings.ChannelDbCipher) map[string]any {
-	c := ChannelDbCipher{api}
-	channelDbCipherMap := map[string]any{
+// newDbCipherJS creates a new Javascript compatible object
+// (map[string]any) that matches the [DbCipher] structure.
+func newDbCipherJS(api *bindings.DbCipher) map[string]any {
+	c := DbCipher{api}
+	DbCipherMap := map[string]any{
 		"GetID":         js.FuncOf(c.GetID),
 		"Encrypt":       js.FuncOf(c.Encrypt),
 		"Decrypt":       js.FuncOf(c.Decrypt),
@@ -2337,43 +2337,43 @@ func newChannelDbCipherJS(api *bindings.ChannelDbCipher) map[string]any {
 		"UnmarshalJSON": js.FuncOf(c.UnmarshalJSON),
 	}
 
-	return channelDbCipherMap
+	return DbCipherMap
 }
 
-// NewChannelsDatabaseCipher constructs a [ChannelDbCipher] object.
+// NewChannelsDatabaseCipher constructs a [DbCipher] object.
 //
 // Parameters:
 //   - args[0] - The tracked [Cmix] object ID (int).
 //   - args[1] - The password for storage. This should be the same password
 //     passed into [NewCmix] (Uint8Array).
 //   - args[2] - The maximum size of a payload to be encrypted. A payload passed
-//     into [ChannelDbCipher.Encrypt] that is larger than this value will result
+//     into [DbCipher.Encrypt] that is larger than this value will result
 //     in an error (int).
 //
 // Returns:
-//   - JavaScript representation of the [ChannelDbCipher] object.
+//   - JavaScript representation of the [DbCipher] object.
 //   - Throws an error if creating the cipher fails.
 func NewChannelsDatabaseCipher(_ js.Value, args []js.Value) any {
 	cmixId := args[0].Int()
 	password := utils.CopyBytesToGo(args[1])
 	plaintTextBlockSize := args[2].Int()
 
-	cipher, err := bindings.NewChannelsDatabaseCipher(
+	cipher, err := bindings.NewDatabaseCipher(
 		cmixId, password, plaintTextBlockSize)
 	if err != nil {
 		exception.ThrowTrace(err)
 		return nil
 	}
 
-	return newChannelDbCipherJS(cipher)
+	return newDbCipherJS(cipher)
 }
 
-// GetID returns the ID for this [bindings.ChannelDbCipher] in the
-// channelDbCipherTracker.
+// GetID returns the ID for this [bindings.DbCipher] in the
+// DbCipherTracker.
 //
 // Returns:
 //   - Tracker ID (int).
-func (c *ChannelDbCipher) GetID(js.Value, []js.Value) any {
+func (c *DbCipher) GetID(js.Value, []js.Value) any {
 	return c.api.GetID()
 }
 
@@ -2388,7 +2388,7 @@ func (c *ChannelDbCipher) GetID(js.Value, []js.Value) any {
 // Returns:
 //   - The ciphertext of the plaintext passed in (Uint8Array).
 //   - Throws an error if it fails to encrypt the plaintext.
-func (c *ChannelDbCipher) Encrypt(_ js.Value, args []js.Value) any {
+func (c *DbCipher) Encrypt(_ js.Value, args []js.Value) any {
 	ciphertext, err := c.api.Encrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
 		exception.ThrowTrace(err)
@@ -2403,13 +2403,13 @@ func (c *ChannelDbCipher) Encrypt(_ js.Value, args []js.Value) any {
 // function.
 //
 // Parameters:
-//   - args[0] - the encrypted data returned by [ChannelDbCipher.Encrypt]
+//   - args[0] - the encrypted data returned by [DbCipher.Encrypt]
 //     (Uint8Array).
 //
 // Returns:
 //   - The plaintext of the ciphertext passed in (Uint8Array).
 //   - Throws an error if it fails to encrypt the plaintext.
-func (c *ChannelDbCipher) Decrypt(_ js.Value, args []js.Value) any {
+func (c *DbCipher) Decrypt(_ js.Value, args []js.Value) any {
 	plaintext, err := c.api.Decrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
 		exception.ThrowTrace(err)
@@ -2424,7 +2424,7 @@ func (c *ChannelDbCipher) Decrypt(_ js.Value, args []js.Value) any {
 // Returns:
 //   - JSON of the cipher (Uint8Array).
 //   - Throws an error if marshalling fails.
-func (c *ChannelDbCipher) MarshalJSON(js.Value, []js.Value) any {
+func (c *DbCipher) MarshalJSON(js.Value, []js.Value) any {
 	data, err := c.api.MarshalJSON()
 	if err != nil {
 		exception.ThrowTrace(err)
@@ -2445,7 +2445,7 @@ func (c *ChannelDbCipher) MarshalJSON(js.Value, []js.Value) any {
 // Returns:
 //   - JSON of the cipher (Uint8Array).
 //   - Throws an error if marshalling fails.
-func (c *ChannelDbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
+func (c *DbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
 	err := c.api.UnmarshalJSON(utils.CopyBytesToGo(args[0]))
 	if err != nil {
 		exception.ThrowTrace(err)

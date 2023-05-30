@@ -142,7 +142,7 @@ func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 	messageReceivedCB := args[3]
 	cipherID := args[4].Int()
 
-	cipher, err := bindings.GetDMDbCipherTrackerFromID(cipherID)
+	cipher, err := bindings.GetDbCipherTrackerFromID(cipherID)
 	if err != nil {
 		exception.ThrowTrace(err)
 	}
@@ -190,7 +190,7 @@ func NewDMClientWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 }
 
 func newDMClientWithIndexedDb(cmixID int, wasmJsPath string,
-	privateIdentity []byte, cb js.Value, cipher *bindings.DMDbCipher) any {
+	privateIdentity []byte, cb js.Value, cipher *bindings.DbCipher) any {
 
 	messageReceivedCB := func(uuid uint64, pubKey ed25519.PublicKey,
 		messageUpdate, conversationUpdate bool) {
@@ -997,12 +997,12 @@ func (em *dmReceiver) GetConversations() []byte {
 // DMDbCipher wraps the [bindings.DMDbCipher] object so its methods
 // can be wrapped to be Javascript compatible.
 type DMDbCipher struct {
-	api *bindings.DMDbCipher
+	api *bindings.DbCipher
 }
 
 // newDMDbCipherJS creates a new Javascript compatible object
 // (map[string]any) that matches the [DMDbCipher] structure.
-func newDMDbCipherJS(api *bindings.DMDbCipher) map[string]any {
+func newDMDbCipherJS(api *bindings.DbCipher) map[string]any {
 	c := DMDbCipher{api}
 	channelDbCipherMap := map[string]any{
 		"GetID":         js.FuncOf(c.GetID),
@@ -1033,7 +1033,7 @@ func NewDMsDatabaseCipher(_ js.Value, args []js.Value) any {
 	password := utils.CopyBytesToGo(args[1])
 	plaintTextBlockSize := args[2].Int()
 
-	cipher, err := bindings.NewDMsDatabaseCipher(
+	cipher, err := bindings.NewDatabaseCipher(
 		cmixId, password, plaintTextBlockSize)
 	if err != nil {
 		exception.ThrowTrace(err)
