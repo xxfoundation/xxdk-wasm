@@ -110,6 +110,38 @@ func NewCmix(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
+// NewSynchronizedCmix clones a cMix from remote storage.
+//
+// Users of this function should delete the storage directory on error.
+//
+// Parameters:
+//   - args[0] - NDF JSON ([ndf.NetworkDefinition]) (string).
+//   - args[1] - Storage directory path (string).
+//   - args[2] - Password used for storage (Uint8Array).
+//   - args[3] - Javascript [RemoteStore] implementation.
+//
+// Returns a promise:
+//   - Resolves on success.
+//   - Rejected with an error if creating a new cMix client fails.
+func NewSynchronizedCmix(_ js.Value, args []js.Value) any {
+	ndfJSON := args[0].String()
+	storageDir := args[1].String()
+	password := utils.CopyBytesToGo(args[2])
+	rs := newRemoteStore(args[3])
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		err := bindings.NewSynchronizedCmix(ndfJSON, storageDir,
+			password, rs)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve()
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
 // LoadCmix will load an existing user storage from the storageDir using the
 // password. This will fail if the user storage does not exist or the password
 // is incorrect.
