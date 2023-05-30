@@ -12,7 +12,8 @@ package wasm
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/xxdk"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -31,14 +32,14 @@ import (
 //   - args[2] - ID of [Cmix] object in tracker (int).
 //
 // Returns:
-//   - Throws a TypeError if the identity cannot be stored in storage.
+//   - Throws an error if the identity cannot be stored in storage.
 func StoreReceptionIdentity(_ js.Value, args []js.Value) any {
 	identity := utils.CopyBytesToGo(args[1])
 	err := bindings.StoreReceptionIdentity(
 		args[0].String(), identity, args[2].Int())
 
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -54,11 +55,11 @@ func StoreReceptionIdentity(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - JSON of the stored [xxdk.ReceptionIdentity] object (Uint8Array).
-//   - Throws a TypeError if the identity cannot be retrieved from storage.
+//   - Throws an error if the identity cannot be retrieved from storage.
 func LoadReceptionIdentity(_ js.Value, args []js.Value) any {
 	ri, err := bindings.LoadReceptionIdentity(args[0].String(), args[1].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -75,7 +76,7 @@ func (c *Cmix) MakeReceptionIdentity(js.Value, []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		ri, err := c.api.MakeReceptionIdentity()
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(ri))
 		}
@@ -94,7 +95,7 @@ func (c *Cmix) MakeLegacyReceptionIdentity(js.Value, []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		ri, err := c.api.MakeLegacyReceptionIdentity()
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(ri))
 		}
@@ -126,13 +127,13 @@ func (c *Cmix) GetReceptionRegistrationValidationSignature(
 //
 // Returns:
 //   - Marshalled bytes of [contact.Contact] (string).
-//   - Throws a TypeError if unmarshalling the identity fails.
+//   - Throws an error if unmarshalling the identity fails.
 func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) any {
 	// Note that this function does not appear in normal bindings
 	identityJSON := utils.CopyBytesToGo(args[0])
 	identity, err := xxdk.UnmarshalReceptionIdentity(identityJSON)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -146,11 +147,11 @@ func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Marshalled bytes of [id.ID] (Uint8Array).
-//   - Throws a TypeError if loading the ID from the contact file fails.
+//   - Throws an error if loading the ID from the contact file fails.
 func GetIDFromContact(_ js.Value, args []js.Value) any {
 	cID, err := bindings.GetIDFromContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -165,11 +166,11 @@ func GetIDFromContact(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Bytes of the [cyclic.Int] object (Uint8Array).
-//   - Throws a TypeError if loading the public key from the contact file fails.
+//   - Throws an error if loading the public key from the contact file fails.
 func GetPubkeyFromContact(_ js.Value, args []js.Value) any {
 	key, err := bindings.GetPubkeyFromContact([]byte(args[0].String()))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -189,13 +190,13 @@ func GetPubkeyFromContact(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Marshalled bytes of the modified [contact.Contact] (string).
-//   - Throws a TypeError if loading or modifying the contact fails.
+//   - Throws an error if loading or modifying the contact fails.
 func SetFactsOnContact(_ js.Value, args []js.Value) any {
 	marshaledContact := utils.CopyBytesToGo(args[0])
 	factListJSON := utils.CopyBytesToGo(args[1])
 	c, err := bindings.SetFactsOnContact(marshaledContact, factListJSON)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -209,11 +210,11 @@ func SetFactsOnContact(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - JSON of [fact.FactList] (Uint8Array).
-//   - Throws a TypeError if loading the contact fails.
+//   - Throws an error if loading the contact fails.
 func GetFactsFromContact(_ js.Value, args []js.Value) any {
 	fl, err := bindings.GetFactsFromContact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 

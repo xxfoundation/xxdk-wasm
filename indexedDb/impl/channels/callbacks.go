@@ -10,8 +10,9 @@
 package main
 
 import (
-	"crypto/ed25519"
 	"encoding/json"
+	"time"
+
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/channels"
@@ -24,7 +25,6 @@ import (
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"gitlab.com/xx_network/crypto/csprng"
 	"gitlab.com/xx_network/primitives/id"
-	"time"
 )
 
 var zeroUUID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
@@ -71,8 +71,7 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 			"failed to JSON unmarshal Cipher from main thread: %+v", err)
 	}
 
-	m.model, err = NewWASMEventModel(msg.DatabaseName, encryption,
-		m.messageReceivedCallback, m.deletedMessageCallback, m.mutedUserCallback)
+	m.model, err = NewWASMEventModel(msg.DatabaseName, encryption, m)
 	if err != nil {
 		return []byte(err.Error()), nil
 	}
@@ -80,17 +79,12 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 	return []byte{}, nil
 }
 
-// messageReceivedCallback sends calls to the channels.MessageReceivedCallback
-// in the main thread.
-//
-// storeEncryptionStatus adhere to the channels.MessageReceivedCallback type.
-func (m *manager) messageReceivedCallback(
-	uuid uint64, channelID *id.ID, update bool) {
+// EventUpdate implements [bindings.ChannelUICallbacks.EventUpdate].
+func (m *manager) EventUpdate(eventType int64, jsonData []byte) {
 	// Package parameters for sending
-	msg := &wChannels.MessageReceivedCallbackMessage{
-		UUID:      uuid,
-		ChannelID: channelID,
-		Update:    update,
+	msg := &wChannels.EventUpdateCallbackMessage{
+		EventType: eventType,
+		JsonData:  jsonData,
 	}
 	data, err := json.Marshal(msg)
 	if err != nil {
@@ -99,37 +93,7 @@ func (m *manager) messageReceivedCallback(
 	}
 
 	// Send it to the main thread
-	m.wtm.SendMessage(wChannels.MessageReceivedCallbackTag, "", data)
-}
-
-// deletedMessageCallback sends calls to the channels.DeletedMessageCallback in
-// the main thread.
-//
-// storeEncryptionStatus adhere to the channels.MessageReceivedCallback type.
-func (m *manager) deletedMessageCallback(messageID message.ID) {
-	m.wtm.SendMessage(wChannels.DeletedMessageCallbackTag, "", messageID.Marshal())
-}
-
-// mutedUserCallback sends calls to the channels.MutedUserCallback in the main
-// thread.
-//
-// storeEncryptionStatus adhere to the channels.MessageReceivedCallback type.
-func (m *manager) mutedUserCallback(
-	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
-	// Package parameters for sending
-	msg := &wChannels.MuteUserMessage{
-		ChannelID: channelID,
-		PubKey:    pubKey,
-		Unmute:    unmute,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
-		jww.ERROR.Printf("Could not JSON marshal %T: %+v", msg, err)
-		return
-	}
-
-	// Send it to the main thread
-	m.wtm.SendMessage(wChannels.MutedUserCallbackTag, "", data)
+	m.wtm.SendMessage(wChannels.EventUpdateCallbackTag, "", data)
 }
 
 // joinChannelCB is the callback for wasmModel.JoinChannel. Always returns nil;
@@ -368,7 +332,12 @@ func (m *manager) muteUserCB(data []byte) ([]byte, error) {
 			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 
-	m.model.MuteUser(msg.ChannelID, msg.PubKey, msg.Unmute)
+	channelID := id.ID{}
+	err = channelID.UnmarshalJSON(msg.ChannelID)
+	if err != nil {
+		return nil, err
+	}
+	m.model.MuteUser(&channelID, msg.PubKey, msg.Unmute)
 
 	return nil, nil
 }

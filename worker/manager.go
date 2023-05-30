@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
 // initID is the ID for the first item in the callback list. If the list only

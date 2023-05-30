@@ -12,7 +12,7 @@ package wasm
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/crypto/channel"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/xx_network/crypto/csprng"
 	"reflect"
 	"syscall/js"

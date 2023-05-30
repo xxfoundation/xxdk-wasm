@@ -17,7 +17,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
 // ThreadReceptionCallback is called with a message received from the main
@@ -343,8 +343,8 @@ func (tm *ThreadManager) addEventListeners() {
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/error_event
 	errorEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
 		event := args[0]
-		jww.ERROR.Printf("[WW] [%s] Worker received error event: %s",
-			tm.name, utils.JsErrorToJson(event))
+		jww.ERROR.Printf("[WW] [%s] Worker received error event: %+v",
+			tm.name, js.Error{Value: event})
 		return nil
 	})
 
@@ -353,8 +353,8 @@ func (tm *ThreadManager) addEventListeners() {
 	// Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/messageerror_event
 	messageerrorEvent := js.FuncOf(func(_ js.Value, args []js.Value) any {
 		event := args[0]
-		jww.ERROR.Printf("[WW] [%s] Worker received message error event: %s",
-			tm.name, utils.JsErrorToJson(event))
+		jww.ERROR.Printf("[WW] [%s] Worker received message error event: %+v",
+			tm.name, js.Error{Value: event})
 		return nil
 	})
 

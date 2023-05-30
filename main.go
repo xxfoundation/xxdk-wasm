@@ -11,15 +11,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
 	"syscall/js"
 
+	"github.com/spf13/cobra"
+
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
 )
 
@@ -99,6 +100,11 @@ func setGlobals() {
 	js.Global().Set("InitializeBackup", js.FuncOf(wasm.InitializeBackup))
 	js.Global().Set("ResumeBackup", js.FuncOf(wasm.ResumeBackup))
 
+	// wasm/notifications.go
+	js.Global().Set("LoadNotifications", js.FuncOf(wasm.LoadNotifications))
+	js.Global().Set("LoadNotificationsDummy",
+		js.FuncOf(wasm.LoadNotificationsDummy))
+
 	// wasm/channels.go
 	js.Global().Set("GenerateChannelIdentity",
 		js.FuncOf(wasm.GenerateChannelIdentity))
@@ -126,10 +132,14 @@ func setGlobals() {
 	js.Global().Set("GetShareUrlType", js.FuncOf(wasm.GetShareUrlType))
 	js.Global().Set("ValidForever", js.FuncOf(wasm.ValidForever))
 	js.Global().Set("IsNicknameValid", js.FuncOf(wasm.IsNicknameValid))
+	js.Global().Set("GetNotificationReportsForMe",
+		js.FuncOf(wasm.GetNotificationReportsForMe))
 	js.Global().Set("GetNoMessageErr", js.FuncOf(wasm.GetNoMessageErr))
 	js.Global().Set("CheckNoMessageErr", js.FuncOf(wasm.CheckNoMessageErr))
 	js.Global().Set("NewChannelsDatabaseCipher",
 		js.FuncOf(wasm.NewChannelsDatabaseCipher))
+	js.Global().Set("GetNotificationReportsForMe",
+		js.FuncOf(wasm.GetNotificationReportsForMe))
 
 	// wasm/dm.go
 	js.Global().Set("InitChannelsFileTransfer",
@@ -146,7 +156,11 @@ func setGlobals() {
 
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
+	js.Global().Set("NewSynchronizedCmix",
+		js.FuncOf(wasm.NewSynchronizedCmix))
 	js.Global().Set("LoadCmix", js.FuncOf(wasm.LoadCmix))
+	js.Global().Set("LoadSynchronizedCmix",
+		js.FuncOf(wasm.LoadSynchronizedCmix))
 
 	// wasm/delivery.go
 	js.Global().Set("SetDashboardURL", js.FuncOf(wasm.SetDashboardURL))
@@ -230,6 +244,8 @@ func setGlobals() {
 	js.Global().Set("TransmitSingleUse", js.FuncOf(wasm.TransmitSingleUse))
 	js.Global().Set("Listen", js.FuncOf(wasm.Listen))
 
+	// wasm/sync.go
+
 	// wasm/timeNow.go
 	js.Global().Set("SetTimeSource", js.FuncOf(wasm.SetTimeSource))
 	js.Global().Set("SetOffset", js.FuncOf(wasm.SetOffset))
@@ -252,7 +268,7 @@ func setGlobals() {
 
 var (
 	logLevel, fileLogLevel      jww.Threshold
-	maxLogFileSizeMB              int
+	maxLogFileSizeMB            int
 	workerScriptURL, workerName string
 )
 

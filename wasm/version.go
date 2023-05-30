@@ -14,8 +14,9 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 )
 
 // GetVersion returns the current xxDK WASM semantic version.
@@ -66,7 +67,7 @@ type VersionInfo struct {
 //
 // Returns:
 //   - JSON of [VersionInfo] (Uint8Array).
-//   - Throws a TypeError if getting the version failed.
+//   - Throws an error if getting the version failed.
 func GetWasmSemanticVersion(js.Value, []js.Value) any {
 	vi := VersionInfo{
 		Current: storage.SEMVER,
@@ -80,7 +81,7 @@ func GetWasmSemanticVersion(js.Value, []js.Value) any {
 
 	data, err := json.Marshal(vi)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 	}
 
 	return utils.CopyBytesToJS(data)
@@ -91,7 +92,7 @@ func GetWasmSemanticVersion(js.Value, []js.Value) any {
 //
 // Returns:
 //   - JSON of [VersionInfo] (Uint8Array).
-//   - Throws a TypeError if getting the version failed.
+//   - Throws an error if getting the version failed.
 func GetXXDKSemanticVersion(js.Value, []js.Value) any {
 	vi := VersionInfo{
 		Current: bindings.GetVersion(),
@@ -104,7 +105,7 @@ func GetXXDKSemanticVersion(js.Value, []js.Value) any {
 
 	data, err := json.Marshal(vi)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 	}
 
 	return utils.CopyBytesToJS(data)

@@ -38,11 +38,11 @@ wasm-test:
     - tags
   script:
     - export PATH=/root/go/bin:$PATH
-    - echo > utils/utils_js.s
     - go mod vendor
     - unset SSH_PRIVATE_KEY
     - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)
-    - echo "WASM TESTS DISABLED FOR XX-4522, but will run them just so you can see output"
+    - rm vendor/gitlab.com/elixxir/wasm-utils/exception/throw_js.s
+    - mv vendor/gitlab.com/elixxir/wasm-utils/exception/throws.dev vendor/gitlab.com/elixxir/wasm-utils/exception/throws.go
     - GOOS=js GOARCH=wasm go test ./... -v
 
 build:
@@ -69,9 +69,11 @@ build-workers:
     - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-channelsIndexedDkWorker.wasm ./indexedDb/impl/channels/...
     - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-dmIndexedDkWorker.wasm ./indexedDb/impl/dm/...
     - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-logFileWorker.wasm ./logging/workerThread/...
+    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-stateIndexedDbWorker.wasm ./indexedDb/impl/state/...
     - cp indexedDb/impl/channels/channelsIndexedDbWorker.js release/
     - cp indexedDb/impl/dm/dmIndexedDbWorker.js release/
     - cp logging/workerThread/logFileWorker.js release/
+    - cp indexedDb/impl/state/stateIndexedDbWorker.js release/
   artifacts:
     paths:
       - release/
@@ -112,9 +114,11 @@ combine-artifacts:
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-channelsIndexedDkWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-channelsIndexedDkWorker.wasm'
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-dmIndexedDkWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-dmIndexedDkWorker.wasm'
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-logFileWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-logFileWorker.wasm'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-stateIndexedDbWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-stateIndexedDbWorker.wasm'
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/channelsIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/channelsIndexedDbWorker.js'
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/dmIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/dmIndexedDbWorker.js'
     - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/logFileWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/logFileWorker.js'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/stateIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/stateIndexedDbWorker.js'
     - ls release
   artifacts:
     paths:

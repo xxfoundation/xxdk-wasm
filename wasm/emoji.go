@@ -13,7 +13,8 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
 // SupportedEmojis returns a list of emojis that are supported by the backend.
@@ -21,7 +22,7 @@ import (
 //
 // Returns:
 //   - JSON of an array of emoji.Emoji (Uint8Array).
-//   - Throws a TypeError if marshalling the JSON fails.
+//   - Throws an error if marshalling the JSON fails.
 //
 // Example JSON:
 //
@@ -56,7 +57,7 @@ import (
 func SupportedEmojis(js.Value, []js.Value) any {
 	data, err := bindings.SupportedEmojis()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -68,7 +69,7 @@ func SupportedEmojis(js.Value, []js.Value) any {
 //
 // Returns:
 //   - JSON of a map of emoji.Emoji (Uint8Array).
-//   - Throws a TypeError if marshalling the JSON fails.
+//   - Throws an error if marshalling the JSON fails.
 //
 // Example JSON:
 //
@@ -101,7 +102,7 @@ func SupportedEmojis(js.Value, []js.Value) any {
 func SupportedEmojisMap(js.Value, []js.Value) any {
 	data, err := bindings.SupportedEmojisMap()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -121,7 +122,7 @@ func SupportedEmojisMap(js.Value, []js.Value) any {
 func ValidateReaction(_ js.Value, args []js.Value) any {
 	err := bindings.ValidateReaction(args[0].String())
 	if err != nil {
-		return utils.JsError(err)
+		return exception.NewError(err)
 	}
 
 	return nil
