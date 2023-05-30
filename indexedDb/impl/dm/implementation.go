@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
+	"github.com/Max-Sum/base32768"
 	"gitlab.com/xx_network/primitives/netTime"
 	"strings"
 	"syscall/js"
@@ -81,7 +82,7 @@ func (w *wasmModel) upsertConversation(nickname string,
 // NOTE: ID is not set inside this function because we want to use the
 // autoincrement key by default. If you are trying to overwrite an existing
 // message, then you need to set it manually yourself.
-func buildMessage(messageID, parentID, text []byte, partnerKey,
+func buildMessage(messageID, parentID []byte, text string, partnerKey []byte,
 	senderKey ed25519.PublicKey, timestamp time.Time, round id.Round,
 	mType dm.MessageType, codeset uint8, status dm.Status) *Message {
 	return &Message{
@@ -276,12 +277,13 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	}
 
 	// Handle encryption, if it is present
-	textBytes := []byte(data)
 	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt(textBytes)
+		textBytes, err := w.cipher.Encrypt([]byte(data))
 		if err != nil {
+			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
 			return 0, err
 		}
+		data = base32768.SafeEncoding.EncodeToString(textBytes)
 	}
 
 	var parentIdBytes []byte
@@ -289,7 +291,7 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 		parentIdBytes = parentID.Marshal()
 	}
 
-	msgToInsert := buildMessage(messageID.Bytes(), parentIdBytes, textBytes,
+	msgToInsert := buildMessage(messageID.Bytes(), parentIdBytes, data,
 		partnerKey, senderKey, timestamp, round.ID, mType, codeset, status)
 
 	uuid, err := w.upsertMessage(msgToInsert)

@@ -3,6 +3,7 @@ module gitlab.com/elixxir/xxdk-wasm
 go 1.19
 
 require (
+	github.com/Max-Sum/base32768 v0.0.0-20230304063302-18e6ce5945fd
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
 	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/pkg/errors v0.9.1
@@ -28,12 +29,10 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/elliotchance/orderedmap v1.4.0 // indirect
-	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/gobwas/ws v1.1.0 // indirect
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
@@ -42,27 +41,18 @@ require (
 	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
-	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-sqlite3 v1.14.15 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20221003100820-41fad3beba17 // indirect
 	github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7 // indirect
-	github.com/pelletier/go-toml v1.9.5 // indirect
-	github.com/pelletier/go-toml/v2 v2.0.2 // indirect
-	github.com/pkg/profile v1.6.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/cors v1.8.2 // indirect
 	github.com/sethvargo/go-diceware v0.3.0 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
-	github.com/spf13/afero v1.9.2 // indirect
-	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/spf13/viper v1.12.0 // indirect
-	github.com/subosito/gotenv v1.4.0 // indirect
 	github.com/ttacon/builder v0.0.0-20170518171403-c099f663e1c2 // indirect
 	github.com/ttacon/libphonenumber v1.2.1 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
@@ -83,8 +73,6 @@ require (
 	google.golang.org/genproto v0.0.0-20220822174746-9e6da59bd2fc // indirect
 	google.golang.org/grpc v1.49.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
-	gopkg.in/ini.v1 v1.66.6 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/sqlite v1.4.4 // indirect
 	gorm.io/gorm v1.24.3 // indirect
