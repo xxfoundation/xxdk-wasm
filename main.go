@@ -136,8 +136,8 @@ func setGlobals() {
 		js.FuncOf(wasm.GetNotificationReportsForMe))
 	js.Global().Set("GetNoMessageErr", js.FuncOf(wasm.GetNoMessageErr))
 	js.Global().Set("CheckNoMessageErr", js.FuncOf(wasm.CheckNoMessageErr))
-	js.Global().Set("NewChannelsDatabaseCipher",
-		js.FuncOf(wasm.NewChannelsDatabaseCipher))
+	js.Global().Set("NewDatabaseCipher",
+		js.FuncOf(wasm.NewDatabaseCipher))
 	js.Global().Set("GetNotificationReportsForMe",
 		js.FuncOf(wasm.GetNotificationReportsForMe))
 

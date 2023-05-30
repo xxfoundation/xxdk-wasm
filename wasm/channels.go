@@ -370,7 +370,7 @@ func LoadChannelsManager(_ js.Value, args []js.Value) any {
 //     various events. The entire interface can be nil, but if defined, each
 //     method must be implemented.
 //   - args[6] - ID of [DbCipher] object in tracker (int). Create this
-//     object with [NewChannelsDatabaseCipher] and get its id with
+//     object with [NewDatabaseCipher] and get its id with
 //     [DbCipher.GetID].
 //
 // Returns a promise:
@@ -488,7 +488,7 @@ func newChannelsManagerWithIndexedDb(cmixID int, wasmJsPath string,
 //     various events. The entire interface can be nil, but if defined, each
 //     method must be implemented.
 //   - args[6] - ID of [DbCipher] object in tracker (int). Create this
-//     object with [NewChannelsDatabaseCipher] and get its id with
+//     object with [NewDatabaseCipher] and get its id with
 //     [DbCipher.GetID].
 //
 // Returns a promise:
@@ -2340,7 +2340,7 @@ func newDbCipherJS(api *bindings.DbCipher) map[string]any {
 	return DbCipherMap
 }
 
-// NewChannelsDatabaseCipher constructs a [DbCipher] object.
+// NewDatabaseCipher constructs a [DbCipher] object.
 //
 // Parameters:
 //   - args[0] - The tracked [Cmix] object ID (int).
@@ -2353,7 +2353,7 @@ func newDbCipherJS(api *bindings.DbCipher) map[string]any {
 // Returns:
 //   - JavaScript representation of the [DbCipher] object.
 //   - Throws an error if creating the cipher fails.
-func NewChannelsDatabaseCipher(_ js.Value, args []js.Value) any {
+func NewDatabaseCipher(_ js.Value, args []js.Value) any {
 	cmixId := args[0].Int()
 	password := utils.CopyBytesToGo(args[1])
 	plaintTextBlockSize := args[2].Int()
@@ -2382,7 +2382,7 @@ func (c *DbCipher) GetID(js.Value, []js.Value) any {
 //
 // Parameters:
 //   - args[0] - The data to be encrypted (Uint8Array). This must be smaller
-//     than the block size passed into [NewChannelsDatabaseCipher]. If it is
+//     than the block size passed into [NewDatabaseCipher]. If it is
 //     larger, this will return an error.
 //
 // Returns:
