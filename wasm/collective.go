@@ -397,11 +397,11 @@ func (r *RemoteKV) ListenOnRemoteKey(_ js.Value, args []js.Value) any {
 	cb := newKeyChangedByRemoteCallback(args[2])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		deleted, err := r.api.ListenOnRemoteKey(key, version, cb)
+		err := r.api.ListenOnRemoteKey(key, version, cb, true)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
-			resolve(utils.CopyBytesToJS(deleted))
+			resolve()
 		}
 	}
 
@@ -427,11 +427,11 @@ func (r *RemoteKV) ListenOnRemoteMap(_ js.Value, args []js.Value) any {
 	cb := newMapChangedByRemoteCallback(args[2])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		deleted, err := r.api.ListenOnRemoteMap(mapName, version, cb)
+		err := r.api.ListenOnRemoteMap(mapName, version, cb, true)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
-			resolve(utils.CopyBytesToJS(deleted))
+			resolve()
 		}
 	}
 
