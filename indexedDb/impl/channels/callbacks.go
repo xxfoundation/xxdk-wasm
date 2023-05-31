@@ -11,7 +11,6 @@ package main
 
 import (
 	"encoding/json"
-	"gitlab.com/elixxir/crypto/database"
 	"time"
 
 	"github.com/pkg/errors"
@@ -20,6 +19,7 @@ import (
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
 	"gitlab.com/elixxir/crypto/fastRNG"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/crypto/message"
 	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
@@ -64,7 +64,7 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 
 	// Create new encryption cipher
 	rng := fastRNG.NewStreamGenerator(12, 1024, csprng.NewSystemRNG)
-	encryption, err := database.NewCipherFromJSON(
+	encryption, err := idbCrypto.NewCipherFromJSON(
 		[]byte(msg.EncryptionJSON), rng.GetStream())
 	if err != nil {
 		return []byte{}, errors.Errorf(

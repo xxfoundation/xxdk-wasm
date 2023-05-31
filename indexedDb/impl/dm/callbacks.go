@@ -12,13 +12,13 @@ package main
 import (
 	"crypto/ed25519"
 	"encoding/json"
-	"gitlab.com/elixxir/crypto/database"
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/client/v4/dm"
 	"gitlab.com/elixxir/crypto/fastRNG"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	wDm "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"gitlab.com/xx_network/crypto/csprng"
@@ -61,7 +61,7 @@ func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
 
 	// Create new encryption cipher
 	rng := fastRNG.NewStreamGenerator(12, 1024, csprng.NewSystemRNG)
-	encryption, err := database.NewCipherFromJSON(
+	encryption, err := idbCrypto.NewCipherFromJSON(
 		[]byte(msg.EncryptionJSON), rng.GetStream())
 	if err != nil {
 		return []byte{}, errors.Errorf("failed to JSON unmarshal channel "+

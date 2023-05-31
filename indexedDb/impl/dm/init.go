@@ -11,13 +11,13 @@ package main
 
 import (
 	"crypto/ed25519"
-	"gitlab.com/elixxir/crypto/database"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/client/v4/dm"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 )
 
@@ -35,13 +35,13 @@ type MessageReceivedCallback func(
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key. Returns the
 // EventModel based on IndexedDb and the database name as reported by IndexedDb.
-func NewWASMEventModel(databaseName string, encryption database.Cipher,
+func NewWASMEventModel(databaseName string, encryption idbCrypto.Cipher,
 	cb MessageReceivedCallback) (dm.EventModel, error) {
 	return newWASMModel(databaseName, encryption, cb)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
-func newWASMModel(databaseName string, encryption database.Cipher,
+func newWASMModel(databaseName string, encryption idbCrypto.Cipher,
 	cb MessageReceivedCallback) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()

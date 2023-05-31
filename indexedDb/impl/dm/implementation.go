@@ -13,7 +13,6 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
-	"gitlab.com/elixxir/crypto/database"
 	"gitlab.com/xx_network/primitives/netTime"
 	"strings"
 	"syscall/js"
@@ -25,6 +24,7 @@ import (
 
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	"gitlab.com/elixxir/client/v4/dm"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
@@ -36,7 +36,7 @@ import (
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
 	db                *idb.Database
-	cipher            database.Cipher
+	cipher            idbCrypto.Cipher
 	receivedMessageCB MessageReceivedCallback
 }
 
@@ -81,7 +81,7 @@ func (w *wasmModel) upsertConversation(nickname string,
 // NOTE: ID is not set inside this function because we want to use the
 // autoincrement key by default. If you are trying to overwrite an existing
 // message, then you need to set it manually yourself.
-func buildMessage(messageID, parentID, text []byte, partnerKey,
+func buildMessage(messageID, parentID []byte, text string, partnerKey []byte,
 	senderKey ed25519.PublicKey, timestamp time.Time, round id.Round,
 	mType dm.MessageType, codeset uint8, status dm.Status) *Message {
 	return &Message{
@@ -276,9 +276,8 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	}
 
 	// Handle encryption, if it is present
-	textBytes := []byte(data)
 	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt(textBytes)
+		data, err = w.cipher.Encrypt([]byte(data))
 		if err != nil {
 			return 0, err
 		}
@@ -289,7 +288,7 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 		parentIdBytes = parentID.Marshal()
 	}
 
-	msgToInsert := buildMessage(messageID.Bytes(), parentIdBytes, textBytes,
+	msgToInsert := buildMessage(messageID.Bytes(), parentIdBytes, data,
 		partnerKey, senderKey, timestamp, round.ID, mType, codeset, status)
 
 	uuid, err := w.upsertMessage(msgToInsert)
