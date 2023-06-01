@@ -10,12 +10,16 @@
 package wasm
 
 import (
+	"fmt"
+	"sync/atomic"
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 )
+
+var initializing atomic.Bool
 
 // Cmix wraps the [bindings.Cmix] object so its methods can be wrapped to be
 // Javascript compatible.
@@ -110,6 +114,40 @@ func NewCmix(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
+// NewSynchronizedCmix clones a cMix from remote storage.
+//
+// Users of this function should delete the storage directory on error.
+//
+// Parameters:
+//   - args[0] - NDF JSON ([ndf.NetworkDefinition]) (string).
+//   - args[1] - Storage directory path (string).
+//   - args[2] - Password used for storage (Uint8Array).
+//   - args[3] - Javascript [RemoteStore] implementation.
+//
+// Returns a promise:
+//   - Resolves on success.
+//   - Rejected with an error if creating a new cMix client fails.
+func NewSynchronizedCmix(_ js.Value, args []js.Value) any {
+	initializing.Store(true)
+	ndfJSON := args[0].String()
+	storageDir := args[1].String()
+	password := utils.CopyBytesToGo(args[2])
+	rs := newRemoteStore(args[3])
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		err := bindings.NewSynchronizedCmix(ndfJSON, storageDir,
+			password, rs)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			initializing.Store(false)
+			resolve()
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
 // LoadCmix will load an existing user storage from the storageDir using the
 // password. This will fail if the user storage does not exist or the password
 // is incorrect.
@@ -164,6 +202,10 @@ func LoadSynchronizedCmix(_ js.Value, args []js.Value) any {
 	cmixParamsJSON := utils.CopyBytesToGo(args[3])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		if initializing.Load() {
+			reject(exception.NewTrace(fmt.Errorf(
+				"cannot Load when New is running")))
+		}
 		net, err := bindings.LoadSynchronizedCmix(storageDir, password,
 			rs, cmixParamsJSON)
 		if err != nil {

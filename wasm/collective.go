@@ -385,6 +385,7 @@ func (r *RemoteKV) GetMapElement(_ js.Value, args []js.Value) any {
 //   - args[0] - the key string
 //   - args[1] - the version int
 //   - args[2] - the [KeyChangedByRemoteCallback] javascript callback
+//   - args[3] - set the localEvents flag to true or false (optional)
 //
 // Returns a promise with an error if any or the json of the existing
 // [versioned.Object], e.g.:
@@ -396,12 +397,17 @@ func (r *RemoteKV) ListenOnRemoteKey(_ js.Value, args []js.Value) any {
 	version := int64(args[1].Int())
 	cb := newKeyChangedByRemoteCallback(args[2])
 
+	localEvents := true
+	if len(args) > 3 && !args[3].IsUndefined() {
+		localEvents = args[3].Bool()
+	}
+
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		deleted, err := r.api.ListenOnRemoteKey(key, version, cb)
+		err := r.api.ListenOnRemoteKey(key, version, cb, localEvents)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
-			resolve(utils.CopyBytesToJS(deleted))
+			resolve()
 		}
 	}
 
@@ -415,6 +421,7 @@ func (r *RemoteKV) ListenOnRemoteKey(_ js.Value, args []js.Value) any {
 //   - args[0] - the mapName string
 //   - args[1] - the version int
 //   - args[2] - the [MapChangedByRemoteCallback] javascript callback
+//   - args[3] - set the localEvents flag to true or false (optional)
 //
 // Returns a promise with an error if any or the json of the existing
 // the [map[string]versioned.Object] JSON value, e.g.:
@@ -426,12 +433,17 @@ func (r *RemoteKV) ListenOnRemoteMap(_ js.Value, args []js.Value) any {
 	version := int64(args[1].Int())
 	cb := newMapChangedByRemoteCallback(args[2])
 
+	localEvents := true
+	if len(args) > 3 && !args[3].IsUndefined() {
+		localEvents = args[3].Bool()
+	}
+
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		deleted, err := r.api.ListenOnRemoteMap(mapName, version, cb)
+		err := r.api.ListenOnRemoteMap(mapName, version, cb, localEvents)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
-			resolve(utils.CopyBytesToJS(deleted))
+			resolve()
 		}
 	}
 
@@ -473,13 +485,11 @@ func newRemoteStore(arg js.Value) *RemoteStore {
 //   - The file data (Uint8Array).
 //   - Catches any thrown errors (of type Error) and returns it as an error.
 func (rsCB *RemoteStore) Read(path string) ([]byte, error) {
-
-	fn := func() js.Value { return rsCB.read(path) }
-	v, err := exception.RunAndCatch(fn)
-	if err != nil {
-		return nil, err
+	v, awaitErr := utils.Await(rsCB.read(path))
+	if awaitErr != nil {
+		return nil, js.Error{Value: awaitErr[0]}
 	}
-	return utils.CopyBytesToGo(v), err
+	return utils.CopyBytesToGo(v[0]), nil
 }
 
 // Write implements [bindings.RemoteStore.Write]
@@ -491,9 +501,11 @@ func (rsCB *RemoteStore) Read(path string) ([]byte, error) {
 // Returns:
 //   - Catches any thrown errors (of type Error) and returns it as an error.
 func (rsCB *RemoteStore) Write(path string, data []byte) error {
-	fn := func() js.Value { return rsCB.write(path, utils.CopyBytesToJS(data)) }
-	_, err := exception.RunAndCatch(fn)
-	return err
+	_, awaitErr := utils.Await(rsCB.write(path, utils.CopyBytesToJS(data)))
+	if awaitErr != nil {
+		return js.Error{Value: awaitErr[0]}
+	}
+	return nil
 }
 
 // GetLastModified implements [bindings.RemoteStore.GetLastModified]
@@ -536,12 +548,11 @@ func (rsCB *RemoteStore) GetLastWrite() ([]byte, error) {
 //   - JSON of []string (Uint8Array).
 //   - Catches any thrown errors (of type Error) and returns it as an error.
 func (rsCB *RemoteStore) ReadDir(path string) ([]byte, error) {
-	fn := func() js.Value { return rsCB.readDir(path) }
-	v, err := exception.RunAndCatch(fn)
-	if err != nil {
-		return nil, err
+	v, awaitErr := utils.Await(rsCB.readDir(path))
+	if awaitErr != nil {
+		return nil, js.Error{Value: awaitErr[0]}
 	}
-	return utils.CopyBytesToGo(v), err
+	return utils.CopyBytesToGo(v[0]), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
