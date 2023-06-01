@@ -1241,19 +1241,18 @@ func (cm *ChannelsManager) SendSilent(_ js.Value, args []js.Value) any {
 //
 // Parameters:
 //   - args[0] - Marshalled bytes of the invited channel [id.ID] (Uint8Array).
-//   - args[1] - Marshalled bytes of the invitee channel [id.ID] (Uint8Array).
+//   - args[1] - JSON of the invitee channel [id.ID].
+//     This can be retrieved from [GetChannelJSON]. (Uint8Array).
 //   - args[2] - The contents of the message (string).
 //   - args[3] - The URL to append the channel info to (string).
-//   - args[4] - The maximum number of uses the link can be used (0 for
-//     unlimited) (int).
-//   - args[5] - The lease of the message. This will be how long the
+//   - args[4] - The lease of the message. This will be how long the
 //     message is available from the network, in milliseconds (int). As per the
 //     [channels.Manager] documentation, this has different meanings depending
 //     on the use case. These use cases may be generic enough that they will not
 //     be enumerated here. Use [ValidForever] to last the max message life.
-//   - args[6] - JSON of [xxdk.CMIXParams]. If left empty
+//   - args[5] - JSON of [xxdk.CMIXParams]. If left empty
 //     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
-//   - args[7] - JSON of a slice of public keys of users that should receive
+//   - args[6] - JSON of a slice of public keys of users that should receive
 //     mobile notifications for the message.
 //
 // Example slice of public keys:
@@ -1269,19 +1268,18 @@ func (cm *ChannelsManager) SendSilent(_ js.Value, args []js.Value) any {
 //   - Rejected with an error if sending fails.
 func (cm *ChannelsManager) SendInvite(_ js.Value, args []js.Value) any {
 	var (
-		marshalledChanId     = utils.CopyBytesToGo(args[0])
-		marshalledInviteToId = utils.CopyBytesToGo(args[1])
-		msg                  = args[2].String()
-		host                 = args[3].String()
-		maxUses              = args[4].Int()
-		leaseTimeMS          = int64(args[5].Int())
-		cmixParamsJSON       = utils.CopyBytesToGo(args[6])
-		pingsJSON            = utils.CopyBytesToGo(args[7])
+		marshalledChanId = utils.CopyBytesToGo(args[0])
+		inviteToJSON     = utils.CopyBytesToGo(args[1])
+		msg              = args[2].String()
+		host             = args[3].String()
+		leaseTimeMS      = int64(args[4].Int())
+		cmixParamsJSON   = utils.CopyBytesToGo(args[5])
+		pingsJSON        = utils.CopyBytesToGo(args[6])
 	)
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := cm.api.SendInvite(marshalledChanId,
-			marshalledInviteToId, msg, host, maxUses, leaseTimeMS,
+			inviteToJSON, msg, host, leaseTimeMS,
 			cmixParamsJSON, pingsJSON)
 		if err != nil {
 			reject(exception.NewTrace(err))

@@ -524,20 +524,16 @@ func (dmc *DMClient) SendSilent(_ js.Value, args []js.Value) any {
 // then an error will be returned.
 //
 // Parameters:
-//   - args[0] - The ID of [ChannelsManager] object in tracker. This can be
-//     retrieved using [ChannelsManager.GetID].
-//   - args[1] - The bytes of the public key of the partner's ED25519 signing
+//   - args[0] - The bytes of the public key of the partner's ED25519 signing
 //     key (Uint8Array).
-//   - args[2] - The token used to derive the reception ID for the partner (int).
-//   - args[3] - Marshalled bytes of the channel the user is inviting another
-//     user to.
-//   - args[4] - The contents of the message. The message should be at most 510
+//   - args[1] - The token used to derive the reception ID for the partner (int).
+//   - args[2] - JSON of the invitee channel [id.ID].
+//     This can be retrieved from [GetChannelJSON]. (Uint8Array).
+//   - args[3] - The contents of the message. The message should be at most 510
 //     bytes. This is expected to be Unicode, and thus a string data type is
 //     expected.
-//   - args[5] - The URL to append the channel info to.
-//   - args[6] - The maximum number of uses the link can be used (0 for
-//     unlimited).
-//   - args[7] - A JSON marshalled [xxdk.CMIXParams]. This may be empty,
+//   - args[4] - The URL to append the channel info to.
+//   - args[5] - A JSON marshalled [xxdk.CMIXParams]. This may be empty,
 //     and GetDefaultCMixParams will be used internally.
 //
 // Returns a promise:
@@ -545,20 +541,18 @@ func (dmc *DMClient) SendSilent(_ js.Value, args []js.Value) any {
 //   - Rejected with an error if sending fails.
 func (dmc *DMClient) SendInvite(_ js.Value, args []js.Value) any {
 	var (
-		channelManagerId     = args[0].Int()
-		partnerPubKeyBytes   = utils.CopyBytesToGo(args[1])
-		partnerToken         = int32(args[2].Int())
-		marshalledInviteToId = utils.CopyBytesToGo(args[3])
-		msg                  = args[4].String()
-		host                 = args[5].String()
-		maxUses              = args[6].Int()
-		cmixParamsJSON       = utils.CopyBytesToGo(args[7])
+		partnerPubKeyBytes = utils.CopyBytesToGo(args[0])
+		partnerToken       = int32(args[1].Int())
+		inviteToJSON       = utils.CopyBytesToGo(args[2])
+		msg                = args[3].String()
+		host               = args[4].String()
+		cmixParamsJSON     = utils.CopyBytesToGo(args[5])
 	)
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := dmc.api.SendInvite(channelManagerId,
-			partnerPubKeyBytes, partnerToken, marshalledInviteToId, msg, host,
-			maxUses, cmixParamsJSON)
+		sendReport, err := dmc.api.SendInvite(
+			partnerPubKeyBytes, partnerToken, inviteToJSON, msg, host,
+			cmixParamsJSON)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
