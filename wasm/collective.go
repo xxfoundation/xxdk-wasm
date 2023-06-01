@@ -398,7 +398,7 @@ func (r *RemoteKV) ListenOnRemoteKey(_ js.Value, args []js.Value) any {
 	cb := newKeyChangedByRemoteCallback(args[2])
 
 	localEvents := true
-	if !args[3].IsUndefined() {
+	if len(args) > 3 && !args[3].IsUndefined() {
 		localEvents = args[3].Bool()
 	}
 
@@ -434,7 +434,7 @@ func (r *RemoteKV) ListenOnRemoteMap(_ js.Value, args []js.Value) any {
 	cb := newMapChangedByRemoteCallback(args[2])
 
 	localEvents := true
-	if !args[3].IsUndefined() {
+	if len(args) > 3 && !args[3].IsUndefined() {
 		localEvents = args[3].Bool()
 	}
 
