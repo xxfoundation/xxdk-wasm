@@ -1703,7 +1703,7 @@ func (cm *ChannelsManager) SetMobileNotificationsLevel(_ js.Value, args []js.Val
 	return nil
 }
 
-// GetNotificationReportsForMe checks the notification data against the filter
+// GetChannelNotificationReportsForMe checks the notification data against the filter
 // list to determine which notifications belong to the user. A list of
 // notification reports is returned detailing all notifications for the user.
 //
