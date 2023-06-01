@@ -1769,11 +1769,11 @@ func (cm *ChannelsManager) SetMobileNotificationsLevel(_ js.Value, args []js.Val
 // Returns:
 //   - The JSON of a slice of [channels.NotificationReport] (Uint8Array).
 //   - Throws an error if getting the report fails.
-func GetNotificationReportsForMe(_ js.Value, args []js.Value) any {
+func GetChannelNotificationReportsForMe(_ js.Value, args []js.Value) any {
 	notificationFilterJSON := utils.CopyBytesToGo(args[0])
 	notificationDataJSON := utils.CopyBytesToGo(args[1])
 
-	report, err := bindings.GetNotificationReportsForMe(
+	report, err := bindings.GetChannelNotificationReportsForMe(
 		notificationFilterJSON, notificationDataJSON)
 	if err != nil {
 		exception.ThrowTrace(err)
