@@ -61,7 +61,7 @@ const (
 // Error messages.
 const (
 	// initInternalPassword
-	readInternalPasswordErr     = "could not generate internal password: %+v"
+	readInternalPasswordErr     = "could not generate"
 	internalPasswordNumBytesErr = "expected %d bytes for internal password, found %d bytes"
 
 	// getInternalPassword
