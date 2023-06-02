@@ -16,8 +16,6 @@ import (
 	"sync"
 	"syscall/js"
 
-	jww "github.com/spf13/jwalterweatherman"
-
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/wasm-utils/exception"
@@ -953,11 +951,8 @@ func (cm *ChannelsManager) GetShareURL(_ js.Value, args []js.Value) any {
 func GetShareUrlType(_ js.Value, args []js.Value) any {
 	level, err := bindings.GetShareUrlType(args[0].String())
 	if err != nil {
-		jww.ERROR.Printf("ShareURL is broken: %s: %+v",
-			args[0].String(), err)
-
-		// exception.ThrowTrace(err)
-		return 1
+		exception.ThrowTrace(err)
+		return nil
 	}
 
 	return level
