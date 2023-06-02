@@ -517,12 +517,11 @@ func (rsCB *RemoteStore) Write(path string, data []byte) error {
 //   - JSON of [bindings.RemoteStoreReport] (Uint8Array).
 //   - Catches any thrown errors (of type Error) and returns it as an error.
 func (rsCB *RemoteStore) GetLastModified(path string) (string, error) {
-	fn := func() js.Value { return rsCB.getLastModified(path) }
-	v, err := exception.RunAndCatch(fn)
+	v, err := utils.Await(rsCB.getLastModified(path))
 	if err != nil {
-		return "", err
+		return "", js.Error{Value: err[0]}
 	}
-	return v.String(), err
+	return v[0].String(), nil
 }
 
 // GetLastWrite implements [bindings.RemoteStore.GetLastWrite()
@@ -531,12 +530,11 @@ func (rsCB *RemoteStore) GetLastModified(path string) (string, error) {
 //   - JSON of [bindings.RemoteStoreReport] (Uint8Array).
 //   - Catches any thrown errors (of type Error) and returns it as an error.
 func (rsCB *RemoteStore) GetLastWrite() (string, error) {
-	fn := func() js.Value { return rsCB.getLastWrite() }
-	v, err := exception.RunAndCatch(fn)
+	v, err := utils.Await(rsCB.getLastWrite())
 	if err != nil {
-		return "", err
+		return "", js.Error{Value: err[0]}
 	}
-	return v.String(), err
+	return v[0].String(), nil
 }
 
 // ReadDir implements [bindings.RemoteStore.ReadDir]
