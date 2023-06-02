@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/crypto/hash"
 	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/storage"
 	"gitlab.com/elixxir/wasm-utils/utils"
@@ -40,6 +41,8 @@ const (
 	// saltLen is the length of the salt. Recommended to be 16 bytes here:
 	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-argon2-04#section-3.1
 	saltLen = 16
+
+	internalPasswordConstant = "XXInternalPassword"
 )
 
 // Storage keys.
@@ -153,6 +156,9 @@ func getOrInit(externalPassword string) ([]byte, error) {
 // changeExternalPassword is the private function for ChangeExternalPassword
 // that is used for testing.
 func changeExternalPassword(oldExternalPassword, newExternalPassword string) error {
+	// NOTE: the following no longer works in synchronized environments, so
+	// disabled in produciton.
+	jww.FATAL.Panicf("cannot change password, unimplemented")
 	localStorage := storage.GetLocalStorage()
 	internalPassword, err := getInternalPassword(
 		oldExternalPassword, localStorage)
@@ -193,14 +199,22 @@ func initInternalPassword(externalPassword string,
 	params argonParams) ([]byte, error) {
 	internalPassword := make([]byte, internalPasswordLen)
 
+	// FIXME: The internal password is now just an expansion of
+	// the users password text. We couldn't preserve the following
+	// when doing cross-device sync.
+	h := hash.CMixHash.New()
+	h.Write([]byte(externalPassword))
+	h.Write(internalPassword)
+	copy(internalPassword, h.Sum(nil)[:internalPasswordLen])
+
 	// Generate internal password
-	n, err := csprng.Read(internalPassword)
-	if err != nil {
-		return nil, errors.Errorf(readInternalPasswordErr, err)
-	} else if n != internalPasswordLen {
-		return nil, errors.Errorf(
-			internalPasswordNumBytesErr, internalPasswordLen, n)
-	}
+	// n, err := csprng.Read(internalPassword)
+	// if err != nil {
+	// 	return nil, errors.Errorf(readInternalPasswordErr, err)
+	// } else if n != internalPasswordLen {
+	// 	return nil, errors.Errorf(
+	// 		internalPasswordNumBytesErr, internalPasswordLen, n)
+	// }
 
 	// Generate and store salt
 	salt, err := makeSalt(csprng)
