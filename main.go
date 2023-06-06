@@ -152,7 +152,7 @@ func setGlobals() {
 	js.Global().Set("NewDMClientWithIndexedDbUnsafe",
 		js.FuncOf(wasm.NewDMClientWithIndexedDbUnsafe))
 	js.Global().Set("NewDMsDatabaseCipher",
-		js.FuncOf(wasm.NewDMsDatabaseCipher))
+		js.FuncOf(wasm.NewDatabaseCipher))
 
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))

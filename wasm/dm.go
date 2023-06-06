@@ -142,7 +142,7 @@ func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 	messageReceivedCB := args[3]
 	cipherID := args[4].Int()
 
-	cipher, err := bindings.GetDbCipherTrackerFromID(cipherID)
+	cipher, err := dbCipherTrackerSingleton.get(cipherID)
 	if err != nil {
 		exception.ThrowTrace(err)
 	}
@@ -190,7 +190,7 @@ func NewDMClientWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 }
 
 func newDMClientWithIndexedDb(cmixID int, wasmJsPath string,
-	privateIdentity []byte, cb js.Value, cipher *bindings.DbCipher) any {
+	privateIdentity []byte, cb js.Value, cipher *DbCipher) any {
 
 	messageReceivedCB := func(uuid uint64, pubKey ed25519.PublicKey,
 		messageUpdate, conversationUpdate bool) {
@@ -206,7 +206,7 @@ func newDMClientWithIndexedDb(cmixID int, wasmJsPath string,
 		}
 		dmPath := base64.RawStdEncoding.EncodeToString(pi.PubKey[:])
 		model, err := indexDB.NewWASMEventModel(
-			dmPath, wasmJsPath, cipher, messageReceivedCB)
+			dmPath, wasmJsPath, cipher.api, messageReceivedCB)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		}
@@ -672,35 +672,6 @@ func DecodeDMShareURL(_ js.Value, args []js.Value) any {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Channel Receiving Logic and Callback Registration                          //
-////////////////////////////////////////////////////////////////////////////////
-
-// channelMessageReceptionCallback wraps Javascript callbacks to adhere to the
-// [bindings.ChannelMessageReceptionCallback] interface.
-type dmReceptionCallback struct {
-	callback func(args ...any) js.Value
-}
-
-// Callback returns the context for a channel message.
-//
-// Parameters:
-//   - receivedChannelMessageReport - Returns the JSON of
-//     [bindings.ReceivedChannelMessageReport] (Uint8Array).
-//   - err - Returns an error on failure (Error).
-//
-// Returns:
-//   - It must return a unique UUID for the message that it can be referenced by
-//     later (int).
-func (cmrCB *dmReceptionCallback) Callback(
-	receivedChannelMessageReport []byte, err error) int {
-	uuid := cmrCB.callback(
-		utils.CopyBytesToJS(receivedChannelMessageReport),
-		exception.NewTrace(err))
-
-	return uuid.Int()
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Event Model Logic                                                          //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -988,146 +959,6 @@ func (em *dmReceiver) GetConversations() []byte {
 
 	conversationsBytes, _ := json.Marshal(conversations)
 	return conversationsBytes
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// DM DB Cipher                                                               //
-////////////////////////////////////////////////////////////////////////////////
-
-// DMDbCipher wraps the [bindings.DMDbCipher] object so its methods
-// can be wrapped to be Javascript compatible.
-type DMDbCipher struct {
-	api *bindings.DbCipher
-}
-
-// newDMDbCipherJS creates a new Javascript compatible object
-// (map[string]any) that matches the [DMDbCipher] structure.
-func newDMDbCipherJS(api *bindings.DbCipher) map[string]any {
-	c := DMDbCipher{api}
-	channelDbCipherMap := map[string]any{
-		"GetID":         js.FuncOf(c.GetID),
-		"Encrypt":       js.FuncOf(c.Encrypt),
-		"Decrypt":       js.FuncOf(c.Decrypt),
-		"MarshalJSON":   js.FuncOf(c.MarshalJSON),
-		"UnmarshalJSON": js.FuncOf(c.UnmarshalJSON),
-	}
-
-	return channelDbCipherMap
-}
-
-// NewDMsDatabaseCipher constructs a [DMDbCipher] object.
-//
-// Parameters:
-//   - args[0] - The tracked [Cmix] object ID (int).
-//   - args[1] - The password for storage. This should be the same password
-//     passed into [NewCmix] (Uint8Array).
-//   - args[2] - The maximum size of a payload to be encrypted. A payload passed
-//     into [DMDbCipher.Encrypt] that is larger than this value will result
-//     in an error (int).
-//
-// Returns:
-//   - JavaScript representation of the [DMDbCipher] object.
-//   - Throws an error if creating the cipher fails.
-func NewDMsDatabaseCipher(_ js.Value, args []js.Value) any {
-	cmixId := args[0].Int()
-	password := utils.CopyBytesToGo(args[1])
-	plaintTextBlockSize := args[2].Int()
-
-	cipher, err := bindings.NewDatabaseCipher(
-		cmixId, password, plaintTextBlockSize)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return newDMDbCipherJS(cipher)
-}
-
-// GetID returns the ID for this [bindings.DMDbCipher] in the
-// channelDbCipherTracker.
-//
-// Returns:
-//   - Tracker ID (int).
-func (c *DMDbCipher) GetID(js.Value, []js.Value) any {
-	return c.api.GetID()
-}
-
-// Encrypt will encrypt the raw data. It will return a ciphertext. Padding is
-// done on the plaintext so all encrypted data looks uniform at rest.
-//
-// Parameters:
-//   - args[0] - The data to be encrypted (Uint8Array). This must be smaller
-//     than the block size passed into [NewDMsDatabaseCipher]. If it is
-//     larger, this will return an error.
-//
-// Returns:
-//   - The ciphertext of the plaintext passed in (Uint8Array).
-//   - Throws an error if it fails to encrypt the plaintext.
-func (c *DMDbCipher) Encrypt(_ js.Value, args []js.Value) any {
-	ciphertext, err := c.api.Encrypt(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return utils.CopyBytesToJS(ciphertext)
-}
-
-// Decrypt will decrypt the passed in encrypted value. The plaintext will be
-// returned by this function. Any padding will be discarded within this
-// function.
-//
-// Parameters:
-//   - args[0] - the encrypted data returned by [DMDbCipher.Encrypt]
-//     (Uint8Array).
-//
-// Returns:
-//   - The plaintext of the ciphertext passed in (Uint8Array).
-//   - Throws an error if it fails to encrypt the plaintext.
-func (c *DMDbCipher) Decrypt(_ js.Value, args []js.Value) any {
-	plaintext, err := c.api.Decrypt(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return utils.CopyBytesToJS(plaintext)
-}
-
-// MarshalJSON marshals the cipher into valid JSON.
-//
-// Returns:
-//   - JSON of the cipher (Uint8Array).
-//   - Throws an error if marshalling fails.
-func (c *DMDbCipher) MarshalJSON(js.Value, []js.Value) any {
-	data, err := c.api.MarshalJSON()
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return utils.CopyBytesToJS(data)
-}
-
-// UnmarshalJSON unmarshalls JSON into the cipher. This function adheres to the
-// json.Unmarshaler interface.
-//
-// Note that this function does not transfer the internal RNG. Use
-// [channel.NewCipherFromJSON] to properly reconstruct a cipher from JSON.
-//
-// Parameters:
-//   - args[0] - JSON data to unmarshal (Uint8Array).
-//
-// Returns:
-//   - JSON of the cipher (Uint8Array).
-//   - Throws an error if marshalling fails.
-func (c *DMDbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
-	err := c.api.UnmarshalJSON(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-	return nil
 }
 
 // truncate truncates the string to length n. If the string is trimmed, then

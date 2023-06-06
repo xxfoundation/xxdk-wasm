@@ -66,9 +66,9 @@ func Test_DMClientMethods(t *testing.T) {
 // Tests that the map representing DMDbCipher returned by newDMDbCipherJS
 // contains all of the methods on DMDbCipher.
 func Test_newDMDbCipherJS(t *testing.T) {
-	cipherType := reflect.TypeOf(&DMDbCipher{})
+	cipherType := reflect.TypeOf(&DbCipher{})
 
-	cipher := newDMDbCipherJS(&bindings.DbCipher{})
+	cipher := newDbCipherJS(&DbCipher{})
 	if len(cipher) != cipherType.NumMethod() {
 		t.Errorf("DMDbCipher JS object does not have all methods."+
 			"\nexpected: %d\nreceived: %d", cipherType.NumMethod(), len(cipher))
@@ -85,8 +85,8 @@ func Test_newDMDbCipherJS(t *testing.T) {
 
 // Tests that DMDbCipher has all the methods that [bindings.DMDbCipher] has.
 func Test_DMDbCipherMethods(t *testing.T) {
-	cipherType := reflect.TypeOf(&DMDbCipher{})
-	binCipherType := reflect.TypeOf(&bindings.DbCipher{})
+	cipherType := reflect.TypeOf(&DbCipher{})
+	binCipherType := reflect.TypeOf(&DbCipher{})
 
 	if binCipherType.NumMethod() != cipherType.NumMethod() {
 		t.Errorf("WASM DMDbCipher object does not have all methods from "+

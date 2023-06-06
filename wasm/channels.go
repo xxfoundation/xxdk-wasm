@@ -386,7 +386,7 @@ func NewChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 	cUI := newChannelUI(args[5])
 	cipherID := args[6].Int()
 
-	cipher, err := bindings.GetDbCipherTrackerFromID(cipherID)
+	cipher, err := dbCipherTrackerSingleton.get(cipherID)
 	if err != nil {
 		exception.ThrowTrace(err)
 	}
@@ -444,10 +444,10 @@ func NewChannelsManagerWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 func newChannelsManagerWithIndexedDb(cmixID int, wasmJsPath string,
 	privateIdentity, extensionBuilderIDsJSON []byte, notificationsID int,
 	channelsCbs bindings.ChannelUICallbacks,
-	cipher *bindings.DbCipher) any {
+	cipher *DbCipher) any {
 
 	model := channelsDb.NewWASMEventModelBuilder(
-		wasmJsPath, cipher, channelsCbs)
+		wasmJsPath, cipher.api, channelsCbs)
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		cm, err := bindings.NewChannelsManagerGoEventModel(cmixID,
@@ -504,7 +504,7 @@ func LoadChannelsManagerWithIndexedDb(_ js.Value, args []js.Value) any {
 	channelsCbs := newChannelUI(args[5])
 	cipherID := args[6].Int()
 
-	cipher, err := bindings.GetDbCipherTrackerFromID(cipherID)
+	cipher, err := dbCipherTrackerSingleton.get(cipherID)
 	if err != nil {
 		exception.ThrowTrace(err)
 	}
@@ -557,10 +557,10 @@ func LoadChannelsManagerWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 
 func loadChannelsManagerWithIndexedDb(cmixID int, wasmJsPath, storageTag string,
 	extensionBuilderIDsJSON []byte, notificationsID int, channelsCbs bindings.ChannelUICallbacks,
-	cipher *bindings.DbCipher) any {
+	cipher *DbCipher) any {
 
 	model := channelsDb.NewWASMEventModelBuilder(
-		wasmJsPath, cipher, channelsCbs)
+		wasmJsPath, cipher.api, channelsCbs)
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		cm, err := bindings.LoadChannelsManagerGoEventModel(
@@ -2313,145 +2313,6 @@ type MessageAndError struct {
 
 	// Error should only be filled when an error occurs on message lookup.
 	Error string
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Channel Cipher                                                             //
-////////////////////////////////////////////////////////////////////////////////
-
-// DbCipher wraps the [bindings.DbCipher] object so its methods
-// can be wrapped to be Javascript compatible.
-type DbCipher struct {
-	api *bindings.DbCipher
-}
-
-// newDbCipherJS creates a new Javascript compatible object
-// (map[string]any) that matches the [DbCipher] structure.
-func newDbCipherJS(api *bindings.DbCipher) map[string]any {
-	c := DbCipher{api}
-	DbCipherMap := map[string]any{
-		"GetID":         js.FuncOf(c.GetID),
-		"Encrypt":       js.FuncOf(c.Encrypt),
-		"Decrypt":       js.FuncOf(c.Decrypt),
-		"MarshalJSON":   js.FuncOf(c.MarshalJSON),
-		"UnmarshalJSON": js.FuncOf(c.UnmarshalJSON),
-	}
-
-	return DbCipherMap
-}
-
-// NewDatabaseCipher constructs a [DbCipher] object.
-//
-// Parameters:
-//   - args[0] - The tracked [Cmix] object ID (int).
-//   - args[1] - The password for storage. This should be the same password
-//     passed into [NewCmix] (Uint8Array).
-//   - args[2] - The maximum size of a payload to be encrypted. A payload passed
-//     into [DbCipher.Encrypt] that is larger than this value will result
-//     in an error (int).
-//
-// Returns:
-//   - JavaScript representation of the [DbCipher] object.
-//   - Throws an error if creating the cipher fails.
-func NewDatabaseCipher(_ js.Value, args []js.Value) any {
-	cmixId := args[0].Int()
-	password := utils.CopyBytesToGo(args[1])
-	plaintTextBlockSize := args[2].Int()
-
-	cipher, err := bindings.NewDatabaseCipher(
-		cmixId, password, plaintTextBlockSize)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return newDbCipherJS(cipher)
-}
-
-// GetID returns the ID for this [bindings.DbCipher] in the
-// DbCipherTracker.
-//
-// Returns:
-//   - Tracker ID (int).
-func (c *DbCipher) GetID(js.Value, []js.Value) any {
-	return c.api.GetID()
-}
-
-// Encrypt will encrypt the raw data. It will return a ciphertext. Padding is
-// done on the plaintext so all encrypted data looks uniform at rest.
-//
-// Parameters:
-//   - args[0] - The data to be encrypted (Uint8Array). This must be smaller
-//     than the block size passed into [NewDatabaseCipher]. If it is
-//     larger, this will return an error.
-//
-// Returns:
-//   - The ciphertext of the plaintext passed in (Uint8Array).
-//   - Throws an error if it fails to encrypt the plaintext.
-func (c *DbCipher) Encrypt(_ js.Value, args []js.Value) any {
-	ciphertext, err := c.api.Encrypt(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return utils.CopyBytesToJS(ciphertext)
-}
-
-// Decrypt will decrypt the passed in encrypted value. The plaintext will be
-// returned by this function. Any padding will be discarded within this
-// function.
-//
-// Parameters:
-//   - args[0] - the encrypted data returned by [DbCipher.Encrypt]
-//     (Uint8Array).
-//
-// Returns:
-//   - The plaintext of the ciphertext passed in (Uint8Array).
-//   - Throws an error if it fails to encrypt the plaintext.
-func (c *DbCipher) Decrypt(_ js.Value, args []js.Value) any {
-	plaintext, err := c.api.Decrypt(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return utils.CopyBytesToJS(plaintext)
-}
-
-// MarshalJSON marshals the cipher into valid JSON.
-//
-// Returns:
-//   - JSON of the cipher (Uint8Array).
-//   - Throws an error if marshalling fails.
-func (c *DbCipher) MarshalJSON(js.Value, []js.Value) any {
-	data, err := c.api.MarshalJSON()
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return utils.CopyBytesToJS(data)
-}
-
-// UnmarshalJSON unmarshalls JSON into the cipher.
-//
-// Note that this function does not transfer the internal RNG. Use
-// [channel.NewCipherFromJSON] to properly reconstruct a cipher from JSON.
-//
-// Parameters:
-//   - args[0] - JSON data to unmarshal (Uint8Array).
-//
-// Returns:
-//   - JSON of the cipher (Uint8Array).
-//   - Throws an error if marshalling fails.
-func (c *DbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
-	err := c.api.UnmarshalJSON(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-	return nil
 }
 
 // newChannelUI maps the methods on the Javascript object to the
