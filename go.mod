@@ -9,7 +9,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/jwalterweatherman v1.1.0
 	github.com/stretchr/testify v1.8.2
-	gitlab.com/elixxir/client/v4 v4.6.4-0.20230606201910-fe9f57e3141f
+	gitlab.com/elixxir/client/v4 v4.6.4-0.20230606202433-a9136c29d24d
 	gitlab.com/elixxir/crypto v0.0.7-0.20230522162218-45433d877235
 	gitlab.com/elixxir/primitives v0.0.3-0.20230214180039-9a25e2d3969c
 	gitlab.com/elixxir/wasm-utils v0.0.0-20230522231408-a43b2c1481b2
