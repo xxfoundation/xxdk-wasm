@@ -136,10 +136,12 @@ func setGlobals() {
 		js.FuncOf(wasm.GetChannelNotificationReportsForMe))
 	js.Global().Set("GetNoMessageErr", js.FuncOf(wasm.GetNoMessageErr))
 	js.Global().Set("CheckNoMessageErr", js.FuncOf(wasm.CheckNoMessageErr))
+	js.Global().Set("GetNotificationReportsForMe",
+		js.FuncOf(wasm.GetChannelNotificationReportsForMe))
+
+	// wasm/cipher.go
 	js.Global().Set("NewDatabaseCipher",
 		js.FuncOf(wasm.NewDatabaseCipher))
-	js.Global().Set("GetNotificationReportsForMe",
-		js.FuncOf(wasm.GetNotificationReportsForMe))
 
 	// wasm/dm.go
 	js.Global().Set("InitChannelsFileTransfer",

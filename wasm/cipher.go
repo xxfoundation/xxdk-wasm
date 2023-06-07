@@ -67,7 +67,7 @@ func (ct *DbCipherTracker) get(id int) (*DbCipher, error) {
 	return c, nil
 }
 
-// delete removes a DMDbCipher from the DMDbCipherTracker.
+// delete removes a DbCipherTracker from the DbCipherTracker.
 func (ct *DbCipherTracker) delete(id int) {
 	ct.mux.Lock()
 	defer ct.mux.Unlock()

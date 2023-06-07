@@ -128,8 +128,8 @@ func NewDMClient(_ js.Value, args []js.Value) any {
 //     The row in the database that was updated can be found using the UUID.
 //     messageUpdate is true if the message already exists and was edited.
 //     conversationUpdate is true if the Conversation was created or modified.
-//   - args[4] - ID of [DMDbCipher] object in tracker (int). Create this object
-//     with [NewDMsDatabaseCipher] and get its id with [DMDbCipher.GetID].
+//   - args[4] - ID of [DbCipher] object in tracker (int). Create this object
+//     with [NewDatabaseCipher] and get its id with [DbCipher.GetID].
 //
 // Returns:
 //   - Resolves to a Javascript representation of the [DMClient] object.
