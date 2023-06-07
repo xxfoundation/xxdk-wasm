@@ -11,11 +11,11 @@ package dm
 
 import (
 	"encoding/json"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	"time"
 
 	"github.com/pkg/errors"
 
-	"gitlab.com/elixxir/client/v4/storage/utility"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -29,9 +29,16 @@ type NewStateMessage struct {
 	DatabaseName string `json:"databaseName"`
 }
 
+// WebState defines an interface for setting persistent state in a KV format
+// specifically for web-based implementations.
+type WebState interface {
+	Get(key string) ([]byte, error)
+	Set(key string, value []byte) error
+}
+
 // NewState returns a [utility.WebState] backed by indexeddb.
 // The name should be a base64 encoding of the users public key.
-func NewState(path, wasmJsPath string) (utility.WebState, error) {
+func NewState(path, wasmJsPath string) (impl.WebState, error) {
 	databaseName := path + databaseSuffix
 
 	wh, err := worker.NewManager(wasmJsPath, "stateIndexedDb", true)

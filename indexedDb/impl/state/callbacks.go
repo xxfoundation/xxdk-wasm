@@ -12,7 +12,7 @@ package main
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
-	"gitlab.com/elixxir/wasm-utils/storage"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 
 	stateWorker "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/state"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
@@ -22,7 +22,7 @@ import (
 // send information between the model and the main thread.
 type manager struct {
 	wtm   *worker.ThreadManager
-	model storage.LocalStorage
+	model impl.WebState
 }
 
 // registerCallbacks registers all the reception callbacks to manage messages
