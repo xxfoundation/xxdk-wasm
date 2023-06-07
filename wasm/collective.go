@@ -516,13 +516,12 @@ func (rsCB *RemoteStore) Write(path string, data []byte) error {
 // Returns:
 //   - JSON of [bindings.RemoteStoreReport] (Uint8Array).
 //   - Catches any thrown errors (of type Error) and returns it as an error.
-func (rsCB *RemoteStore) GetLastModified(path string) ([]byte, error) {
-	fn := func() js.Value { return rsCB.getLastModified(path) }
-	v, err := exception.RunAndCatch(fn)
+func (rsCB *RemoteStore) GetLastModified(path string) (string, error) {
+	v, err := utils.Await(rsCB.getLastModified(path))
 	if err != nil {
-		return nil, err
+		return "", js.Error{Value: err[0]}
 	}
-	return utils.CopyBytesToGo(v), err
+	return v[0].String(), nil
 }
 
 // GetLastWrite implements [bindings.RemoteStore.GetLastWrite()
@@ -530,13 +529,12 @@ func (rsCB *RemoteStore) GetLastModified(path string) ([]byte, error) {
 // Returns:
 //   - JSON of [bindings.RemoteStoreReport] (Uint8Array).
 //   - Catches any thrown errors (of type Error) and returns it as an error.
-func (rsCB *RemoteStore) GetLastWrite() ([]byte, error) {
-	fn := func() js.Value { return rsCB.getLastWrite() }
-	v, err := exception.RunAndCatch(fn)
+func (rsCB *RemoteStore) GetLastWrite() (string, error) {
+	v, err := utils.Await(rsCB.getLastWrite())
 	if err != nil {
-		return nil, err
+		return "", js.Error{Value: err[0]}
 	}
-	return utils.CopyBytesToGo(v), err
+	return v[0].String(), nil
 }
 
 // ReadDir implements [bindings.RemoteStore.ReadDir]

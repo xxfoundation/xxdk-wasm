@@ -25,7 +25,7 @@ import (
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
@@ -37,7 +37,7 @@ import (
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
 	db          *idb.Database
-	cipher      cryptoChannel.Cipher
+	cipher      idbCrypto.Cipher
 	eventUpdate func(eventType int64, jsonMarshallable any)
 }
 
@@ -145,12 +145,11 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 	nickname, text string, pubKey ed25519.PublicKey, dmToken uint32,
 	codeset uint8, timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus, hidden bool) uint64 {
-	textBytes := []byte(text)
 	var err error
 
 	// Handle encryption, if it is present
 	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt([]byte(text))
+		text, err = w.cipher.Encrypt([]byte(text))
 		if err != nil {
 			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
 			return 0
@@ -161,7 +160,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 
 	msgToInsert := buildMessage(
 		channelIDBytes, messageID.Bytes(), nil, nickname,
-		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
+		text, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
 		false, hidden, status)
 
 	uuid, err := w.upsertMessage(msgToInsert)
@@ -189,12 +188,11 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 	dmToken uint32, codeset uint8, timestamp time.Time, lease time.Duration,
 	round rounds.Round, mType channels.MessageType, status channels.SentStatus,
 	hidden bool) uint64 {
-	textBytes := []byte(text)
 	var err error
 
 	// Handle encryption, if it is present
 	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt([]byte(text))
+		text, err = w.cipher.Encrypt([]byte(text))
 		if err != nil {
 			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
 			return 0
@@ -204,7 +202,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 	channelIDBytes := channelID.Marshal()
 
 	msgToInsert := buildMessage(channelIDBytes, messageID.Bytes(),
-		replyTo.Bytes(), nickname, textBytes, pubKey, dmToken, codeset,
+		replyTo.Bytes(), nickname, text, pubKey, dmToken, codeset,
 		timestamp, lease, round.ID, mType, hidden, false, status)
 
 	uuid, err := w.upsertMessage(msgToInsert)
@@ -232,12 +230,11 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 	dmToken uint32, codeset uint8, timestamp time.Time, lease time.Duration,
 	round rounds.Round, mType channels.MessageType, status channels.SentStatus,
 	hidden bool) uint64 {
-	textBytes := []byte(reaction)
 	var err error
 
 	// Handle encryption, if it is present
 	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt([]byte(reaction))
+		reaction, err = w.cipher.Encrypt([]byte(reaction))
 		if err != nil {
 			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
 			return 0
@@ -247,7 +244,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 	channelIDBytes := channelID.Marshal()
 	msgToInsert := buildMessage(
 		channelIDBytes, messageID.Bytes(), reactionTo.Bytes(), nickname,
-		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
+		reaction, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
 		false, hidden, status)
 
 	uuid, err := w.upsertMessage(msgToInsert)
@@ -349,8 +346,8 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 // NOTE: ID is not set inside this function because we want to use the
 // autoincrement key by default. If you are trying to overwrite an existing
 // message, then you need to set it manually yourself.
-func buildMessage(channelID, messageID, parentID []byte, nickname string,
-	text []byte, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+func buildMessage(channelID, messageID, parentID []byte, nickname,
+	text string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, lease time.Duration, round id.Round,
 	mType channels.MessageType, pinned, hidden bool,
 	status channels.SentStatus) *Message {
@@ -499,7 +496,7 @@ func (w *wasmModel) GetMessage(
 		Status:          channels.SentStatus(lookupResult.Status),
 		Hidden:          lookupResult.Hidden,
 		Pinned:          lookupResult.Pinned,
-		Content:         lookupResult.Text,
+		Content:         []byte(lookupResult.Text),
 		Type:            channels.MessageType(lookupResult.Type),
 		Round:           id.Round(lookupResult.Round),
 		PubKey:          lookupResult.Pubkey,
