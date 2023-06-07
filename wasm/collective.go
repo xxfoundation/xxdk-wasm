@@ -385,6 +385,7 @@ func (r *RemoteKV) GetMapElement(_ js.Value, args []js.Value) any {
 //   - args[0] - the key string
 //   - args[1] - the version int
 //   - args[2] - the [KeyChangedByRemoteCallback] javascript callback
+//   - args[3] - set the localEvents flag to true or false (optional)
 //
 // Returns a promise with an error if any or the json of the existing
 // [versioned.Object], e.g.:
@@ -396,12 +397,17 @@ func (r *RemoteKV) ListenOnRemoteKey(_ js.Value, args []js.Value) any {
 	version := int64(args[1].Int())
 	cb := newKeyChangedByRemoteCallback(args[2])
 
+	localEvents := true
+	if len(args) > 3 && !args[3].IsUndefined() {
+		localEvents = args[3].Bool()
+	}
+
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		deleted, err := r.api.ListenOnRemoteKey(key, version, cb)
+		err := r.api.ListenOnRemoteKey(key, version, cb, localEvents)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
-			resolve(utils.CopyBytesToJS(deleted))
+			resolve()
 		}
 	}
 
@@ -415,6 +421,7 @@ func (r *RemoteKV) ListenOnRemoteKey(_ js.Value, args []js.Value) any {
 //   - args[0] - the mapName string
 //   - args[1] - the version int
 //   - args[2] - the [MapChangedByRemoteCallback] javascript callback
+//   - args[3] - set the localEvents flag to true or false (optional)
 //
 // Returns a promise with an error if any or the json of the existing
 // the [map[string]versioned.Object] JSON value, e.g.:
@@ -426,12 +433,17 @@ func (r *RemoteKV) ListenOnRemoteMap(_ js.Value, args []js.Value) any {
 	version := int64(args[1].Int())
 	cb := newMapChangedByRemoteCallback(args[2])
 
+	localEvents := true
+	if len(args) > 3 && !args[3].IsUndefined() {
+		localEvents = args[3].Bool()
+	}
+
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		deleted, err := r.api.ListenOnRemoteMap(mapName, version, cb)
+		err := r.api.ListenOnRemoteMap(mapName, version, cb, localEvents)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
-			resolve(utils.CopyBytesToJS(deleted))
+			resolve()
 		}
 	}
 
