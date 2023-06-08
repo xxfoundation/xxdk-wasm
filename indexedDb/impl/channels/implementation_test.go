@@ -27,8 +27,8 @@ import (
 	cft "gitlab.com/elixxir/client/v4/channelsFileTransfer"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/fileTransfer"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/wasm-utils/storage"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
@@ -120,12 +120,12 @@ func TestWasmModel_ReceiveFile(t *testing.T) {
 
 // Happy path, insert message and look it up
 func TestWasmModel_GetMessage(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for _, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -142,7 +142,7 @@ func TestWasmModel_GetMessage(t *testing.T) {
 			}
 
 			testMsg := buildMessage(id.NewIdFromBytes([]byte(testString), t).Marshal(),
-				testMsgId.Bytes(), nil, testString, []byte(testString),
+				testMsgId.Bytes(), nil, testString, testString,
 				[]byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
 				time.Second, 0, 0, false, false, channels.Sent)
 			_, err = eventModel.upsertMessage(testMsg)
@@ -173,7 +173,7 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 
 	// Insert a message
 	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
-		testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
+		testString, testString, []byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
 		time.Second, 0, 0, false, false, channels.Sent)
 	_, err = eventModel.upsertMessage(testMsg)
 	if err != nil {
@@ -207,12 +207,12 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 
 // Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
 func Test_wasmModel_UpdateSentStatus(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for _, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -234,7 +234,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 
 			// Store a test message
 			testMsg := buildMessage(cid.Bytes(), testMsgId.Bytes(), nil,
-				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
+				testString, testString, []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
 			uuid, err2 := eventModel.upsertMessage(testMsg)
 			if err2 != nil {
@@ -282,12 +282,12 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 
 // Smoke test wasmModel.JoinChannel/wasmModel.LeaveChannel happy paths.
 func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for _, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -334,12 +334,12 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 
 // Test UUID gets returned when different messages are added.
 func Test_wasmModel_UUIDTest(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for _, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -381,12 +381,12 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 
 // Tests if the same message ID being sent always returns the same UUID.
 func Test_wasmModel_DuplicateReceives(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for _, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -428,12 +428,12 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 // Happy path: Inserts many messages, deletes some, and checks that the final
 // result is as expected.
 func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for _, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -501,12 +501,12 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 // This test is designed to prove the behavior of unique indexes.
 // Inserts will not fail, they simply will not happen.
 func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for i, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for i, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -542,12 +542,12 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 
 			testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
 			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
-				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
+				testString, testString, []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
 
 			testMsgId2 := message.DeriveChannelMessageID(&id.ID{2}, 0, []byte(testString))
 			testMsg2 := buildMessage([]byte(testString), testMsgId2.Bytes(), nil,
-				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
+				testString, testString, []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
 
 			// First message insert should succeed

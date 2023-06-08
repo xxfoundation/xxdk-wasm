@@ -136,8 +136,12 @@ func setGlobals() {
 		js.FuncOf(wasm.GetChannelNotificationReportsForMe))
 	js.Global().Set("GetNoMessageErr", js.FuncOf(wasm.GetNoMessageErr))
 	js.Global().Set("CheckNoMessageErr", js.FuncOf(wasm.CheckNoMessageErr))
-	js.Global().Set("NewChannelsDatabaseCipher",
-		js.FuncOf(wasm.NewChannelsDatabaseCipher))
+	js.Global().Set("GetNotificationReportsForMe",
+		js.FuncOf(wasm.GetChannelNotificationReportsForMe))
+
+	// wasm/cipher.go
+	js.Global().Set("NewDatabaseCipher",
+		js.FuncOf(wasm.NewDatabaseCipher))
 
 	// wasm/dm.go
 	js.Global().Set("InitChannelsFileTransfer",
@@ -150,7 +154,7 @@ func setGlobals() {
 	js.Global().Set("NewDMClientWithIndexedDbUnsafe",
 		js.FuncOf(wasm.NewDMClientWithIndexedDbUnsafe))
 	js.Global().Set("NewDMsDatabaseCipher",
-		js.FuncOf(wasm.NewDMsDatabaseCipher))
+		js.FuncOf(wasm.NewDatabaseCipher))
 
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))

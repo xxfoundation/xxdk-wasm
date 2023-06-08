@@ -32,6 +32,13 @@ const (
 	ErrDoesNotExist = "result is undefined"
 )
 
+// WebState defines an interface for setting persistent state in a KV format
+// specifically for web-based implementations.
+type WebState interface {
+	Get(key string) ([]byte, error)
+	Set(key string, value []byte) error
+}
+
 // NewContext builds a context for indexedDb operations.
 func NewContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), dbTimeout)

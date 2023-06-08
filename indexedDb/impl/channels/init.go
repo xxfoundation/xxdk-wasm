@@ -18,7 +18,7 @@ import (
 
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 )
 
@@ -29,13 +29,13 @@ const currentVersion uint = 1
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key. Returns the
 // EventModel based on IndexedDb and the database name as reported by IndexedDb.
-func NewWASMEventModel(databaseName string, encryption cryptoChannel.Cipher,
+func NewWASMEventModel(databaseName string, encryption idbCrypto.Cipher,
 	uiCallbacks bindings.ChannelUICallbacks) (channels.EventModel, error) {
 	return newWASMModel(databaseName, encryption, uiCallbacks)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
-func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
+func newWASMModel(databaseName string, encryption idbCrypto.Cipher,
 	uiCallbacks bindings.ChannelUICallbacks) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()

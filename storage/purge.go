@@ -16,7 +16,6 @@ import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/client/v4/storage/utility"
 	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/storage"
 )
@@ -45,17 +44,14 @@ func DecrementNumClientsRunning() {
 // password is required.
 //
 // Parameters:
-//   - args[0] - Storage directory path (string). This is the same directory
-//     path passed into [wasm.NewCmix].
-//   - args[1] - The user-supplied password (string). This is the same password
+//   - args[0] - The user-supplied password (string). This is the same password
 //     passed into [wasm.NewCmix].
 //
 // Returns:
-//   - Throws an error if the password is incorrect or if not all cMix
-//     followers have been stopped.
+//   - Throws an error if the password is incorrect or if not all cMix followers
+//     have been stopped.
 func Purge(_ js.Value, args []js.Value) any {
-	storageDirectory := args[0].String()
-	userPassword := args[1].String()
+	userPassword := args[0].String()
 
 	// Check the password
 	if !verifyPassword(userPassword) {
@@ -95,24 +91,6 @@ func Purge(_ js.Value, args []js.Value) any {
 	// Clear all local storage saved by this WASM project
 	n := ls.Clear()
 	jww.DEBUG.Printf("[PURGE] Cleared %d WASM keys in local storage", n)
-
-	// Clear all EKV from local storage
-	keys := ls.LocalStorageUNSAFE().KeysPrefix(storageDirectory)
-	n = len(keys)
-	for _, keyName := range keys {
-		ls.LocalStorageUNSAFE().RemoveItem(keyName)
-	}
-	jww.DEBUG.Printf("[PURGE] Cleared %d keys with the prefix %q (for EKV)",
-		n, storageDirectory)
-
-	// Clear all NDFs saved to local storage
-	keys = ls.LocalStorageUNSAFE().KeysPrefix(utility.NdfStorageKeyNamePrefix)
-	n = len(keys)
-	for _, keyName := range keys {
-		ls.LocalStorageUNSAFE().RemoveItem(keyName)
-	}
-	jww.DEBUG.Printf("[PURGE] Cleared %d keys with the prefix %q (for NDF)",
-		n, utility.NdfStorageKeyNamePrefix)
 
 	return nil
 }

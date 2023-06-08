@@ -195,7 +195,7 @@ func verifyPassword(externalPassword string) bool {
 // initInternalPassword generates a new internal password, stores an encrypted
 // version in local storage, and returns it.
 func initInternalPassword(externalPassword string,
-	localStorage *storage.LocalStorage, csprng io.Reader,
+	localStorage storage.LocalStorage, csprng io.Reader,
 	params argonParams) ([]byte, error) {
 	internalPassword := make([]byte, internalPasswordLen)
 
@@ -250,7 +250,7 @@ func initInternalPassword(externalPassword string,
 // getInternalPassword retrieves the internal password from local storage,
 // decrypts it, and returns it.
 func getInternalPassword(
-	externalPassword string, localStorage *storage.LocalStorage) ([]byte, error) {
+	externalPassword string, localStorage storage.LocalStorage) ([]byte, error) {
 	encryptedInternalPassword, err := localStorage.Get(passwordKey)
 	if err != nil {
 		return nil, errors.WithMessage(err, getPasswordStorageErr)
