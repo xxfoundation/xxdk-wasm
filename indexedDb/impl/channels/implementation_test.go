@@ -413,13 +413,16 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 			}
 
 			// Store duplicate messages with same messageID
+			referenceID := uint64(0)
 			for i := 0; i < 10; i++ {
 				uuid = eventModel.ReceiveMessage(channelID, msgID, "test",
 					testString+fmt.Sprintf("%d", i), []byte{8, 6, 7, 5}, 0, 0,
 					netTime.Now(), time.Hour, rnd, 0, channels.Sent, false)
-				if uuid != 0 {
-					t.Fatalf("Expected UUID to be zero for duplicate receives")
+				if referenceID == 0 {
+					referenceID = uuid
 				}
+				require.Equal(t, referenceID, uuid,
+					"UUID must be identical for duplicate receives")
 			}
 		})
 	}
