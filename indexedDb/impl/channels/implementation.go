@@ -435,6 +435,22 @@ func (w *wasmModel) upsertMessage(msg *Message) (uint64, error) {
 	// Store message to database
 	msgIdObj, err := impl.Put(w.db, messageStoreName, messageObj)
 	if err != nil {
+		// Do not error out when this message already exists inside
+		// the DB. Instead, set the ID and re-attempt as an upsert.
+		if msg.ID == 0 { // always error out when not an insert attempt
+			msgID, inErr := message.UnmarshalID(msg.MessageID)
+			if inErr == nil {
+				jww.WARN.Printf("upsertMessage duplicate: %+v",
+					err)
+				existingMsg, inErr := w.GetMessage(msgID)
+				if inErr == nil && existingMsg.UUID != 0 {
+					msg.ID = existingMsg.UUID
+					return w.upsertMessage(msg)
+				}
+				jww.ERROR.Printf("upsertMessage no UUID: %+v",
+					inErr)
+			}
+		}
 		return 0, errors.Errorf("Unable to put Message: %+v\n%s",
 			err, newMessageJson)
 	}
