@@ -451,6 +451,9 @@ func (w *wasmModel) upsertMessage(msg *Message) (uint64, error) {
 					&msg.Hidden,
 					status)
 			}
+			// Add this to the main putMessage error
+			err = errors.Wrapf(err, "bad msg ID: %+v",
+				inErr)
 		}
 		return 0, errors.Errorf("Unable to put Message: %+v\n%s",
 			err, newMessageJson)
