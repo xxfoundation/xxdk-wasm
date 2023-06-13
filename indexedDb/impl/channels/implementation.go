@@ -435,6 +435,26 @@ func (w *wasmModel) upsertMessage(msg *Message) (uint64, error) {
 	// Store message to database
 	msgIdObj, err := impl.Put(w.db, messageStoreName, messageObj)
 	if err != nil {
+		// Do not error out when this message already exists inside
+		// the DB. Instead, set the ID and re-attempt as an update.
+		if msg.ID == 0 { // always error out when not an insert attempt
+			msgID, inErr := message.UnmarshalID(msg.MessageID)
+			if inErr == nil {
+				jww.WARN.Printf("upsertMessage duplicate: %+v",
+					err)
+				rnd := &rounds.Round{ID: id.Round(msg.Round)}
+				status := (*channels.SentStatus)(&msg.Status)
+				return w.UpdateFromMessageID(msgID,
+					&msg.Timestamp,
+					rnd,
+					&msg.Pinned,
+					&msg.Hidden,
+					status)
+			}
+			// Add this to the main putMessage error
+			err = errors.Wrapf(err, "bad msg ID: %+v",
+				inErr)
+		}
 		return 0, errors.Errorf("Unable to put Message: %+v\n%s",
 			err, newMessageJson)
 	}
