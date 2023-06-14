@@ -42,7 +42,7 @@ func TestPublicFunctions(t *testing.T) {
 		"NewEventModel":                   {},
 		"NewChannelsManagerGoEventModel":  {},
 		"LoadChannelsManagerGoEventModel": {},
-		"GetChannelDbCipherTrackerFromID": {},
+		"GetDbCipherTrackerFromID":        {},
 
 		// Version functions were renamed to differentiate between WASM and
 		// client versions

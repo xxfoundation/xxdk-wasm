@@ -12,7 +12,6 @@ package main
 import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/client/v4/storage/utility"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	"syscall/js"
 )
@@ -23,7 +22,7 @@ const currentVersion uint = 1
 
 // NewState returns a [utility.WebState] backed by IndexedDb.
 // The name should be a base64 encoding of the users public key.
-func NewState(databaseName string) (utility.WebState, error) {
+func NewState(databaseName string) (impl.WebState, error) {
 	return newState(databaseName)
 }
 

@@ -40,7 +40,7 @@ func CheckAndStoreVersions() error {
 }
 
 func checkAndStoreVersions(
-	currentWasmVer, currentClientVer string, ls *storage.LocalStorage) error {
+	currentWasmVer, currentClientVer string, ls storage.LocalStorage) error {
 	// Get the stored client version, if it exists
 	storedClientVer, err :=
 		initOrLoadStoredSemver(clientVerKey, currentClientVer, ls)
@@ -91,7 +91,7 @@ func checkAndStoreVersions(
 // local storage. If no version is stored, then the current version is stored
 // and returned.
 func initOrLoadStoredSemver(
-	key, currentVersion string, ls *storage.LocalStorage) (string, error) {
+	key, currentVersion string, ls storage.LocalStorage) (string, error) {
 	storedVersion, err := ls.Get(key)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

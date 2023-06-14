@@ -27,8 +27,8 @@ import (
 	cft "gitlab.com/elixxir/client/v4/channelsFileTransfer"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/fileTransfer"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/crypto/message"
 	"gitlab.com/elixxir/wasm-utils/storage"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
@@ -120,12 +120,12 @@ func TestWasmModel_ReceiveFile(t *testing.T) {
 
 // Happy path, insert message and look it up
 func TestWasmModel_GetMessage(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for _, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -142,7 +142,7 @@ func TestWasmModel_GetMessage(t *testing.T) {
 			}
 
 			testMsg := buildMessage(id.NewIdFromBytes([]byte(testString), t).Marshal(),
-				testMsgId.Bytes(), nil, testString, []byte(testString),
+				testMsgId.Bytes(), nil, testString, testString,
 				[]byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
 				time.Second, 0, 0, false, false, channels.Sent)
 			_, err = eventModel.upsertMessage(testMsg)
@@ -173,7 +173,7 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 
 	// Insert a message
 	testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
-		testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
+		testString, testString, []byte{8, 6, 7, 5}, 0, 0, netTime.Now(),
 		time.Second, 0, 0, false, false, channels.Sent)
 	_, err = eventModel.upsertMessage(testMsg)
 	if err != nil {
@@ -207,12 +207,12 @@ func TestWasmModel_DeleteMessage(t *testing.T) {
 
 // Test wasmModel.UpdateSentStatus happy path and ensure fields don't change.
 func Test_wasmModel_UpdateSentStatus(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for _, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -234,7 +234,7 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 
 			// Store a test message
 			testMsg := buildMessage(cid.Bytes(), testMsgId.Bytes(), nil,
-				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
+				testString, testString, []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
 			uuid, err2 := eventModel.upsertMessage(testMsg)
 			if err2 != nil {
@@ -282,12 +282,12 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 
 // Smoke test wasmModel.JoinChannel/wasmModel.LeaveChannel happy paths.
 func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for _, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -334,12 +334,12 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 
 // Test UUID gets returned when different messages are added.
 func Test_wasmModel_UUIDTest(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for _, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -381,12 +381,12 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 
 // Tests if the same message ID being sent always returns the same UUID.
 func Test_wasmModel_DuplicateReceives(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for _, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -413,13 +413,16 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 			}
 
 			// Store duplicate messages with same messageID
+			referenceID := uint64(0)
 			for i := 0; i < 10; i++ {
 				uuid = eventModel.ReceiveMessage(channelID, msgID, "test",
 					testString+fmt.Sprintf("%d", i), []byte{8, 6, 7, 5}, 0, 0,
 					netTime.Now(), time.Hour, rnd, 0, channels.Sent, false)
-				if uuid != 0 {
-					t.Fatalf("Expected UUID to be zero for duplicate receives")
+				if referenceID == 0 {
+					referenceID = uuid
 				}
+				require.Equal(t, referenceID, uuid,
+					"UUID must be identical for duplicate receives")
 			}
 		})
 	}
@@ -428,12 +431,12 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 // Happy path: Inserts many messages, deletes some, and checks that the final
 // result is as expected.
 func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for _, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for _, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -501,12 +504,12 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 // This test is designed to prove the behavior of unique indexes.
 // Inserts will not fail, they simply will not happen.
 func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
-	cipher, err := cryptoChannel.NewCipher(
+	cipher, err := idbCrypto.NewCipher(
 		[]byte("testPass"), []byte("testSalt"), 128, csprng.NewSystemRNG())
 	if err != nil {
 		t.Fatalf("Failed to create cipher")
 	}
-	for i, c := range []cryptoChannel.Cipher{nil, cipher} {
+	for i, c := range []idbCrypto.Cipher{nil, cipher} {
 		cs := ""
 		if c != nil {
 			cs = "_withCipher"
@@ -542,12 +545,12 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 
 			testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
 			testMsg := buildMessage([]byte(testString), testMsgId.Bytes(), nil,
-				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
+				testString, testString, []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
 
 			testMsgId2 := message.DeriveChannelMessageID(&id.ID{2}, 0, []byte(testString))
 			testMsg2 := buildMessage([]byte(testString), testMsgId2.Bytes(), nil,
-				testString, []byte(testString), []byte{8, 6, 7, 5}, 0, 0,
+				testString, testString, []byte{8, 6, 7, 5}, 0, 0,
 				netTime.Now(), time.Second, 0, 0, false, false, channels.Sent)
 
 			// First message insert should succeed
@@ -586,4 +589,69 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUpsertMessageDuplicates(t *testing.T) {
+	msgJSON := []byte(`{"pubkey":"4gFD38jRhf/aNDRzaguLJHHgTncs0pwvNiRvjTBOaXk=",
+                "dm_token":3173028031,
+		"nickname":"",
+		"message_id":"BTi+V2anHhrRAEcCMm6g2Bs9oKn7PhQzCzvM7x8Ml7A=",
+		"channel_id":"Gt1T8t1GcnQXijiOjX5yjiLt3F8tnPB9S70ntBx86h8D",
+		"parent_message_id":null,
+		"pinned":false,
+		"hidden":false,
+		"round":151369004,
+		"codeset_version":0,
+		"timestamp": "2023-06-06T19:39:27.281204113Z",
+		"lease_v2":"30000000000",
+		"status":2,
+		"type":1,
+		"text":"KzT25s76K9AEIv0HadhjULkU37dkCUp/8N9+5UkkA8pLEBK71P7KFMr2xii/enYr4jpQcayNm82WD4wisimkK2wtaKb0hJIELAxJHxHilF2qVcDYn7zmx2ZiYkerZGTlf7DkHPZrA+EJJIu9gZ4ApR8TNVf15GxPSDGKHV6iv7vEMrrdoi4JKOFTpNsUjjbDykc91ADmmRlh5LUR/lqyt7bEasyVY2Zo+UiZpJrUJII0fhhn0HLbfs6ekg1tkq+vbPap3vNoebLZag3nEnMk+JqNjVW93BFICSMFv8cYX9q0sSK6sgHtz0HX9b7xTEFVHlCb2Zv/ErOX2LiedsgM4aGpOvjGYQM9ludCutVJArfM/5ejupMpvVPimY69QdevqxMm6v7c8H3abLQf4iKNVoaTaRygYFYArTWWoKep7BDZhjhCd4XnILGLjq7oeBfb3enMUSmeYabIuQpjAfRXU6cZh4cVomhEbkF5kj/rAc3GLzWtN1XcE5PC8bTL3m6YVN6hMCd1S7dsnDQ4FJQoDoqYzmTLD7jtyQujS86JsPkkt7kAIi14VxHTNEAM07cN6rH4VifWWMgQo4djPJ+nnsW9zUnylT9KS1GGyeaUhGC7GmrJGd7DmfHrhdWb9iMboKyH7VTm5C6X71JW1AhmdFfjtIHmWfhbAFsrP2gwkb4e+F86urUmK5LTT6qhGklUsXsmMFjwiEUCBWLSOZLKfITkNOBGIuGGcMi8Jtvwo1f4DHQ6sm/Y8qaJFmesyVKpA3MAVNawqlZJSJXflUA/mpJprFxLm/J3mdnxkLrqQSeSCAxHgpEdH3jiSPNhmn6QaJOVT+wotm+8lAq7qWgBWfMmcVSgWdAfVwujeP71Uo1y24/Z4+jXulFz1hPfbfmHk6/Qz4JlSgHZIqgOS1FTsmXFvBUe4moHR/QFDEXnz2LroRIavt9gWZPE3z1FIcjwSmtUzvpE8gZud+dKVVrjm8YPseq+IJ/AwRRlkUR5D0vf1TwEm0yQ7E+EotFvibQ="
+	}`)
+
+	// Initial call
+	msg1 := &Message{}
+	err := json.Unmarshal(msgJSON, msg1)
+	require.NoError(t, err)
+	msg1.Status = 0
+
+	// Second call
+	msg2 := &Message{}
+	err = json.Unmarshal(msgJSON, msg2)
+	require.NoError(t, err)
+	msg2.Status = 1
+
+	// Final call
+	msg3 := &Message{}
+	err = json.Unmarshal(msgJSON, msg3)
+	require.NoError(t, err)
+	msg3.Status = 2
+
+	cipher, err := idbCrypto.NewCipher(
+		[]byte("testPass"), []byte("testSalt"), 128,
+		csprng.NewSystemRNG())
+	require.NoError(t, err)
+	testString := "test_duplicateUpsertMessage"
+	eventModel, err := newWASMModel(testString, cipher,
+		&dummyCbs{})
+	require.NoError(t, err)
+
+	uuid, err := eventModel.upsertMessage(msg1)
+	require.NoError(t, err)
+	require.NotEqual(t, uuid, 0)
+
+	uuid2, err := eventModel.upsertMessage(msg2)
+	require.NoError(t, err)
+	require.Equal(t, uuid, uuid2)
+
+	uuid3, err := eventModel.upsertMessage(msg3)
+	require.NoError(t, err)
+	require.Equal(t, uuid, uuid3)
+
+	msgID, err := message.UnmarshalID(msg1.MessageID)
+	require.NoError(t, err)
+
+	modelMsg, err := eventModel.GetMessage(msgID)
+	require.NoError(t, err)
+	require.Equal(t, channels.Delivered, modelMsg.Status)
 }
