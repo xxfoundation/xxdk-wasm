@@ -179,13 +179,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	}
 
 	// Extract the existing Message and update the Status
-	newMessage := &Message{}
-	err = json.Unmarshal([]byte(utils.JsToJson(currentMsg)), newMessage)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Could not JSON unmarshal message: %+v", err))
-		return
-	}
+	newMessage, err := valueToMessage(currentMsg)
 
 	newMessage.Status = uint8(status)
 	if !messageID.Equals(message.ID{}) {
