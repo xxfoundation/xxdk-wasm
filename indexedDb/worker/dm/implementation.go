@@ -250,14 +250,6 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	w.wh.SendMessage(UpdateSentStatusTag, data, nil)
 }
 
-func (w *wasmModel) BlockSender(senderPubKey ed25519.PublicKey) {
-	w.wh.SendMessage(BlockSenderTag, senderPubKey, nil)
-}
-
-func (w *wasmModel) UnblockSender(senderPubKey ed25519.PublicKey) {
-	w.wh.SendMessage(UnblockSenderTag, senderPubKey, nil)
-}
-
 func (w *wasmModel) GetConversation(senderPubKey ed25519.PublicKey) *dm.ModelConversation {
 	resultChan := make(chan *dm.ModelConversation)
 	w.wh.SendMessage(GetConversationTag, senderPubKey,
