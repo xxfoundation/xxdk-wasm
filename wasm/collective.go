@@ -147,9 +147,11 @@ func (r *RemoteKV) Set(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
-// GetPrefix returns the full Prefix of the KV
-// Returns a string via a Promise
-func (r *RemoteKV) GetPrefix(_ js.Value, args []js.Value) any {
+// GetPrefix returns the full prefix of the KV.
+//
+// Returns a promise:
+//   - Resolves to the prefix (string).
+func (r *RemoteKV) GetPrefix(js.Value, []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		prefix := r.api.GetPrefix()
 		resolve(prefix)
@@ -179,7 +181,7 @@ func (r *RemoteKV) HasPrefix(_ js.Value, args []js.Value) any {
 //   - args[0] - the prefix to append to the list of prefixes
 //
 // Returns a promise:
-//   - Resolves to a new RemoteKV
+//   - Resolves to a new [RemoteKV].
 //   - Rejected with an error.
 func (r *RemoteKV) Prefix(_ js.Value, args []js.Value) any {
 	prefix := args[0].String()
@@ -197,11 +199,14 @@ func (r *RemoteKV) Prefix(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
-// Root returns the KV with no prefixes
-func (r *RemoteKV) Root(_ js.Value, args []js.Value) any {
+// Root returns the KV with no prefixes.
+//
+// Returns a promise:
+//   - Resolves to a new [RemoteKV].
+//   - Rejected with an error on failure.
+func (r *RemoteKV) Root(js.Value, []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		newAPI, err := r.api.Root()
-
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
@@ -212,8 +217,12 @@ func (r *RemoteKV) Root(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
-// IsMemStore returns true if the underlying KV is memory based
-func (r *RemoteKV) IsMemStore(_ js.Value, args []js.Value) any {
+// IsMemStore returns true if the underlying KV is memory based.
+//
+// Returns a promise:
+//   - Resolves to a boolean.
+//   - Rejected with an error.
+func (r *RemoteKV) IsMemStore(js.Value, []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		resolve(r.api.IsMemStore())
 	}
@@ -388,20 +397,19 @@ func (r *RemoteKV) GetMapElement(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
-// ListenOnRemoteKey sets up a callback listener for the object specified
-// by the key and version. It returns the current [versioned.Object] JSON
-// of the value.
+// ListenOnRemoteKey sets up a callback listener for the object specified by the
+// key and version. It returns the ID of the callback or -1.
+// The version and "localEvents" flags are only respected on first call.
+//
 // Parameters:
-//   - args[0] - the key string
-//   - args[1] - the version int
-//   - args[2] - the [KeyChangedByRemoteCallback] javascript callback
-//   - args[3] - set the localEvents flag to true or false (optional)
+//   - args[0] - The key (string).
+//   - args[1] - The version (int).
+//   - args[2] - The [KeyChangedByRemoteCallback] Javascript callback.
+//   - args[3] - Toggle local events (optional) (boolean).
 //
-// Returns a promise with an error if any or the json of the existing
-// [versioned.Object], e.g.:
-//
-//	{"Version":1,"Timestamp":"2023-05-13T00:50:03.889192694Z",
-//	"Data":"bm90IHVwZ3JhZGVk"}
+// Returns a promise:
+//   - Resolves to the callback ID (int).
+//   - Rejects with an error on failure.
 func (r *RemoteKV) ListenOnRemoteKey(_ js.Value, args []js.Value) any {
 	key := args[0].String()
 	version := int64(args[1].Int())
@@ -425,20 +433,19 @@ func (r *RemoteKV) ListenOnRemoteKey(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
-// ListenOnRemoteMap allows the caller to receive updates when
-// the map or map elements are updated. Returns a JSON of
-// map[string]versioned.Object of the current map value.
+// ListenOnRemoteMap allows the caller to receive updates when the map or map
+// elements are updated. It returns the ID of the callback or -1 and an error.
+// The version and "localEvents" flags are only respected on first call.
+//
 // Parameters:
-//   - args[0] - the mapName string
-//   - args[1] - the version int
+//   - args[0] - The key (string).
+//   - args[1] - The version (int).
 //   - args[2] - the [MapChangedByRemoteCallback] javascript callback
-//   - args[3] - set the localEvents flag to true or false (optional)
+//   - args[3] - Toggle local events (optional) (boolean).
 //
-// Returns a promise with an error if any or the json of the existing
-// the [map[string]versioned.Object] JSON value, e.g.:
-//
-//	{"elementKey": {"Version":1,"Timestamp":"2023-05-13T00:50:03.889192694Z",
-//	"Data":"bm90IHVwZ3JhZGVk"}}
+// Returns a promise:
+//   - Resolves to the callback ID (int).
+//   - Rejects with an error on failure.
 func (r *RemoteKV) ListenOnRemoteMap(_ js.Value, args []js.Value) any {
 	mapName := args[0].String()
 	version := int64(args[1].Int())

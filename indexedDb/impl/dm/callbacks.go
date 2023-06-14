@@ -43,8 +43,6 @@ func (m *manager) registerCallbacks() {
 	m.wtm.RegisterCallback(wDm.ReceiveReactionTag, m.receiveReactionCB)
 	m.wtm.RegisterCallback(wDm.UpdateSentStatusTag, m.updateSentStatusCB)
 
-	m.wtm.RegisterCallback(wDm.BlockSenderTag, m.blockSenderCB)
-	m.wtm.RegisterCallback(wDm.UnblockSenderTag, m.unblockSenderCB)
 	m.wtm.RegisterCallback(wDm.GetConversationTag, m.getConversationCB)
 	m.wtm.RegisterCallback(wDm.GetConversationsTag, m.getConversationsCB)
 }
@@ -201,20 +199,6 @@ func (m *manager) updateSentStatusCB(data []byte) ([]byte, error) {
 	m.model.UpdateSentStatus(
 		msg.UUID, msg.MessageID, msg.Timestamp, msg.Round, msg.Status)
 
-	return nil, nil
-}
-
-// blockSenderCB is the callback for wasmModel.BlockSender. Always
-// returns nil; meaning, no response is supplied (or expected).
-func (m *manager) blockSenderCB(data []byte) ([]byte, error) {
-	m.model.BlockSender(data)
-	return nil, nil
-}
-
-// unblockSenderCB is the callback for wasmModel.UnblockSender. Always
-// returns nil; meaning, no response is supplied (or expected).
-func (m *manager) unblockSenderCB(data []byte) ([]byte, error) {
-	m.model.UnblockSender(data)
 	return nil, nil
 }
 
