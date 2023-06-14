@@ -1727,72 +1727,59 @@ func (cm *ChannelsManager) SetMobileNotificationsLevel(_ js.Value, args []js.Val
 	return nil
 }
 
-// GetChannelNotificationReportsForMe checks the notification data against the filter
-// list to determine which notifications belong to the user. A list of
+// GetChannelNotificationReportsForMe checks the notification data against the
+// filter list to determine which notifications belong to the user. A list of
 // notification reports is returned detailing all notifications for the user.
 //
 // Parameters:
 //   - notificationFilterJSON - JSON of a slice of [channels.NotificationFilter].
-//   - notificationDataJSON - JSON of a slice of [notifications.Data].
+//     It can optionally be the entire json return from
+//     [bindings.NotificationUpdateJson] instead of just the needed subsection
+//     (Uint8Array).
+//   - notificationDataCSV - CSV containing notification data (string).
 //
 // Example JSON of a slice of [channels.NotificationFilter]:
-// [
 //
-//	  {
-//	    "identifier": "O8NUg0KaDo18ybTKajXM/sgqEYS37+lewPhGV/2sMAUDYXN5bUlkZW50aWZpZXI=",
-//	    "channelID": "O8NUg0KaDo18ybTKajXM/sgqEYS37+lewPhGV/2sMAUD",
-//	    "tags": ["6de69009a93d53793ee344e8fb48fae194eaf51861d3cc51c7348c337d13aedf-usrping"],
-//	    "allowLists": {
-//	      "allowWithTags": {},
-//	      "allowWithoutTags": {"102":{}, "2":{}}
-//	    }
-//	  },
-//	  {
-//	    "identifier": "O8NUg0KaDo18ybTKajXM/sgqEYS37+lewPhGV/2sMAUDc3ltSWRlbnRpZmllcg==",
-//	    "channelID": "O8NUg0KaDo18ybTKajXM/sgqEYS37+lewPhGV/2sMAUD",
-//	    "tags": ["6de69009a93d53793ee344e8fb48fae194eaf51861d3cc51c7348c337d13aedf-usrping"],
-//	    "allowLists": {
-//	      "allowWithTags": {},
-//	      "allowWithoutTags": {"1":{}, "40000":{}}
-//	    }
-//	  },
-//	  {
-//	    "identifier": "jCRgFRQvzzKOb8DJ0fqCRLgr9kiHN9LpqHXVhyHhhlQDYXN5bUlkZW50aWZpZXI=",
-//	    "channelID": "jCRgFRQvzzKOb8DJ0fqCRLgr9kiHN9LpqHXVhyHhhlQD",
-//	    "tags": ["6de69009a93d53793ee344e8fb48fae194eaf51861d3cc51c7348c337d13aedf-usrping"],
-//	    "allowLists": {
-//	      "allowWithTags": {},
-//	      "allowWithoutTags": {"102":{}, "2":{}}
-//	    }
-//	  }
-//	]
-//
-// Example JSON of a slice of [notifications.Data]:
-//
-//	[
-//	  {
-//	    "EphemeralID": -6475,
-//	    "RoundID": 875,
-//	    "IdentityFP": "jWG/UuxRjD80HEo0WX3KYIag5LCfgaWKAg==",
-//	    "MessageHash": "hDGE46QWa3d70y5nJTLbEaVmrFJHOyp2"
-//	  },
-//	  {
-//	    "EphemeralID": -2563,
-//	    "RoundID": 875,
-//	    "IdentityFP": "gL4nhCGKPNBm6YZ7KC0v4JThw65N9bRLTQ==",
-//	    "MessageHash": "WcS4vGrSWDK8Kj7JYOkMo8kSh1Xti94V"
-//	  },
-//	  {
-//	    "EphemeralID": -13247,
-//	    "RoundID": 875,
-//	    "IdentityFP": "qV3uD++VWPhD2rRMmvrP9j8hp+jpFSsUHg==",
-//	    "MessageHash": "VX6Tw7N48j7U2rRXYle20mFZi0If4CB1"
-//	  }
-//	]
+//	 [
+//	   {
+//		    "identifier": "O8NUg0KaDo18ybTKajXM/sgqEYS37+lewPhGV/2sMAUDYXN5bUlkZW50aWZpZXI=",
+//		    "channelID": "O8NUg0KaDo18ybTKajXM/sgqEYS37+lewPhGV/2sMAUD",
+//		    "tags": ["6de69009a93d53793ee344e8fb48fae194eaf51861d3cc51c7348c337d13aedf-usrping"],
+//		    "allowLists": {
+//		      "allowWithTags": {},
+//		      "allowWithoutTags": {"102":{}, "2":{}}
+//		    }
+//		  },
+//		  {
+//		    "identifier": "O8NUg0KaDo18ybTKajXM/sgqEYS37+lewPhGV/2sMAUDc3ltSWRlbnRpZmllcg==",
+//		    "channelID": "O8NUg0KaDo18ybTKajXM/sgqEYS37+lewPhGV/2sMAUD",
+//		    "tags": ["6de69009a93d53793ee344e8fb48fae194eaf51861d3cc51c7348c337d13aedf-usrping"],
+//		    "allowLists": {
+//		      "allowWithTags": {},
+//		      "allowWithoutTags": {"1":{}, "40000":{}}
+//		    }
+//		  },
+//		  {
+//		    "identifier": "jCRgFRQvzzKOb8DJ0fqCRLgr9kiHN9LpqHXVhyHhhlQDYXN5bUlkZW50aWZpZXI=",
+//		    "channelID": "jCRgFRQvzzKOb8DJ0fqCRLgr9kiHN9LpqHXVhyHhhlQD",
+//		    "tags": ["6de69009a93d53793ee344e8fb48fae194eaf51861d3cc51c7348c337d13aedf-usrping"],
+//		    "allowLists": {
+//		      "allowWithTags": {},
+//		      "allowWithoutTags": {"102":{}, "2":{}}
+//		    }
+//		  }
+//		]
 //
 // Returns:
 //   - The JSON of a slice of [channels.NotificationReport] (Uint8Array).
 //   - Throws an error if getting the report fails.
+//
+// Example return:
+//
+//	[
+//	  {"channel":"emV6aW1hAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD","type":1},
+//	  {"channel":"emV6aW1hAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD","type":2}
+//	]
 func GetChannelNotificationReportsForMe(_ js.Value, args []js.Value) any {
 	notificationFilterJSON := utils.CopyBytesToGo(args[0])
 	notificationDataCSV := args[1].String()

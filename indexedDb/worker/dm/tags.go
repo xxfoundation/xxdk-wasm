@@ -23,8 +23,6 @@ const (
 	ReceiveTextTag      worker.Tag = "ReceiveText"
 	UpdateSentStatusTag worker.Tag = "UpdateSentStatusTag"
 
-	BlockSenderTag      worker.Tag = "BlockSender"
-	UnblockSenderTag    worker.Tag = "UnblockSender"
 	GetConversationTag  worker.Tag = "GetConversation"
 	GetConversationsTag worker.Tag = "GetConversations"
 )
