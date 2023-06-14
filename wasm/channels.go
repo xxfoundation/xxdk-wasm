@@ -59,6 +59,7 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]any {
 		"SendReply":             js.FuncOf(cm.SendReply),
 		"SendReaction":          js.FuncOf(cm.SendReaction),
 		"SendSilent":            js.FuncOf(cm.SendSilent),
+		"SendInvite":            js.FuncOf(cm.SendInvite),
 		"DeleteMessage":         js.FuncOf(cm.DeleteMessage),
 		"PinMessage":            js.FuncOf(cm.PinMessage),
 		"MuteUser":              js.FuncOf(cm.MuteUser),
@@ -614,6 +615,32 @@ func DecodePublicURL(_ js.Value, args []js.Value) any {
 //   - The channel pretty print (string)
 func DecodePrivateURL(_ js.Value, args []js.Value) any {
 	c, err := bindings.DecodePrivateURL(args[0].String(), args[1].String())
+	if err != nil {
+		exception.ThrowTrace(err)
+		return nil
+	}
+
+	return c
+}
+
+// DecodeInviteURL decodes the channel URL, using the password, into a channel
+// pretty print. This function can only be used for URLs from invitations.
+//
+// Parameters:
+//   - args[0] - The channel's share URL (string). Should be received from
+//     another user via invitation.
+//   - args[1] - The password needed to decrypt the secret data in the URL
+//     (string).
+//
+// Returns:
+//   - The channel pretty print (string)
+func DecodeInviteURL(_ js.Value, args []js.Value) any {
+	var (
+		url      = args[0].String()
+		password = args[1].String()
+	)
+
+	c, err := bindings.DecodeInviteURL(url, password)
 	if err != nil {
 		exception.ThrowTrace(err)
 		return nil
@@ -1222,6 +1249,64 @@ func (cm *ChannelsManager) SendSilent(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := cm.api.SendSilent(
 			marshalledChanId, leaseTimeMS, cmixParamsJSON)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// SendInvite is used to send to a channel (invited) an invitation to another
+// channel (invitee).
+//
+// If the channel ID for the invitee channel is not recognized by the Manager,
+// then an error will be returned.
+//
+// Parameters:
+//   - args[0] - Marshalled bytes of the invited channel [id.ID] (Uint8Array).
+//   - args[1] - JSON of the invitee channel [id.ID].
+//     This can be retrieved from [GetChannelJSON]. (Uint8Array).
+//   - args[2] - The contents of the message (string).
+//   - args[3] - The URL to append the channel info to (string).
+//   - args[4] - The lease of the message. This will be how long the
+//     message is available from the network, in milliseconds (int). As per the
+//     [channels.Manager] documentation, this has different meanings depending
+//     on the use case. These use cases may be generic enough that they will not
+//     be enumerated here. Use [ValidForever] to last the max message life.
+//   - args[5] - JSON of [xxdk.CMIXParams]. If left empty
+//     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
+//   - args[6] - JSON of a slice of public keys of users that should receive
+//     mobile notifications for the message.
+//
+// Example slice of public keys:
+//
+//	[
+//	  "FgJMvgSsY4rrKkS/jSe+vFOJOs5qSSyOUSW7UtF9/KU=",
+//	  "fPqcHtrJ398PAC35QyWXEU9PHzz8Z4BKQTCxSvpSygw=",
+//	  "JnjCgh7g/+hNiI9VPKW01aRSxGOFmNulNCymy3ImXAo="
+//	]
+//
+// Returns a promise:
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
+func (cm *ChannelsManager) SendInvite(_ js.Value, args []js.Value) any {
+	var (
+		marshalledChanId = utils.CopyBytesToGo(args[0])
+		inviteToJSON     = utils.CopyBytesToGo(args[1])
+		msg              = args[2].String()
+		host             = args[3].String()
+		leaseTimeMS      = int64(args[4].Int())
+		cmixParamsJSON   = utils.CopyBytesToGo(args[5])
+		pingsJSON        = utils.CopyBytesToGo(args[6])
+	)
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		sendReport, err := cm.api.SendInvite(marshalledChanId,
+			inviteToJSON, msg, host, leaseTimeMS,
+			cmixParamsJSON, pingsJSON)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
