@@ -65,6 +65,11 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 		"SendReaction": js.FuncOf(cm.SendReaction),
 		"SendSilent":   js.FuncOf(cm.SendSilent),
 		"Send":         js.FuncOf(cm.Send),
+
+		// Notifications
+		"GetNotificationLevel": js.FuncOf(cm.GetNotificationLevel),
+		"SetMobileNotificationsLevel": js.FuncOf(
+			cm.SetMobileNotificationsLevel),
 	}
 
 	return dmClientMap
@@ -735,6 +740,53 @@ func (dmc *DMClient) GetShareURL(_ js.Value, args []js.Value) any {
 	}
 
 	return utils.CopyBytesToJS(urlReport)
+}
+
+// GetNotificationLevel Gets the notification level for a given dm pubkey
+//
+// Parameters:
+//   - args[0] - partnerPublic key (Uint8Array)
+//
+// Returns:
+//   - int of notification level
+func (d *DMClient) GetNotificationLevel(_ js.Value, args []js.Value) any {
+	partnerPubKey := utils.CopyBytesToGo(args[0])
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		level, err := d.api.GetNotificationLevel(partnerPubKey)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(level)
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// SetMobileNotificationsLevel sets the notification level for a given pubkey.
+//
+// Parameters:
+//   - args[0] - partnerPublicKey (Uint8Array)
+//   - args[1] - the notification level (integer)
+//
+// Returns:
+//   - error or nothing
+func (d *DMClient) SetMobileNotificationsLevel(_ js.Value,
+	args []js.Value) any {
+	partnerPubKey := utils.CopyBytesToGo(args[0])
+	level := args[1].Int()
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		err := d.api.SetMobileNotificationsLevel(partnerPubKey, level)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve()
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
 }
 
 // DecodeDMShareURL decodes the user's URL into a [DMUser].
