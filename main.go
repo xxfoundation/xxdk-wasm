@@ -143,7 +143,7 @@ func setGlobals() {
 	js.Global().Set("NewDatabaseCipher",
 		js.FuncOf(wasm.NewDatabaseCipher))
 
-	// wasm/dm.go
+	// wasm/channelsFileTransfer.go
 	js.Global().Set("InitChannelsFileTransfer",
 		js.FuncOf(wasm.InitChannelsFileTransfer))
 
@@ -153,8 +153,8 @@ func setGlobals() {
 		js.FuncOf(wasm.NewDMClientWithIndexedDb))
 	js.Global().Set("NewDMClientWithIndexedDbUnsafe",
 		js.FuncOf(wasm.NewDMClientWithIndexedDbUnsafe))
-	js.Global().Set("NewDMsDatabaseCipher",
-		js.FuncOf(wasm.NewDatabaseCipher))
+	js.Global().Set("NewDMsDatabaseCipher", js.FuncOf(wasm.NewDatabaseCipher))
+	js.Global().Set("DecodeDMShareURL", js.FuncOf(wasm.DecodeDMShareURL))
 
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
