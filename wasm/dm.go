@@ -65,6 +65,11 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 		"SendReaction": js.FuncOf(cm.SendReaction),
 		"SendSilent":   js.FuncOf(cm.SendSilent),
 		"Send":         js.FuncOf(cm.Send),
+
+		// Notifications
+		"GetNotificationLevel": js.FuncOf(cm.GetNotificationLevel),
+		"SetMobileNotificationsLevel": js.FuncOf(
+			cm.SetMobileNotificationsLevel),
 	}
 
 	return dmClientMap
@@ -737,6 +742,53 @@ func (dmc *DMClient) GetShareURL(_ js.Value, args []js.Value) any {
 	return utils.CopyBytesToJS(urlReport)
 }
 
+// GetNotificationLevel Gets the notification level for a given dm pubkey
+//
+// Parameters:
+//   - args[0] - partnerPublic key (Uint8Array)
+//
+// Returns:
+//   - int of notification level
+func (d *DMClient) GetNotificationLevel(_ js.Value, args []js.Value) any {
+	partnerPubKey := utils.CopyBytesToGo(args[0])
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		level, err := d.api.GetNotificationLevel(partnerPubKey)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(level)
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// SetMobileNotificationsLevel sets the notification level for a given pubkey.
+//
+// Parameters:
+//   - args[0] - partnerPublicKey (Uint8Array)
+//   - args[1] - the notification level (integer)
+//
+// Returns:
+//   - error or nothing
+func (d *DMClient) SetMobileNotificationsLevel(_ js.Value,
+	args []js.Value) any {
+	partnerPubKey := utils.CopyBytesToGo(args[0])
+	level := args[1].Int()
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		err := d.api.SetMobileNotificationsLevel(partnerPubKey, level)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve()
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
 // DecodeDMShareURL decodes the user's URL into a [DMUser].
 //
 // Parameters:
@@ -754,6 +806,59 @@ func DecodeDMShareURL(_ js.Value, args []js.Value) any {
 	}
 
 	return utils.CopyBytesToJS(report)
+}
+
+// GetDmNotificationReportsForMe checks the notification data against the filter
+// list to determine which notifications belong to the user. A list of
+// notification reports is returned detailing all notifications for the user.
+//
+// Parameters:
+//   - args[0] - notificationFilterJSON - JSON (Uint8Array) of
+//     [dm.NotificationFilter].
+//   - args[1] - notificationDataCSV - CSV containing notification data.
+//
+// Example JSON of a slice of [dm.NotificationFilter]:
+//
+//	{
+//	  "identifier": "MWL6mvtZ9UUm7jP3ainyI4erbRl+wyVaO5MOWboP0rA=",
+//	  "myID": "AqDqg6Tcs359dBNRBCX7XHaotRDhz1ZRQNXIsGaubvID",
+//	  "tags": [
+//	    "61334HtH85DPIifvrM+JzRmLqfV5R4AMEmcPelTmFX0=",
+//	    "zc/EPwtx5OKTVdwLcI15bghjJ7suNhu59PcarXE+m9o=",
+//	    "FvArzVJ/082UEpMDCWJsopCLeLnxJV6NXINNkJTk3k8="
+//	  ],
+//	  "PublicKeys": {
+//	    "61334HtH85DPIifvrM+JzRmLqfV5R4AMEmcPelTmFX0=": "b3HygDv8gjteune9wgBm3YtVuAo2foOusRmj0m5nl6E=",
+//	    "FvArzVJ/082UEpMDCWJsopCLeLnxJV6NXINNkJTk3k8=": "uOLitBZcCh2TEW406jXHJ+Rsi6LybsH8R1u4Mxv/7hA=",
+//	    "zc/EPwtx5OKTVdwLcI15bghjJ7suNhu59PcarXE+m9o=": "lqLD1EzZBxB8PbILUJIfFq4JI0RKThpUQuNlTNgZAWk="
+//	  },
+//	  "allowedTypes": {"1": {}, "2": {}}
+//	}
+//
+// Returns:
+//   - []byte - JSON of a slice of [dm.NotificationReport].
+//
+// Example return:
+//
+//	[
+//	  {"partner": "WUSO3trAYeBf4UeJ5TEL+Q4usoyFf0shda0YUmZ3z8k=", "type": 1},
+//	  {"partner": "5MY652JsVv5YLE6wGRHIFZBMvLklACnT5UtHxmEOJ4o=", "type": 2}
+//	]
+func GetDmNotificationReportsForMe(_ js.Value, args []js.Value) any {
+	notificationFilterJson := utils.CopyBytesToGo(args[0])
+	notificationDataCsv := args[1].String()
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		forme, err := bindings.GetDmNotificationReportsForMe(
+			notificationFilterJson, notificationDataCsv)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(forme))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

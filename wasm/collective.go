@@ -48,6 +48,16 @@ func newRemoteKvJS(api *bindings.RemoteKV) map[string]any {
 		"GetMapElement":     js.FuncOf(rkv.GetMapElement),
 		"ListenOnRemoteKey": js.FuncOf(rkv.ListenOnRemoteKey),
 		"ListenOnRemoteMap": js.FuncOf(rkv.ListenOnRemoteMap),
+		"GetAllRemoteKeyListeners": js.FuncOf(
+			rkv.GetAllRemoteKeyListeners),
+		"GetRemoteKeyListeners": js.FuncOf(rkv.GetRemoteKeyListeners),
+		"DeleteRemoteKeyListener": js.FuncOf(
+			rkv.DeleteRemoteKeyListener),
+		"GetAllRemoteMapListeners": js.FuncOf(
+			rkv.GetAllRemoteMapListeners),
+		"GetRemoteMapListeners": js.FuncOf(rkv.GetRemoteMapListeners),
+		"DeleteRemoteMapListener": js.FuncOf(
+			rkv.DeleteRemoteMapListener),
 	}
 
 	return rkvMap
@@ -411,7 +421,8 @@ func (r *RemoteKV) ListenOnRemoteKey(_ js.Value, args []js.Value) any {
 	}
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		id, err := r.api.ListenOnRemoteKey(key, version, cb, localEvents)
+		id, err := r.api.ListenOnRemoteKey(key, version, cb,
+			localEvents)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
@@ -446,7 +457,8 @@ func (r *RemoteKV) ListenOnRemoteMap(_ js.Value, args []js.Value) any {
 	}
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		id, err := r.api.ListenOnRemoteMap(mapName, version, cb, localEvents)
+		id, err := r.api.ListenOnRemoteMap(mapName, version, cb,
+			localEvents)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
@@ -454,6 +466,80 @@ func (r *RemoteKV) ListenOnRemoteMap(_ js.Value, args []js.Value) any {
 		}
 	}
 
+	return utils.CreatePromise(promiseFn)
+}
+
+// GetAllRemoteKeyListeners returns a JSON list of { key: [id, id, id, ...] },
+// where key is the key for the listener and the list is an list of integer ids
+// of each listener.
+func (r *RemoteKV) GetAllRemoteKeyListeners(_ js.Value, args []js.Value) any {
+	return r.api.GetAllRemoteKeyListeners()
+}
+
+// GeRemoteKeyListeners returns a JSON list of [id, id, id, ...],
+// where the list is an list of integer ids of each listener.
+//
+// Parameters:
+//   - args[0] - the key to look at
+func (r *RemoteKV) GetRemoteKeyListeners(_ js.Value, args []js.Value) any {
+	key := args[0].String()
+	return r.api.GetRemoteKeyListeners(key)
+}
+
+// DeleteRemoteKeyListener deletes a specific listener for a key.
+//
+// Parameters:
+//   - args[0] - the key to delete for
+//   - args[1] - the id of the listener
+func (r *RemoteKV) DeleteRemoteKeyListener(_ js.Value, args []js.Value) any {
+	key := args[0].String()
+	id := args[1].Int()
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		err := r.api.DeleteRemoteKeyListener(key, id)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve()
+		}
+	}
+	return utils.CreatePromise(promiseFn)
+}
+
+// GetAllRemoteMapListeners returns a JSON list of { key: [id, id, id, ...] },
+// where key is the key for the listener and the list is an list of integer ids
+// of each listener.
+func (r *RemoteKV) GetAllRemoteMapListeners(_ js.Value, args []js.Value) any {
+	return r.api.GetAllRemoteMapListeners()
+}
+
+// GeRemoteMapListeners returns a JSON list of [id, id, id, ...],
+// where the list is an list of integer ids of each listener.
+//
+// Parameters:
+//   - args[0] - the key to look at
+func (r *RemoteKV) GetRemoteMapListeners(_ js.Value, args []js.Value) any {
+	key := args[0].String()
+	return r.api.GetRemoteMapListeners(key)
+}
+
+// DeleteRemoteMapListener deletes a specific listener for a key.
+//
+// Parameters:
+//   - args[0] - the mapName to delete for
+//   - args[1] - the id of the listener
+func (r *RemoteKV) DeleteRemoteMapListener(_ js.Value, args []js.Value) any {
+	mapName := args[0].String()
+	id := args[1].Int()
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		err := r.api.DeleteRemoteMapListener(mapName, id)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve()
+		}
+	}
 	return utils.CreatePromise(promiseFn)
 }
 
