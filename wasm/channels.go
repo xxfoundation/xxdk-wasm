@@ -1022,16 +1022,22 @@ func ValidForever(js.Value, []js.Value) any {
 //     to the user should be tracked while all actions should not be (boolean).
 //   - args[5] - JSON of [xxdk.CMIXParams]. If left empty
 //     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
-//   - args[6] - JSON of a slice of public keys of users that should receive
-//     mobile notifications for the message.
+//   - args[6] - JSON of a map of slices of [ed25519.PublicKey] of users that
+//     should receive mobile notifications for the message. Each slice keys on a
+//     [channels.PingType] that describes the type of notification it is
+//     (Uint8Array).
 //
-// Example slice of public keys:
+// Example map of slices of public keys:
 //
-//	[
-//	  "FgJMvgSsY4rrKkS/jSe+vFOJOs5qSSyOUSW7UtF9/KU=",
-//	  "fPqcHtrJ398PAC35QyWXEU9PHzz8Z4BKQTCxSvpSygw=",
-//	  "JnjCgh7g/+hNiI9VPKW01aRSxGOFmNulNCymy3ImXAo="
-//	]
+//	{
+//	  "usrMention": [
+//	    "CLdKxbe8D2WVOpx1mT63TZ5CP/nesmxHLT5DUUalpe0=",
+//	    "S2c6NXjNqgR11SCOaiQUughWaLpWBKNufPt6cbTVHMA="
+//	  ],
+//	  "usrReply": [
+//	    "aaMzSeA6Cu2Aix2MlOwzrAI+NnpKshzvZRT02PZPVec="
+//	  ]
+//	}
 //
 // Returns a promise:
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
@@ -1043,11 +1049,11 @@ func (cm *ChannelsManager) SendGeneric(_ js.Value, args []js.Value) any {
 	leaseTimeMS := int64(args[3].Int())
 	tracked := args[4].Bool()
 	cmixParamsJSON := utils.CopyBytesToGo(args[5])
-	pingsJSON := utils.CopyBytesToGo(args[6])
+	pingsMapJSON := utils.CopyBytesToGo(args[6])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		sendReport, err := cm.api.SendGeneric(marshalledChanId, messageType,
-			msg, leaseTimeMS, tracked, cmixParamsJSON, pingsJSON)
+			msg, leaseTimeMS, tracked, cmixParamsJSON, pingsMapJSON)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
@@ -1777,8 +1783,21 @@ func (cm *ChannelsManager) SetMobileNotificationsLevel(_ js.Value, args []js.Val
 // Example return:
 //
 //	[
-//	  {"channel":"emV6aW1hAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD","type":1},
-//	  {"channel":"emV6aW1hAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD","type":2}
+//	  {
+//	    "channel": "jOgZopfYj4zrE/AHtKmkf+QEWnfUKv9KfIy/+Bsg0PkD",
+//	    "type": 1,
+//	    "pingType": "usrMention"
+//	  },
+//	  {
+//	    "channel": "GKmfN/LKXQYM6++TC6DeZYqoxvSUPkh5UAHWODqh9zkD",
+//	    "type": 2,
+//	    "pingType": "usrReply"
+//	  },
+//	  {
+//	    "channel": "M+28xtj0coHrhDHfojGNcyb2c4maO7ZuheB6egS0Pc4D",
+//	    "type": 1,
+//	    "pingType": ""
+//	  }
 //	]
 func GetChannelNotificationReportsForMe(_ js.Value, args []js.Value) any {
 	notificationFilterJSON := utils.CopyBytesToGo(args[0])
