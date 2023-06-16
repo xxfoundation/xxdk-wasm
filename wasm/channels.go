@@ -1711,20 +1711,25 @@ func (cm *ChannelsManager) GetNotificationLevel(_ js.Value, args []js.Value) any
 //   - args[2] - The [notifications.NotificationState] to set for the channel
 //     (int).
 //
-// Returns:
-//   - Throws an error if setting the notification level fails.
-func (cm *ChannelsManager) SetMobileNotificationsLevel(_ js.Value, args []js.Value) any {
+// Returns a promise and throws an error if setting the notification
+// level fails.
+func (cm *ChannelsManager) SetMobileNotificationsLevel(_ js.Value,
+	args []js.Value) any {
 	channelIDBytes := utils.CopyBytesToGo(args[0])
 	level := args[1].Int()
 	status := args[2].Int()
 
-	err := cm.api.SetMobileNotificationsLevel(channelIDBytes, level, status)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		err := cm.api.SetMobileNotificationsLevel(channelIDBytes,
+			level, status)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve()
+		}
 	}
 
-	return nil
+	return utils.CreatePromise(promiseFn)
 }
 
 // GetChannelNotificationReportsForMe checks the notification data against the
