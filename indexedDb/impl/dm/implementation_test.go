@@ -14,6 +14,7 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	"gitlab.com/elixxir/client/v4/dm"
 	"gitlab.com/elixxir/crypto/message"
@@ -157,4 +158,37 @@ func TestWasmModel_BlockSender(t *testing.T) {
 	if result.BlockedTimestamp != nil {
 		t.Fatal("Expected blocked to be false")
 	}
+}
+
+// Test failed and successful deletes
+func TestWasmModel_DeleteMessage(t *testing.T) {
+	m, err := newWASMModel("TestWasmModel_DeleteMessage", nil, dummyReceivedMessageCB)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	// Insert test message
+	testBytes := []byte("test")
+	testBadBytes := []byte("uwu")
+	testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, testBytes)
+	testMsg := &Message{
+		MessageID:          testMsgId.Marshal(),
+		ConversationPubKey: testBytes,
+		ParentMessageID:    nil,
+		Timestamp:          time.Now(),
+		SenderPubKey:       testBytes,
+		CodesetVersion:     5,
+		Status:             5,
+		Text:               "",
+		Type:               5,
+		Round:              5,
+	}
+	_, err = m.upsertMessage(testMsg)
+	require.NoError(t, err)
+
+	// Non-matching pub key, should fail to delete
+	require.False(t, m.DeleteMessage(testMsgId, testBadBytes))
+
+	// Correct pub key, should have deleted
+	require.True(t, m.DeleteMessage(testMsgId, testBytes))
 }
