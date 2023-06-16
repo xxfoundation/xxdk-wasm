@@ -179,13 +179,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	}
 
 	// Extract the existing Message and update the Status
-	newMessage := &Message{}
-	err = json.Unmarshal([]byte(utils.JsToJson(currentMsg)), newMessage)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Could not JSON unmarshal message: %+v", err))
-		return
-	}
+	newMessage, err := valueToMessage(currentMsg)
 
 	newMessage.Status = uint8(status)
 	if !messageID.Equals(message.ID{}) {
@@ -365,6 +359,45 @@ func (w *wasmModel) setBlocked(senderPubKey ed25519.PublicKey, isBlocked bool) e
 		resultConvo.Token, resultConvo.CodesetVersion, timeBlocked)
 }
 
+// DeleteMessage deletes the message with the given message.ID belonging to
+// the sender. If the message exists and belongs to the sender, then it is
+// deleted and DeleteMessage returns true. If it does not exist, it returns
+// false.
+func (w *wasmModel) DeleteMessage(messageID message.ID, senderPubKey ed25519.PublicKey) bool {
+	parentErr := "failed to DeleteMessage"
+	msgId := impl.EncodeBytes(messageID.Marshal())
+
+	// Use the key to get the existing Message
+	currentMsg, err := impl.GetIndex(w.db, messageStoreName,
+		messageStoreMessageIndex, msgId)
+	if err != nil {
+		jww.ERROR.Printf("%s: %+v", parentErr, err)
+		return false
+	}
+
+	// Convert the js.Value to a proper object
+	msgObj, err := valueToMessage(currentMsg)
+	if err != nil {
+		jww.ERROR.Printf("%s: %+v", parentErr, err)
+		return false
+	}
+
+	// Ensure the public keys match
+	if !bytes.Equal(msgObj.SenderPubKey, senderPubKey) {
+		jww.ERROR.Printf("%s: %s", parentErr, "Public keys do not match")
+		return false
+	}
+
+	// Perform the delete
+	err = impl.DeleteIndex(w.db, messageStoreName, messageStoreMessageIndex,
+		msgPkeyName, msgId)
+	if err != nil {
+		jww.ERROR.Printf("%s: %+v", parentErr, err)
+		return false
+	}
+	return true
+}
+
 // GetConversation returns the conversation held by the model (receiver).
 func (w *wasmModel) GetConversation(senderPubKey ed25519.PublicKey) *dm.ModelConversation {
 	parentErr := "failed to GetConversation"
@@ -425,4 +458,10 @@ func (w *wasmModel) GetConversations() []dm.ModelConversation {
 		}
 	}
 	return conversations
+}
+
+// valueToMessage is a helper for converting js.Value to Message.
+func valueToMessage(msgObj js.Value) (*Message, error) {
+	resultMsg := &Message{}
+	return resultMsg, json.Unmarshal([]byte(utils.JsToJson(msgObj)), resultMsg)
 }
