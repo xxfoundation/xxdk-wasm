@@ -81,9 +81,10 @@ func newChannelsManagerJS(api *bindings.ChannelsManager) map[string]any {
 		"RegisterReceiveHandler": js.FuncOf(cm.RegisterReceiveHandler),
 
 		// Notifications
+		"GetNotificationLevel":  js.FuncOf(cm.GetNotificationLevel),
+		"GetNotificationStatus": js.FuncOf(cm.GetNotificationStatus),
 		"SetMobileNotificationsLevel": js.FuncOf(
 			cm.SetMobileNotificationsLevel),
-		"GetNotificationLevel": js.FuncOf(cm.GetNotificationLevel),
 	}
 
 	return channelsManagerMap
@@ -1699,6 +1700,27 @@ func (cm *ChannelsManager) GetNotificationLevel(_ js.Value, args []js.Value) any
 	}
 
 	return level
+}
+
+// GetNotificationStatus returns the notification status for the given channel.
+//
+// Parameters:
+//   - args[0] - The marshalled bytes of the channel's [id.ID] (Uint8Array).
+//
+// Returns:
+//   - The [notifications.NotificationState] for the channel (int).
+//   - Throws an error if the channel ID cannot be unmarshalled or the channel
+//     cannot be found.
+func (cm *ChannelsManager) GetNotificationStatus(_ js.Value, args []js.Value) any {
+	channelIDBytes := utils.CopyBytesToGo(args[0])
+
+	status, err := cm.api.GetNotificationStatus(channelIDBytes)
+	if err != nil {
+		exception.ThrowTrace(err)
+		return nil
+	}
+
+	return status
 }
 
 // SetMobileNotificationsLevel sets the notification level for the given
