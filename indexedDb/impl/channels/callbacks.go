@@ -332,12 +332,12 @@ func (m *manager) muteUserCB(data []byte) ([]byte, error) {
 			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
 	}
 
-	channelID := id.ID{}
+	channelID := &id.ID{}
 	err = channelID.UnmarshalJSON(msg.ChannelID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "ChannelID: %+v", msg.ChannelID)
 	}
-	m.model.MuteUser(&channelID, msg.PubKey, msg.Unmute)
+	m.model.MuteUser(channelID, msg.PubKey, msg.Unmute)
 
 	return nil, nil
 }
