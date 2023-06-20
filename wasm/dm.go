@@ -397,10 +397,15 @@ func (dmc *DMClient) SetNickname(_ js.Value, args []js.Value) any {
 //
 // Parameters:
 //   - args[0] - The partner's [ed25519.PublicKey] key to block (Uint8Array).
+//
+// Returns a promise that exits upon completion.
 func (dmc *DMClient) BlockPartner(_ js.Value, args []js.Value) any {
 	partnerPubKey := utils.CopyBytesToGo(args[0])
-	dmc.api.BlockPartner(partnerPubKey)
-	return nil
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		dmc.api.BlockPartner(partnerPubKey)
+		resolve()
+	}
+	return utils.CreatePromise(promiseFn)
 }
 
 // UnblockPartner unblocks a blocked partner to allow DM messages.
@@ -409,8 +414,11 @@ func (dmc *DMClient) BlockPartner(_ js.Value, args []js.Value) any {
 //   - args[0] - The partner's [ed25519.PublicKey] to unblock (Uint8Array).
 func (dmc *DMClient) UnblockPartner(_ js.Value, args []js.Value) any {
 	partnerPubKey := utils.CopyBytesToGo(args[0])
-	dmc.api.UnblockPartner(partnerPubKey)
-	return nil
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		dmc.api.UnblockPartner(partnerPubKey)
+		resolve()
+	}
+	return utils.CreatePromise(promiseFn)
 }
 
 // IsBlocked indicates if the given partner is blocked.
@@ -423,7 +431,11 @@ func (dmc *DMClient) UnblockPartner(_ js.Value, args []js.Value) any {
 //   - boolean
 func (dmc *DMClient) IsBlocked(_ js.Value, args []js.Value) any {
 	partnerPubKey := utils.CopyBytesToGo(args[0])
-	return dmc.api.IsBlocked(partnerPubKey)
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		isBlocked := dmc.api.IsBlocked(partnerPubKey)
+		resolve(isBlocked)
+	}
+	return utils.CreatePromise(promiseFn)
 }
 
 // GetBlockedPartners returns all partners who are blocked by this user.
@@ -439,7 +451,11 @@ func (dmc *DMClient) IsBlocked(_ js.Value, args []js.Value) any {
 //	  "CWDqF1bnhulW2pko+zgmbDZNaKkmNtFdUgY4bTm2DhA="
 //	]
 func (dmc *DMClient) GetBlockedPartners(js.Value, []js.Value) any {
-	return utils.CopyBytesToJS(dmc.api.GetBlockedPartners())
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		blocked := utils.CopyBytesToJS(dmc.api.GetBlockedPartners())
+		resolve(blocked)
+	}
+	return utils.CreatePromise(promiseFn)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
