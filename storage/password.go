@@ -93,17 +93,20 @@ const (
 // Parameters:
 //   - args[0] - The user supplied password (string).
 //
-// Returns:
+// Returns a promise:
 //   - Internal password (Uint8Array).
 //   - Throws TypeError on failure.
 func GetOrInitPassword(_ js.Value, args []js.Value) any {
-	internalPassword, err := getOrInit(args[0].String())
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		internalPassword, err := getOrInit(args[0].String())
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(internalPassword))
+		}
 	}
 
-	return utils.CopyBytesToJS(internalPassword)
+	return utils.CreatePromise(promiseFn)
 }
 
 // ChangeExternalPassword allows a user to change their external password.
