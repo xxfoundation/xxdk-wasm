@@ -103,7 +103,7 @@ func (m *manager) messageReceivedCallback(uuid uint64, pubKey ed25519.PublicKey,
 	err = m.wtm.SendNoResponse(wDm.MessageReceivedCallbackTag, data)
 	if err != nil {
 		exception.Throwf("[DM] Could not send message for "+
-			"MessageReceivedCallback: %+v", msg, err)
+			"MessageReceivedCallback: %+v", err)
 	}
 }
 

@@ -100,8 +100,8 @@ func (m *manager) EventUpdate(eventType int64, jsonData []byte) {
 	// Send it to the main thread
 	err = m.wtm.SendNoResponse(wChannels.EventUpdateCallbackTag, data)
 	if err != nil {
-		exception.Throwf("[CH] Could not send message for EventUpdate "+
-			"callback: %+v", msg, err)
+		exception.Throwf(
+			"[CH] Could not send message for EventUpdate callback: %+v", err)
 	}
 }
 
