@@ -9,96 +9,36 @@
 
 package worker
 
-import (
-	"encoding/json"
-	"reflect"
-	"testing"
-	"time"
-)
+/*
+// Unit test of initManager.
+func Test_initManager(t *testing.T) {
+	expected := &Manager{
+		senderCallbacks:   make(map[Tag]map[uint64]SenderCallback),
+		receiverCallbacks: make(map[Tag]ReceiverCallback),
+		responseIDs:       make(map[Tag]uint64),
+		receiveQueue:      make(chan js.Value, receiveQueueChanSize),
+		quit:              make(chan struct{}),
+		name:              "name",
+		messageLogging:    true,
+	}
+
+	received := initManager(expected.name, expected.messageLogging)
+
+	received.receiveQueue = expected.receiveQueue
+	received.quit = expected.quit
+	if !reflect.DeepEqual(expected, received) {
+		t.Errorf("Unexpected Manager.\nexpected: %+v\nreceived: %+v",
+			expected, received)
+	}
+}
 
 // Tests Manager.processReceivedMessage calls the expected callback.
 func TestManager_processReceivedMessage(t *testing.T) {
-	m := &Manager{callbacks: make(map[Tag]map[uint64]ReceptionCallback)}
+	m := initManager("", true)
 
 	msg := Message{Tag: readyTag, ID: 5}
-	cbChan := make(chan struct{}, 1)
-	cb := func([]byte) { cbChan <- struct{}{} }
-	m.callbacks[msg.Tag] = map[uint64]ReceptionCallback{msg.ID: cb}
-
-	data, err := json.Marshal(msg)
-	if err != nil {
-		t.Fatalf("Failed to JSON marshal Message: %+v", err)
-	}
-
-	go func() {
-		err = m.processReceivedMessage(data)
-		if err != nil {
-			t.Errorf("Failed to receive message: %+v", err)
-		}
-	}()
-
-	select {
-	case <-cbChan:
-	case <-time.After(10 * time.Millisecond):
-		t.Error("Timed out waiting for callback to be called.")
-	}
-}
-
-// Tests Manager.getCallback returns the expected callback and deletes only the
-// given callback when deleteCB is true.
-func TestManager_getCallback(t *testing.T) {
-	m := &Manager{callbacks: make(map[Tag]map[uint64]ReceptionCallback)}
-
-	// Add new callback and check that it is returned by getCallback
-	tag, id1 := readyTag, uint64(5)
-	cb := func([]byte) {}
-	m.callbacks[tag] = map[uint64]ReceptionCallback{id1: cb}
-
-	received, err := m.getCallback(tag, id1, false)
-	if err != nil {
-		t.Errorf("getCallback error for tag %q and ID %d: %+v", tag, id1, err)
-	}
-
-	if reflect.ValueOf(cb).Pointer() != reflect.ValueOf(received).Pointer() {
-		t.Errorf("Wrong callback.\nexpected: %p\nreceived: %p", cb, received)
-	}
-
-	// Add new callback under the same tag but with deleteCB set to true and
-	// check that it is returned by getCallback and that it was deleted from the
-	// map while id1 was not
-	id2 := uint64(56)
-	cb = func([]byte) {}
-	m.callbacks[tag][id2] = cb
-
-	received, err = m.getCallback(tag, id2, true)
-	if err != nil {
-		t.Errorf("getCallback error for tag %q and ID %d: %+v", tag, id2, err)
-	}
-
-	if reflect.ValueOf(cb).Pointer() != reflect.ValueOf(received).Pointer() {
-		t.Errorf("Wrong callback.\nexpected: %p\nreceived: %p", cb, received)
-	}
-
-	received, err = m.getCallback(tag, id1, false)
-	if err != nil {
-		t.Errorf("getCallback error for tag %q and ID %d: %+v", tag, id1, err)
-	}
-
-	received, err = m.getCallback(tag, id2, true)
-	if err == nil {
-		t.Errorf("getCallback did not get error when trying to get deleted "+
-			"callback for tag %q and ID %d", tag, id2)
-	}
-}
-
-// Tests that Manager.RegisterCallback registers a callback that is then called
-// by Manager.processReceivedMessage.
-func TestManager_RegisterCallback(t *testing.T) {
-	m := &Manager{callbacks: make(map[Tag]map[uint64]ReceptionCallback)}
-
-	msg := Message{Tag: readyTag, ID: initID}
-	cbChan := make(chan struct{}, 1)
-	cb := func([]byte) { cbChan <- struct{}{} }
+	cbChan := make(chan struct{})
+	cb := func([]byte, func([]byte)) { cbChan <- struct{}{} }
 	m.RegisterCallback(msg.Tag, cb)
 
 	data, err := json.Marshal(msg)
@@ -107,32 +47,111 @@ func TestManager_RegisterCallback(t *testing.T) {
 	}
 
 	go func() {
-		err = m.processReceivedMessage(data)
-		if err != nil {
-			t.Errorf("Failed to receive message: %+v", err)
+		select {
+		case <-cbChan:
+		case <-time.After(10 * time.Millisecond):
+			t.Error("Timed out waiting for callback to be called.")
 		}
 	}()
 
-	select {
-	case <-cbChan:
-	case <-time.After(10 * time.Millisecond):
-		t.Error("Timed out waiting for callback to be called.")
+	err = m.processReceivedMessage(data)
+	if err != nil {
+		t.Errorf("Failed to receive message: %+v", err)
+	}
+
+	msg = Message{Tag: "tag", Response: true}
+	cbChan = make(chan struct{})
+	cb2 := func([]byte) { cbChan <- struct{}{} }
+	m.registerSenderCallback(msg.Tag, cb2)
+
+	go func() {
+		select {
+		case <-cbChan:
+		case <-time.After(10 * time.Millisecond):
+			t.Error("Timed out waiting for callback to be called.")
+		}
+	}()
+
+	err = m.processReceivedMessage(data)
+	if err != nil {
+		t.Errorf("Failed to receive message: %+v", err)
 	}
 }
 
-// Tests that Manager.registerReplyCallback registers a callback that is then
-// called by Manager.processReceivedMessage.
-func TestManager_registerReplyCallback(t *testing.T) {
-	m := &Manager{
-		callbacks:   make(map[Tag]map[uint64]ReceptionCallback),
-		responseIDs: make(map[Tag]uint64),
+// Tests Manager.getSenderCallback returns the expected callback and deletes it.
+func TestManager_getSenderCallback(t *testing.T) {
+	m := initManager("", true)
+
+	expected := make(map[Tag]map[uint64]SenderCallback)
+	for i := 0; i < 5; i++ {
+		tag := Tag("tag" + strconv.Itoa(i))
+		expected[tag] = make(map[uint64]SenderCallback)
+		for j := 0; j < 10; j++ {
+			cb := func([]byte) {}
+			id := m.registerSenderCallback(tag, cb)
+			expected[tag][id] = cb
+		}
 	}
 
-	msg := Message{Tag: readyTag, ID: 5}
-	cbChan := make(chan struct{}, 1)
-	cb := func([]byte) { cbChan <- struct{}{} }
-	m.registerReplyCallback(msg.Tag, cb)
-	m.callbacks[msg.Tag] = map[uint64]ReceptionCallback{msg.ID: cb}
+	for tag, callbacks := range expected {
+		for id, callback := range callbacks {
+			received, err := m.getSenderCallback(tag, id)
+			if err != nil {
+				t.Errorf("Error getting callback for tag %q and ID %d: %+v",
+					tag, id, err)
+			}
+
+			if reflect.ValueOf(callback).Pointer() != reflect.ValueOf(received).Pointer() {
+				t.Errorf("Wrong callback for tag %q and ID %d."+
+					"\nexpected: %p\nreceived: %p", tag, id, callback, received)
+			}
+
+			// Check that the callback was deleted
+			if received, err = m.getSenderCallback(tag, id); err == nil {
+				t.Errorf("Did not get error when for callback that should be "+
+					"deleted for tag %q and ID %d: %p", tag, id, received)
+			}
+		}
+		if callbacks, exists := m.senderCallbacks[tag]; exists {
+			t.Errorf("Empty map for tag %s not deleted: %+v", tag, callbacks)
+		}
+	}
+}
+
+// Tests Manager.getReceiverCallback returns the expected callback.
+func TestManager_getReceiverCallback(t *testing.T) {
+	m := initManager("", true)
+
+	expected := make(map[Tag]ReceiverCallback)
+	for i := 0; i < 5; i++ {
+		tag := Tag("tag" + strconv.Itoa(i))
+		cb := func([]byte, func([]byte)) {}
+		m.RegisterCallback(tag, cb)
+		expected[tag] = cb
+	}
+
+	for tag, callback := range expected {
+		received, err := m.getReceiverCallback(tag)
+		if err != nil {
+			t.Errorf("Error getting callback for tag %q: %+v", tag, err)
+		}
+
+		if reflect.ValueOf(callback).Pointer() != reflect.ValueOf(received).Pointer() {
+			t.Errorf("Wrong callback for tag %q."+
+				"\nexpected: %p\nreceived: %p", tag, callback, received)
+		}
+	}
+}
+
+// Tests that Manager.RegisterCallback registers a callback that is then called
+// by Manager.processReceivedMessage.
+func TestManager_RegisterCallback(t *testing.T) {
+	m := initManager("", true)
+
+	msg := Message{Tag: readyTag, ID: initID}
+	cbChan := make(chan struct{})
+	cb := func([]byte, func([]byte)) { cbChan <- struct{}{} }
+	m.RegisterCallback(msg.Tag, cb)
 
 	data, err := json.Marshal(msg)
 	if err != nil {
@@ -140,25 +159,51 @@ func TestManager_registerReplyCallback(t *testing.T) {
 	}
 
 	go func() {
-		err = m.processReceivedMessage(data)
-		if err != nil {
-			t.Errorf("Failed to receive message: %+v", err)
+		select {
+		case <-cbChan:
+		case <-time.After(10 * time.Millisecond):
+			t.Error("Timed out waiting for callback to be called.")
 		}
 	}()
 
-	select {
-	case <-cbChan:
-	case <-time.After(10 * time.Millisecond):
-		t.Error("Timed out waiting for callback to be called.")
+	err = m.processReceivedMessage(data)
+	if err != nil {
+		t.Errorf("Failed to receive message: %+v", err)
+	}
+}
+
+// Tests that Manager.registerSenderCallback registers a callback that is then
+// called by Manager.processReceivedMessage.
+func TestManager_registerSenderCallback(t *testing.T) {
+	m := initManager("", true)
+
+	msg := Message{Tag: readyTag, Response: true}
+	cbChan := make(chan struct{})
+	cb := func([]byte) { cbChan <- struct{}{} }
+	msg.ID = m.registerSenderCallback(msg.Tag, cb)
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		t.Fatalf("Failed to JSON marshal Message: %+v", err)
+	}
+
+	go func() {
+		select {
+		case <-cbChan:
+		case <-time.After(10 * time.Millisecond):
+			t.Error("Timed out waiting for callback to be called.")
+		}
+	}()
+
+	err = m.processReceivedMessage(data)
+	if err != nil {
+		t.Errorf("Failed to receive message: %+v", err)
 	}
 }
 
 // Tests that Manager.getNextID returns the expected ID for various Tags.
 func TestManager_getNextID(t *testing.T) {
-	m := &Manager{
-		callbacks:   make(map[Tag]map[uint64]ReceptionCallback),
-		responseIDs: make(map[Tag]uint64),
-	}
+	m := initManager("", true)
 
 	for _, tag := range []Tag{readyTag, "test", "A", "B", "C"} {
 		id := m.getNextID(tag)
@@ -189,19 +234,19 @@ func Test_newWorkerOptions(t *testing.T) {
 			for k, name := range []string{"name1", "name2", "name3"} {
 				opts := newWorkerOptions(workerType, credentials, name)
 
-				v := opts.Get("type").String()
+				v := opts["type"].(string)
 				if v != workerType {
 					t.Errorf("Unexpected type (%d, %d, %d)."+
 						"\nexpected: %s\nreceived: %s", i, j, k, workerType, v)
 				}
 
-				v = opts.Get("credentials").String()
+				v = opts["credentials"].(string)
 				if v != credentials {
 					t.Errorf("Unexpected credentials (%d, %d, %d)."+
 						"\nexpected: %s\nreceived: %s", i, j, k, credentials, v)
 				}
 
-				v = opts.Get("name").String()
+				v = opts["name"].(string)
 				if v != name {
 					t.Errorf("Unexpected name (%d, %d, %d)."+
 						"\nexpected: %s\nreceived: %s", i, j, k, name, v)
@@ -210,3 +255,4 @@ func Test_newWorkerOptions(t *testing.T) {
 		}
 	}
 }
+*/

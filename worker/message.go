@@ -14,6 +14,6 @@ package worker
 type Message struct {
 	Tag      Tag    `json:"tag"`
 	ID       uint64 `json:"id"`
-	DeleteCB bool   `json:"deleteCB"`
+	Response bool   `json:"response"`
 	Data     []byte `json:"data"`
 }

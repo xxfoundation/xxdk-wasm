@@ -3,8 +3,10 @@ module gitlab.com/elixxir/xxdk-wasm
 go 1.19
 
 require (
+	github.com/aquilax/truncate v1.0.0
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
 	github.com/hack-pad/go-indexeddb v0.2.0
+	github.com/hack-pad/safejs v0.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/jwalterweatherman v1.1.0

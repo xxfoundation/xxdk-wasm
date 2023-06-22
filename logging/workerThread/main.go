@@ -17,7 +17,7 @@ import (
 	"syscall/js"
 
 	"github.com/armon/circbuf"
-	"github.com/pkg/errors"
+	"github.com/hack-pad/safejs"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 
@@ -31,8 +31,8 @@ const SEMVER = "0.1.0"
 // workerLogFile manages communication with the main thread and writing incoming
 // logging messages to the log file.
 type workerLogFile struct {
-	wtm *worker.ThreadManager
-	b   *circbuf.Buffer
+	tm *worker.ThreadManager
+	b  *circbuf.Buffer
 }
 
 func main() {
@@ -64,11 +64,15 @@ var LoggerCmd = &cobra.Command{
 
 		jww.INFO.Print("[LOG] Starting xxDK WebAssembly Logger Worker.")
 
-		wlf := workerLogFile{wtm: worker.NewThreadManager("Logger", false)}
+		tm, err := worker.NewThreadManager("Logger", true)
+		if err != nil {
+			jww.FATAL.Panicf("Failed to get new thread manager: %+v", err)
+		}
+		wlf := workerLogFile{tm: tm}
 
 		wlf.registerCallbacks()
 
-		wlf.wtm.SignalReady()
+		wlf.tm.SignalReady()
 
 		// Indicate to the Javascript caller that the WASM is ready by resolving
 		// a promise created by the caller.
@@ -96,54 +100,96 @@ func init() {
 // to get the file and file metadata.
 func (wlf *workerLogFile) registerCallbacks() {
 	// Callback for logging.LogToFileWorker
-	wlf.wtm.RegisterCallback(logging.NewLogFileTag,
-		func(data []byte) ([]byte, error) {
+	wlf.tm.RegisterCallback(logging.NewLogFileTag,
+		func(message []byte, reply func([]byte)) {
+
 			var maxLogFileSize int64
-			err := json.Unmarshal(data, &maxLogFileSize)
+			err := json.Unmarshal(message, &maxLogFileSize)
 			if err != nil {
-				return []byte(err.Error()), err
+				reply([]byte(err.Error()))
+				return
 			}
 
 			wlf.b, err = circbuf.NewBuffer(maxLogFileSize)
 			if err != nil {
-				return []byte(err.Error()), err
+				reply([]byte(err.Error()))
+				return
 			}
 
 			jww.DEBUG.Printf("[LOG] Created new worker log file of size %d",
 				maxLogFileSize)
 
-			return []byte{}, nil
+			reply(nil)
 		})
 
 	// Callback for Logging.GetFile
-	wlf.wtm.RegisterCallback(logging.WriteLogTag,
-		func(data []byte) ([]byte, error) {
-			n, err := wlf.b.Write(data)
+	wlf.tm.RegisterCallback(logging.WriteLogTag,
+		func(message []byte, _ func([]byte)) {
+			n, err := wlf.b.Write(message)
 			if err != nil {
-				return nil, err
-			} else if n != len(data) {
-				return nil, errors.Errorf(
-					"wrote %d bytes; expected %d bytes", n, len(data))
+				jww.ERROR.Printf("[LOG] Failed to write to log: %+v", err)
+			} else if n != len(message) {
+				jww.ERROR.Printf("[LOG] Failed to write to log: wrote %d "+
+					"bytes; expected %d bytes", n, len(message))
 			}
-
-			return nil, nil
 		},
 	)
 
 	// Callback for Logging.GetFile
-	wlf.wtm.RegisterCallback(logging.GetFileTag, func([]byte) ([]byte, error) {
-		return wlf.b.Bytes(), nil
-	})
+	wlf.tm.RegisterCallback(logging.GetFileTag,
+		func(_ []byte, reply func([]byte)) { reply(wlf.b.Bytes()) })
 
 	// Callback for Logging.GetFile
-	wlf.wtm.RegisterCallback(logging.GetFileExtTag, func([]byte) ([]byte, error) {
-		return wlf.b.Bytes(), nil
+	wlf.tm.RegisterCallback(logging.GetFileExtTag,
+		func(_ []byte, reply func([]byte)) { reply(wlf.b.Bytes()) })
+
+	// Callback for Logging.Size
+	wlf.tm.RegisterCallback(logging.SizeTag, func(_ []byte, reply func([]byte)) {
+		b := make([]byte, 8)
+		binary.LittleEndian.PutUint64(b, uint64(wlf.b.TotalWritten()))
+		reply(b)
+	})
+
+	wlf.tm.RegisterMessageChannelCallback(worker.LoggerTag, wlf.registerLogWorker)
+}
+
+func (wlf *workerLogFile) registerLogWorker(port js.Value, channelName string) {
+	p := worker.DefaultParams()
+	p.MessageLogging = false
+	mm, err := worker.NewMessageManager(
+		safejs.Safe(port), channelName+"-logger", p)
+	if err != nil {
+		jww.FATAL.Panic(err)
+	}
+
+	mm.RegisterCallback(logging.WriteLogTag,
+		func(message []byte, _ func([]byte)) {
+			n, err := wlf.b.Write(message)
+			if err != nil {
+				jww.ERROR.Printf("[LOG] Failed to write to log: %+v", err)
+			} else if n != len(message) {
+				jww.ERROR.Printf("[LOG] Failed to write to log: wrote %d "+
+					"bytes; expected %d bytes", n, len(message))
+			}
+		},
+	)
+
+	// Callback for Logging.GetFile
+	mm.RegisterCallback(logging.GetFileTag, func(_ []byte, reply func([]byte)) {
+		reply(wlf.b.Bytes())
+	})
+
+	// Callback for Logging.MaxSize
+	mm.RegisterCallback(logging.GetFileTag, func(_ []byte, reply func([]byte)) {
+		b := make([]byte, 8)
+		binary.LittleEndian.PutUint64(b, uint64(wlf.b.Size()))
+		reply(b)
 	})
 
 	// Callback for Logging.Size
-	wlf.wtm.RegisterCallback(logging.SizeTag, func([]byte) ([]byte, error) {
+	mm.RegisterCallback(logging.SizeTag, func(_ []byte, reply func([]byte)) {
 		b := make([]byte, 8)
 		binary.LittleEndian.PutUint64(b, uint64(wlf.b.TotalWritten()))
-		return b, nil
+		reply(b)
 	})
 }

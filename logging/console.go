@@ -10,9 +10,10 @@
 package logging
 
 import (
-	jww "github.com/spf13/jwalterweatherman"
 	"io"
 	"syscall/js"
+
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 var consoleObj = js.Global().Get("console")

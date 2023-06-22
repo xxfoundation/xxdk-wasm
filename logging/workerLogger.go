@@ -14,15 +14,12 @@ import (
 	"encoding/json"
 	"io"
 	"math"
-	"time"
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
-
-// TODO: add ability to import worker so that multiple threads can send logs: https://stackoverflow.com/questions/8343781/how-to-do-worker-to-worker-communication
 
 // workerLogger manages the recording of jwalterweatherman logs to the in-memory
 // file buffer in a remote Worker thread.
@@ -52,7 +49,7 @@ func newWorkerLogger(threshold jww.Threshold, maxLogFileSize int,
 
 	// Register the callback used by the Javascript to request the log file.
 	// This prevents an error print when GetFileExtTag is not registered.
-	wl.wm.RegisterCallback(GetFileExtTag, func([]byte) {
+	wl.wm.RegisterCallback(GetFileExtTag, func([]byte, func([]byte)) {
 		jww.DEBUG.Print("[LOG] Received file requested from external " +
 			"Javascript. Ignoring file.")
 	})
@@ -63,24 +60,12 @@ func newWorkerLogger(threshold jww.Threshold, maxLogFileSize int,
 	}
 
 	// Send message to initialize the log file listener
-	errChan := make(chan error)
-	wl.wm.SendMessage(NewLogFileTag, data, func(data []byte) {
-		if len(data) > 0 {
-			errChan <- errors.New(string(data))
-		} else {
-			errChan <- nil
-		}
-	})
-
-	// Wait for worker to respond
-	select {
-	case err = <-errChan:
-		if err != nil {
-			return nil, err
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return nil, errors.Errorf("timed out after %s waiting for new log "+
-			"file in worker to initialize", worker.ResponseTimeout)
+	response, err := wl.wm.SendMessage(NewLogFileTag, data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to initialize the log file listener")
+	} else if response != nil {
+		return nil, errors.Wrap(errors.New(string(response)),
+			"failed to initialize the log file listener")
 	}
 
 	jww.FEEDBACK.Printf("[LOG] Outputting log to file of max size %d at level "+
@@ -91,11 +76,9 @@ func newWorkerLogger(threshold jww.Threshold, maxLogFileSize int,
 }
 
 // Write adheres to the io.Writer interface and sends the log entries to the
-// worker to be added to the file buffer. Always returns the length of p and
-// nil. All errors are printed to the log.
+// worker to be added to the file buffer. Always returns the length of p.
 func (wl *workerLogger) Write(p []byte) (n int, err error) {
-	wl.wm.SendMessage(WriteLogTag, p, nil)
-	return len(p), nil
+	return len(p), wl.wm.SendNoResponse(WriteLogTag, p)
 }
 
 // Listen adheres to the [jwalterweatherman.LogListener] type and returns the
@@ -112,23 +95,22 @@ func (wl *workerLogger) Listen(threshold jww.Threshold) io.Writer {
 func (wl *workerLogger) StopLogging() {
 	wl.threshold = math.MaxInt
 
-	wl.wm.Stop()
-	jww.DEBUG.Printf("[LOG] Terminated log worker.")
+	err := wl.wm.Stop()
+	if err != nil {
+		jww.ERROR.Printf("[LOG] Failed to terminate log worker: %+v", err)
+	} else {
+		jww.DEBUG.Printf("[LOG] Terminated log worker.")
+	}
 }
 
 // GetFile returns the entire log file.
 func (wl *workerLogger) GetFile() []byte {
-	fileChan := make(chan []byte)
-	wl.wm.SendMessage(GetFileTag, nil, func(data []byte) { fileChan <- data })
-
-	select {
-	case file := <-fileChan:
-		return file
-	case <-time.After(worker.ResponseTimeout):
-		jww.FATAL.Panicf("[LOG] Timed out after %s waiting for log "+
-			"file from worker", worker.ResponseTimeout)
-		return nil
+	response, err := wl.wm.SendMessage(GetFileTag, nil)
+	if err != nil {
+		jww.FATAL.Panicf("[LOG] Failed to get log file from worker: %+v", err)
 	}
+
+	return response
 }
 
 // Threshold returns the log level threshold used in the file.
@@ -143,17 +125,12 @@ func (wl *workerLogger) MaxSize() int {
 
 // Size returns the number of bytes written to the log file.
 func (wl *workerLogger) Size() int {
-	sizeChan := make(chan []byte)
-	wl.wm.SendMessage(SizeTag, nil, func(data []byte) { sizeChan <- data })
-
-	select {
-	case data := <-sizeChan:
-		return int(binary.LittleEndian.Uint64(data))
-	case <-time.After(worker.ResponseTimeout):
-		jww.FATAL.Panicf("[LOG] Timed out after %s waiting for log "+
-			"file size from worker", worker.ResponseTimeout)
-		return 0
+	response, err := wl.wm.SendMessage(SizeTag, nil)
+	if err != nil {
+		jww.FATAL.Panicf("[LOG] Failed to get log size from worker: %+v", err)
 	}
+
+	return int(binary.LittleEndian.Uint64(response))
 }
 
 // Worker returns the manager for the Javascript Worker object.
