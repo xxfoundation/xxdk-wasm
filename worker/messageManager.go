@@ -173,7 +173,7 @@ func (mm *MessageManager) sendMessage(tag Tag, id uint64, data []byte) error {
 
 	msg := Message{
 		Tag:      tag,
-		ID:       initID,
+		ID:       id,
 		Response: false,
 		Data:     data,
 	}
