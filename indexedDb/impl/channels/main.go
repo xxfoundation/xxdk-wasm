@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -51,9 +52,11 @@ var channelsCmd = &cobra.Command{
 		jww.INFO.Printf("xxDK channels web worker version: v%s", SEMVER)
 
 		jww.INFO.Print("[WW] Starting xxDK WebAssembly Channels Database Worker.")
-		m := &manager{
-			wtm: worker.NewThreadManager("ChannelsIndexedDbWorker", true),
+		tm, err := worker.NewThreadManager("ChannelsIndexedDbWorker", true)
+		if err != nil {
+			exception.ThrowTrace(err)
 		}
+		m := &manager{wtm: tm}
 		m.registerCallbacks()
 		m.wtm.SignalReady()
 
