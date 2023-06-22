@@ -12,11 +12,13 @@ package dm
 import (
 	"crypto/ed25519"
 	"encoding/json"
+
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/client/v4/dm"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -52,6 +54,15 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 	// Register handler to manage messages for the MessageReceivedCallback
 	wh.RegisterCallback(
 		MessageReceivedCallbackTag, messageReceivedCallbackHandler(cb))
+
+	// Create MessageChannel between worker and logger so that the worker logs
+	// are saved
+	err = worker.CreateMessageChannel(logging.GetLogger().Worker(), wh,
+		"dmIndexedDbLogger", worker.LoggerTag)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to create message channel "+
+			"between DM indexedDb worker and logger")
+	}
 
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)

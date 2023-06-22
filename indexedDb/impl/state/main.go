@@ -28,16 +28,16 @@ const SEMVER = "0.1.0"
 func main() {
 	// Set to os.Args because the default is os.Args[1:] and in WASM, args start
 	// at 0, not 1.
-	channelsCmd.SetArgs(os.Args)
+	stateCmd.SetArgs(os.Args)
 
-	err := channelsCmd.Execute()
+	err := stateCmd.Execute()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 }
 
-var channelsCmd = &cobra.Command{
+var stateCmd = &cobra.Command{
 	Use:     "stateIndexedDbWorker",
 	Short:   "IndexedDb database for state.",
 	Example: "const go = new Go();\ngo.argv = [\"--logLevel=1\"]",
@@ -58,6 +58,21 @@ var channelsCmd = &cobra.Command{
 		}
 		m := &manager{wtm: tm}
 		m.registerCallbacks()
+
+		m.wtm.RegisterMessageChannelCallback(worker.LoggerTag,
+			func(port js.Value, channelName string) {
+				p := worker.DefaultParams()
+				p.MessageLogging = false
+				err = logging.EnableThreadLogging(
+					logLevel, threadLogLevel, 0, channelName, port)
+				if err != nil {
+					fmt.Printf("Failed to intialize logging: %+v", err)
+					os.Exit(1)
+				}
+
+				jww.INFO.Print("TEST channel")
+			})
+
 		m.wtm.SignalReady()
 
 		// Indicate to the Javascript caller that the WASM is ready by resolving
@@ -71,13 +86,20 @@ var channelsCmd = &cobra.Command{
 }
 
 var (
-	logLevel jww.Threshold
+	logLevel       jww.Threshold
+	threadLogLevel jww.Threshold
 )
 
 func init() {
 	// Initialize all startup flags
-	channelsCmd.Flags().IntVarP((*int)(&logLevel), "logLevel", "l", 2,
+	stateCmd.Flags().IntVarP((*int)(&logLevel),
+		"logLevel", "l", int(jww.LevelDebug),
 		"Sets the log level output when outputting to the Javascript console. "+
+			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
+			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
+	stateCmd.Flags().IntVarP((*int)(&threadLogLevel),
+		"threadLogLevel", "m", int(jww.LevelDebug),
+		"The log level when outputting to the worker file buffer. "+
 			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
 			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
 }

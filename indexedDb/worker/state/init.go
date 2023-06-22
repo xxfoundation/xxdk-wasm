@@ -16,6 +16,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
+	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -44,6 +45,15 @@ func NewState(path, wasmJsPath string) (impl.WebState, error) {
 	wh, err := worker.NewManager(wasmJsPath, "stateIndexedDb", true)
 	if err != nil {
 		return nil, err
+	}
+
+	// Create MessageChannel between worker and logger so that the worker logs
+	// are saved
+	err = worker.CreateMessageChannel(logging.GetLogger().Worker(), wh,
+		"stateIndexedDbLogger", worker.LoggerTag)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to create message channel "+
+			"between state indexedDb worker and logger")
 	}
 
 	// Store the database name

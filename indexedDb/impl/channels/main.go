@@ -58,6 +58,21 @@ var channelsCmd = &cobra.Command{
 		}
 		m := &manager{wtm: tm}
 		m.registerCallbacks()
+
+		m.wtm.RegisterMessageChannelCallback(worker.LoggerTag,
+			func(port js.Value, channelName string) {
+				p := worker.DefaultParams()
+				p.MessageLogging = false
+				err = logging.EnableThreadLogging(
+					logLevel, threadLogLevel, 0, channelName, port)
+				if err != nil {
+					fmt.Printf("Failed to intialize logging: %+v", err)
+					os.Exit(1)
+				}
+
+				jww.INFO.Print("TEST channel")
+			})
+
 		m.wtm.SignalReady()
 
 		// Indicate to the Javascript caller that the WASM is ready by resolving
@@ -71,13 +86,20 @@ var channelsCmd = &cobra.Command{
 }
 
 var (
-	logLevel jww.Threshold
+	logLevel       jww.Threshold
+	threadLogLevel jww.Threshold
 )
 
 func init() {
 	// Initialize all startup flags
-	channelsCmd.Flags().IntVarP((*int)(&logLevel), "logLevel", "l", 2,
+	channelsCmd.Flags().IntVarP((*int)(&logLevel),
+		"logLevel", "l", int(jww.LevelDebug),
 		"Sets the log level output when outputting to the Javascript console. "+
+			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
+			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
+	channelsCmd.Flags().IntVarP((*int)(&threadLogLevel),
+		"threadLogLevel", "m", int(jww.LevelDebug),
+		"The log level when outputting to the worker file buffer. "+
 			"0 = TRACE, 1 = DEBUG, 2 = INFO, 3 = WARN, 4 = ERROR, "+
 			"5 = CRITICAL, 6 = FATAL, -1 = disabled.")
 }

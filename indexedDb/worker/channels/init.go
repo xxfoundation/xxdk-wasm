@@ -18,6 +18,7 @@ import (
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -65,6 +66,15 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 	// Register handler to manage messages for the EventUpdate
 	wm.RegisterCallback(EventUpdateCallbackTag,
 		messageReceivedCallbackHandler(channelCbs.EventUpdate))
+
+	// Create MessageChannel between worker and logger so that the worker logs
+	// are saved
+	err = worker.CreateMessageChannel(logging.GetLogger().Worker(), wm,
+		"channelsIndexedDbLogger", worker.LoggerTag)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to create message channel "+
+			"between channel indexedDb worker and logger")
+	}
 
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)
