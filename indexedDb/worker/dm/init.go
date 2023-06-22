@@ -12,8 +12,6 @@ package dm
 import (
 	"crypto/ed25519"
 	"encoding/json"
-	"time"
-
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
@@ -83,18 +81,12 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 		return nil, err
 	}
 
-	dataChan := make(chan []byte)
-	wh.SendMessage(NewWASMEventModelTag, payload,
-		func(data []byte) { dataChan <- data })
-
-	select {
-	case data := <-dataChan:
-		if len(data) > 0 {
-			return nil, errors.New(string(data))
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return nil, errors.Errorf("timed out after %s waiting for indexedDB "+
-			"database in worker to initialize", worker.ResponseTimeout)
+	response, err := wh.SendMessage(NewWASMEventModelTag, payload)
+	if err != nil {
+		return nil, errors.Wrapf(err,
+			"failed to send message %q", NewWASMEventModelTag)
+	} else if len(response) > 0 {
+		return nil, errors.New(string(response))
 	}
 
 	return &wasmModel{wh}, nil
@@ -105,19 +97,19 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 type MessageReceivedCallbackMessage struct {
 	UUID               uint64            `json:"uuid"`
 	PubKey             ed25519.PublicKey `json:"pubKey"`
-	MessageUpdate      bool              `json:"message_update"`
-	ConversationUpdate bool              `json:"conversation_update"`
+	MessageUpdate      bool              `json:"messageUpdate"`
+	ConversationUpdate bool              `json:"conversationUpdate"`
 }
 
 // messageReceivedCallbackHandler returns a handler to manage messages for the
 // MessageReceivedCallback.
-func messageReceivedCallbackHandler(cb MessageReceivedCallback) func(data []byte) {
-	return func(data []byte) {
+func messageReceivedCallbackHandler(cb MessageReceivedCallback) worker.ReceiverCallback {
+	return func(message []byte, _ func([]byte)) {
 		var msg MessageReceivedCallbackMessage
-		err := json.Unmarshal(data, &msg)
+		err := json.Unmarshal(message, &msg)
 		if err != nil {
-			jww.ERROR.Printf("Failed to JSON unmarshal "+
-				"MessageReceivedCallback message from worker: %+v", err)
+			jww.ERROR.Printf("[DM] Failed to JSON unmarshal %T message from "+
+				"worker: %+v", msg, err)
 			return
 		}
 		cb(msg.UUID, msg.PubKey, msg.MessageUpdate, msg.ConversationUpdate)

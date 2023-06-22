@@ -64,31 +64,23 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	data, err := json.Marshal(msg)
 	if err != nil {
 		jww.ERROR.Printf(
-			"Could not JSON marshal payload for TransferMessage: %+v", err)
+			"[DM] Could not JSON marshal payload for Receive: %+v", err)
 		return 0
 	}
 
-	uuidChan := make(chan uint64)
-	w.wh.SendMessage(ReceiveTag, data, func(data []byte) {
-		var uuid uint64
-		err = json.Unmarshal(data, &uuid)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to Receive: %+v", err)
-			uuidChan <- 0
-		}
-		uuidChan <- uuid
-	})
-
-	select {
-	case uuid := <-uuidChan:
-		return uuid
-	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about Receive", worker.ResponseTimeout)
+	response, err := w.wh.SendMessage(ReceiveTag, data)
+	if err != nil {
+		jww.FATAL.Panicf("[DM] Failed to send to %q: %+v", ReceiveTag, err)
 	}
 
-	return 0
+	var uuid uint64
+	if err = json.Unmarshal(response, &uuid); err != nil {
+		jww.ERROR.Printf("[DM] Failed to JSON unmarshal UUID from worker for "+
+			"%q: %+v", ReceiveTag, err)
+		return 0
+	}
+
+	return uuid
 }
 
 func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
@@ -114,27 +106,19 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 		return 0
 	}
 
-	uuidChan := make(chan uint64)
-	w.wh.SendMessage(ReceiveTextTag, data, func(data []byte) {
-		var uuid uint64
-		err = json.Unmarshal(data, &uuid)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to ReceiveText: %+v", err)
-			uuidChan <- 0
-		}
-		uuidChan <- uuid
-	})
-
-	select {
-	case uuid := <-uuidChan:
-		return uuid
-	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveText", worker.ResponseTimeout)
+	response, err := w.wh.SendMessage(ReceiveTextTag, data)
+	if err != nil {
+		jww.FATAL.Panicf("[DM] Failed to send to %q: %+v", ReceiveTextTag, err)
 	}
 
-	return 0
+	var uuid uint64
+	if err = json.Unmarshal(response, &uuid); err != nil {
+		jww.ERROR.Printf("[DM] Failed to JSON unmarshal UUID from worker for "+
+			"%q: %+v", ReceiveTextTag, err)
+		return 0
+	}
+
+	return uuid
 }
 
 func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
@@ -161,27 +145,19 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 		return 0
 	}
 
-	uuidChan := make(chan uint64)
-	w.wh.SendMessage(ReceiveReplyTag, data, func(data []byte) {
-		var uuid uint64
-		err = json.Unmarshal(data, &uuid)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to ReceiveReply: %+v", err)
-			uuidChan <- 0
-		}
-		uuidChan <- uuid
-	})
-
-	select {
-	case uuid := <-uuidChan:
-		return uuid
-	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReply", worker.ResponseTimeout)
+	response, err := w.wh.SendMessage(ReceiveReplyTag, data)
+	if err != nil {
+		jww.FATAL.Panicf("[DM] Failed to send to %q: %+v", ReceiveReplyTag, err)
 	}
 
-	return 0
+	var uuid uint64
+	if err = json.Unmarshal(response, &uuid); err != nil {
+		jww.ERROR.Printf("[DM] Failed to JSON unmarshal UUID from worker for "+
+			"%q: %+v", ReceiveReplyTag, err)
+		return 0
+	}
+
+	return uuid
 }
 
 func (w *wasmModel) ReceiveReaction(messageID, reactionTo message.ID, nickname,
@@ -208,27 +184,19 @@ func (w *wasmModel) ReceiveReaction(messageID, reactionTo message.ID, nickname,
 		return 0
 	}
 
-	uuidChan := make(chan uint64)
-	w.wh.SendMessage(ReceiveReactionTag, data, func(data []byte) {
-		var uuid uint64
-		err = json.Unmarshal(data, &uuid)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Could not JSON unmarshal response to ReceiveReaction: %+v", err)
-			uuidChan <- 0
-		}
-		uuidChan <- uuid
-	})
-
-	select {
-	case uuid := <-uuidChan:
-		return uuid
-	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about ReceiveReaction", worker.ResponseTimeout)
+	response, err := w.wh.SendMessage(ReceiveReactionTag, data)
+	if err != nil {
+		jww.FATAL.Panicf("[DM] Failed to send to %q: %+v", ReceiveReactionTag, err)
 	}
 
-	return 0
+	var uuid uint64
+	if err = json.Unmarshal(response, &uuid); err != nil {
+		jww.ERROR.Printf("[DM] Failed to JSON unmarshal UUID from worker for "+
+			"%q: %+v", ReceiveReactionTag, err)
+		return 0
+	}
+
+	return uuid
 }
 
 func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
@@ -247,10 +215,13 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 			"Could not JSON marshal payload for TransferMessage: %+v", err)
 	}
 
-	w.wh.SendMessage(UpdateSentStatusTag, data, nil)
+	if err = w.wh.SendNoResponse(UpdateSentStatusTag, data); err != nil {
+		jww.FATAL.Panicf("[CH] Failed to send to %q: %+v", UpdateSentStatusTag, err)
+	}
 }
 
-func (w *wasmModel) DeleteMessage(messageID message.ID, senderPubKey ed25519.PublicKey) bool {
+func (w *wasmModel) DeleteMessage(
+	messageID message.ID, senderPubKey ed25519.PublicKey) bool {
 	msg := TransferMessage{
 		MessageID: messageID,
 		SenderKey: senderPubKey,
@@ -262,71 +233,45 @@ func (w *wasmModel) DeleteMessage(messageID message.ID, senderPubKey ed25519.Pub
 			"Could not JSON marshal payload for TransferMessage: %+v", err)
 	}
 
-	resultChan := make(chan bool)
-	w.wh.SendMessage(DeleteMessageTag, data,
-		func(data []byte) {
-			var result bool
-			if len(data) > 0 {
-				if err = json.Unmarshal(data, &result); err != nil {
-					jww.ERROR.Printf("Could not JSON unmarshal response to "+
-						"DeleteMessage: %+v", err)
-				}
-			}
-			resultChan <- result
-		})
-
-	select {
-	case result := <-resultChan:
-		return result
-	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about DeleteMessage", worker.ResponseTimeout)
-		return false
+	response, err := w.wh.SendMessage(DeleteMessageTag, data)
+	if err != nil {
+		jww.FATAL.Panicf("[DM] Failed to send to %q: %+v", DeleteMessageTag, err)
+	} else if len(response) == 0 {
+		jww.FATAL.Panicf(
+			"[DM] Received empty response from %q", DeleteMessageTag)
 	}
+
+	return response[0] == 1
 }
 
 func (w *wasmModel) GetConversation(senderPubKey ed25519.PublicKey) *dm.ModelConversation {
-	resultChan := make(chan *dm.ModelConversation)
-	w.wh.SendMessage(GetConversationTag, senderPubKey,
-		func(data []byte) {
-			var result *dm.ModelConversation
-			err := json.Unmarshal(data, &result)
-			if err != nil {
-				jww.ERROR.Printf("Could not JSON unmarshal response to "+
-					"GetConversation: %+v", err)
-			}
-			resultChan <- result
-		})
+	response, err := w.wh.SendMessage(GetConversationTag, senderPubKey)
+	if err != nil {
+		jww.FATAL.Panicf("[DM] Failed to send to %q: %+v", GetConversationTag, err)
+	}
 
-	select {
-	case result := <-resultChan:
-		return result
-	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about GetConversation", worker.ResponseTimeout)
+	var result dm.ModelConversation
+	if err = json.Unmarshal(response, &result); err != nil {
+		jww.ERROR.Printf("[DM] Failed to JSON unmarshal %T from worker for "+
+			"%q: %+v", result, GetConversationTag, err)
 		return nil
 	}
+
+	return &result
 }
 
 func (w *wasmModel) GetConversations() []dm.ModelConversation {
-	resultChan := make(chan []dm.ModelConversation)
-	w.wh.SendMessage(GetConversationTag, nil,
-		func(data []byte) {
-			var result []dm.ModelConversation
-			err := json.Unmarshal(data, &result)
-			if err != nil {
-				jww.ERROR.Printf("Could not JSON unmarshal response to "+
-					"GetConversations: %+v", err)
-			}
-			resultChan <- result
-		})
+	response, err := w.wh.SendMessage(GetConversationsTag, nil)
+	if err != nil {
+		jww.FATAL.Panicf("[DM] Failed to send to %q: %+v", GetConversationsTag, err)
+	}
 
-	select {
-	case result := <-resultChan:
-		return result
-	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
-			"worker about GetConversations", worker.ResponseTimeout)
+	var result []dm.ModelConversation
+	if err = json.Unmarshal(response, &result); err != nil {
+		jww.ERROR.Printf("[DM] Failed to JSON unmarshal %T from worker for "+
+			"%q: %+v", result, GetConversationsTag, err)
 		return nil
 	}
+
+	return result
 }

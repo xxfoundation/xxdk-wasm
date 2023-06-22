@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -52,9 +53,11 @@ var dmCmd = &cobra.Command{
 		jww.INFO.Printf("xxDK DM web worker version: v%s", SEMVER)
 
 		jww.INFO.Print("[WW] Starting xxDK WebAssembly DM Database Worker.")
-		m := &manager{
-			wtm: worker.NewThreadManager("DmIndexedDbWorker", true),
+		tm, err := worker.NewThreadManager("DmIndexedDbWorker", true)
+		if err != nil {
+			exception.ThrowTrace(err)
 		}
+		m := &manager{wtm: tm}
 		m.registerCallbacks()
 		m.wtm.SignalReady()
 
