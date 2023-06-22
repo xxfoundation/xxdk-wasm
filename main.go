@@ -155,6 +155,8 @@ func setGlobals() {
 		js.FuncOf(wasm.NewDMClientWithIndexedDbUnsafe))
 	js.Global().Set("NewDMsDatabaseCipher", js.FuncOf(wasm.NewDatabaseCipher))
 	js.Global().Set("DecodeDMShareURL", js.FuncOf(wasm.DecodeDMShareURL))
+	js.Global().Set("GetDmNotificationReportsForMe",
+		js.FuncOf(wasm.GetDmNotificationReportsForMe))
 
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))

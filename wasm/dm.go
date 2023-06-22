@@ -813,11 +813,11 @@ func (dmc *DMClient) GetShareURL(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - int of notification level
-func (d *DMClient) GetNotificationLevel(_ js.Value, args []js.Value) any {
+func (dmc *DMClient) GetNotificationLevel(_ js.Value, args []js.Value) any {
 	partnerPubKey := utils.CopyBytesToGo(args[0])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		level, err := d.api.GetNotificationLevel(partnerPubKey)
+		level, err := dmc.api.GetNotificationLevel(partnerPubKey)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
@@ -836,13 +836,13 @@ func (d *DMClient) GetNotificationLevel(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - error or nothing
-func (d *DMClient) SetMobileNotificationsLevel(_ js.Value,
+func (dmc *DMClient) SetMobileNotificationsLevel(_ js.Value,
 	args []js.Value) any {
 	partnerPubKey := utils.CopyBytesToGo(args[0])
 	level := args[1].Int()
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		err := d.api.SetMobileNotificationsLevel(partnerPubKey, level)
+		err := dmc.api.SetMobileNotificationsLevel(partnerPubKey, level)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
@@ -951,6 +951,9 @@ func (emb *dmReceiverBuilder) Build(path string) bindings.DMReceiver {
 		receiveReply:     utils.WrapCB(emJs, "ReceiveReply"),
 		receiveReaction:  utils.WrapCB(emJs, "ReceiveReaction"),
 		updateSentStatus: utils.WrapCB(emJs, "UpdateSentStatus"),
+		deleteMessage:    utils.WrapCB(emJs, "DeleteMessage"),
+		getConversation:  utils.WrapCB(emJs, "GetConversation"),
+		getConversations: utils.WrapCB(emJs, "GetConversations"),
 	}
 }
 
@@ -962,31 +965,34 @@ type dmReceiver struct {
 	receiveReply     func(args ...any) js.Value
 	receiveReaction  func(args ...any) js.Value
 	updateSentStatus func(args ...any) js.Value
-	blockSender      func(args ...any) js.Value
-	unblockSender    func(args ...any) js.Value
+	deleteMessage    func(args ...any) js.Value
 	getConversation  func(args ...any) js.Value
 	getConversations func(args ...any) js.Value
 }
 
-// Receive is called whenever a message is received on a given channel.
+// Receive is called when a raw direct message is received with unknown type.
 // It may be called multiple times on the same message. It is incumbent on the
 // user of the API to filter such called by message ID.
 //
+// The user must interpret the message type and perform their own message
+// parsing.
+//
 // Parameters:
-//   - channelID - Marshalled bytes of the channel [id.ID] (Uint8Array).
-//   - messageID - The bytes of the [channel.MessageID] of the received message
+//   - messageID - The bytes of the [dm.MessageID] of the received message
 //     (Uint8Array).
 //   - nickname - The nickname of the sender of the message (string).
-//   - text - The content of the message (string).
-//   - pubKey - The sender's Ed25519 public key (Uint8Array).
-//   - dmToken - The dmToken (int32).
-//   - codeset - The codeset version (int).
+//   - text - The bytes content of the message (Uint8Array).
+//   - partnerKey - The partner's [ed25519.PublicKey]. This is required to
+//     respond (Uint8Array).
+//   - senderKey - The sender's [ed25519.PublicKey] (Uint8Array).
+//   - dmToken - The senders direct messaging token. This is required to respond
+//     (int).
+//   - codeset - The codeset version (int)
 //   - timestamp - Time the message was received; represented as nanoseconds
 //     since unix epoch (int).
-//   - lease - The number of nanoseconds that the message is valid for (int).
-//   - roundId - The ID of the round that the message was received on (int).
-//   - msgType - The type of message ([channels.MessageType]) to send (int).
-//   - status - The [channels.SentStatus] of the message (int).
+//   - roundID - The ID of the round that the message was received on (int).
+//   - mType - The type of message ([channels.MessageType]) to send (int).
+//   - status - the [dm.SentStatus] of the message (int).
 //
 // Statuses will be enumerated as such:
 //
@@ -997,39 +1003,42 @@ type dmReceiver struct {
 // Returns:
 //   - A non-negative unique UUID for the message that it can be referenced by
 //     later with [dmReceiver.UpdateSentStatus].
-func (em *dmReceiver) Receive(messageID []byte, nickname string,
-	text []byte, partnerKey, senderKey []byte, dmToken int32, codeset int, timestamp,
+func (em *dmReceiver) Receive(messageID []byte, nickname string, text,
+	partnerKey, senderKey []byte, dmToken int32, codeset int, timestamp,
 	roundId, mType, status int64) int64 {
-	uuid := em.receive(messageID, nickname, text, partnerKey, senderKey, dmToken,
-		codeset, timestamp, roundId, mType, status)
+	uuid := em.receive(utils.CopyBytesToJS(messageID), nickname,
+		utils.CopyBytesToJS(text), utils.CopyBytesToJS(partnerKey),
+		utils.CopyBytesToJS(senderKey),
+		dmToken, codeset, timestamp, roundId, mType, status)
 
 	return int64(uuid.Int())
 }
 
-// ReceiveText is called whenever a message is received that is a reply on a
-// given channel. It may be called multiple times on the same message. It is
-// incumbent on the user of the API to filter such called by message ID.
+// ReceiveText is called whenever a direct message is received that is a text
+// type. It may be called multiple times on the same message. It is incumbent on
+// the user of the API to filter such called by message ID.
 //
 // Messages may arrive our of order, so a reply in theory can arrive before the
 // initial message. As a result, it may be important to buffer replies.
 //
 // Parameters:
-//   - channelID - Marshalled bytes of the channel [id.ID] (Uint8Array).
-//   - messageID - The bytes of the [channel.MessageID] of the received message
+//   - messageID - The bytes of the [dm.MessageID] of the received message
 //     (Uint8Array).
-//   - reactionTo - The [channel.MessageID] for the message that received a
-//     reply (Uint8Array).
-//   - senderUsername - The username of the sender of the message (string).
+//   - nickname - The nickname of the sender of the message (string).
 //   - text - The content of the message (string).
-//   - partnerKey, senderKey - The sender's Ed25519 public key (Uint8Array).
-//   - dmToken - The dmToken (int32).
-//   - codeset - The codeset version (int).
+//   - partnerKey - The partner's [ed25519.PublicKey]. This is required to
+//     respond (Uint8Array).
+//   - senderKey - The sender's [ed25519.PublicKey] (Uint8Array).
+//   - dmToken - The senders direct messaging token. This is required to respond
+//     (int).
+//   - codeset - The codeset version (int)
 //   - timestamp - Time the message was received; represented as nanoseconds
 //     since unix epoch (int).
-//   - lease - The number of nanoseconds that the message is valid for (int).
 //   - roundId - The ID of the round that the message was received on (int).
 //   - msgType - The type of message ([channels.MessageType]) to send (int).
 //   - status - The [channels.SentStatus] of the message (int).
+//   - roundID - The ID of the round that the message was received on (int).
+//   - status - the [dm.SentStatus] of the message (int).
 //
 // Statuses will be enumerated as such:
 //
@@ -1044,36 +1053,40 @@ func (em *dmReceiver) ReceiveText(messageID []byte, nickname, text string,
 	partnerKey, senderKey []byte, dmToken int32, codeset int, timestamp,
 	roundId, status int64) int64 {
 
-	uuid := em.receiveText(messageID, nickname, text, partnerKey, senderKey, dmToken,
-		codeset, timestamp, roundId, status)
+	uuid := em.receiveText(utils.CopyBytesToJS(messageID), nickname, text,
+		utils.CopyBytesToJS(partnerKey), utils.CopyBytesToJS(senderKey),
+		dmToken, codeset, timestamp, roundId, status)
 
 	return int64(uuid.Int())
 }
 
-// ReceiveReply is called whenever a message is received that is a reply on a
-// given channel. It may be called multiple times on the same message. It is
-// incumbent on the user of the API to filter such called by message ID.
+// ReceiveReply is called whenever a direct message is received that is a reply.
+// It may be called multiple times on the same message. It is incumbent on the
+// user of the API to filter such called by message ID.
 //
 // Messages may arrive our of order, so a reply in theory can arrive before the
 // initial message. As a result, it may be important to buffer replies.
 //
 // Parameters:
-//   - channelID - Marshalled bytes of the channel [id.ID] (Uint8Array).
-//   - messageID - The bytes of the [channel.MessageID] of the received message
+//   - messageID - The bytes of the [dm.MessageID] of the received message
 //     (Uint8Array).
-//   - reactionTo - The [channel.MessageID] for the message that received a
-//     reply (Uint8Array).
-//   - senderUsername - The username of the sender of the message (string).
+//   - reactionTo - The [dm.MessageID] for the message that received a reply
+//     (Uint8Array).
+//   - nickname - The nickname of the sender of the message (string).
 //   - text - The content of the message (string).
-//   - partnerKey, senderKey - The sender's Ed25519 public key (Uint8Array).
-//   - dmToken - The dmToken (int32).
-//   - codeset - The codeset version (int).
+//   - partnerKey - The partner's [ed25519.PublicKey]. This is required to
+//     respond (Uint8Array).
+//   - senderKey - The sender's [ed25519.PublicKey] (Uint8Array).
+//   - dmToken - The senders direct messaging token. This is required to respond
+//     (int).
+//   - codeset - The codeset version (int)
 //   - timestamp - Time the message was received; represented as nanoseconds
 //     since unix epoch (int).
-//   - lease - The number of nanoseconds that the message is valid for (int).
 //   - roundId - The ID of the round that the message was received on (int).
 //   - msgType - The type of message ([channels.MessageType]) to send (int).
 //   - status - The [channels.SentStatus] of the message (int).
+//   - roundID - The ID of the round that the message was received on (int).
+//   - status - the [dm.SentStatus] of the message (int).
 //
 // Statuses will be enumerated as such:
 //
@@ -1084,39 +1097,44 @@ func (em *dmReceiver) ReceiveText(messageID []byte, nickname, text string,
 // Returns:
 //   - A non-negative unique UUID for the message that it can be referenced by
 //     later with [dmReceiver.UpdateSentStatus].
-func (em *dmReceiver) ReceiveReply(messageID, replyTo []byte, nickname,
+func (em *dmReceiver) ReceiveReply(messageID, reactionTo []byte, nickname,
 	text string, partnerKey, senderKey []byte, dmToken int32, codeset int,
 	timestamp, roundId, status int64) int64 {
-	uuid := em.receiveReply(messageID, replyTo, nickname, text, partnerKey, senderKey,
+	uuid := em.receiveReply(utils.CopyBytesToJS(messageID),
+		utils.CopyBytesToJS(reactionTo), nickname, text,
+		utils.CopyBytesToJS(partnerKey), utils.CopyBytesToJS(senderKey),
 		dmToken, codeset, timestamp, roundId, status)
 
 	return int64(uuid.Int())
 }
 
-// ReceiveReaction is called whenever a reaction to a message is received on a
-// given channel. It may be called multiple times on the same reaction. It is
+// ReceiveReaction is called whenever a reaction to a direct message is
+// received. It may be called multiple times on the same reaction. It is
 // incumbent on the user of the API to filter such called by message ID.
 //
 // Messages may arrive our of order, so a reply in theory can arrive before the
 // initial message. As a result, it may be important to buffer reactions.
 //
 // Parameters:
-//   - channelID - Marshalled bytes of the channel [id.ID] (Uint8Array).
-//   - messageID - The bytes of the [channel.MessageID] of the received message
+//   - messageID - The bytes of the [dm.MessageID] of the received message
 //     (Uint8Array).
-//   - reactionTo - The [channel.MessageID] for the message that received a
-//     reply (Uint8Array).
-//   - senderUsername - The username of the sender of the message (string).
-//   - reaction - The contents of the reaction message (string).
-//   - partnerKey, senderKey - The sender's Ed25519 public key (Uint8Array).
-//   - dmToken - The dmToken (int32).
-//   - codeset - The codeset version (int).
+//   - reactionTo - The [dm.MessageID] for the message that received a reply
+//     (Uint8Array).
+//   - nickname - The nickname of the sender of the message (string).
+//   - reaction - The content of the reaction message (string).
+//   - partnerKey - The partner's [ed25519.PublicKey]. This is required to
+//     respond (Uint8Array).
+//   - senderKey - The sender's [ed25519.PublicKey] (Uint8Array).
+//   - dmToken - The senders direct messaging token. This is required to respond
+//     (int).
+//   - codeset - The codeset version (int)
 //   - timestamp - Time the message was received; represented as nanoseconds
 //     since unix epoch (int).
-//   - lease - The number of nanoseconds that the message is valid for (int).
 //   - roundId - The ID of the round that the message was received on (int).
 //   - msgType - The type of message ([channels.MessageType]) to send (int).
 //   - status - The [channels.SentStatus] of the message (int).
+//   - roundID - The ID of the round that the message was received on (int).
+//   - status - the [dm.SentStatus] of the message (int).
 //
 // Statuses will be enumerated as such:
 //
@@ -1129,16 +1147,16 @@ func (em *dmReceiver) ReceiveReply(messageID, replyTo []byte, nickname,
 //     later with [dmReceiver.UpdateSentStatus].
 func (em *dmReceiver) ReceiveReaction(messageID, reactionTo []byte,
 	nickname, reaction string, partnerKey, senderKey []byte, dmToken int32,
-	codeset int, timestamp, roundId,
-	status int64) int64 {
-	uuid := em.receiveReaction(messageID, reactionTo, nickname, reaction,
-		partnerKey, senderKey, dmToken, codeset, timestamp, roundId, status)
+	codeset int, timestamp, roundId, status int64) int64 {
+	uuid := em.receiveReaction(utils.CopyBytesToJS(messageID),
+		utils.CopyBytesToJS(reactionTo), nickname, reaction,
+		utils.CopyBytesToJS(partnerKey), utils.CopyBytesToJS(senderKey),
+		dmToken, codeset, timestamp, roundId, status)
 
 	return int64(uuid.Int())
 }
 
-// UpdateSentStatus is called whenever the sent status of a message has
-// changed.
+// UpdateSentStatus is called whenever the sent status of a message has changed.
 //
 // Parameters:
 //   - uuid - The unique identifier for the message (int).
@@ -1154,39 +1172,37 @@ func (em *dmReceiver) ReceiveReaction(messageID, reactionTo []byte,
 //	Sent      =  0
 //	Delivered =  1
 //	Failed    =  2
-func (em *dmReceiver) UpdateSentStatus(uuid int64, messageID []byte,
-	timestamp, roundID, status int64) {
-	em.updateSentStatus(uuid, utils.CopyBytesToJS(messageID),
-		timestamp, roundID, status)
+func (em *dmReceiver) UpdateSentStatus(
+	uuid int64, messageID []byte, timestamp, roundID, status int64) {
+	em.updateSentStatus(
+		uuid, utils.CopyBytesToJS(messageID), timestamp, roundID, status)
 }
 
-// BlockSender silences messages sent by the indicated sender
-// public key.
+// DeleteMessage deletes the message with the given [message.ID] belonging to
+// the sender. If the message exists and belongs to the sender, then it is
+// deleted and [DeleteMessage] returns true. If it does not exist, it returns
+// false.
 //
 // Parameters:
-//   - senderPubKey - The unique public key for the conversation.
-func (em *dmReceiver) BlockSender(senderPubKey []byte) {
-	em.blockSender(senderPubKey)
-}
-
-// UnblockSender silences messages sent by the indicated sender
-// public key.
-//
-// Parameters:
-//   - senderPubKey - The unique public key for the conversation.
-func (em *dmReceiver) UnblockSender(senderPubKey []byte) {
-	em.unblockSender(senderPubKey)
+//   - messageID - The bytes of the [message.ID] of the message to delete
+//     (Uint8Array).
+//   - senderPubKey - The [ed25519.PublicKey] of the sender of the message
+//     (Uint8Array).
+func (em *dmReceiver) DeleteMessage(messageID, senderPubKey []byte) bool {
+	return em.deleteMessage(
+		utils.CopyBytesToJS(messageID), utils.CopyBytesToJS(senderPubKey)).Bool()
 }
 
 // GetConversation returns the conversation held by the model (receiver).
 //
 // Parameters:
-//   - senderPubKey - The unique public key for the conversation.
+//   - senderPubKey - The unique public key for the conversation (Uint8Array).
 //
 // Returns:
 //   - JSON of [dm.ModelConversation] (Uint8Array).
 func (em *dmReceiver) GetConversation(senderPubKey []byte) []byte {
-	result := utils.CopyBytesToGo(em.getConversation(senderPubKey))
+	result := utils.CopyBytesToGo(
+		em.getConversation(utils.CopyBytesToJS(senderPubKey)))
 
 	var conversation dm.ModelConversation
 	err := json.Unmarshal(result, &conversation)

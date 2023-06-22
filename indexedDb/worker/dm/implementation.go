@@ -29,19 +29,19 @@ type wasmModel struct {
 
 // TransferMessage is JSON marshalled and sent to the worker.
 type TransferMessage struct {
-	UUID       uint64            `json:"uuid"`
-	MessageID  message.ID        `json:"messageID"`
-	ReactionTo message.ID        `json:"reactionTo"`
-	Nickname   string            `json:"nickname"`
-	Text       []byte            `json:"text"`
-	PartnerKey ed25519.PublicKey `json:"partnerKey"`
-	SenderKey  ed25519.PublicKey `json:"senderKey"`
-	DmToken    uint32            `json:"dmToken"`
-	Codeset    uint8             `json:"codeset"`
+	UUID       uint64            `json:"uuid,omitempty"`
+	MessageID  message.ID        `json:"messageID,omitempty"`
+	ReactionTo message.ID        `json:"reactionTo,omitempty"`
+	Nickname   string            `json:"nickname,omitempty"`
+	Text       []byte            `json:"text,omitempty"`
+	PartnerKey ed25519.PublicKey `json:"partnerKey,omitempty"`
+	SenderKey  ed25519.PublicKey `json:"senderKey,omitempty"`
+	DmToken    uint32            `json:"dmToken,omitempty"`
+	Codeset    uint8             `json:"codeset,omitempty"`
 	Timestamp  time.Time         `json:"timestamp"`
 	Round      rounds.Round      `json:"round"`
-	MType      dm.MessageType    `json:"mType"`
-	Status     dm.Status         `json:"status"`
+	MType      dm.MessageType    `json:"mType,omitempty"`
+	Status     dm.Status         `json:"status,omitempty"`
 }
 
 func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
@@ -248,6 +248,41 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	}
 
 	w.wh.SendMessage(UpdateSentStatusTag, data, nil)
+}
+
+func (w *wasmModel) DeleteMessage(messageID message.ID, senderPubKey ed25519.PublicKey) bool {
+	msg := TransferMessage{
+		MessageID: messageID,
+		SenderKey: senderPubKey,
+	}
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		jww.ERROR.Printf(
+			"Could not JSON marshal payload for TransferMessage: %+v", err)
+	}
+
+	resultChan := make(chan bool)
+	w.wh.SendMessage(DeleteMessageTag, data,
+		func(data []byte) {
+			var result bool
+			if len(data) > 0 {
+				if err = json.Unmarshal(data, &result); err != nil {
+					jww.ERROR.Printf("Could not JSON unmarshal response to "+
+						"DeleteMessage: %+v", err)
+				}
+			}
+			resultChan <- result
+		})
+
+	select {
+	case result := <-resultChan:
+		return result
+	case <-time.After(worker.ResponseTimeout):
+		jww.ERROR.Printf("Timed out after %s waiting for response from the "+
+			"worker about DeleteMessage", worker.ResponseTimeout)
+		return false
+	}
 }
 
 func (w *wasmModel) GetConversation(senderPubKey ed25519.PublicKey) *dm.ModelConversation {

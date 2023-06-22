@@ -21,7 +21,8 @@ const (
 	ReceiveReactionTag  worker.Tag = "ReceiveReaction"
 	ReceiveTag          worker.Tag = "Receive"
 	ReceiveTextTag      worker.Tag = "ReceiveText"
-	UpdateSentStatusTag worker.Tag = "UpdateSentStatusTag"
+	UpdateSentStatusTag worker.Tag = "UpdateSentStatus"
+	DeleteMessageTag    worker.Tag = "DeleteMessage"
 
 	GetConversationTag  worker.Tag = "GetConversation"
 	GetConversationsTag worker.Tag = "GetConversations"

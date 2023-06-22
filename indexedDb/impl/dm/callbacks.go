@@ -42,7 +42,7 @@ func (m *manager) registerCallbacks() {
 	m.wtm.RegisterCallback(wDm.ReceiveReplyTag, m.receiveReplyCB)
 	m.wtm.RegisterCallback(wDm.ReceiveReactionTag, m.receiveReactionCB)
 	m.wtm.RegisterCallback(wDm.UpdateSentStatusTag, m.updateSentStatusCB)
-
+	m.wtm.RegisterCallback(wDm.DeleteMessageTag, m.deleteMessageCB)
 	m.wtm.RegisterCallback(wDm.GetConversationTag, m.getConversationCB)
 	m.wtm.RegisterCallback(wDm.GetConversationsTag, m.getConversationsCB)
 }
@@ -200,6 +200,26 @@ func (m *manager) updateSentStatusCB(data []byte) ([]byte, error) {
 		msg.UUID, msg.MessageID, msg.Timestamp, msg.Round, msg.Status)
 
 	return nil, nil
+}
+
+// deleteMessageCB is the callback for wasmModel.DeleteMessage. Returns a JSON
+// marshalled bool.
+func (m *manager) deleteMessageCB(data []byte) ([]byte, error) {
+	var msg wDm.TransferMessage
+	err := json.Unmarshal(data, &msg)
+	if err != nil {
+		return []byte{}, errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
+	}
+
+	deleted := m.model.DeleteMessage(msg.MessageID, msg.SenderKey)
+
+	boolData, err := json.Marshal(deleted)
+	if err != nil {
+		return []byte{}, errors.Errorf("failed to JSON marshal bool: %+v", err)
+	}
+
+	return boolData, nil
 }
 
 // getConversationCB is the callback for wasmModel.GetConversation.
