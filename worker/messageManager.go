@@ -45,17 +45,17 @@ type MessageManager struct {
 	p MessagePort
 
 	// senderCallbacks are a list of SenderCallback that are called when
-	// receiving a response from the worker. The uint64 is a unique ID that
-	// connects each received reply to its original message.
+	// receiving a response. The uint64 is a unique ID that connects each
+	// received reply to its original message.
 	senderCallbacks map[Tag]map[uint64]SenderCallback
 
 	// receiverCallbacks are a list of ReceiverCallback that are called when
-	// receiving a message from the worker.
+	// receiving a message.
 	receiverCallbacks map[Tag]ReceiverCallback
 
 	// responseIDs is a list of the newest ID to assign to each senderCallbacks
-	// when registered. The IDs are used to connect a reply from the worker to
-	// the original message sent by the main thread.
+	// when registered. The IDs are used to connect a reply to the original
+	// message.
 	responseIDs map[Tag]uint64
 
 	// messageChannelCB is a list of callbacks that are called when a new
@@ -65,7 +65,8 @@ type MessageManager struct {
 	// quit, when triggered, stops the thread that processes received messages.
 	quit chan struct{}
 
-	// name describes the worker. It is used for debugging and logging purposes.
+	// name names the underlying Javascript object. It is used for debugging and
+	// logging purposes.
 	name string
 
 	Params
@@ -74,7 +75,8 @@ type MessageManager struct {
 }
 
 // NewMessageManager generates a new MessageManager. This functions will only
-// return once communication with the worker has been established.
+// return once communication with the remote thread has been established.
+// TODO: test
 func NewMessageManager(
 	v safejs.Value, name string, p Params) (*MessageManager, error) {
 	mm := initMessageManager(name, p)
@@ -91,7 +93,7 @@ func NewMessageManager(
 		return nil, err
 	}
 
-	// Start thread to process responses from worker
+	// Start thread to process responses
 	go mm.messageReception(events, cancel)
 
 	return mm, nil
@@ -110,32 +112,24 @@ func initMessageManager(name string, p Params) *MessageManager {
 	}
 }
 
-// RegisterMessageChannelCallback registers a callback that will be called when
-// a MessagePort with the given Channel is received.
-// TODO: test
-func (mm *MessageManager) RegisterMessageChannelCallback(
-	key string, fn NewPortCallback) {
-	mm.mux.Lock()
-	defer mm.mux.Unlock()
-	mm.messageChannelCB[key] = fn
-}
-
-// Send sends the data to the worker with the given tag and waits for a
+// Send sends the data to the remote thread with the given tag and waits for a
 // response. Returns an error if calling postMessage throws an exception,
 // marshalling the message to send fails, or if receiving a response times out.
 //
 // It is preferable to use [Send] over [SendNoResponse] as it will report a
-// timeout when the worker crashes and [SendNoResponse] will not.
+// timeout when the remote thread crashes and [SendNoResponse] will not.
+// TODO: test
 func (mm *MessageManager) Send(tag Tag, data []byte) (response []byte, err error) {
 	return mm.SendTimeout(tag, data, mm.ResponseTimeout)
 }
 
-// SendTimeout sends the data to the worker with a custom timeout. Refer to
-// [Send] for more information.
+// SendTimeout sends the data to the remote thread with a custom timeout. Refer
+// to [Send] for more information.
+// TODO: test
 func (mm *MessageManager) SendTimeout(
 	tag Tag, data []byte, timeout time.Duration) (response []byte, err error) {
-	responseChan := make(chan []byte)
-	id := mm.registerSenderCallback(tag, func(msg []byte) { responseChan <- msg })
+	responseCh := make(chan []byte)
+	id := mm.registerSenderCallback(tag, func(msg []byte) { responseCh <- msg })
 
 	err = mm.sendMessage(tag, id, data)
 	if err != nil {
@@ -143,7 +137,7 @@ func (mm *MessageManager) SendTimeout(
 	}
 
 	select {
-	case response = <-responseChan:
+	case response = <-responseCh:
 		return response, nil
 	case <-time.After(timeout):
 		return nil,
@@ -151,19 +145,21 @@ func (mm *MessageManager) SendTimeout(
 	}
 }
 
-// SendNoResponse sends the data to the worker with the given tag; however,
-// unlike [Send], it returns immediately and does not wait for a response.
-// Returns an error if calling postMessage throws an exception, marshalling the
-// message to send fails, or if receiving a response times out.
+// SendNoResponse sends the data to the remote thread with the given tag;
+// however, unlike [Send], it returns immediately and does not wait for a
+// response. Returns an error if calling postMessage throws an exception,
+// marshalling the message to send fails, or if receiving a response times out.
 //
 // It is preferable to use [Send] over [SendNoResponse] as it will report a
-// timeout when the worker crashes and [SendNoResponse] will not.
+// timeout when the remote thread crashes and [SendNoResponse] will not.
+// TODO: test
 func (mm *MessageManager) SendNoResponse(tag Tag, data []byte) error {
 	return mm.sendMessage(tag, initID, data)
 }
 
 // sendMessage packages the data into a Message with the tag and ID and sends it
-// to the worker.
+// to the remote thread.
+// TODO: test
 func (mm *MessageManager) sendMessage(tag Tag, id uint64, data []byte) error {
 	if mm.MessageLogging {
 		jww.DEBUG.Printf("[WW] [%s] Sending message for %q and ID %d: %s",
@@ -185,7 +181,8 @@ func (mm *MessageManager) sendMessage(tag Tag, id uint64, data []byte) error {
 	return mm.p.PostMessageTransferBytes(payload)
 }
 
-// sendResponse sends a reply to the worker with the given tag and ID.
+// sendResponse sends a reply to the remote thread with the given tag and ID.
+// TODO: test
 func (mm *MessageManager) sendResponse(tag Tag, id uint64, data []byte) error {
 	if mm.MessageLogging {
 		jww.DEBUG.Printf("[WW] [%s] Sending reply for %q and ID %d: %s",
@@ -208,15 +205,8 @@ func (mm *MessageManager) sendResponse(tag Tag, id uint64, data []byte) error {
 	return mm.p.PostMessageTransferBytes(payload)
 }
 
-// Stop closes the message reception thread and closes the port.
-func (mm *MessageManager) Stop() {
-	// Stop messageReception
-	select {
-	case mm.quit <- struct{}{}:
-	}
-}
-
 // messageReception processes received messages sequentially.
+// TODO: test
 func (mm *MessageManager) messageReception(
 	events <-chan MessageEvent, cancel context.CancelFunc) {
 	jww.INFO.Printf("[WW] [%s] Starting message reception thread.", mm.name)
@@ -245,18 +235,10 @@ func (mm *MessageManager) messageReception(
 					}
 					break
 				} else if port := data.Get("port"); port.Truthy() {
-					channel := string(utils.CopyBytesToGo(data.Get("channel")))
-					key := string(utils.CopyBytesToGo(data.Get("key")))
-					jww.INFO.Printf("[WW] [%s] Received new MessageChannel %q "+
-						"for key %q.", mm.name, channel, key)
-					mm.mux.Lock()
-					cb, exists := mm.messageChannelCB[key]
-					mm.mux.Unlock()
-					if !exists {
-						jww.ERROR.Printf("[WW] [%s] Failed to find callback "+
-							"for channel %q and key %q.", mm.name, channel, key)
-					} else {
-						cb(data.Get("port"), channel)
+					err = mm.processReceivedPort(port, data)
+					if err != nil {
+						jww.ERROR.Printf("[WW] [%s] Failed to process "+
+							"received MessagePort: %+v", mm.name, err)
 					}
 					break
 				}
@@ -270,9 +252,8 @@ func (mm *MessageManager) messageReception(
 	}
 }
 
-// processReceivedMessage processes the message received from the worker and
-// calls the associated callback. This functions blocks until the callback
-// returns.
+// processReceivedMessage processes the received message and calls the
+// associated callback. This functions blocks until the callback returns.
 func (mm *MessageManager) processReceivedMessage(data []byte) error {
 	var msg Message
 	err := json.Unmarshal(data, &msg)
@@ -310,6 +291,77 @@ func (mm *MessageManager) processReceivedMessage(data []byte) error {
 	return nil
 }
 
+// processReceivedPort processes the received Javascript MessagePort and calls
+// the associated NewPortCallback callback. This functions blocks until the
+// callback returns.
+func (mm *MessageManager) processReceivedPort(port js.Value, data js.Value) error {
+	channel := string(utils.CopyBytesToGo(data.Get("channel")))
+	key := string(utils.CopyBytesToGo(data.Get("key")))
+
+	jww.INFO.Printf("[WW] [%s] Received new MessageChannel %q for key %q.",
+		mm.name, channel, key)
+
+	mm.mux.Lock()
+	cb, exists := mm.messageChannelCB[key]
+	mm.mux.Unlock()
+
+	if !exists {
+		return errors.Errorf(
+			"Failed to find callback for channel %q and key %q.", channel, key)
+	} else {
+		cb(port, channel)
+	}
+
+	return nil
+}
+
+// RegisterCallback registers the callback for the given tag. Previous tags are
+// overwritten. This function is thread safe.
+func (mm *MessageManager) RegisterCallback(tag Tag, receiverCB ReceiverCallback) {
+	mm.mux.Lock()
+	defer mm.mux.Unlock()
+
+	jww.DEBUG.Printf("[WW] [%s] Registering receiver callback for tag %q",
+		mm.name, tag)
+
+	mm.receiverCallbacks[tag] = receiverCB
+}
+
+// getReceiverCallback returns the ReceiverCallback for the given Tag or returns
+// an error if no callback is found. This function is thread safe.
+func (mm *MessageManager) getReceiverCallback(tag Tag) (ReceiverCallback, error) {
+	mm.mux.Lock()
+	defer mm.mux.Unlock()
+
+	callback, exists := mm.receiverCallbacks[tag]
+	if !exists {
+		return nil, errors.Errorf("no receiver callbacks found for tag %q", tag)
+	}
+
+	return callback, nil
+}
+
+// registerSenderCallback registers the callback for the given tag and a new
+// unique ID used to associate the reply to the callback. Returns the ID that
+// was registered. If a previous callback was registered, it is overwritten.
+// This function is thread safe.
+func (mm *MessageManager) registerSenderCallback(
+	tag Tag, senderCB SenderCallback) uint64 {
+	mm.mux.Lock()
+	defer mm.mux.Unlock()
+	id := mm.getNextID(tag)
+
+	jww.DEBUG.Printf("[WW] [%s] Registering callback for tag %q and ID %d",
+		mm.name, tag, id)
+
+	if _, exists := mm.senderCallbacks[tag]; !exists {
+		mm.senderCallbacks[tag] = make(map[uint64]SenderCallback)
+	}
+	mm.senderCallbacks[tag][id] = senderCB
+
+	return id
+}
+
 // getSenderCallback returns the SenderCallback for the given Tag and ID or
 // returns an error if no callback is found. The callback is deleted from the
 // map once found. This function is thread safe.
@@ -336,51 +388,22 @@ func (mm *MessageManager) getSenderCallback(
 	return callback, nil
 }
 
-// getReceiverCallback returns the ReceiverCallback for the given Tag or returns
-// an error if no callback is found. This function is thread safe.
-func (mm *MessageManager) getReceiverCallback(tag Tag) (ReceiverCallback, error) {
+// RegisterMessageChannelCallback registers a callback that will be called when
+// a MessagePort with the given Channel is received.
+func (mm *MessageManager) RegisterMessageChannelCallback(
+	key string, fn NewPortCallback) {
 	mm.mux.Lock()
 	defer mm.mux.Unlock()
-
-	callback, exists := mm.receiverCallbacks[tag]
-	if !exists {
-		return nil, errors.Errorf("no receiver callbacks found for tag %q", tag)
-	}
-
-	return callback, nil
+	mm.messageChannelCB[key] = fn
 }
 
-// RegisterCallback registers the callback for the given tag. Previous tags are
-// overwritten. This function is thread safe.
-func (mm *MessageManager) RegisterCallback(tag Tag, receiverCB ReceiverCallback) {
-	mm.mux.Lock()
-	defer mm.mux.Unlock()
-
-	jww.DEBUG.Printf("[WW] [%s] Main registering receiver callback for tag %q",
-		mm.name, tag)
-
-	mm.receiverCallbacks[tag] = receiverCB
-}
-
-// registerSenderCallback registers the callback for the given tag and a new
-// unique ID used to associate the reply to the callback. Returns the ID that
-// was registered. If a previous callback was registered, it is overwritten.
-// This function is thread safe.
-func (mm *MessageManager) registerSenderCallback(
-	tag Tag, senderCB SenderCallback) uint64 {
-	mm.mux.Lock()
-	defer mm.mux.Unlock()
-	id := mm.getNextID(tag)
-
-	jww.DEBUG.Printf("[WW] [%s] Main registering callback for tag %q and ID %d",
-		mm.name, tag, id)
-
-	if _, exists := mm.senderCallbacks[tag]; !exists {
-		mm.senderCallbacks[tag] = make(map[uint64]SenderCallback)
+// Stop closes the message reception thread and closes the port.
+// TODO: test
+func (mm *MessageManager) Stop() {
+	// Stop messageReception
+	select {
+	case mm.quit <- struct{}{}:
 	}
-	mm.senderCallbacks[tag][id] = senderCB
-
-	return id
 }
 
 // getNextID returns the next unique ID for the given tag. This function is not
