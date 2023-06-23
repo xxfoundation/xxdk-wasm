@@ -11,11 +11,12 @@ package logging
 
 import (
 	"bytes"
-	"github.com/armon/circbuf"
-	jww "github.com/spf13/jwalterweatherman"
 	"math/rand"
 	"reflect"
 	"testing"
+
+	"github.com/armon/circbuf"
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 func Test_newFileLogger(t *testing.T) {

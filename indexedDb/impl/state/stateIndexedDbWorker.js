@@ -12,6 +12,10 @@ const isReady = new Promise((resolve) => {
 });
 
 const go = new Go();
+go.argv = [
+    '--logLevel=2',
+    '--threadLogLevel=2',
+]
 const binPath = 'xxdk-stateIndexedDkWorker.wasm'
 WebAssembly.instantiateStreaming(fetch(binPath), go.importObject).then(async (result) => {
     go.run(result.instance);

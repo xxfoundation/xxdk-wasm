@@ -11,8 +11,9 @@ package dm
 
 import (
 	"encoding/json"
+
 	"github.com/pkg/errors"
-	"time"
+	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -40,43 +41,32 @@ func (w *wasmModel) Set(key string, value []byte) error {
 			"Could not JSON marshal payload for TransferMessage: %+v", err)
 	}
 
-	resultChan := make(chan []byte)
-	w.wh.SendMessage(SetTag, data,
-		func(data []byte) {
-			resultChan <- data
-		})
-
-	select {
-	case result := <-resultChan:
-		return errors.New(string(result))
-	case <-time.After(worker.ResponseTimeout):
-		return errors.Errorf("Timed out after %s waiting for response from the "+
-			"worker about Get", worker.ResponseTimeout)
+	response, err := w.wh.SendMessage(SetTag, data)
+	if err != nil {
+		jww.FATAL.Panicf("Failed to send message to %q: %+v", SetTag, err)
+	} else if len(response) > 0 {
+		return errors.New(string(response))
 	}
+
+	return nil
 }
 
 func (w *wasmModel) Get(key string) ([]byte, error) {
-	resultChan := make(chan []byte)
-	w.wh.SendMessage(GetTag, []byte(key),
-		func(data []byte) {
-			resultChan <- data
-		})
 
-	select {
-	case result := <-resultChan:
-		var msg TransferMessage
-		err := json.Unmarshal(result, &msg)
-		if err != nil {
-			return nil, errors.Errorf(
-				"failed to JSON unmarshal %T from main thread: %+v", msg, err)
-		}
-
-		if len(msg.Error) > 0 {
-			return nil, errors.New(msg.Error)
-		}
-		return msg.Value, nil
-	case <-time.After(worker.ResponseTimeout):
-		return nil, errors.Errorf("Timed out after %s waiting for response from the "+
-			"worker about Get", worker.ResponseTimeout)
+	response, err := w.wh.SendMessage(GetTag, []byte(key))
+	if err != nil {
+		jww.FATAL.Panicf("Failed to send message to %q: %+v", GetTag, err)
 	}
+
+	var msg TransferMessage
+	if err = json.Unmarshal(response, &msg); err != nil {
+		return nil, errors.Errorf(
+			"failed to JSON unmarshal %T from worker: %+v", msg, err)
+	}
+
+	if len(msg.Error) > 0 {
+		return nil, errors.New(msg.Error)
+	}
+
+	return msg.Value, nil
 }
