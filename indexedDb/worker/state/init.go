@@ -11,11 +11,12 @@ package dm
 
 import (
 	"encoding/json"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	"time"
 
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
+	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -46,6 +47,15 @@ func NewState(path, wasmJsPath string) (impl.WebState, error) {
 		return nil, err
 	}
 
+	// Create MessageChannel between worker and logger so that the worker logs
+	// are saved
+	err = worker.CreateMessageChannel(logging.GetLogger().Worker(), wh,
+		"stateIndexedDbLogger", worker.LoggerTag)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to create message channel "+
+			"between state indexedDb worker and logger")
+	}
+
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)
 	if err != nil {
@@ -61,18 +71,11 @@ func NewState(path, wasmJsPath string) (impl.WebState, error) {
 		return nil, err
 	}
 
-	dataChan := make(chan []byte)
-	wh.SendMessage(NewStateTag, payload,
-		func(data []byte) { dataChan <- data })
-
-	select {
-	case data := <-dataChan:
-		if len(data) > 0 {
-			return nil, errors.New(string(data))
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return nil, errors.Errorf("timed out after %s waiting for indexedDB "+
-			"database in worker to initialize", worker.ResponseTimeout)
+	response, err := wh.SendMessage(NewStateTag, payload)
+	if err != nil {
+		jww.FATAL.Panicf("Failed to send message to %q: %+v", NewStateTag, err)
+	} else if len(response) > 0 {
+		return nil, errors.New(string(response))
 	}
 
 	return &wasmModel{wh}, nil

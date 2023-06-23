@@ -12,8 +12,9 @@ package main
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	stateWorker "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/state"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -35,39 +36,48 @@ func (m *manager) registerCallbacks() {
 
 // newStateCB is the callback for NewState. Returns an empty
 // slice on success or an error message on failure.
-func (m *manager) newStateCB(data []byte) ([]byte, error) {
+func (m *manager) newStateCB(message []byte, reply func(message []byte)) {
 	var msg stateWorker.NewStateMessage
-	err := json.Unmarshal(data, &msg)
+	err := json.Unmarshal(message, &msg)
 	if err != nil {
-		return []byte{}, errors.Errorf(
-			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
+		reply([]byte(errors.Wrapf(err,
+			"failed to JSON unmarshal %T from main thread", msg).Error()))
+		return
 	}
 
 	m.model, err = NewState(msg.DatabaseName)
 	if err != nil {
-		return []byte(err.Error()), nil
+		reply([]byte(err.Error()))
+		return
 	}
 
-	return []byte{}, nil
+	reply(nil)
 }
 
 // setCB is the callback for stateModel.Set.
 // Returns nil on error or the resulting byte data on success.
-func (m *manager) setCB(data []byte) ([]byte, error) {
+func (m *manager) setCB(message []byte, reply func(message []byte)) {
 	var msg stateWorker.TransferMessage
-	err := json.Unmarshal(data, &msg)
+	err := json.Unmarshal(message, &msg)
 	if err != nil {
-		return nil, errors.Errorf(
-			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
+		reply([]byte(errors.Wrapf(err,
+			"failed to JSON unmarshal %T from main thread", msg).Error()))
+		return
 	}
 
-	return nil, m.model.Set(msg.Key, msg.Value)
+	err = m.model.Set(msg.Key, msg.Value)
+	if err != nil {
+		reply([]byte(err.Error()))
+		return
+	}
+
+	reply(nil)
 }
 
 // getCB is the callback for stateModel.Get.
 // Returns nil on error or the resulting byte data on success.
-func (m *manager) getCB(data []byte) ([]byte, error) {
-	key := string(data)
+func (m *manager) getCB(message []byte, reply func(message []byte)) {
+	key := string(message)
 	result, err := m.model.Get(key)
 	msg := stateWorker.TransferMessage{
 		Key:   key,
@@ -75,5 +85,10 @@ func (m *manager) getCB(data []byte) ([]byte, error) {
 		Error: err.Error(),
 	}
 
-	return json.Marshal(msg)
+	replyMessage, err := json.Marshal(msg)
+	if err != nil {
+		exception.Throwf("Could not JSON marshal %T for Get: %+v", msg, err)
+	}
+
+	reply(replyMessage)
 }

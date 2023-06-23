@@ -12,13 +12,13 @@ package dm
 import (
 	"crypto/ed25519"
 	"encoding/json"
-	"time"
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/client/v4/dm"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -55,6 +55,15 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 	wh.RegisterCallback(
 		MessageReceivedCallbackTag, messageReceivedCallbackHandler(cb))
 
+	// Create MessageChannel between worker and logger so that the worker logs
+	// are saved
+	err = worker.CreateMessageChannel(logging.GetLogger().Worker(), wh,
+		"dmIndexedDbLogger", worker.LoggerTag)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to create message channel "+
+			"between DM indexedDb worker and logger")
+	}
+
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)
 	if err != nil {
@@ -83,18 +92,12 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 		return nil, err
 	}
 
-	dataChan := make(chan []byte)
-	wh.SendMessage(NewWASMEventModelTag, payload,
-		func(data []byte) { dataChan <- data })
-
-	select {
-	case data := <-dataChan:
-		if len(data) > 0 {
-			return nil, errors.New(string(data))
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return nil, errors.Errorf("timed out after %s waiting for indexedDB "+
-			"database in worker to initialize", worker.ResponseTimeout)
+	response, err := wh.SendMessage(NewWASMEventModelTag, payload)
+	if err != nil {
+		return nil, errors.Wrapf(err,
+			"failed to send message %q", NewWASMEventModelTag)
+	} else if len(response) > 0 {
+		return nil, errors.New(string(response))
 	}
 
 	return &wasmModel{wh}, nil
@@ -105,19 +108,19 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 type MessageReceivedCallbackMessage struct {
 	UUID               uint64            `json:"uuid"`
 	PubKey             ed25519.PublicKey `json:"pubKey"`
-	MessageUpdate      bool              `json:"message_update"`
-	ConversationUpdate bool              `json:"conversation_update"`
+	MessageUpdate      bool              `json:"messageUpdate"`
+	ConversationUpdate bool              `json:"conversationUpdate"`
 }
 
 // messageReceivedCallbackHandler returns a handler to manage messages for the
 // MessageReceivedCallback.
-func messageReceivedCallbackHandler(cb MessageReceivedCallback) func(data []byte) {
-	return func(data []byte) {
+func messageReceivedCallbackHandler(cb MessageReceivedCallback) worker.ReceiverCallback {
+	return func(message []byte, _ func([]byte)) {
 		var msg MessageReceivedCallbackMessage
-		err := json.Unmarshal(data, &msg)
+		err := json.Unmarshal(message, &msg)
 		if err != nil {
-			jww.ERROR.Printf("Failed to JSON unmarshal "+
-				"MessageReceivedCallback message from worker: %+v", err)
+			jww.ERROR.Printf("[DM] Failed to JSON unmarshal %T message from "+
+				"worker: %+v", msg, err)
 			return
 		}
 		cb(msg.UUID, msg.PubKey, msg.MessageUpdate, msg.ConversationUpdate)

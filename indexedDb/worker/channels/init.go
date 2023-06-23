@@ -11,7 +11,6 @@ package channels
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -19,6 +18,7 @@ import (
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -27,7 +27,7 @@ import (
 const databaseSuffix = "_speakeasy"
 
 // eventUpdateCallback is the [bindings.ChannelUICallback] callback function
-// it has a type ([bindings.NickNameUpdate] to [bindings.MessageDeleted]
+// it has a type [bindings.NickNameUpdate] to [bindings.MessageDeleted]
 // and json data that is the callback information.
 type eventUpdateCallback func(eventType int64, jsonData []byte)
 
@@ -67,6 +67,15 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 	wm.RegisterCallback(EventUpdateCallbackTag,
 		messageReceivedCallbackHandler(channelCbs.EventUpdate))
 
+	// Create MessageChannel between worker and logger so that the worker logs
+	// are saved
+	err = worker.CreateMessageChannel(logging.GetLogger().Worker(), wm,
+		"channelsIndexedDbLogger", worker.LoggerTag)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to create message channel "+
+			"between channel indexedDb worker and logger")
+	}
+
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)
 	if err != nil {
@@ -95,18 +104,12 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 		return nil, err
 	}
 
-	dataChan := make(chan []byte)
-	wm.SendMessage(NewWASMEventModelTag, payload,
-		func(data []byte) { dataChan <- data })
-
-	select {
-	case data := <-dataChan:
-		if len(data) > 0 {
-			return nil, errors.New(string(data))
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return nil, errors.Errorf("timed out after %s waiting for indexedDB "+
-			"database in worker to initialize", worker.ResponseTimeout)
+	response, err := wm.SendMessage(NewWASMEventModelTag, payload)
+	if err != nil {
+		return nil, errors.Wrapf(err,
+			"failed to send message %q", NewWASMEventModelTag)
+	} else if len(response) > 0 {
+		return nil, errors.New(string(response))
 	}
 
 	return &wasmModel{wm}, nil
@@ -121,10 +124,10 @@ type EventUpdateCallbackMessage struct {
 
 // messageReceivedCallbackHandler returns a handler to manage messages for the
 // MessageReceivedCallback.
-func messageReceivedCallbackHandler(cb eventUpdateCallback) func(data []byte) {
-	return func(data []byte) {
+func messageReceivedCallbackHandler(cb eventUpdateCallback) worker.ReceiverCallback {
+	return func(message []byte, _ func([]byte)) {
 		var msg EventUpdateCallbackMessage
-		err := json.Unmarshal(data, &msg)
+		err := json.Unmarshal(message, &msg)
 		if err != nil {
 			jww.ERROR.Printf(
 				"Failed to JSON unmarshal %T from worker: %+v", msg, err)
