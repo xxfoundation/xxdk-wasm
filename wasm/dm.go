@@ -580,7 +580,7 @@ func (dmc *DMClient) SendReply(_ js.Value, args []js.Value) any {
 //     your own. Alternatively, if reacting to another user's message, you may
 //     retrieve it via the [bindings.ChannelMessageReceptionCallback] registered
 //     using [ChannelsManager.RegisterReceiveHandler] (Uint8Array).
-//   - args[3] - JSON of [xxdk.CMIXParams]. If left empty
+//   - args[4] - JSON of [xxdk.CMIXParams]. If left empty
 //     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
 //
 // Returns a promise:
@@ -684,6 +684,45 @@ func (dmc *DMClient) SendInvite(_ js.Value, args []js.Value) any {
 		sendReport, err := dmc.api.SendInvite(
 			partnerPubKeyBytes, partnerToken, inviteToJSON, msg, host,
 			cmixParamsJSON)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(sendReport))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// DeleteMessage sends a message to the partner to delete a message this user
+// sent. Also deletes it from the local database.
+//
+// Parameters:
+//   - args[0] - The bytes of the public key of the partner's ED25519 signing
+//     key (Uint8Array).
+//   - args[1] - The token used to derive the reception ID for the partner (int).
+//   - args[2] -The bytes of the [message.ID] of the message to delete. This may
+//     be found in the [bindings.ChannelSendReport] (Uint8Array).
+//   - args[3] - JSON of [xxdk.CMIXParams]. If left empty
+//     [bindings.GetDefaultCMixParams] will be used internally (Uint8Array).
+//
+// Returns a promise:
+//   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
+//   - Rejected with an error if sending fails.
+func (dmc *DMClient) DeleteMessage(_ js.Value, args []js.Value) any {
+	partnerPubKeyBytes := utils.CopyBytesToGo(args[0])
+	partnerToken := args[1].Int()
+	targetMessageIdBytes := utils.CopyBytesToGo(args[2])
+	cmixParamsJSON := utils.CopyBytesToGo(args[4])
+
+	jww.DEBUG.Printf("DeleteMessage(%s, %d, %s)",
+		base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
+		partnerToken,
+		base64.RawStdEncoding.EncodeToString(targetMessageIdBytes))
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		sendReport, err := dmc.api.DeleteMessage(partnerPubKeyBytes,
+			partnerToken, targetMessageIdBytes, cmixParamsJSON)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
