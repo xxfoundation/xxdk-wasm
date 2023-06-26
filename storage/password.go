@@ -97,8 +97,9 @@ const (
 //   - Internal password (Uint8Array).
 //   - Throws TypeError on failure.
 func GetOrInitPassword(_ js.Value, args []js.Value) any {
+	externalPassword := args[0].String()
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		internalPassword, err := getOrInit(args[0].String())
+		internalPassword, err := getOrInit(externalPassword)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
