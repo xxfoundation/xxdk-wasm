@@ -711,7 +711,7 @@ func (dmc *DMClient) SendInvite(_ js.Value, args []js.Value) any {
 //   - Rejected with an error if sending fails.
 func (dmc *DMClient) DeleteMessage(_ js.Value, args []js.Value) any {
 	partnerPubKeyBytes := utils.CopyBytesToGo(args[0])
-	partnerToken := args[1].Int()
+	partnerToken := int32(args[1].Int())
 	targetMessageIdBytes := utils.CopyBytesToGo(args[2])
 	cmixParamsJSON := utils.CopyBytesToGo(args[4])
 
