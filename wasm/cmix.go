@@ -19,6 +19,8 @@ import (
 	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
+// initializing prevents a synchronized Cmix object from being loaded while one
+// is being initialized.
 var initializing atomic.Bool
 
 // Cmix wraps the [bindings.Cmix] object so its methods can be wrapped to be
@@ -128,19 +130,23 @@ func NewCmix(_ js.Value, args []js.Value) any {
 //   - Resolves on success.
 //   - Rejected with an error if creating a new cMix client fails.
 func NewSynchronizedCmix(_ js.Value, args []js.Value) any {
-	initializing.Store(true)
 	ndfJSON := args[0].String()
 	storageDir := args[1].String()
 	password := utils.CopyBytesToGo(args[2])
 	rs := newRemoteStore(args[3])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		err := bindings.NewSynchronizedCmix(ndfJSON, storageDir,
-			password, rs)
+		// Block loading of synchronized Cmix during initialisation
+		initializing.Store(true)
+
+		err := bindings.NewSynchronizedCmix(ndfJSON, storageDir, password, rs)
+
+		// Unblock loading of synchronized Cmix during initialisation
+		initializing.Store(false)
+
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
-			initializing.Store(false)
 			resolve()
 		}
 	}
@@ -238,8 +244,7 @@ func (c *Cmix) GetReceptionID(js.Value, []js.Value) any {
 //
 // Returns a promise:
 //   - Resolves with the RemoteKV object.
-func (c *Cmix) GetRemoteKV(_ js.Value, args []js.Value) any {
-
+func (c *Cmix) GetRemoteKV(js.Value, []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		kv := c.api.GetRemoteKV()
 		resolve(newRemoteKvJS(kv))
