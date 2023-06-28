@@ -16,7 +16,6 @@ import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
@@ -30,13 +29,13 @@ const currentVersion uint = 1
 // The name should be a base64 encoding of the users public key. Returns the
 // EventModel based on IndexedDb and the database name as reported by IndexedDb.
 func NewWASMEventModel(databaseName string, encryption idbCrypto.Cipher,
-	uiCallbacks bindings.ChannelUICallbacks) (channels.EventModel, error) {
+	uiCallbacks channels.ChannelUICallbacks) (channels.EventModel, error) {
 	return newWASMModel(databaseName, encryption, uiCallbacks)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption idbCrypto.Cipher,
-	uiCallbacks bindings.ChannelUICallbacks) (*wasmModel, error) {
+	uiCallbacks channels.ChannelUICallbacks) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()
 	defer cancel()
