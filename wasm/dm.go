@@ -785,7 +785,7 @@ type DMUser struct {
 	PublicKey []byte `json:"publicKey"`
 }
 
-// GetShareURL generates a URL that can be used to share a URL to initiate a
+// GetShareURL generates a URL that can be used to share a URL to initiate d
 // direct messages with this user.
 //
 // Parameters:
@@ -793,6 +793,7 @@ type DMUser struct {
 //
 // Returns:
 //   - JSON of [DMShareURL] (Uint8Array).
+//   - Throws an exception on error.
 func (dmc *DMClient) GetShareURL(_ js.Value, args []js.Value) any {
 	host := args[0].String()
 	urlReport, err := dmc.api.GetShareURL(host)
@@ -804,13 +805,18 @@ func (dmc *DMClient) GetShareURL(_ js.Value, args []js.Value) any {
 	return utils.CopyBytesToJS(urlReport)
 }
 
-// GetNotificationLevel Gets the notification level for a given dm pubkey
+// GetNotificationLevel gets the notification level for a given DM partner's
+// public key
 //
 // Parameters:
-//   - args[0] - partnerPublic key (Uint8Array)
+//   - args[0] - The partner's [ed25519.PublicKey] (Uint8Array)
 //
 // Returns:
-//   - int of notification level
+//   - The [dm.NotificationLevel] of the DM conversation (int).
+//
+// Returns a promise:
+//   - Resolves to the [dm.NotificationLevel] of the DM conversation (int).
+//   - Rejected with an error if getting the notification level fails.
 func (dmc *DMClient) GetNotificationLevel(_ js.Value, args []js.Value) any {
 	partnerPubKey := utils.CopyBytesToGo(args[0])
 
@@ -826,14 +832,16 @@ func (dmc *DMClient) GetNotificationLevel(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
-// SetMobileNotificationsLevel sets the notification level for a given pubkey.
+// SetMobileNotificationsLevel sets the notification level for the given DM
+// conversation partner.
 //
 // Parameters:
-//   - args[0] - partnerPublicKey (Uint8Array)
-//   - args[1] - the notification level (integer)
+//   - args[0] - The partner's [ed25519.PublicKey] (Uint8Array).
+//   - args[1] - The [dm.NotificationLevel] to set for the DM conversation (int).
 //
-// Returns:
-//   - error or nothing
+// Returns a promise:
+//   - Resolves on success.
+//   - Rejected with an error if setting the notification level fails.
 func (dmc *DMClient) SetMobileNotificationsLevel(_ js.Value,
 	args []js.Value) any {
 	partnerPubKey := utils.CopyBytesToGo(args[0])
@@ -859,6 +867,7 @@ func (dmc *DMClient) SetMobileNotificationsLevel(_ js.Value,
 //
 // Returns:
 //   - JSON of [DMUser] (Uint8Array).
+//   - Throws an exception on error.
 func DecodeDMShareURL(_ js.Value, args []js.Value) any {
 	url := args[0].String()
 	report, err := bindings.DecodeDMShareURL(url)
@@ -875,9 +884,8 @@ func DecodeDMShareURL(_ js.Value, args []js.Value) any {
 // notification reports is returned detailing all notifications for the user.
 //
 // Parameters:
-//   - args[0] - notificationFilterJSON - JSON (Uint8Array) of
-//     [dm.NotificationFilter].
-//   - args[1] - notificationDataCSV - CSV containing notification data.
+//   - args[0] - JSON of [dm.NotificationFilter] (Uint8Array).
+//   - args[1] - CSV containing notification data (string).
 //
 // Example JSON of a slice of [dm.NotificationFilter]:
 //
@@ -897,10 +905,11 @@ func DecodeDMShareURL(_ js.Value, args []js.Value) any {
 //	  "allowedTypes": {"1": {}, "2": {}}
 //	}
 //
-// Returns:
-//   - []byte - JSON of a slice of [dm.NotificationReport].
+// Returns a promise:
+//   - Resolves to a JSON of a slice of [dm.NotificationReport] (Uint8Array).
+//   - Rejected with an error if getting the reports fails.
 //
-// Example return:
+// Example slice of [dm.NotificationReport] return:
 //
 //	[
 //	  {"partner": "WUSO3trAYeBf4UeJ5TEL+Q4usoyFf0shda0YUmZ3z8k=", "type": 1},
@@ -911,12 +920,12 @@ func GetDmNotificationReportsForMe(_ js.Value, args []js.Value) any {
 	notificationDataCsv := args[1].String()
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		forme, err := bindings.GetDmNotificationReportsForMe(
+		forMe, err := bindings.GetDmNotificationReportsForMe(
 			notificationFilterJson, notificationDataCsv)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
-			resolve(utils.CopyBytesToJS(forme))
+			resolve(utils.CopyBytesToJS(forMe))
 		}
 	}
 
