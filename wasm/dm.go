@@ -77,65 +77,20 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 	return dmClientMap
 }
 
-// newDmNotificationUpdate adds the callbacks from the Javascript object.
-func newDmNotificationUpdate(value js.Value) *dmNotificationUpdate {
-	return &dmNotificationUpdate{callback: utils.WrapCB(value, "Callback")}
+// dmCallbacks wraps Javascript callbacks to adhere to the
+// [bindings.DmCallbacks] interface.
+type dmCallbacks struct {
+	eventUpdate func(args ...any) js.Value
 }
 
-// dmNotificationUpdate wraps Javascript callbacks to adhere to the
-// [bindings.DmNotificationUpdate] interface.
-type dmNotificationUpdate struct {
-	callback func(args ...any) js.Value
+// newDmCallbacks adds the callbacks from the Javascript object.
+func newDmCallbacks(value js.Value) *dmCallbacks {
+	return &dmCallbacks{eventUpdate: utils.WrapCB(value, "EventUpdate")}
 }
 
-// Callback is called everytime there is an update to the notification filter
-// or notification status for DMs.
-//
-// Parameters:
-//   - nfJSON - JSON of [dm.NotificationFilter], which is passed into
-//     [GetDmNotificationReportsForMe] to filter DM notifications for the user.
-//   - changedStateListJSON - JSON of a slice of [dm.NotificationState]. It
-//     includes all added or changed notification states for DM conversations.
-//   - deletedListJSON - JSON of a slice of [ed25519.PublicKey]. It includes
-//     conversation that were deleted.
-//
-// Example nfJSON:
-//
-//	{
-//	  "identifier": "MWL6mvtZ9UUm7jP3ainyI4erbRl+wyVaO5MOWboP0rA=",
-//	  "myID": "AqDqg6Tcs359dBNRBCX7XHaotRDhz1ZRQNXIsGaubvID",
-//	  "tags": [
-//	    "61334HtH85DPIifvrM+JzRmLqfV5R4AMEmcPelTmFX0=",
-//	    "zc/EPwtx5OKTVdwLcI15bghjJ7suNhu59PcarXE+m9o=",
-//	    "FvArzVJ/082UEpMDCWJsopCLeLnxJV6NXINNkJTk3k8="
-//	  ],
-//	  "PublicKeys": {
-//	    "61334HtH85DPIifvrM+JzRmLqfV5R4AMEmcPelTmFX0=": "b3HygDv8gjteune9wgBm3YtVuAo2foOusRmj0m5nl6E=",
-//	    "FvArzVJ/082UEpMDCWJsopCLeLnxJV6NXINNkJTk3k8=": "uOLitBZcCh2TEW406jXHJ+Rsi6LybsH8R1u4Mxv/7hA=",
-//	    "zc/EPwtx5OKTVdwLcI15bghjJ7suNhu59PcarXE+m9o=": "lqLD1EzZBxB8PbILUJIfFq4JI0RKThpUQuNlTNgZAWk="
-//	  },
-//	  "allowedTypes": {"1": {}, "2": {}}
-//	}
-//
-// Example changedStateListJSON:
-//
-//	[
-//	  {"pubKey": "lqLD1EzZBxB8PbILUJIfFq4JI0RKThpUQuNlTNgZAWk=", "level": 40},
-//	  {"pubKey": "uOLitBZcCh2TEW406jXHJ+Rsi6LybsH8R1u4Mxv/7hA=", "level": 10},
-//	  {"pubKey": "b3HygDv8gjteune9wgBm3YtVuAo2foOusRmj0m5nl6E=", "level": 10}
-//	]
-//
-// Example deletedListJSON:
-//
-//	[
-//	  "lqLD1EzZBxB8PbILUJIfFq4JI0RKThpUQuNlTNgZAWk=",
-//	  "lqLD1EzZBxB8PbILUJIfFq4JI0RKThpUQuNlTNgZAWk="
-//	]
-func (dmNU *dmNotificationUpdate) Callback(
-	nfJSON, changedStateListJSON, deletedListJSON []byte) {
-	dmNU.callback(utils.CopyBytesToJS(nfJSON),
-		utils.CopyBytesToJS(changedStateListJSON),
-		utils.CopyBytesToJS(deletedListJSON))
+// EventUpdate implements [bindings.DmCallbacks.EventUpdate].
+func (dmCBS *dmCallbacks) EventUpdate(eventType int64, jsonData []byte) {
+	dmCBS.eventUpdate(eventType, utils.CopyBytesToJS(jsonData))
 }
 
 // NewDMClient creates a new [DMClient] from a private identity
@@ -156,9 +111,10 @@ func (dmNU *dmNotificationUpdate) Callback(
 //   - args[3] - A function that initialises and returns a Javascript object
 //     that matches the [bindings.EventModel] interface. The function must match
 //     the Build function in [bindings.EventModelBuilder].
-//   - args[4] - A callback that is triggered everytime there is a change to the
-//     notification status of a DM conversation It must be a Javascript object
-//     that implements the callback in [bindings.DmNotificationUpdate].
+//   - args[4] - A Javascript object that implements the function on
+//     [bindings.DmCallbacks]. It is a callback that informs the UI about
+//     updates relating to DM conversations. The interface may be null, but if
+//     one is provided, each method must be implemented.
 //
 // Returns:
 //   - Javascript representation of the [DMClient] object.
@@ -168,10 +124,10 @@ func NewDMClient(_ js.Value, args []js.Value) any {
 	notificationsID := args[1].Int()
 	privateIdentity := utils.CopyBytesToGo(args[2])
 	em := newDMReceiverBuilder(args[3])
-	nu := newDmNotificationUpdate(args[4])
+	cbs := newDmCallbacks(args[4])
 
 	cm, err :=
-		bindings.NewDMClient(cmixID, notificationsID, privateIdentity, em, nu)
+		bindings.NewDMClient(cmixID, notificationsID, privateIdentity, em, cbs)
 	if err != nil {
 		exception.ThrowTrace(err)
 		return nil
@@ -207,9 +163,10 @@ func NewDMClient(_ js.Value, args []js.Value) any {
 //     The row in the database that was updated can be found using the UUID.
 //     messageUpdate is true if the message already exists and was edited.
 //     conversationUpdate is true if the Conversation was created or modified.
-//   - args[6] - A callback that is triggered everytime there is a change to the
-//     notification status of a DM conversation It must be a Javascript object
-//     that implements the callback in [bindings.DmNotificationUpdate].
+//   - args[6] - A Javascript object that implements the function on
+//     [bindings.DmCallbacks]. It is a callback that informs the UI about
+//     updates relating to DM conversations. The interface may be null, but if
+//     one is provided, each method must be implemented.
 //
 // Returns:
 //   - Resolves to a Javascript representation of the [DMClient] object.
@@ -222,7 +179,7 @@ func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 	wasmJsPath := args[3].String()
 	privateIdentity := utils.CopyBytesToGo(args[4])
 	messageReceivedCB := args[5]
-	nu := newDmNotificationUpdate(args[6])
+	cbs := newDmCallbacks(args[6])
 
 	cipher, err := dbCipherTrackerSingleton.get(cipherID)
 	if err != nil {
@@ -230,7 +187,7 @@ func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 	}
 
 	return newDMClientWithIndexedDb(cmixID, notificationsID, wasmJsPath,
-		privateIdentity, messageReceivedCB, cipher, nu)
+		privateIdentity, messageReceivedCB, cipher, cbs)
 }
 
 // NewDMClientWithIndexedDbUnsafe creates a new [DMClient] from a private
@@ -259,9 +216,10 @@ func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 //     The row in the database that was updated can be found using the UUID.
 //     messageUpdate is true if the message already exists and was edited.
 //     conversationUpdate is true if the Conversation was created or modified.
-//   - args[5] - A callback that is triggered everytime there is a change to the
-//     notification status of a DM conversation It must be a Javascript object
-//     that implements the callback in [bindings.DmNotificationUpdate].
+//   - args[5] - A Javascript object that implements the function on
+//     [bindings.DmCallbacks]. It is a callback that informs the UI about
+//     updates relating to DM conversations. The interface may be null, but if
+//     one is provided, each method must be implemented.
 //
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [DMClient] object.
@@ -272,14 +230,14 @@ func NewDMClientWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 	wasmJsPath := args[2].String()
 	privateIdentity := utils.CopyBytesToGo(args[3])
 	messageReceivedCB := args[4]
-	nu := newDmNotificationUpdate(args[5])
+	cbs := newDmCallbacks(args[5])
 
 	return newDMClientWithIndexedDb(cmixID, notificationsID, wasmJsPath,
-		privateIdentity, messageReceivedCB, nil, nu)
+		privateIdentity, messageReceivedCB, nil, cbs)
 }
 
 func newDMClientWithIndexedDb(cmixID, notificationsID int, wasmJsPath string,
-	privateIdentity []byte, cb js.Value, cipher *DbCipher, nuCB bindings.DmNotificationUpdate) any {
+	privateIdentity []byte, cb js.Value, cipher *DbCipher, cbs *dmCallbacks) any {
 
 	messageReceivedCB := func(uuid uint64, pubKey ed25519.PublicKey,
 		messageUpdate, conversationUpdate bool) {
@@ -301,7 +259,7 @@ func newDMClientWithIndexedDb(cmixID, notificationsID int, wasmJsPath string,
 		}
 
 		cm, err := bindings.NewDMClientWithGoEventModel(
-			cmixID, notificationsID, privateIdentity, model, nuCB)
+			cmixID, notificationsID, privateIdentity, model, cbs)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
