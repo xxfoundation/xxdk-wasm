@@ -12,6 +12,7 @@ package main
 import (
 	"crypto/ed25519"
 	"encoding/json"
+	"gitlab.com/elixxir/client/v4/bindings"
 	"strconv"
 	"strings"
 	"syscall/js"
@@ -168,8 +169,8 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 		return 0
 	}
 
-	go w.eventUpdate(channels.MessageReceived, channels.MessageReceivedJson{
-		Uuid:      int64(uuid),
+	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJSON{
+		UUID:      int64(uuid),
 		ChannelID: channelID,
 		Update:    false,
 	})
@@ -210,8 +211,8 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 		return 0
 	}
 
-	go w.eventUpdate(channels.MessageReceived, channels.MessageReceivedJson{
-		Uuid:      int64(uuid),
+	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJSON{
+		UUID:      int64(uuid),
 		ChannelID: channelID,
 		Update:    false,
 	})
@@ -252,8 +253,8 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 		return 0
 	}
 
-	go w.eventUpdate(channels.MessageReceived, channels.MessageReceivedJson{
-		Uuid:      int64(uuid),
+	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJSON{
+		UUID:      int64(uuid),
 		ChannelID: channelID,
 		Update:    false,
 	})
@@ -409,8 +410,8 @@ func (w *wasmModel) updateMessage(currentMsg *Message, messageID *message.ID,
 		return 0, err
 	}
 
-	go w.eventUpdate(channels.MessageReceived, channels.MessageReceivedJson{
-		Uuid:      int64(uuid),
+	go w.eventUpdate(bindings.MessageReceived, bindings.MessageReceivedJSON{
+		UUID:      int64(uuid),
 		ChannelID: channelID,
 		Update:    true,
 	})
@@ -531,8 +532,8 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 		return err
 	}
 
-	go w.eventUpdate(channels.MessageDeleted,
-		channels.MessageDeletedJson{MessageID: messageID})
+	go w.eventUpdate(bindings.MessageDeleted,
+		bindings.MessageDeletedJSON{MessageID: messageID})
 
 	return nil
 }
@@ -541,7 +542,7 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 func (w *wasmModel) MuteUser(
 	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
 
-	go w.eventUpdate(channels.UserMuted, channels.UserMutedJson{
+	go w.eventUpdate(bindings.UserMuted, bindings.UserMutedJSON{
 		ChannelID: channelID,
 		PubKey:    pubKey,
 		Unmute:    unmute,
