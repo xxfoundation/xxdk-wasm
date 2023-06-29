@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/dm"
 	"gitlab.com/elixxir/crypto/fastRNG"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
@@ -86,7 +87,7 @@ func (m *manager) newWASMEventModelCB(message []byte, reply func(message []byte)
 func (m *manager) messageReceivedCallback(uuid uint64, pubKey ed25519.PublicKey,
 	messageUpdate, conversationUpdate bool) {
 	// Package parameters for sending
-	msg := &wDm.MessageReceivedCallbackMessage{
+	msg := bindings.DmMessageReceivedJSON{
 		UUID:               uuid,
 		PubKey:             pubKey,
 		MessageUpdate:      messageUpdate,

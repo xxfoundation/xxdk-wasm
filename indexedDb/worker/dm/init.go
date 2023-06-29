@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/dm"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/logging"
@@ -43,7 +44,7 @@ type NewWASMEventModelMessage struct {
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
 func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
-	cb MessageReceivedCallback) (dm.EventModel, error) {
+	cbs bindings.DmCallbacks) (dm.EventModel, error) {
 	databaseName := path + databaseSuffix
 
 	wh, err := worker.NewManager(wasmJsPath, "dmIndexedDb", true)
@@ -53,7 +54,7 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 
 	// Register handler to manage messages for the MessageReceivedCallback
 	wh.RegisterCallback(
-		MessageReceivedCallbackTag, messageReceivedCallbackHandler(cb))
+		MessageReceivedCallbackTag, messageReceivedCallbackHandler(cbs))
 
 	// Create MessageChannel between worker and logger so that the worker logs
 	// are saved
@@ -103,27 +104,11 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 	return &wasmModel{wh}, nil
 }
 
-// MessageReceivedCallbackMessage is JSON marshalled and received from the
-// worker for the [MessageReceivedCallback] callback.
-type MessageReceivedCallbackMessage struct {
-	UUID               uint64            `json:"uuid"`
-	PubKey             ed25519.PublicKey `json:"pubKey"`
-	MessageUpdate      bool              `json:"messageUpdate"`
-	ConversationUpdate bool              `json:"conversationUpdate"`
-}
-
 // messageReceivedCallbackHandler returns a handler to manage messages for the
 // MessageReceivedCallback.
-func messageReceivedCallbackHandler(cb MessageReceivedCallback) worker.ReceiverCallback {
+func messageReceivedCallbackHandler(cbs bindings.DmCallbacks) worker.ReceiverCallback {
 	return func(message []byte, _ func([]byte)) {
-		var msg MessageReceivedCallbackMessage
-		err := json.Unmarshal(message, &msg)
-		if err != nil {
-			jww.ERROR.Printf("[DM] Failed to JSON unmarshal %T message from "+
-				"worker: %+v", msg, err)
-			return
-		}
-		cb(msg.UUID, msg.PubKey, msg.MessageUpdate, msg.ConversationUpdate)
+		cbs.EventUpdate(bindings.DmMessageReceived, message)
 	}
 }
 
