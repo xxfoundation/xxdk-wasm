@@ -445,8 +445,7 @@ func NewChannelsManagerWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 
 func newChannelsManagerWithIndexedDb(cmixID int, wasmJsPath string,
 	privateIdentity, extensionBuilderIDsJSON []byte, notificationsID int,
-	channelsCbs channels.ChannelUICallbacks,
-	cipher *DbCipher) any {
+	channelsCbs bindings.ChannelUICallbacks, cipher *DbCipher) any {
 
 	model := channelsDb.NewWASMEventModelBuilder(
 		wasmJsPath, cipher.api, channelsCbs)
@@ -558,8 +557,8 @@ func LoadChannelsManagerWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 }
 
 func loadChannelsManagerWithIndexedDb(cmixID int, wasmJsPath, storageTag string,
-	extensionBuilderIDsJSON []byte, notificationsID int, channelsCbs channels.ChannelUICallbacks,
-	cipher *DbCipher) any {
+	extensionBuilderIDsJSON []byte, notificationsID int,
+	channelsCbs bindings.ChannelUICallbacks, cipher *DbCipher) any {
 
 	model := channelsDb.NewWASMEventModelBuilder(
 		wasmJsPath, cipher.api, channelsCbs)
