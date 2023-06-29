@@ -127,6 +127,7 @@ func setGlobals() {
 		js.FuncOf(wasm.NewChannelsManagerWithIndexedDbUnsafe))
 	js.Global().Set("DecodePublicURL", js.FuncOf(wasm.DecodePublicURL))
 	js.Global().Set("DecodePrivateURL", js.FuncOf(wasm.DecodePrivateURL))
+	js.Global().Set("DecodeInviteURL", js.FuncOf(wasm.DecodeInviteURL))
 	js.Global().Set("GetChannelJSON", js.FuncOf(wasm.GetChannelJSON))
 	js.Global().Set("GetChannelInfo", js.FuncOf(wasm.GetChannelInfo))
 	js.Global().Set("GetShareUrlType", js.FuncOf(wasm.GetShareUrlType))
