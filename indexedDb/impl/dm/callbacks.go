@@ -77,7 +77,8 @@ func (m *manager) newWASMEventModelCB(message []byte, reply func(message []byte)
 	reply(nil)
 }
 
-// EventUpdate implements [bindings.DmCallbacks.EventUpdate].
+// eventUpdate JSON marshals the interface and sends it to the main thread the
+// with the event type to be sent on the EventUpdate callback.
 func (m *manager) eventUpdate(eventType int64, jsonMarshallable any) {
 	jsonData, err := json.Marshal(jsonMarshallable)
 	if err != nil {
@@ -100,7 +101,7 @@ func (m *manager) eventUpdate(eventType int64, jsonMarshallable any) {
 	err = m.wtm.SendNoResponse(wDm.EventUpdateCallbackTag, data)
 	if err != nil {
 		exception.Throwf(
-			"[CH] Could not send message for EventUpdate callback: %+v", err)
+			"[DM] Could not send message for EventUpdate callback: %+v", err)
 	}
 }
 

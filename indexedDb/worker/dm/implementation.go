@@ -216,7 +216,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	}
 
 	if err = w.wh.SendNoResponse(UpdateSentStatusTag, data); err != nil {
-		jww.FATAL.Panicf("[CH] Failed to send to %q: %+v", UpdateSentStatusTag, err)
+		jww.FATAL.Panicf("[DM] Failed to send to %q: %+v", UpdateSentStatusTag, err)
 	}
 }
 
