@@ -87,7 +87,7 @@ func (m *manager) newWASMEventModelCB(message []byte, reply func(message []byte)
 // EventUpdate implements [bindings.ChannelUICallbacks.EventUpdate].
 func (m *manager) EventUpdate(eventType int64, jsonData []byte) {
 	// Package parameters for sending
-	msg := &wChannels.EventUpdateCallbackMessage{
+	msg := wChannels.EventUpdateCallbackMessage{
 		EventType: eventType,
 		JsonData:  jsonData,
 	}
