@@ -29,7 +29,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 )
 
-func dummyReceivedMessageCB(uint64, ed25519.PublicKey, bool, bool) {}
+var dummyEU = func(int64, any) {}
 
 func TestMain(m *testing.M) {
 	jww.SetStdoutThreshold(jww.LevelDebug)
@@ -38,8 +38,7 @@ func TestMain(m *testing.M) {
 
 // Test simple receive of a new message for a new conversation.
 func TestImpl_Receive(t *testing.T) {
-	m, err := newWASMModel("TestImpl_Receive", nil,
-		dummyReceivedMessageCB)
+	m, err := newWASMModel("TestImpl_Receive", nil, dummyEU)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -91,8 +90,7 @@ func TestImpl_Receive(t *testing.T) {
 
 // Test happy path. Insert some conversations and check they exist.
 func TestImpl_GetConversations(t *testing.T) {
-	m, err := newWASMModel("TestImpl_GetConversations", nil,
-		dummyReceivedMessageCB)
+	m, err := newWASMModel("TestImpl_GetConversations", nil, dummyEU)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -127,7 +125,7 @@ func TestImpl_GetConversations(t *testing.T) {
 
 // Test happy path toggling between blocked/unblocked in a Conversation.
 func TestWasmModel_BlockSender(t *testing.T) {
-	m, err := newWASMModel("TestWasmModel_BlockSender", nil, dummyReceivedMessageCB)
+	m, err := newWASMModel("TestWasmModel_BlockSender", nil, dummyEU)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -162,7 +160,7 @@ func TestWasmModel_BlockSender(t *testing.T) {
 
 // Test failed and successful deletes
 func TestWasmModel_DeleteMessage(t *testing.T) {
-	m, err := newWASMModel("TestWasmModel_DeleteMessage", nil, dummyReceivedMessageCB)
+	m, err := newWASMModel("TestWasmModel_DeleteMessage", nil, dummyEU)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

@@ -10,13 +10,11 @@
 package main
 
 import (
-	"encoding/json"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
@@ -26,17 +24,21 @@ import (
 // migration purposes.
 const currentVersion uint = 1
 
+// eventUpdate takes an event type and JSON object from
+// bindings/channelsCallbacks.go.
+type eventUpdate func(eventType int64, jsonMarshallable any)
+
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key. Returns the
 // EventModel based on IndexedDb and the database name as reported by IndexedDb.
 func NewWASMEventModel(databaseName string, encryption idbCrypto.Cipher,
-	uiCallbacks bindings.ChannelUICallbacks) (channels.EventModel, error) {
-	return newWASMModel(databaseName, encryption, uiCallbacks)
+	eventCallback eventUpdate) (channels.EventModel, error) {
+	return newWASMModel(databaseName, encryption, eventCallback)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption idbCrypto.Cipher,
-	uiCallbacks bindings.ChannelUICallbacks) (*wasmModel, error) {
+	eventCallback eventUpdate) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()
 	defer cancel()
@@ -75,16 +77,9 @@ func newWASMModel(databaseName string, encryption idbCrypto.Cipher,
 	}
 
 	wrapper := &wasmModel{
-		db:     db,
-		cipher: encryption,
-		eventUpdate: func(eventType int64, jsonMarshallable any) {
-			data, err := json.Marshal(jsonMarshallable)
-			if err != nil {
-				jww.FATAL.Panicf("Failed to JSON marshal %T for EventUpdate "+
-					"callback: %+v", jsonMarshallable, err)
-			}
-			uiCallbacks.EventUpdate(eventType, data)
-		},
+		db:            db,
+		cipher:        encryption,
+		eventCallback: eventCallback,
 	}
 	return wrapper, nil
 }
