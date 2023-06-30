@@ -26,11 +26,6 @@ import (
 // databaseSuffix is the suffix to be appended to the name of the database.
 const databaseSuffix = "_speakeasy"
 
-// eventUpdateCallback is the [bindings.ChannelUICallback] callback function
-// it has a type [bindings.NickNameUpdate] to [bindings.MessageDeleted]
-// and json data that is the callback information.
-type eventUpdateCallback func(eventType int64, jsonData []byte)
-
 // NewWASMEventModelBuilder returns an EventModelBuilder which allows
 // the channel manager to define the path but the callback is the same
 // across the board.
@@ -53,7 +48,7 @@ type NewWASMEventModelMessage struct {
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
 func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
-	channelCbs bindings.ChannelUICallbacks) (channels.EventModel, error) {
+	cbs bindings.ChannelUICallbacks) (channels.EventModel, error) {
 	databaseName := path + databaseSuffix
 
 	wm, err := worker.NewManager(wasmJsPath, "channelsIndexedDb", true)
@@ -62,8 +57,7 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 	}
 
 	// Register handler to manage messages for the EventUpdate
-	wm.RegisterCallback(EventUpdateCallbackTag,
-		messageReceivedCallbackHandler(channelCbs.EventUpdate))
+	wm.RegisterCallback(EventUpdateCallbackTag, eventUpdateCallbackHandler(cbs))
 
 	// Create MessageChannel between worker and logger so that the worker logs
 	// are saved
@@ -114,25 +108,25 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 }
 
 // EventUpdateCallbackMessage is JSON marshalled and received from the worker
-// for the [EventUpdate] callback.
+// for the EventUpdate callback.
 type EventUpdateCallbackMessage struct {
 	EventType int64  `json:"eventType"`
 	JsonData  []byte `json:"jsonData"`
 }
 
-// messageReceivedCallbackHandler returns a handler to manage messages for the
-// MessageReceivedCallback.
-func messageReceivedCallbackHandler(cb eventUpdateCallback) worker.ReceiverCallback {
+// eventUpdateCallbackHandler returns a handler to manage messages for the
+// [bindings.ChannelUICallbacks.EventUpdate] callback.
+func eventUpdateCallbackHandler(
+	cbs bindings.ChannelUICallbacks) worker.ReceiverCallback {
 	return func(message []byte, _ func([]byte)) {
 		var msg EventUpdateCallbackMessage
-		err := json.Unmarshal(message, &msg)
-		if err != nil {
+		if err := json.Unmarshal(message, &msg); err != nil {
 			jww.ERROR.Printf(
 				"Failed to JSON unmarshal %T from worker: %+v", msg, err)
 			return
 		}
 
-		cb(msg.EventType, msg.JsonData)
+		cbs.EventUpdate(msg.EventType, msg.JsonData)
 	}
 }
 

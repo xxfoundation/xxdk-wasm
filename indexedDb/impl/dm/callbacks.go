@@ -10,13 +10,11 @@
 package main
 
 import (
-	"crypto/ed25519"
 	"encoding/json"
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/dm"
 	"gitlab.com/elixxir/crypto/fastRNG"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
@@ -71,7 +69,7 @@ func (m *manager) newWASMEventModelCB(message []byte, reply func(message []byte)
 	}
 
 	m.model, err = NewWASMEventModel(
-		msg.DatabaseName, encryption, m.messageReceivedCallback)
+		msg.DatabaseName, encryption, m.eventUpdateCallback)
 	if err != nil {
 		reply([]byte(err.Error()))
 		return
@@ -80,31 +78,31 @@ func (m *manager) newWASMEventModelCB(message []byte, reply func(message []byte)
 	reply(nil)
 }
 
-// messageReceivedCallback sends calls to the MessageReceivedCallback in the
-// main thread.
-//
-// messageReceivedCallback adhere to the MessageReceivedCallback type.
-func (m *manager) messageReceivedCallback(uuid uint64, pubKey ed25519.PublicKey,
-	messageUpdate, conversationUpdate bool) {
+// eventUpdateCallback JSON marshals the interface and sends it to the main
+// thread the with the event type to be sent on the EventUpdate callback.
+func (m *manager) eventUpdateCallback(eventType int64, jsonMarshallable any) {
+	jsonData, err := json.Marshal(jsonMarshallable)
+	if err != nil {
+		jww.FATAL.Panicf("[DM] Failed to JSON marshal %T for EventUpdate "+
+			"callback: %+v", jsonMarshallable, err)
+	}
+
 	// Package parameters for sending
-	msg := bindings.DmMessageReceivedJSON{
-		UUID:               uuid,
-		PubKey:             pubKey,
-		MessageUpdate:      messageUpdate,
-		ConversationUpdate: conversationUpdate,
+	msg := wDm.EventUpdateCallbackMessage{
+		EventType: eventType,
+		JsonData:  jsonData,
 	}
 	data, err := json.Marshal(msg)
 	if err != nil {
-		jww.ERROR.Printf(
-			"Could not JSON marshal MessageReceivedCallbackMessage: %+v", err)
-		return
+		exception.Throwf("[DM] Could not JSON marshal %T for EventUpdate "+
+			"callback: %+v", msg, err)
 	}
 
 	// Send it to the main thread
-	err = m.wtm.SendNoResponse(wDm.MessageReceivedCallbackTag, data)
+	err = m.wtm.SendNoResponse(wDm.EventUpdateCallbackTag, data)
 	if err != nil {
-		exception.Throwf("[DM] Could not send message for "+
-			"MessageReceivedCallback: %+v", err)
+		exception.Throwf(
+			"[DM] Could not send message for EventUpdate callback: %+v", err)
 	}
 }
 
