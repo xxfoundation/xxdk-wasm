@@ -36,9 +36,9 @@ import (
 // NOTE: This model is NOT thread safe - it is the responsibility of the
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
-	db     *idb.Database
-	cipher idbCrypto.Cipher
-	eu     eventUpdate
+	db            *idb.Database
+	cipher        idbCrypto.Cipher
+	eventCallback eventUpdate
 }
 
 // upsertConversation is used for joining or updating a Conversation.
@@ -204,7 +204,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 
 	jww.TRACE.Printf("[DM indexedDB] Calling ReceiveMessageCB(%v, %v, t, f)",
 		uuid, newMessage.ConversationPubKey)
-	go w.eu(bindings.DmMessageReceived, bindings.DmMessageReceivedJSON{
+	go w.eventCallback(bindings.DmMessageReceived, bindings.DmMessageReceivedJSON{
 		UUID:               uuid,
 		PubKey:             newMessage.ConversationPubKey,
 		MessageUpdate:      true,
@@ -297,7 +297,7 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 
 	jww.TRACE.Printf("[DM indexedDB] Calling ReceiveMessageCB(%v, %v, f, %t)",
 		uuid, partnerKey, conversationUpdated)
-	go w.eu(bindings.DmMessageReceived, bindings.DmMessageReceivedJSON{
+	go w.eventCallback(bindings.DmMessageReceived, bindings.DmMessageReceivedJSON{
 		UUID:               uuid,
 		PubKey:             partnerKey,
 		MessageUpdate:      false,
@@ -406,7 +406,7 @@ func (w *wasmModel) DeleteMessage(messageID message.ID, senderPubKey ed25519.Pub
 		return false
 	}
 
-	go w.eu(bindings.DmMessageReceived, bindings.DmMessageDeletedJSON{
+	go w.eventCallback(bindings.DmMessageReceived, bindings.DmMessageDeletedJSON{
 		MessageID: messageID,
 	})
 	return true

@@ -32,13 +32,13 @@ type eventUpdate func(eventType int64, jsonMarshallable any)
 // The name should be a base64 encoding of the users public key. Returns the
 // EventModel based on IndexedDb and the database name as reported by IndexedDb.
 func NewWASMEventModel(databaseName string, encryption idbCrypto.Cipher,
-	eu eventUpdate) (channels.EventModel, error) {
-	return newWASMModel(databaseName, encryption, eu)
+	eventCallback eventUpdate) (channels.EventModel, error) {
+	return newWASMModel(databaseName, encryption, eventCallback)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption idbCrypto.Cipher,
-	eu eventUpdate) (*wasmModel, error) {
+	eventCallback eventUpdate) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()
 	defer cancel()
@@ -77,9 +77,9 @@ func newWASMModel(databaseName string, encryption idbCrypto.Cipher,
 	}
 
 	wrapper := &wasmModel{
-		db:     db,
-		cipher: encryption,
-		eu:     eu,
+		db:            db,
+		cipher:        encryption,
+		eventCallback: eventCallback,
 	}
 	return wrapper, nil
 }

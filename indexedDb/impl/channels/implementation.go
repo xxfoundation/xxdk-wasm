@@ -36,9 +36,9 @@ import (
 // NOTE: This model is NOT thread safe - it is the responsibility of the
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
-	db     *idb.Database
-	cipher idbCrypto.Cipher
-	eu     eventUpdate
+	db            *idb.Database
+	cipher        idbCrypto.Cipher
+	eventCallback eventUpdate
 }
 
 // JoinChannel is called whenever a channel is joined locally.
@@ -169,7 +169,7 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 		return 0
 	}
 
-	go w.eu(bindings.MessageReceived, bindings.MessageReceivedJSON{
+	go w.eventCallback(bindings.MessageReceived, bindings.MessageReceivedJSON{
 		UUID:      int64(uuid),
 		ChannelID: channelID,
 		Update:    false,
@@ -211,7 +211,7 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 		return 0
 	}
 
-	go w.eu(bindings.MessageReceived, bindings.MessageReceivedJSON{
+	go w.eventCallback(bindings.MessageReceived, bindings.MessageReceivedJSON{
 		UUID:      int64(uuid),
 		ChannelID: channelID,
 		Update:    false,
@@ -253,7 +253,7 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 		return 0
 	}
 
-	go w.eu(bindings.MessageReceived, bindings.MessageReceivedJSON{
+	go w.eventCallback(bindings.MessageReceived, bindings.MessageReceivedJSON{
 		UUID:      int64(uuid),
 		ChannelID: channelID,
 		Update:    false,
@@ -410,7 +410,7 @@ func (w *wasmModel) updateMessage(currentMsg *Message, messageID *message.ID,
 		return 0, err
 	}
 
-	go w.eu(bindings.MessageReceived, bindings.MessageReceivedJSON{
+	go w.eventCallback(bindings.MessageReceived, bindings.MessageReceivedJSON{
 		UUID:      int64(uuid),
 		ChannelID: channelID,
 		Update:    true,
@@ -532,7 +532,7 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 		return err
 	}
 
-	go w.eu(bindings.MessageDeleted, bindings.MessageDeletedJSON{
+	go w.eventCallback(bindings.MessageDeleted, bindings.MessageDeletedJSON{
 		MessageID: messageID,
 	})
 
@@ -543,7 +543,7 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 func (w *wasmModel) MuteUser(
 	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
 
-	go w.eu(bindings.UserMuted, bindings.UserMutedJSON{
+	go w.eventCallback(bindings.UserMuted, bindings.UserMutedJSON{
 		ChannelID: channelID,
 		PubKey:    pubKey,
 		Unmute:    unmute,

@@ -75,7 +75,8 @@ func (m *manager) newWASMEventModelCB(message []byte, reply func(message []byte)
 		return
 	}
 
-	m.model, err = NewWASMEventModel(msg.DatabaseName, encryption, m.eventUpdate)
+	m.model, err = NewWASMEventModel(
+		msg.DatabaseName, encryption, m.eventUpdateCallback)
 	if err != nil {
 		reply([]byte(err.Error()))
 		return
@@ -84,9 +85,9 @@ func (m *manager) newWASMEventModelCB(message []byte, reply func(message []byte)
 	reply(nil)
 }
 
-// eventUpdate JSON marshals the interface and sends it to the main thread the
-// with the event type to be sent on the EventUpdate callback.
-func (m *manager) eventUpdate(eventType int64, jsonMarshallable any) {
+// eventUpdateCallback JSON marshals the interface and sends it to the main
+// thread the with the event type to be sent on the EventUpdate callback.
+func (m *manager) eventUpdateCallback(eventType int64, jsonMarshallable any) {
 	jsonData, err := json.Marshal(jsonMarshallable)
 	if err != nil {
 		jww.FATAL.Panicf("[CH] Failed to JSON marshal %T for EventUpdate "+
