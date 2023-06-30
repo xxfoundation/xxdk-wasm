@@ -10,7 +10,6 @@
 package main
 
 import (
-	"crypto/ed25519"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
@@ -25,24 +24,20 @@ import (
 // migration purposes.
 const currentVersion uint = 1
 
-// MessageReceivedCallback is called any time a message is received or updated.
-//
-// messageUpdate is true if the Message already exists and was edited.
-// conversationUpdate is true if the Conversation was created or modified.
-type MessageReceivedCallback func(
-	uuid uint64, pubKey ed25519.PublicKey, messageUpdate, conversationUpdate bool)
+// eventUpdate takes an event type and JSON object from bindings/dm.go.
+type eventUpdate func(eventType int64, jsonMarshallable any)
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key. Returns the
 // EventModel based on IndexedDb and the database name as reported by IndexedDb.
 func NewWASMEventModel(databaseName string, encryption idbCrypto.Cipher,
-	cb MessageReceivedCallback) (dm.EventModel, error) {
-	return newWASMModel(databaseName, encryption, cb)
+	eu eventUpdate) (dm.EventModel, error) {
+	return newWASMModel(databaseName, encryption, eu)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
 func newWASMModel(databaseName string, encryption idbCrypto.Cipher,
-	cb MessageReceivedCallback) (*wasmModel, error) {
+	eu eventUpdate) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()
 	defer cancel()
@@ -80,7 +75,11 @@ func newWASMModel(databaseName string, encryption idbCrypto.Cipher,
 		return nil, ctx.Err()
 	}
 
-	wrapper := &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}
+	wrapper := &wasmModel{
+		db:     db,
+		cipher: encryption,
+		eu:     eu,
+	}
 	return wrapper, nil
 }
 

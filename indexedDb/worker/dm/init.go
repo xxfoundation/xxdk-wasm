@@ -53,8 +53,7 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 	}
 
 	// Register handler to manage messages for the MessageReceivedCallback
-	wh.RegisterCallback(
-		MessageReceivedCallbackTag, messageReceivedCallbackHandler(cbs))
+	wh.RegisterCallback(EventUpdateCallbackTag, eventUpdateCallbackHandler(cbs))
 
 	// Create MessageChannel between worker and logger so that the worker logs
 	// are saved
@@ -104,11 +103,26 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 	return &wasmModel{wh}, nil
 }
 
-// messageReceivedCallbackHandler returns a handler to manage messages for the
-// MessageReceivedCallback.
-func messageReceivedCallbackHandler(cbs bindings.DmCallbacks) worker.ReceiverCallback {
+// EventUpdateCallbackMessage is JSON marshalled and received from the worker
+// for the EventUpdate callback.
+type EventUpdateCallbackMessage struct {
+	EventType int64  `json:"eventType"`
+	JsonData  []byte `json:"jsonData"`
+}
+
+// eventUpdateCallbackHandler returns a handler to manage messages for the
+// [bindings.DmCallbacks.EventUpdate] callback.
+func eventUpdateCallbackHandler(
+	cbs bindings.DmCallbacks) worker.ReceiverCallback {
 	return func(message []byte, _ func([]byte)) {
-		cbs.EventUpdate(bindings.DmMessageReceived, message)
+		var msg EventUpdateCallbackMessage
+		if err := json.Unmarshal(message, &msg); err != nil {
+			jww.ERROR.Printf(
+				"Failed to JSON unmarshal %T from worker: %+v", msg, err)
+			return
+		}
+
+		cbs.EventUpdate(msg.EventType, msg.JsonData)
 	}
 }
 

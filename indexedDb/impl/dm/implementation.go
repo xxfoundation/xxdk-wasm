@@ -13,7 +13,6 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
-	"gitlab.com/xx_network/primitives/netTime"
 	"strings"
 	"syscall/js"
 	"time"
@@ -22,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	"gitlab.com/elixxir/client/v4/dm"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
@@ -29,15 +29,16 @@ import (
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/netTime"
 )
 
 // wasmModel implements dm.EventModel interface backed by IndexedDb.
 // NOTE: This model is NOT thread safe - it is the responsibility of the
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
-	db                *idb.Database
-	cipher            idbCrypto.Cipher
-	receivedMessageCB MessageReceivedCallback
+	db     *idb.Database
+	cipher idbCrypto.Cipher
+	eu     eventUpdate
 }
 
 // upsertConversation is used for joining or updating a Conversation.
@@ -203,8 +204,12 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 
 	jww.TRACE.Printf("[DM indexedDB] Calling ReceiveMessageCB(%v, %v, t, f)",
 		uuid, newMessage.ConversationPubKey)
-	go w.receivedMessageCB(uuid, newMessage.ConversationPubKey,
-		true, false)
+	go w.eu(bindings.DmMessageReceived, bindings.DmMessageReceivedJSON{
+		UUID:               uuid,
+		PubKey:             newMessage.ConversationPubKey,
+		MessageUpdate:      true,
+		ConversationUpdate: false,
+	})
 }
 
 // receiveWrapper is a higher-level wrapper of upsertMessage.
@@ -292,7 +297,12 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 
 	jww.TRACE.Printf("[DM indexedDB] Calling ReceiveMessageCB(%v, %v, f, %t)",
 		uuid, partnerKey, conversationUpdated)
-	go w.receivedMessageCB(uuid, partnerKey, false, conversationUpdated)
+	go w.eu(bindings.DmMessageReceived, bindings.DmMessageReceivedJSON{
+		UUID:               uuid,
+		PubKey:             partnerKey,
+		MessageUpdate:      false,
+		ConversationUpdate: conversationUpdated,
+	})
 	return uuid, nil
 }
 
@@ -395,6 +405,10 @@ func (w *wasmModel) DeleteMessage(messageID message.ID, senderPubKey ed25519.Pub
 		jww.ERROR.Printf("%s: %+v", parentErr, err)
 		return false
 	}
+
+	go w.eu(bindings.DmMessageReceived, bindings.DmMessageDeletedJSON{
+		MessageID: messageID,
+	})
 	return true
 }
 
