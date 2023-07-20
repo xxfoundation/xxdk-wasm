@@ -39,7 +39,6 @@ func TestPublicFunctions(t *testing.T) {
 
 		// These functions are used internally by the WASM bindings but are not
 		// exposed
-		"NewEventModel":                   {},
 		"NewChannelsManagerGoEventModel":  {},
 		"LoadChannelsManagerGoEventModel": {},
 		"GetDbCipherTrackerFromID":        {},
@@ -50,8 +49,7 @@ func TestPublicFunctions(t *testing.T) {
 		"GetDependencies": {},
 
 		// DM Functions these are used but not exported by
-		// WASM bindins, so are not exposed.
-		"NewDMReceiver":               {},
+		// WASM bindings, so are not exposed.
 		"NewDMClientWithGoEventModel": {},
 		"GetDMDbCipherTrackerFromID":  {},
 

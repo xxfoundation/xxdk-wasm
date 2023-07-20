@@ -11,7 +11,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/jwalterweatherman v1.1.0
 	github.com/stretchr/testify v1.8.2
-	gitlab.com/elixxir/client/v4 v4.6.4-0.20230630173422-ac9c5506b1fb
+	gitlab.com/elixxir/client/v4 v4.6.4-0.20230720181158-df0babea16df
 	gitlab.com/elixxir/crypto v0.0.7-0.20230614183801-387e0cb8e76f
 	gitlab.com/elixxir/primitives v0.0.3-0.20230613193928-8cf8bdd777ef
 	gitlab.com/elixxir/wasm-utils v0.0.0-20230615222914-185dd3a6fa08
@@ -60,7 +60,7 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	gitlab.com/elixxir/bloomfilter v0.0.0-20230322223210-fa84f6842de8 // indirect
-	gitlab.com/elixxir/comms v0.0.4-0.20230613220741-7de1d2ca4a1c // indirect
+	gitlab.com/elixxir/comms v0.0.4-0.20230718154315-08043221466a // indirect
 	gitlab.com/elixxir/ekv v0.3.1-0.20230620180825-838848b00f19 // indirect
 	gitlab.com/xx_network/comms v0.0.4-0.20230214180029-5387fb85736d // indirect
 	gitlab.com/xx_network/ring v0.0.3-0.20220902183151-a7d3b15bc981 // indirect
