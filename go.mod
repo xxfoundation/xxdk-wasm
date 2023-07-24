@@ -71,7 +71,7 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	gitlab.com/elixxir/bloomfilter v0.0.0-20230322223210-fa84f6842de8 // indirect
-	gitlab.com/elixxir/comms v0.0.4-0.20230613220741-7de1d2ca4a1c // indirect
+	gitlab.com/elixxir/comms v0.0.4-0.20230718154315-08043221466a // indirect
 	gitlab.com/elixxir/ekv v0.3.1-0.20230620180825-838848b00f19 // indirect
 	gitlab.com/xx_network/comms v0.0.4-0.20230214180029-5387fb85736d // indirect
 	gitlab.com/xx_network/ring v0.0.3-0.20220902183151-a7d3b15bc981 // indirect
