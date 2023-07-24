@@ -650,7 +650,7 @@ func (dmc *DMClient) DeleteMessage(_ js.Value, args []js.Value) any {
 	partnerPubKeyBytes := utils.CopyBytesToGo(args[0])
 	partnerToken := int32(args[1].Int())
 	targetMessageIdBytes := utils.CopyBytesToGo(args[2])
-	cmixParamsJSON := utils.CopyBytesToGo(args[4])
+	cmixParamsJSON := utils.CopyBytesToGo(args[3])
 
 	jww.DEBUG.Printf("DeleteMessage(%s, %d, %s)",
 		base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
