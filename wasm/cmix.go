@@ -123,8 +123,10 @@ func NewCmix(_ js.Value, args []js.Value) any {
 // Parameters:
 //   - args[0] - NDF JSON ([ndf.NetworkDefinition]) (string).
 //   - args[1] - Storage directory path (string).
-//   - args[2] - Password used for storage (Uint8Array).
-//   - args[3] - Javascript [RemoteStore] implementation.
+//   - args[2] - The remote "directory" or path prefix used by the RemoteStore
+//     when reading/writing files (string).
+//   - args[3] - Password used for storage (Uint8Array).
+//   - args[4] - Javascript [RemoteStore] implementation.
 //
 // Returns a promise:
 //   - Resolves on success.
@@ -132,14 +134,16 @@ func NewCmix(_ js.Value, args []js.Value) any {
 func NewSynchronizedCmix(_ js.Value, args []js.Value) any {
 	ndfJSON := args[0].String()
 	storageDir := args[1].String()
-	password := utils.CopyBytesToGo(args[2])
-	rs := newRemoteStore(args[3])
+	remoteStoragePrefixPath := args[2].String()
+	password := utils.CopyBytesToGo(args[3])
+	rs := newRemoteStore(args[4])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		// Block loading of synchronized Cmix during initialisation
 		initializing.Store(true)
 
-		err := bindings.NewSynchronizedCmix(ndfJSON, storageDir, password, rs)
+		err := bindings.NewSynchronizedCmix(ndfJSON, storageDir,
+			remoteStoragePrefixPath, password, rs)
 
 		// Unblock loading of synchronized Cmix during initialisation
 		initializing.Store(false)
@@ -178,7 +182,8 @@ func LoadCmix(_ js.Value, args []js.Value) any {
 	cmixParamsJSON := utils.CopyBytesToGo(args[2])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		net, err := bindings.LoadCmix(storageDir, password, cmixParamsJSON)
+		net, err := bindings.LoadCmix(storageDir, password,
+			cmixParamsJSON)
 		if err != nil {
 			reject(exception.NewTrace(err))
 		} else {
@@ -194,25 +199,29 @@ func LoadCmix(_ js.Value, args []js.Value) any {
 //
 // Parameters:
 //   - args[0] - Storage directory path (string).
-//   - args[1] - Password used for storage (Uint8Array).
-//   - args[2] - Javascript [RemoteStore] implementation.
-//   - args[3] - JSON of [xxdk.CMIXParams] (Uint8Array).
+//   - args[1] - The remote "directory" or path prefix used by the RemoteStore
+//     when reading/writing files (string).
+//   - args[2] - Password used for storage (Uint8Array).
+//   - args[3] - Javascript [RemoteStore] implementation.
+//   - args[4] - JSON of [xxdk.CMIXParams] (Uint8Array).
 //
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [Cmix] object.
 //   - Rejected with an error if loading [Cmix] fails.
 func LoadSynchronizedCmix(_ js.Value, args []js.Value) any {
 	storageDir := args[0].String()
-	password := utils.CopyBytesToGo(args[1])
-	rs := newRemoteStore(args[2])
-	cmixParamsJSON := utils.CopyBytesToGo(args[3])
+	remoteStoragePrefixPath := args[1].String()
+	password := utils.CopyBytesToGo(args[2])
+	rs := newRemoteStore(args[3])
+	cmixParamsJSON := utils.CopyBytesToGo(args[4])
 
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		if initializing.Load() {
 			reject(exception.NewTrace(fmt.Errorf(
 				"cannot Load when New is running")))
 		}
-		net, err := bindings.LoadSynchronizedCmix(storageDir, password,
+		net, err := bindings.LoadSynchronizedCmix(storageDir,
+			remoteStoragePrefixPath, password,
 			rs, cmixParamsJSON)
 		if err != nil {
 			reject(exception.NewTrace(err))
