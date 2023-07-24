@@ -123,7 +123,8 @@ func NewCmix(_ js.Value, args []js.Value) any {
 // Parameters:
 //   - args[0] - NDF JSON ([ndf.NetworkDefinition]) (string).
 //   - args[1] - Storage directory path (string).
-//   - args[2] - remoteStoragePrefixPath, the directory path on remote storage
+//   - args[2] - The remote "directory" or path prefix used by the RemoteStore
+//     when reading/writing files (string).
 //   - args[3] - Password used for storage (Uint8Array).
 //   - args[4] - Javascript [RemoteStore] implementation.
 //
@@ -198,10 +199,11 @@ func LoadCmix(_ js.Value, args []js.Value) any {
 //
 // Parameters:
 //   - args[0] - Storage directory path (string).
-//   - args[1] - Remote storage prefix path, the directory on remote storage.
-//   - args[1] - Password used for storage (Uint8Array).
-//   - args[2] - Javascript [RemoteStore] implementation.
-//   - args[3] - JSON of [xxdk.CMIXParams] (Uint8Array).
+//   - args[1] - The remote "directory" or path prefix used by the RemoteStore
+//     when reading/writing files (string).
+//   - args[2] - Password used for storage (Uint8Array).
+//   - args[3] - Javascript [RemoteStore] implementation.
+//   - args[4] - JSON of [xxdk.CMIXParams] (Uint8Array).
 //
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [Cmix] object.
