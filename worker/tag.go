@@ -14,5 +14,10 @@ type Tag string
 
 // Generic tags used by all workers.
 const (
-	readyTag Tag = "Ready"
+	readyTag Tag = "<WW>Ready</WW>"
+)
+
+const (
+	Channel1LogMsgChanName = "Channel1Logger"
+	LoggerTag              = "logger"
 )

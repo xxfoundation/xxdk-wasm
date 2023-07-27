@@ -14,17 +14,16 @@ import "gitlab.com/elixxir/xxdk-wasm/worker"
 // List of tags that can be used when sending a message or registering a handler
 // to receive a message.
 const (
-	NewWASMEventModelTag       worker.Tag = "NewWASMEventModel"
-	MessageReceivedCallbackTag worker.Tag = "MessageReceivedCallback"
+	NewWASMEventModelTag   worker.Tag = "NewWASMEventModel"
+	EventUpdateCallbackTag worker.Tag = "EventUpdateCallback"
 
 	ReceiveReplyTag     worker.Tag = "ReceiveReply"
 	ReceiveReactionTag  worker.Tag = "ReceiveReaction"
 	ReceiveTag          worker.Tag = "Receive"
 	ReceiveTextTag      worker.Tag = "ReceiveText"
-	UpdateSentStatusTag worker.Tag = "UpdateSentStatusTag"
+	UpdateSentStatusTag worker.Tag = "UpdateSentStatus"
+	DeleteMessageTag    worker.Tag = "DeleteMessage"
 
-	BlockSenderTag      worker.Tag = "BlockSender"
-	UnblockSenderTag    worker.Tag = "UnblockSender"
 	GetConversationTag  worker.Tag = "GetConversation"
 	GetConversationsTag worker.Tag = "GetConversations"
 )

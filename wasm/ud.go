@@ -11,7 +11,8 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -99,7 +100,7 @@ func (uns *udNetworkStatus) UdNetworkStatus() int {
 // Returns:
 //   - Javascript representation of the [UserDiscovery] object that is
 //     registered to the specified UD service.
-//   - Throws a TypeError if creating or loading fails.
+//   - Throws an error if creating or loading fails.
 func NewOrLoadUd(_ js.Value, args []js.Value) any {
 	e2eID := args[0].Int()
 	follower := &udNetworkStatus{utils.WrapCB(args[1], "UdNetworkStatus")}
@@ -112,7 +113,7 @@ func NewOrLoadUd(_ js.Value, args []js.Value) any {
 	api, err := bindings.NewOrLoadUd(e2eID, follower, username,
 		registrationValidationSignature, cert, contactFile, address)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -145,7 +146,7 @@ func NewOrLoadUd(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Javascript representation of the [UserDiscovery] object that is loaded
 //     from backup.
-//   - Throws a TypeError if getting UD from backup fails.
+//   - Throws an error if getting UD from backup fails.
 func NewUdManagerFromBackup(_ js.Value, args []js.Value) any {
 	e2eID := args[0].Int()
 	follower := &udNetworkStatus{utils.WrapCB(args[1], "UdNetworkStatus")}
@@ -157,7 +158,7 @@ func NewUdManagerFromBackup(_ js.Value, args []js.Value) any {
 		e2eID, follower, cert,
 		contactFile, address)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -182,7 +183,7 @@ func (ud *UserDiscovery) GetFacts(js.Value, []js.Value) any {
 func (ud *UserDiscovery) GetContact(js.Value, []js.Value) any {
 	c, err := ud.api.GetContact()
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -203,7 +204,7 @@ func (ud *UserDiscovery) GetContact(js.Value, []js.Value) any {
 func (ud *UserDiscovery) ConfirmFact(_ js.Value, args []js.Value) any {
 	err := ud.api.ConfirmFact(args[0].String(), args[1].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -228,7 +229,7 @@ func (ud *UserDiscovery) ConfirmFact(_ js.Value, args []js.Value) any {
 func (ud *UserDiscovery) SendRegisterFact(_ js.Value, args []js.Value) any {
 	confirmationID, err := ud.api.SendRegisterFact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -247,7 +248,7 @@ func (ud *UserDiscovery) SendRegisterFact(_ js.Value, args []js.Value) any {
 func (ud *UserDiscovery) PermanentDeleteAccount(_ js.Value, args []js.Value) any {
 	err := ud.api.PermanentDeleteAccount(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -265,7 +266,7 @@ func (ud *UserDiscovery) PermanentDeleteAccount(_ js.Value, args []js.Value) any
 func (ud *UserDiscovery) RemoveFact(_ js.Value, args []js.Value) any {
 	err := ud.api.RemoveFact(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -290,7 +291,7 @@ type udLookupCallback struct {
 //     the lookup, or nil if an error occurs (Uint8Array).
 //   - err - Returns an error on failure (Error).
 func (ulc *udLookupCallback) Callback(contactBytes []byte, err error) {
-	ulc.callback(utils.CopyBytesToJS(contactBytes), utils.JsTrace(err))
+	ulc.callback(utils.CopyBytesToJS(contactBytes), exception.NewTrace(err))
 }
 
 // LookupUD returns the public key of the passed ID as known by the user
@@ -322,7 +323,7 @@ func LookupUD(_ js.Value, args []js.Value) any {
 		sendReport, err := bindings.LookupUD(
 			e2eID, udContact, cb, lookupId, singleRequestParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}
@@ -357,7 +358,7 @@ type udSearchCallback struct {
 //	  "<xxc(2)d7RJTu61Vy1lDThDMn8rYIiKSe1uXA/RCvvcIhq5Yg4DEgB7Ugdw/BAr6RsCABkWAFV1c2VybmFtZTI7N3XWrxIUpR29atpFMkcR6A==xxc>"
 //	}
 func (usc *udSearchCallback) Callback(contactListJSON []byte, err error) {
-	usc.callback(utils.CopyBytesToJS(contactListJSON), utils.JsTrace(err))
+	usc.callback(utils.CopyBytesToJS(contactListJSON), exception.NewTrace(err))
 }
 
 // SearchUD searches user discovery for the passed Facts. The searchCallback
@@ -389,7 +390,7 @@ func SearchUD(_ js.Value, args []js.Value) any {
 		sendReport, err := bindings.SearchUD(
 			e2eID, udContact, cb, factListJSON, singleRequestParamsJSON)
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(sendReport))
 		}

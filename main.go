@@ -11,15 +11,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
 	"syscall/js"
 
+	"github.com/spf13/cobra"
+
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
 )
 
@@ -99,6 +100,11 @@ func setGlobals() {
 	js.Global().Set("InitializeBackup", js.FuncOf(wasm.InitializeBackup))
 	js.Global().Set("ResumeBackup", js.FuncOf(wasm.ResumeBackup))
 
+	// wasm/notifications.go
+	js.Global().Set("LoadNotifications", js.FuncOf(wasm.LoadNotifications))
+	js.Global().Set("LoadNotificationsDummy",
+		js.FuncOf(wasm.LoadNotificationsDummy))
+
 	// wasm/channels.go
 	js.Global().Set("GenerateChannelIdentity",
 		js.FuncOf(wasm.GenerateChannelIdentity))
@@ -121,17 +127,24 @@ func setGlobals() {
 		js.FuncOf(wasm.NewChannelsManagerWithIndexedDbUnsafe))
 	js.Global().Set("DecodePublicURL", js.FuncOf(wasm.DecodePublicURL))
 	js.Global().Set("DecodePrivateURL", js.FuncOf(wasm.DecodePrivateURL))
+	js.Global().Set("DecodeInviteURL", js.FuncOf(wasm.DecodeInviteURL))
 	js.Global().Set("GetChannelJSON", js.FuncOf(wasm.GetChannelJSON))
 	js.Global().Set("GetChannelInfo", js.FuncOf(wasm.GetChannelInfo))
 	js.Global().Set("GetShareUrlType", js.FuncOf(wasm.GetShareUrlType))
 	js.Global().Set("ValidForever", js.FuncOf(wasm.ValidForever))
 	js.Global().Set("IsNicknameValid", js.FuncOf(wasm.IsNicknameValid))
+	js.Global().Set("GetChannelNotificationReportsForMe",
+		js.FuncOf(wasm.GetChannelNotificationReportsForMe))
 	js.Global().Set("GetNoMessageErr", js.FuncOf(wasm.GetNoMessageErr))
 	js.Global().Set("CheckNoMessageErr", js.FuncOf(wasm.CheckNoMessageErr))
-	js.Global().Set("NewChannelsDatabaseCipher",
-		js.FuncOf(wasm.NewChannelsDatabaseCipher))
+	js.Global().Set("GetNotificationReportsForMe",
+		js.FuncOf(wasm.GetChannelNotificationReportsForMe))
 
-	// wasm/dm.go
+	// wasm/cipher.go
+	js.Global().Set("NewDatabaseCipher",
+		js.FuncOf(wasm.NewDatabaseCipher))
+
+	// wasm/channelsFileTransfer.go
 	js.Global().Set("InitChannelsFileTransfer",
 		js.FuncOf(wasm.InitChannelsFileTransfer))
 
@@ -141,12 +154,18 @@ func setGlobals() {
 		js.FuncOf(wasm.NewDMClientWithIndexedDb))
 	js.Global().Set("NewDMClientWithIndexedDbUnsafe",
 		js.FuncOf(wasm.NewDMClientWithIndexedDbUnsafe))
-	js.Global().Set("NewDMsDatabaseCipher",
-		js.FuncOf(wasm.NewDMsDatabaseCipher))
+	js.Global().Set("NewDMsDatabaseCipher", js.FuncOf(wasm.NewDatabaseCipher))
+	js.Global().Set("DecodeDMShareURL", js.FuncOf(wasm.DecodeDMShareURL))
+	js.Global().Set("GetDmNotificationReportsForMe",
+		js.FuncOf(wasm.GetDmNotificationReportsForMe))
 
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
+	js.Global().Set("NewSynchronizedCmix",
+		js.FuncOf(wasm.NewSynchronizedCmix))
 	js.Global().Set("LoadCmix", js.FuncOf(wasm.LoadCmix))
+	js.Global().Set("LoadSynchronizedCmix",
+		js.FuncOf(wasm.LoadSynchronizedCmix))
 
 	// wasm/delivery.go
 	js.Global().Set("SetDashboardURL", js.FuncOf(wasm.SetDashboardURL))
@@ -230,6 +249,8 @@ func setGlobals() {
 	js.Global().Set("TransmitSingleUse", js.FuncOf(wasm.TransmitSingleUse))
 	js.Global().Set("Listen", js.FuncOf(wasm.Listen))
 
+	// wasm/sync.go
+
 	// wasm/timeNow.go
 	js.Global().Set("SetTimeSource", js.FuncOf(wasm.SetTimeSource))
 	js.Global().Set("SetOffset", js.FuncOf(wasm.SetOffset))
@@ -252,7 +273,7 @@ func setGlobals() {
 
 var (
 	logLevel, fileLogLevel      jww.Threshold
-	maxLogFileSizeMB              int
+	maxLogFileSizeMB            int
 	workerScriptURL, workerName string
 )
 

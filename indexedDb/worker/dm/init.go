@@ -12,13 +12,14 @@ package dm
 import (
 	"crypto/ed25519"
 	"encoding/json"
-	"time"
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/dm"
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -42,8 +43,8 @@ type NewWASMEventModelMessage struct {
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
-func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback) (dm.EventModel, error) {
+func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
+	cbs bindings.DmCallbacks) (dm.EventModel, error) {
 	databaseName := path + databaseSuffix
 
 	wh, err := worker.NewManager(wasmJsPath, "dmIndexedDb", true)
@@ -52,8 +53,16 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 	}
 
 	// Register handler to manage messages for the MessageReceivedCallback
-	wh.RegisterCallback(
-		MessageReceivedCallbackTag, messageReceivedCallbackHandler(cb))
+	wh.RegisterCallback(EventUpdateCallbackTag, eventUpdateCallbackHandler(cbs))
+
+	// Create MessageChannel between worker and logger so that the worker logs
+	// are saved
+	err = worker.CreateMessageChannel(logging.GetLogger().Worker(), wh,
+		"dmIndexedDbLogger", worker.LoggerTag)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to create message channel "+
+			"between DM indexedDb worker and logger")
+	}
 
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)
@@ -83,44 +92,37 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 		return nil, err
 	}
 
-	dataChan := make(chan []byte)
-	wh.SendMessage(NewWASMEventModelTag, payload,
-		func(data []byte) { dataChan <- data })
-
-	select {
-	case data := <-dataChan:
-		if len(data) > 0 {
-			return nil, errors.New(string(data))
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return nil, errors.Errorf("timed out after %s waiting for indexedDB "+
-			"database in worker to initialize", worker.ResponseTimeout)
+	response, err := wh.SendMessage(NewWASMEventModelTag, payload)
+	if err != nil {
+		return nil, errors.Wrapf(err,
+			"failed to send message %q", NewWASMEventModelTag)
+	} else if len(response) > 0 {
+		return nil, errors.New(string(response))
 	}
 
 	return &wasmModel{wh}, nil
 }
 
-// MessageReceivedCallbackMessage is JSON marshalled and received from the
-// worker for the [MessageReceivedCallback] callback.
-type MessageReceivedCallbackMessage struct {
-	UUID               uint64            `json:"uuid"`
-	PubKey             ed25519.PublicKey `json:"pubKey"`
-	MessageUpdate      bool              `json:"message_update"`
-	ConversationUpdate bool              `json:"conversation_update"`
+// EventUpdateCallbackMessage is JSON marshalled and received from the worker
+// for the EventUpdate callback.
+type EventUpdateCallbackMessage struct {
+	EventType int64  `json:"eventType"`
+	JsonData  []byte `json:"jsonData"`
 }
 
-// messageReceivedCallbackHandler returns a handler to manage messages for the
-// MessageReceivedCallback.
-func messageReceivedCallbackHandler(cb MessageReceivedCallback) func(data []byte) {
-	return func(data []byte) {
-		var msg MessageReceivedCallbackMessage
-		err := json.Unmarshal(data, &msg)
-		if err != nil {
-			jww.ERROR.Printf("Failed to JSON unmarshal "+
-				"MessageReceivedCallback message from worker: %+v", err)
+// eventUpdateCallbackHandler returns a handler to manage messages for the
+// [bindings.DmCallbacks.EventUpdate] callback.
+func eventUpdateCallbackHandler(
+	cbs bindings.DmCallbacks) worker.ReceiverCallback {
+	return func(message []byte, _ func([]byte)) {
+		var msg EventUpdateCallbackMessage
+		if err := json.Unmarshal(message, &msg); err != nil {
+			jww.ERROR.Printf(
+				"Failed to JSON unmarshal %T from worker: %+v", msg, err)
 			return
 		}
-		cb(msg.UUID, msg.PubKey, msg.MessageUpdate, msg.ConversationUpdate)
+
+		cbs.EventUpdate(msg.EventType, msg.JsonData)
 	}
 }
 

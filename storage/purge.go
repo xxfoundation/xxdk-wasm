@@ -10,13 +10,14 @@
 package storage
 
 import (
-	"github.com/hack-pad/go-indexeddb/idb"
-	"github.com/pkg/errors"
-	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/client/v4/storage/utility"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"sync/atomic"
 	"syscall/js"
+
+	"github.com/hack-pad/go-indexeddb/idb"
+	jww "github.com/spf13/jwalterweatherman"
+
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/storage"
 )
 
 // numClientsRunning is an atomic that tracks the current number of Cmix
@@ -43,36 +44,32 @@ func DecrementNumClientsRunning() {
 // password is required.
 //
 // Parameters:
-//   - args[0] - Storage directory path (string). This is the same directory
-//     path passed into [wasm.NewCmix].
-//   - args[1] - The user-supplied password (string). This is the same password
+//   - args[0] - The user-supplied password (string). This is the same password
 //     passed into [wasm.NewCmix].
 //
 // Returns:
-//   - Throws a TypeError if the password is incorrect or if not all cMix
-//     followers have been stopped.
+//   - Throws an error if the password is incorrect or if not all cMix followers
+//     have been stopped.
 func Purge(_ js.Value, args []js.Value) any {
-	storageDirectory := args[0].String()
-	userPassword := args[1].String()
+	userPassword := args[0].String()
 
 	// Check the password
 	if !verifyPassword(userPassword) {
-		utils.Throw(utils.TypeError, errors.New("invalid password"))
+		exception.Throwf("invalid password")
 		return nil
 	}
 
 	// Verify all Cmix followers are stopped
 	if n := atomic.LoadUint64(&numClientsRunning); n != 0 {
-		utils.Throw(utils.TypeError, errors.Errorf(
-			"%d cMix followers running; all need to be stopped", n))
+		exception.Throwf("%d cMix followers running; all need to be stopped", n)
 		return nil
 	}
 
 	// Get all indexedDb database names
 	databaseList, err := GetIndexedDbList()
 	if err != nil {
-		utils.Throw(utils.TypeError, errors.Errorf(
-			"failed to get list of indexedDb database names: %+v", err))
+		exception.Throwf(
+			"failed to get list of indexedDb database names: %+v", err)
 		return nil
 	}
 	jww.DEBUG.Printf("[PURGE] Found %d databases to delete: %s",
@@ -82,28 +79,18 @@ func Purge(_ js.Value, args []js.Value) any {
 	for dbName := range databaseList {
 		_, err = idb.Global().DeleteDatabase(dbName)
 		if err != nil {
-			utils.Throw(utils.TypeError, errors.Errorf(
-				"failed to delete indexedDb database %q: %+v", dbName, err))
+			exception.Throwf(
+				"failed to delete indexedDb database %q: %+v", dbName, err)
 			return nil
 		}
 	}
 
 	// Get local storage
-	ls := GetLocalStorage()
+	ls := storage.GetLocalStorage()
 
 	// Clear all local storage saved by this WASM project
-	n := ls.ClearWASM()
+	n := ls.Clear()
 	jww.DEBUG.Printf("[PURGE] Cleared %d WASM keys in local storage", n)
-
-	// Clear all EKV from local storage
-	n = ls.ClearPrefix(storageDirectory)
-	jww.DEBUG.Printf("[PURGE] Cleared %d keys with the prefix %q (for EKV)",
-		n, storageDirectory)
-
-	// Clear all NDFs saved to local storage
-	n = ls.ClearPrefix(utility.NdfStorageKeyNamePrefix)
-	jww.DEBUG.Printf("[PURGE] Cleared %d keys with the prefix %q (for NDF)",
-		n, utility.NdfStorageKeyNamePrefix)
 
 	return nil
 }

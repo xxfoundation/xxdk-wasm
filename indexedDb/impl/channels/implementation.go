@@ -12,6 +12,7 @@ package main
 import (
 	"crypto/ed25519"
 	"encoding/json"
+	"gitlab.com/elixxir/client/v4/bindings"
 	"strconv"
 	"strings"
 	"syscall/js"
@@ -24,25 +25,20 @@ import (
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
 )
 
-// wasmModel implements [channels.EventModel] interface, which uses the channels
-// system passed an object that adheres to in order to get events on the
-// channel.
+// wasmModel implements [channels.EventModel] interface backed by IndexedDb.
 // NOTE: This model is NOT thread safe - it is the responsibility of the
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
-	db                *idb.Database
-	cipher            cryptoChannel.Cipher
-	receivedMessageCB wChannels.MessageReceivedCallback
-	deletedMessageCB  wChannels.DeletedMessageCallback
-	mutedUserCB       wChannels.MutedUserCallback
+	db            *idb.Database
+	cipher        idbCrypto.Cipher
+	eventCallback eventUpdate
 }
 
 // JoinChannel is called whenever a channel is joined locally.
@@ -149,21 +145,22 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 	nickname, text string, pubKey ed25519.PublicKey, dmToken uint32,
 	codeset uint8, timestamp time.Time, lease time.Duration, round rounds.Round,
 	mType channels.MessageType, status channels.SentStatus, hidden bool) uint64 {
-	textBytes := []byte(text)
 	var err error
 
 	// Handle encryption, if it is present
 	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt([]byte(text))
+		text, err = w.cipher.Encrypt([]byte(text))
 		if err != nil {
 			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
 			return 0
 		}
 	}
 
+	channelIDBytes := channelID.Marshal()
+
 	msgToInsert := buildMessage(
-		channelID.Marshal(), messageID.Bytes(), nil, nickname,
-		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
+		channelIDBytes, messageID.Bytes(), nil, nickname,
+		text, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
 		false, hidden, status)
 
 	uuid, err := w.upsertMessage(msgToInsert)
@@ -172,7 +169,11 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 		return 0
 	}
 
-	go w.receivedMessageCB(uuid, channelID, false)
+	go w.eventCallback(bindings.MessageReceived, bindings.MessageReceivedJSON{
+		UUID:      int64(uuid),
+		ChannelID: channelID,
+		Update:    false,
+	})
 	return uuid
 }
 
@@ -187,20 +188,21 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 	dmToken uint32, codeset uint8, timestamp time.Time, lease time.Duration,
 	round rounds.Round, mType channels.MessageType, status channels.SentStatus,
 	hidden bool) uint64 {
-	textBytes := []byte(text)
 	var err error
 
 	// Handle encryption, if it is present
 	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt([]byte(text))
+		text, err = w.cipher.Encrypt([]byte(text))
 		if err != nil {
 			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
 			return 0
 		}
 	}
 
-	msgToInsert := buildMessage(channelID.Marshal(), messageID.Bytes(),
-		replyTo.Bytes(), nickname, textBytes, pubKey, dmToken, codeset,
+	channelIDBytes := channelID.Marshal()
+
+	msgToInsert := buildMessage(channelIDBytes, messageID.Bytes(),
+		replyTo.Bytes(), nickname, text, pubKey, dmToken, codeset,
 		timestamp, lease, round.ID, mType, hidden, false, status)
 
 	uuid, err := w.upsertMessage(msgToInsert)
@@ -208,7 +210,12 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 		jww.ERROR.Printf("Failed to receive reply: %+v", err)
 		return 0
 	}
-	go w.receivedMessageCB(uuid, channelID, false)
+
+	go w.eventCallback(bindings.MessageReceived, bindings.MessageReceivedJSON{
+		UUID:      int64(uuid),
+		ChannelID: channelID,
+		Update:    false,
+	})
 	return uuid
 }
 
@@ -223,21 +230,21 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 	dmToken uint32, codeset uint8, timestamp time.Time, lease time.Duration,
 	round rounds.Round, mType channels.MessageType, status channels.SentStatus,
 	hidden bool) uint64 {
-	textBytes := []byte(reaction)
 	var err error
 
 	// Handle encryption, if it is present
 	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt([]byte(reaction))
+		reaction, err = w.cipher.Encrypt([]byte(reaction))
 		if err != nil {
 			jww.ERROR.Printf("Failed to encrypt Message: %+v", err)
 			return 0
 		}
 	}
 
+	channelIDBytes := channelID.Marshal()
 	msgToInsert := buildMessage(
-		channelID.Marshal(), messageID.Bytes(), reactionTo.Bytes(), nickname,
-		textBytes, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
+		channelIDBytes, messageID.Bytes(), reactionTo.Bytes(), nickname,
+		reaction, pubKey, dmToken, codeset, timestamp, lease, round.ID, mType,
 		false, hidden, status)
 
 	uuid, err := w.upsertMessage(msgToInsert)
@@ -245,7 +252,12 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 		jww.ERROR.Printf("Failed to receive reaction: %+v", err)
 		return 0
 	}
-	go w.receivedMessageCB(uuid, channelID, false)
+
+	go w.eventCallback(bindings.MessageReceived, bindings.MessageReceivedJSON{
+		UUID:      int64(uuid),
+		ChannelID: channelID,
+		Update:    false,
+	})
 	return uuid
 }
 
@@ -334,8 +346,8 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 // NOTE: ID is not set inside this function because we want to use the
 // autoincrement key by default. If you are trying to overwrite an existing
 // message, then you need to set it manually yourself.
-func buildMessage(channelID, messageID, parentID []byte, nickname string,
-	text []byte, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
+func buildMessage(channelID, messageID, parentID []byte, nickname,
+	text string, pubKey ed25519.PublicKey, dmToken uint32, codeset uint8,
 	timestamp time.Time, lease time.Duration, round id.Round,
 	mType channels.MessageType, pinned, hidden bool,
 	status channels.SentStatus) *Message {
@@ -392,9 +404,17 @@ func (w *wasmModel) updateMessage(currentMsg *Message, messageID *message.ID,
 	if err != nil {
 		return 0, err
 	}
-	channelID := &id.ID{}
-	copy(channelID[:], currentMsg.ChannelID)
-	go w.receivedMessageCB(uuid, channelID, true)
+
+	channelID, err := id.Unmarshal(currentMsg.ChannelID)
+	if err != nil {
+		return 0, err
+	}
+
+	go w.eventCallback(bindings.MessageReceived, bindings.MessageReceivedJSON{
+		UUID:      int64(uuid),
+		ChannelID: channelID,
+		Update:    true,
+	})
 
 	return uuid, nil
 }
@@ -415,6 +435,26 @@ func (w *wasmModel) upsertMessage(msg *Message) (uint64, error) {
 	// Store message to database
 	msgIdObj, err := impl.Put(w.db, messageStoreName, messageObj)
 	if err != nil {
+		// Do not error out when this message already exists inside
+		// the DB. Instead, set the ID and re-attempt as an update.
+		if msg.ID == 0 { // always error out when not an insert attempt
+			msgID, inErr := message.UnmarshalID(msg.MessageID)
+			if inErr == nil {
+				jww.WARN.Printf("upsertMessage duplicate: %+v",
+					err)
+				rnd := &rounds.Round{ID: id.Round(msg.Round)}
+				status := (*channels.SentStatus)(&msg.Status)
+				return w.UpdateFromMessageID(msgID,
+					&msg.Timestamp,
+					rnd,
+					&msg.Pinned,
+					&msg.Hidden,
+					status)
+			}
+			// Add this to the main putMessage error
+			err = errors.Wrapf(err, "bad msg ID: %+v",
+				inErr)
+		}
 		return 0, errors.Errorf("Unable to put Message: %+v\n%s",
 			err, newMessageJson)
 	}
@@ -476,7 +516,7 @@ func (w *wasmModel) GetMessage(
 		Status:          channels.SentStatus(lookupResult.Status),
 		Hidden:          lookupResult.Hidden,
 		Pinned:          lookupResult.Pinned,
-		Content:         lookupResult.Text,
+		Content:         []byte(lookupResult.Text),
 		Type:            channels.MessageType(lookupResult.Type),
 		Round:           id.Round(lookupResult.Round),
 		PubKey:          lookupResult.Pubkey,
@@ -492,7 +532,9 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 		return err
 	}
 
-	go w.deletedMessageCB(messageID)
+	go w.eventCallback(bindings.MessageDeleted, bindings.MessageDeletedJSON{
+		MessageID: messageID,
+	})
 
 	return nil
 }
@@ -500,7 +542,12 @@ func (w *wasmModel) DeleteMessage(messageID message.ID) error {
 // MuteUser is called whenever a user is muted or unmuted.
 func (w *wasmModel) MuteUser(
 	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
-	go w.mutedUserCB(channelID, pubKey, unmute)
+
+	go w.eventCallback(bindings.UserMuted, bindings.UserMutedJSON{
+		ChannelID: channelID,
+		PubKey:    pubKey,
+		Unmute:    unmute,
+	})
 }
 
 // valueToMessage is a helper for converting js.Value to Message.

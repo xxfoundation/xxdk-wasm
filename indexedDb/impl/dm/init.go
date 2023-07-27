@@ -10,14 +10,13 @@
 package main
 
 import (
-	"crypto/ed25519"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/client/v4/dm"
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 )
 
@@ -25,36 +24,33 @@ import (
 // migration purposes.
 const currentVersion uint = 1
 
-// MessageReceivedCallback is called any time a message is received or updated.
-//
-// messageUpdate is true if the Message already exists and was edited.
-// conversationUpdate is true if the Conversation was created or modified.
-type MessageReceivedCallback func(
-	uuid uint64, pubKey ed25519.PublicKey, messageUpdate, conversationUpdate bool)
+// eventUpdate takes an event type and JSON object from bindings/dm.go.
+type eventUpdate func(eventType int64, jsonMarshallable any)
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key. Returns the
 // EventModel based on IndexedDb and the database name as reported by IndexedDb.
-func NewWASMEventModel(databaseName string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback) (dm.EventModel, error) {
-	return newWASMModel(databaseName, encryption, cb)
+func NewWASMEventModel(databaseName string, encryption idbCrypto.Cipher,
+	eventCallback eventUpdate) (dm.EventModel, error) {
+	return newWASMModel(databaseName, encryption, eventCallback)
 }
 
 // newWASMModel creates the given [idb.Database] and returns a wasmModel.
-func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
-	cb MessageReceivedCallback) (*wasmModel, error) {
+func newWASMModel(databaseName string, encryption idbCrypto.Cipher,
+	eventCallback eventUpdate) (*wasmModel, error) {
 	// Attempt to open database object
 	ctx, cancel := impl.NewContext()
 	defer cancel()
 	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			if oldVersion == newVersion {
-				jww.INFO.Printf("IndexDb version is current: v%d", newVersion)
+				jww.INFO.Printf("IndexDb version for %s is current: v%d",
+					databaseName, newVersion)
 				return nil
 			}
 
-			jww.INFO.Printf("IndexDb upgrade required: v%d -> v%d",
-				oldVersion, newVersion)
+			jww.INFO.Printf("IndexDb upgrade required for %s: v%d -> v%d",
+				databaseName, oldVersion, newVersion)
 
 			if oldVersion == 0 && newVersion >= 1 {
 				err := v1Upgrade(db)
@@ -79,7 +75,11 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 		return nil, ctx.Err()
 	}
 
-	wrapper := &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}
+	wrapper := &wasmModel{
+		db:            db,
+		cipher:        encryption,
+		eventCallback: eventCallback,
+	}
 	return wrapper, nil
 }
 

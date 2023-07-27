@@ -11,7 +11,8 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -79,7 +80,7 @@ func (mdc *messageDeliveryCallback) EventCallback(
 //     occurs, in milliseconds (int).
 //
 // Returns:
-//   - Throws a TypeError if the parameters are invalid or getting round results
+//   - Throws an error if the parameters are invalid or getting round results
 //     fails.
 func (c *Cmix) WaitForRoundResult(_ js.Value, args []js.Value) any {
 	roundList := utils.CopyBytesToGo(args[0])
@@ -87,7 +88,7 @@ func (c *Cmix) WaitForRoundResult(_ js.Value, args []js.Value) any {
 
 	err := c.api.WaitForRoundResult(roundList, mdc, args[2].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 

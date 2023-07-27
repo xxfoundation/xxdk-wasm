@@ -18,12 +18,12 @@ package main
 
 import (
 	"fmt"
-	"gitlab.com/elixxir/xxdk-wasm/utils/worker"
+	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
 
 func main() {
 	fmt.Println("Starting WebAssembly Worker.")
-	tm := worker.NewThreadManager("exampleWebWorker")
+	tm := worker.NewThreadManager("exampleWebWorker", true)
 	tm.SignalReady()
 	<-make(chan bool)
 }
@@ -47,8 +47,8 @@ To start the worker, call `worker.NewManager` with the Javascript file to launch
 the worker.
 
 ```go
-wm, err := worker.NewManager("workerWasm.js", "exampleWebWorker")
+m, err := worker.NewManager("workerWasm.js", "exampleWebWorker", true)
 if err != nil {
-	return nil, err
+return nil, err
 }
 ```

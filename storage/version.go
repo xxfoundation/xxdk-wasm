@@ -17,6 +17,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/client/v4/bindings"
+	"gitlab.com/elixxir/wasm-utils/storage"
 )
 
 // SEMVER is the current semantic version of xxDK WASM.
@@ -35,11 +36,11 @@ const (
 // On first load, only the xxDK WASM and xxDK client versions are stored.
 func CheckAndStoreVersions() error {
 	return checkAndStoreVersions(
-		SEMVER, bindings.GetVersion(), GetLocalStorage())
+		SEMVER, bindings.GetVersion(), storage.GetLocalStorage())
 }
 
 func checkAndStoreVersions(
-	currentWasmVer, currentClientVer string, ls *LocalStorage) error {
+	currentWasmVer, currentClientVer string, ls storage.LocalStorage) error {
 	// Get the stored client version, if it exists
 	storedClientVer, err :=
 		initOrLoadStoredSemver(clientVerKey, currentClientVer, ls)
@@ -76,8 +77,12 @@ func checkAndStoreVersions(
 	// Upgrade path code goes here
 
 	// Save current versions
-	ls.SetItem(clientVerKey, []byte(currentClientVer))
-	ls.SetItem(semverKey, []byte(currentWasmVer))
+	if err = ls.Set(clientVerKey, []byte(currentClientVer)); err != nil {
+		return errors.Wrapf(err, "localStorage: failed to set %q", clientVerKey)
+	}
+	if err = ls.Set(semverKey, []byte(currentWasmVer)); err != nil {
+		return errors.Wrapf(err, "localStorage: failed to set %q", semverKey)
+	}
 
 	return nil
 }
@@ -86,13 +91,16 @@ func checkAndStoreVersions(
 // local storage. If no version is stored, then the current version is stored
 // and returned.
 func initOrLoadStoredSemver(
-	key, currentVersion string, ls *LocalStorage) (string, error) {
-	storedVersion, err := ls.GetItem(key)
+	key, currentVersion string, ls storage.LocalStorage) (string, error) {
+	storedVersion, err := ls.Get(key)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			// Save the current version if this is the first run
 			jww.INFO.Printf("Initialising %s to v%s", key, currentVersion)
-			ls.SetItem(key, []byte(currentVersion))
+			if err = ls.Set(key, []byte(currentVersion)); err != nil {
+				return "",
+					errors.Wrapf(err, "localStorage: failed to set %q", key)
+			}
 			return currentVersion, nil
 		} else {
 			// If the item exists, but cannot be loaded, return an error

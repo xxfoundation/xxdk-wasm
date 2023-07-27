@@ -21,37 +21,39 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	"gitlab.com/elixxir/client/v4/dm"
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/netTime"
 )
 
 // wasmModel implements dm.EventModel interface backed by IndexedDb.
 // NOTE: This model is NOT thread safe - it is the responsibility of the
 // caller to ensure that its methods are called sequentially.
 type wasmModel struct {
-	db                *idb.Database
-	cipher            cryptoChannel.Cipher
-	receivedMessageCB MessageReceivedCallback
+	db            *idb.Database
+	cipher        idbCrypto.Cipher
+	eventCallback eventUpdate
 }
 
 // upsertConversation is used for joining or updating a Conversation.
 func (w *wasmModel) upsertConversation(nickname string,
 	pubKey ed25519.PublicKey, partnerToken uint32, codeset uint8,
-	blocked bool) error {
+	blockedTimestamp *time.Time) error {
 	parentErr := errors.New("[DM indexedDB] failed to upsertConversation")
 
 	// Build object
 	newConvo := Conversation{
-		Pubkey:         pubKey,
-		Nickname:       nickname,
-		Token:          partnerToken,
-		CodesetVersion: codeset,
-		Blocked:        blocked,
+		Pubkey:           pubKey,
+		Nickname:         nickname,
+		Token:            partnerToken,
+		CodesetVersion:   codeset,
+		BlockedTimestamp: blockedTimestamp,
 	}
 
 	// Convert to jsObject
@@ -80,7 +82,7 @@ func (w *wasmModel) upsertConversation(nickname string,
 // NOTE: ID is not set inside this function because we want to use the
 // autoincrement key by default. If you are trying to overwrite an existing
 // message, then you need to set it manually yourself.
-func buildMessage(messageID, parentID, text []byte, partnerKey,
+func buildMessage(messageID, parentID []byte, text string, partnerKey []byte,
 	senderKey ed25519.PublicKey, timestamp time.Time, round id.Round,
 	mType dm.MessageType, codeset uint8, status dm.Status) *Message {
 	return &Message{
@@ -178,13 +180,7 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 	}
 
 	// Extract the existing Message and update the Status
-	newMessage := &Message{}
-	err = json.Unmarshal([]byte(utils.JsToJson(currentMsg)), newMessage)
-	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
-			"Could not JSON unmarshal message: %+v", err))
-		return
-	}
+	newMessage, err := valueToMessage(currentMsg)
 
 	newMessage.Status = uint8(status)
 	if !messageID.Equals(message.ID{}) {
@@ -208,8 +204,12 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 
 	jww.TRACE.Printf("[DM indexedDB] Calling ReceiveMessageCB(%v, %v, t, f)",
 		uuid, newMessage.ConversationPubKey)
-	go w.receivedMessageCB(uuid, newMessage.ConversationPubKey,
-		true, false)
+	go w.eventCallback(bindings.DmMessageReceived, bindings.DmMessageReceivedJSON{
+		UUID:               uuid,
+		PubKey:             newMessage.ConversationPubKey,
+		MessageUpdate:      true,
+		ConversationUpdate: false,
+	})
 }
 
 // receiveWrapper is a higher-level wrapper of upsertMessage.
@@ -231,11 +231,11 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 				"[DM indexedDB] Joining conversation with %s", nickname)
 
 			convoToUpdate = &Conversation{
-				Pubkey:         partnerKey,
-				Nickname:       nickname,
-				Token:          partnerToken,
-				CodesetVersion: codeset,
-				Blocked:        false,
+				Pubkey:           partnerKey,
+				Nickname:         nickname,
+				Token:            partnerToken,
+				CodesetVersion:   codeset,
+				BlockedTimestamp: nil,
 			}
 		}
 	} else {
@@ -268,16 +268,15 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 	conversationUpdated := convoToUpdate != nil
 	if conversationUpdated {
 		err = w.upsertConversation(convoToUpdate.Nickname, convoToUpdate.Pubkey,
-			convoToUpdate.Token, convoToUpdate.CodesetVersion, convoToUpdate.Blocked)
+			convoToUpdate.Token, convoToUpdate.CodesetVersion, convoToUpdate.BlockedTimestamp)
 		if err != nil {
 			return 0, err
 		}
 	}
 
 	// Handle encryption, if it is present
-	textBytes := []byte(data)
 	if w.cipher != nil {
-		textBytes, err = w.cipher.Encrypt(textBytes)
+		data, err = w.cipher.Encrypt([]byte(data))
 		if err != nil {
 			return 0, err
 		}
@@ -288,7 +287,7 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 		parentIdBytes = parentID.Marshal()
 	}
 
-	msgToInsert := buildMessage(messageID.Bytes(), parentIdBytes, textBytes,
+	msgToInsert := buildMessage(messageID.Bytes(), parentIdBytes, data,
 		partnerKey, senderKey, timestamp, round.ID, mType, codeset, status)
 
 	uuid, err := w.upsertMessage(msgToInsert)
@@ -298,7 +297,12 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 
 	jww.TRACE.Printf("[DM indexedDB] Calling ReceiveMessageCB(%v, %v, f, %t)",
 		uuid, partnerKey, conversationUpdated)
-	go w.receivedMessageCB(uuid, partnerKey, false, conversationUpdated)
+	go w.eventCallback(bindings.DmMessageReceived, bindings.DmMessageReceivedJSON{
+		UUID:               uuid,
+		PubKey:             partnerKey,
+		MessageUpdate:      false,
+		ConversationUpdate: conversationUpdated,
+	})
 	return uuid, nil
 }
 
@@ -349,14 +353,63 @@ func (w *wasmModel) UnblockSender(senderPubKey ed25519.PublicKey) {
 
 // setBlocked is a helper for blocking/unblocking a given Conversation.
 func (w *wasmModel) setBlocked(senderPubKey ed25519.PublicKey, isBlocked bool) error {
-	// Get current Conversation and set blocked
+	// Get current Conversation and set blocked accordingly
 	resultConvo, err := w.getConversation(senderPubKey)
 	if err != nil {
 		return err
 	}
 
+	var timeBlocked *time.Time
+	if isBlocked {
+		blockUser := netTime.Now()
+		timeBlocked = &blockUser
+	}
+
 	return w.upsertConversation(resultConvo.Nickname, resultConvo.Pubkey,
-		resultConvo.Token, resultConvo.CodesetVersion, isBlocked)
+		resultConvo.Token, resultConvo.CodesetVersion, timeBlocked)
+}
+
+// DeleteMessage deletes the message with the given message.ID belonging to
+// the sender. If the message exists and belongs to the sender, then it is
+// deleted and DeleteMessage returns true. If it does not exist, it returns
+// false.
+func (w *wasmModel) DeleteMessage(messageID message.ID, senderPubKey ed25519.PublicKey) bool {
+	parentErr := "failed to DeleteMessage"
+	msgId := impl.EncodeBytes(messageID.Marshal())
+
+	// Use the key to get the existing Message
+	currentMsg, err := impl.GetIndex(w.db, messageStoreName,
+		messageStoreMessageIndex, msgId)
+	if err != nil {
+		jww.ERROR.Printf("%s: %+v", parentErr, err)
+		return false
+	}
+
+	// Convert the js.Value to a proper object
+	msgObj, err := valueToMessage(currentMsg)
+	if err != nil {
+		jww.ERROR.Printf("%s: %+v", parentErr, err)
+		return false
+	}
+
+	// Ensure the public keys match
+	if !bytes.Equal(msgObj.SenderPubKey, senderPubKey) {
+		jww.ERROR.Printf("%s: %s", parentErr, "Public keys do not match")
+		return false
+	}
+
+	// Perform the delete
+	err = impl.DeleteIndex(w.db, messageStoreName, messageStoreMessageIndex,
+		msgPkeyName, msgId)
+	if err != nil {
+		jww.ERROR.Printf("%s: %+v", parentErr, err)
+		return false
+	}
+
+	go w.eventCallback(bindings.DmMessageReceived, bindings.DmMessageDeletedJSON{
+		MessageID: messageID,
+	})
+	return true
 }
 
 // GetConversation returns the conversation held by the model (receiver).
@@ -369,11 +422,11 @@ func (w *wasmModel) GetConversation(senderPubKey ed25519.PublicKey) *dm.ModelCon
 	}
 
 	return &dm.ModelConversation{
-		Pubkey:         resultConvo.Pubkey,
-		Nickname:       resultConvo.Nickname,
-		Token:          resultConvo.Token,
-		CodesetVersion: resultConvo.CodesetVersion,
-		Blocked:        resultConvo.Blocked,
+		Pubkey:           resultConvo.Pubkey,
+		Nickname:         resultConvo.Nickname,
+		Token:            resultConvo.Token,
+		CodesetVersion:   resultConvo.CodesetVersion,
+		BlockedTimestamp: resultConvo.BlockedTimestamp,
 	}
 }
 
@@ -411,12 +464,18 @@ func (w *wasmModel) GetConversations() []dm.ModelConversation {
 			return nil
 		}
 		conversations[i] = dm.ModelConversation{
-			Pubkey:         resultConvo.Pubkey,
-			Nickname:       resultConvo.Nickname,
-			Token:          resultConvo.Token,
-			CodesetVersion: resultConvo.CodesetVersion,
-			Blocked:        resultConvo.Blocked,
+			Pubkey:           resultConvo.Pubkey,
+			Nickname:         resultConvo.Nickname,
+			Token:            resultConvo.Token,
+			CodesetVersion:   resultConvo.CodesetVersion,
+			BlockedTimestamp: resultConvo.BlockedTimestamp,
 		}
 	}
 	return conversations
+}
+
+// valueToMessage is a helper for converting js.Value to Message.
+func valueToMessage(msgObj js.Value) (*Message, error) {
+	resultMsg := &Message{}
+	return resultMsg, json.Unmarshal([]byte(utils.JsToJson(msgObj)), resultMsg)
 }

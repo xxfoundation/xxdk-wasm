@@ -41,12 +41,17 @@ func (w *wasmModel) JoinChannel(channel *cryptoBroadcast.Channel) {
 		return
 	}
 
-	w.wm.SendMessage(JoinChannelTag, data, nil)
+	if err = w.wm.SendNoResponse(JoinChannelTag, data); err != nil {
+		jww.FATAL.Panicf("[CH] Failed to send to %q: %+v", JoinChannelTag, err)
+	}
 }
 
 // LeaveChannel is called whenever a channel is left locally.
 func (w *wasmModel) LeaveChannel(channelID *id.ID) {
-	w.wm.SendMessage(LeaveChannelTag, channelID.Marshal(), nil)
+	err := w.wm.SendNoResponse(LeaveChannelTag, channelID.Marshal())
+	if err != nil {
+		jww.FATAL.Panicf("[CH] Failed to send to %q: %+v", LeaveChannelTag, err)
+	}
 }
 
 // ReceiveMessage is called whenever a message is received on a given channel.
@@ -81,27 +86,20 @@ func (w *wasmModel) ReceiveMessage(channelID *id.ID, messageID message.ID,
 		return 0
 	}
 
-	uuidChan := make(chan uint64)
-	w.wm.SendMessage(ReceiveMessageTag, data, func(data []byte) {
-		var uuid uint64
-		err = json.Unmarshal(data, &uuid)
-		if err != nil {
-			jww.ERROR.Printf("[CH] Could not JSON unmarshal response to "+
-				"ReceiveMessage: %+v", err)
-			uuidChan <- 0
-		}
-		uuidChan <- uuid
-	})
-
-	select {
-	case uuid := <-uuidChan:
-		return uuid
-	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("[CH] Timed out after %s waiting for response from "+
-			"the worker about ReceiveMessage", worker.ResponseTimeout)
+	response, err := w.wm.SendMessage(ReceiveMessageTag, data)
+	if err != nil {
+		jww.FATAL.Panicf(
+			"[CH] Failed to send to %q: %+v", ReceiveMessageTag, err)
 	}
 
-	return 0
+	var uuid uint64
+	if err = json.Unmarshal(response, &uuid); err != nil {
+		jww.ERROR.Printf("[CH] Failed to JSON unmarshal UUID from worker for "+
+			"%q: %+v", ReceiveMessageTag, err)
+		return 0
+	}
+
+	return uuid
 }
 
 // ReceiveReplyMessage is JSON marshalled and sent to the worker for
@@ -149,27 +147,20 @@ func (w *wasmModel) ReceiveReply(channelID *id.ID, messageID,
 		return 0
 	}
 
-	uuidChan := make(chan uint64)
-	w.wm.SendMessage(ReceiveReplyTag, data, func(data []byte) {
-		var uuid uint64
-		err = json.Unmarshal(data, &uuid)
-		if err != nil {
-			jww.ERROR.Printf("[CH] Could not JSON unmarshal response to "+
-				"ReceiveReply: %+v", err)
-			uuidChan <- 0
-		}
-		uuidChan <- uuid
-	})
-
-	select {
-	case uuid := <-uuidChan:
-		return uuid
-	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("[CH] Timed out after %s waiting for response from "+
-			"the worker about ReceiveReply", worker.ResponseTimeout)
+	response, err := w.wm.SendMessage(ReceiveReplyTag, data)
+	if err != nil {
+		jww.FATAL.Panicf(
+			"[CH] Failed to send to %q: %+v", ReceiveReplyTag, err)
 	}
 
-	return 0
+	var uuid uint64
+	if err = json.Unmarshal(response, &uuid); err != nil {
+		jww.ERROR.Printf("[CH] Failed to JSON unmarshal UUID from worker for "+
+			"%q: %+v", ReceiveReplyTag, err)
+		return 0
+	}
+
+	return uuid
 }
 
 // ReceiveReaction is called whenever a reaction to a message is received on a
@@ -211,27 +202,20 @@ func (w *wasmModel) ReceiveReaction(channelID *id.ID, messageID,
 		return 0
 	}
 
-	uuidChan := make(chan uint64)
-	w.wm.SendMessage(ReceiveReactionTag, data, func(data []byte) {
-		var uuid uint64
-		err = json.Unmarshal(data, &uuid)
-		if err != nil {
-			jww.ERROR.Printf("[CH] Could not JSON unmarshal response to "+
-				"ReceiveReaction: %+v", err)
-			uuidChan <- 0
-		}
-		uuidChan <- uuid
-	})
-
-	select {
-	case uuid := <-uuidChan:
-		return uuid
-	case <-time.After(worker.ResponseTimeout):
-		jww.ERROR.Printf("[CH] Timed out after %s waiting for response from "+
-			"the worker about ReceiveReply", worker.ResponseTimeout)
+	response, err := w.wm.SendMessage(ReceiveReactionTag, data)
+	if err != nil {
+		jww.FATAL.Panicf(
+			"[CH] Failed to send to %q: %+v", ReceiveReactionTag, err)
 	}
 
-	return 0
+	var uuid uint64
+	if err = json.Unmarshal(response, &uuid); err != nil {
+		jww.ERROR.Printf("[CH] Failed to JSON unmarshal UUID from worker for "+
+			"%q: %+v", ReceiveReactionTag, err)
+		return 0
+	}
+
+	return uuid
 }
 
 // MessageUpdateInfo is JSON marshalled and sent to the worker for
@@ -301,29 +285,22 @@ func (w *wasmModel) UpdateFromUUID(uuid uint64, messageID *message.ID,
 			"could not JSON marshal payload for UpdateFromUUID: %+v", err)
 	}
 
-	errChan := make(chan error)
-	w.wm.SendMessage(UpdateFromUUIDTag, data, func(data []byte) {
-		if data != nil {
-			errChan <- errors.New(string(data))
-		} else {
-			errChan <- nil
-		}
-	})
-
-	select {
-	case err = <-errChan:
-		return err
-	case <-time.After(worker.ResponseTimeout):
-		return errors.Errorf("timed out after %s waiting for response from "+
-			"the worker about UpdateFromUUID", worker.ResponseTimeout)
+	response, err := w.wm.SendMessage(UpdateFromUUIDTag, data)
+	if err != nil {
+		jww.FATAL.Panicf(
+			"[CH] Failed to send to %q: %+v", UpdateFromUUIDTag, err)
+	} else if len(response) > 0 {
+		return errors.New(string(response))
 	}
+
+	return nil
 }
 
 // UuidError is JSON marshalled and sent to the worker for
 // [wasmModel.UpdateFromMessageID].
 type UuidError struct {
 	UUID  uint64 `json:"uuid"`
-	Error []byte `json:"error"`
+	Error string `json:"error"`
 }
 
 // UpdateFromMessageID is called whenever a message with the message ID is
@@ -367,29 +344,20 @@ func (w *wasmModel) UpdateFromMessageID(messageID message.ID,
 			"UpdateFromMessageID: %+v", err)
 	}
 
-	uuidChan := make(chan uint64)
-	errChan := make(chan error)
-	w.wm.SendMessage(UpdateFromMessageIDTag, data,
-		func(data []byte) {
-			var ue UuidError
-			if err = json.Unmarshal(data, &ue); err != nil {
-				errChan <- errors.Errorf("could not JSON unmarshal response "+
-					"to UpdateFromMessageID: %+v", err)
-			} else if ue.Error != nil {
-				errChan <- errors.New(string(ue.Error))
-			} else {
-				uuidChan <- ue.UUID
-			}
-		})
+	response, err := w.wm.SendMessage(UpdateFromMessageIDTag, data)
+	if err != nil {
+		jww.FATAL.Panicf(
+			"[CH] Failed to send to %q: %+v", UpdateFromMessageIDTag, err)
+	}
 
-	select {
-	case uuid := <-uuidChan:
-		return uuid, nil
-	case err = <-errChan:
-		return 0, err
-	case <-time.After(worker.ResponseTimeout):
-		return 0, errors.Errorf("timed out after %s waiting for response from "+
-			"the worker about UpdateFromMessageID", worker.ResponseTimeout)
+	var ue UuidError
+	if err = json.Unmarshal(response, &ue); err != nil {
+		return 0, errors.Errorf("could not JSON unmarshal response to %q: %+v",
+			UpdateFromMessageIDTag, err)
+	} else if len(ue.Error) > 0 {
+		return 0, errors.New(ue.Error)
+	} else {
+		return ue.UUID, nil
 	}
 }
 
@@ -403,50 +371,37 @@ type GetMessageMessage struct {
 // GetMessage returns the message with the given [channel.MessageID].
 func (w *wasmModel) GetMessage(
 	messageID message.ID) (channels.ModelMessage, error) {
-	msgChan := make(chan GetMessageMessage)
-	w.wm.SendMessage(GetMessageTag, messageID.Marshal(),
-		func(data []byte) {
-			var msg GetMessageMessage
-			err := json.Unmarshal(data, &msg)
-			if err != nil {
-				jww.ERROR.Printf("[CH] Could not JSON unmarshal response to "+
-					"GetMessage: %+v", err)
-			}
-			msgChan <- msg
-		})
 
-	select {
-	case msg := <-msgChan:
-		if msg.Error != "" {
-			return channels.ModelMessage{}, errors.New(msg.Error)
-		}
-		return msg.Message, nil
-	case <-time.After(worker.ResponseTimeout):
-		return channels.ModelMessage{}, errors.Errorf("timed out after %s "+
-			"waiting for response from the worker about GetMessage",
-			worker.ResponseTimeout)
+	response, err := w.wm.SendMessage(GetMessageTag, messageID.Marshal())
+	if err != nil {
+		jww.FATAL.Panicf(
+			"[CH] Failed to send to %q: %+v", GetMessageTag, err)
 	}
+
+	var msg GetMessageMessage
+	if err = json.Unmarshal(response, &msg); err != nil {
+		return channels.ModelMessage{}, errors.Wrapf(err,
+			"[CH] Could not JSON unmarshal response to %q", GetMessageTag)
+	}
+
+	if msg.Error != "" {
+		return channels.ModelMessage{}, errors.New(msg.Error)
+	}
+
+	return msg.Message, nil
 }
 
 // DeleteMessage removes a message with the given messageID from storage.
 func (w *wasmModel) DeleteMessage(messageID message.ID) error {
-	errChan := make(chan error)
-	w.wm.SendMessage(DeleteMessageTag, messageID.Marshal(),
-		func(data []byte) {
-			if data != nil {
-				errChan <- errors.New(string(data))
-			} else {
-				errChan <- nil
-			}
-		})
-
-	select {
-	case err := <-errChan:
-		return err
-	case <-time.After(worker.ResponseTimeout):
-		return errors.Errorf("timed out after %s waiting for response from "+
-			"the worker about DeleteMessage", worker.ResponseTimeout)
+	response, err := w.wm.SendMessage(DeleteMessageTag, messageID.Marshal())
+	if err != nil {
+		jww.FATAL.Panicf(
+			"[CH] Failed to send to %q: %+v", DeleteMessageTag, err)
+	} else if len(response) > 0 {
+		return errors.New(string(response))
 	}
+
+	return nil
 }
 
 // MuteUserMessage is JSON marshalled and sent to the worker for
@@ -472,5 +427,8 @@ func (w *wasmModel) MuteUser(
 		return
 	}
 
-	w.wm.SendMessage(MuteUserTag, data, nil)
+	err = w.wm.SendNoResponse(MuteUserTag, data)
+	if err != nil {
+		jww.FATAL.Panicf("[CH] Failed to send to %q: %+v", MuteUserTag, err)
+	}
 }

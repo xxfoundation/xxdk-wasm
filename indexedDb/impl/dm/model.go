@@ -46,7 +46,7 @@ type Message struct {
 	SenderPubKey       []byte    `json:"sender_pub_key"` // Index
 	CodesetVersion     uint8     `json:"codeset_version"`
 	Status             uint8     `json:"status"`
-	Text               []byte    `json:"text"`
+	Text               string    `json:"text"`
 	Type               uint16    `json:"type"`
 	Round              uint64    `json:"round"`
 }
@@ -55,9 +55,9 @@ type Message struct {
 // message exchange between two recipients.
 // A Conversation has many Message.
 type Conversation struct {
-	Pubkey         []byte `json:"pub_key"` // Matches convoPkeyName
-	Nickname       string `json:"nickname"`
-	Token          uint32 `json:"token"`
-	CodesetVersion uint8  `json:"codeset_version"`
-	Blocked        bool   `json:"blocked"`
+	Pubkey           []byte     `json:"pub_key"` // Matches convoPkeyName
+	Nickname         string     `json:"nickname"`
+	Token            uint32     `json:"token"`
+	CodesetVersion   uint8      `json:"codeset_version"`
+	BlockedTimestamp *time.Time `json:"blocked_timestamp"`
 }

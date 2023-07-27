@@ -10,47 +10,30 @@
 package channels
 
 import (
-	"crypto/ed25519"
 	"encoding/json"
+
 	"github.com/pkg/errors"
-	"time"
 
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/channels"
-
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
-	"gitlab.com/elixxir/crypto/message"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
-	"gitlab.com/xx_network/primitives/id"
 )
 
 // databaseSuffix is the suffix to be appended to the name of the database.
 const databaseSuffix = "_speakeasy"
 
-// MessageReceivedCallback is called any time a message is received or updated.
-//
-// update is true if the row is old and was edited.
-type MessageReceivedCallback func(uuid uint64, channelID *id.ID, update bool)
-
-// DeletedMessageCallback is called any time a message is deleted.
-type DeletedMessageCallback func(messageID message.ID)
-
-// MutedUserCallback is called any time a user is muted or unmuted. unmute is
-// true if the user has been unmuted and false if they have been muted.
-type MutedUserCallback func(
-	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool)
-
 // NewWASMEventModelBuilder returns an EventModelBuilder which allows
 // the channel manager to define the path but the callback is the same
 // across the board.
-func NewWASMEventModelBuilder(wasmJsPath string,
-	encryption cryptoChannel.Cipher, messageReceivedCB MessageReceivedCallback,
-	deletedMessageCB DeletedMessageCallback,
-	mutedUserCB MutedUserCallback) channels.EventModelBuilder {
+func NewWASMEventModelBuilder(wasmJsPath string, encryption idbCrypto.Cipher,
+	channelCbs bindings.ChannelUICallbacks) channels.EventModelBuilder {
 	fn := func(path string) (channels.EventModel, error) {
 		return NewWASMEventModel(path, wasmJsPath, encryption,
-			messageReceivedCB, deletedMessageCB, mutedUserCB)
+			channelCbs)
 	}
 	return fn
 }
@@ -64,10 +47,8 @@ type NewWASMEventModelMessage struct {
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
 // The name should be a base64 encoding of the users public key.
-func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
-	messageReceivedCB MessageReceivedCallback,
-	deletedMessageCB DeletedMessageCallback, mutedUserCB MutedUserCallback) (
-	channels.EventModel, error) {
+func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
+	cbs bindings.ChannelUICallbacks) (channels.EventModel, error) {
 	databaseName := path + databaseSuffix
 
 	wm, err := worker.NewManager(wasmJsPath, "channelsIndexedDb", true)
@@ -75,17 +56,17 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 		return nil, err
 	}
 
-	// Register handler to manage messages for the MessageReceivedCallback
-	wm.RegisterCallback(MessageReceivedCallbackTag,
-		messageReceivedCallbackHandler(messageReceivedCB))
+	// Register handler to manage messages for the EventUpdate
+	wm.RegisterCallback(EventUpdateCallbackTag, eventUpdateCallbackHandler(cbs))
 
-	// Register handler to manage messages for the DeletedMessageCallback
-	wm.RegisterCallback(DeletedMessageCallbackTag,
-		deletedMessageCallbackHandler(deletedMessageCB))
-
-	// Register handler to manage messages for the MutedUserCallback
-	wm.RegisterCallback(MutedUserCallbackTag,
-		mutedUserCallbackHandler(mutedUserCB))
+	// Create MessageChannel between worker and logger so that the worker logs
+	// are saved
+	err = worker.CreateMessageChannel(logging.GetLogger().Worker(), wm,
+		"channelsIndexedDbLogger", worker.LoggerTag)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to create message channel "+
+			"between channel indexedDb worker and logger")
+	}
 
 	// Store the database name
 	err = storage.StoreIndexedDb(databaseName)
@@ -115,74 +96,37 @@ func NewWASMEventModel(path, wasmJsPath string, encryption cryptoChannel.Cipher,
 		return nil, err
 	}
 
-	dataChan := make(chan []byte)
-	wm.SendMessage(NewWASMEventModelTag, payload,
-		func(data []byte) { dataChan <- data })
-
-	select {
-	case data := <-dataChan:
-		if len(data) > 0 {
-			return nil, errors.New(string(data))
-		}
-	case <-time.After(worker.ResponseTimeout):
-		return nil, errors.Errorf("timed out after %s waiting for indexedDB "+
-			"database in worker to initialize", worker.ResponseTimeout)
+	response, err := wm.SendMessage(NewWASMEventModelTag, payload)
+	if err != nil {
+		return nil, errors.Wrapf(err,
+			"failed to send message %q", NewWASMEventModelTag)
+	} else if len(response) > 0 {
+		return nil, errors.New(string(response))
 	}
 
 	return &wasmModel{wm}, nil
 }
 
-// MessageReceivedCallbackMessage is JSON marshalled and received from the
-// worker for the [MessageReceivedCallback] callback.
-type MessageReceivedCallbackMessage struct {
-	UUID      uint64 `json:"uuid"`
-	ChannelID *id.ID `json:"channelID"`
-	Update    bool   `json:"update"`
+// EventUpdateCallbackMessage is JSON marshalled and received from the worker
+// for the EventUpdate callback.
+type EventUpdateCallbackMessage struct {
+	EventType int64  `json:"eventType"`
+	JsonData  []byte `json:"jsonData"`
 }
 
-// messageReceivedCallbackHandler returns a handler to manage messages for the
-// MessageReceivedCallback.
-func messageReceivedCallbackHandler(cb MessageReceivedCallback) func(data []byte) {
-	return func(data []byte) {
-		var msg MessageReceivedCallbackMessage
-		err := json.Unmarshal(data, &msg)
-		if err != nil {
+// eventUpdateCallbackHandler returns a handler to manage messages for the
+// [bindings.ChannelUICallbacks.EventUpdate] callback.
+func eventUpdateCallbackHandler(
+	cbs bindings.ChannelUICallbacks) worker.ReceiverCallback {
+	return func(message []byte, _ func([]byte)) {
+		var msg EventUpdateCallbackMessage
+		if err := json.Unmarshal(message, &msg); err != nil {
 			jww.ERROR.Printf(
 				"Failed to JSON unmarshal %T from worker: %+v", msg, err)
 			return
 		}
 
-		cb(msg.UUID, msg.ChannelID, msg.Update)
-	}
-}
-
-// deletedMessageCallbackHandler returns a handler to manage messages for the
-// DeletedMessageCallback.
-func deletedMessageCallbackHandler(cb DeletedMessageCallback) func(data []byte) {
-	return func(data []byte) {
-		messageID, err := message.UnmarshalID(data)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Failed to JSON unmarshal message ID from worker: %+v", err)
-		}
-
-		cb(messageID)
-	}
-}
-
-// mutedUserCallbackHandler returns a handler to manage messages for the
-// MutedUserCallback.
-func mutedUserCallbackHandler(cb MutedUserCallback) func(data []byte) {
-	return func(data []byte) {
-		var msg MuteUserMessage
-		err := json.Unmarshal(data, &msg)
-		if err != nil {
-			jww.ERROR.Printf(
-				"Failed to JSON unmarshal %T from worker: %+v", msg, err)
-			return
-		}
-
-		cb(msg.ChannelID, msg.PubKey, msg.Unmute)
+		cbs.EventUpdate(msg.EventType, msg.JsonData)
 	}
 }
 

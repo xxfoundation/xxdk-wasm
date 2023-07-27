@@ -18,7 +18,7 @@ import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 	"time"
 )
@@ -31,6 +31,13 @@ const (
 	// ErrDoesNotExist is an error string for got undefined on Get operations.
 	ErrDoesNotExist = "result is undefined"
 )
+
+// WebState defines an interface for setting persistent state in a KV format
+// specifically for web-based implementations.
+type WebState interface {
+	Get(key string) ([]byte, error)
+	Set(key string, value []byte) error
+}
 
 // NewContext builds a context for indexedDb operations.
 func NewContext() (context.Context, context.CancelFunc) {

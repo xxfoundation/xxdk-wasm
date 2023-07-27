@@ -39,10 +39,9 @@ func TestPublicFunctions(t *testing.T) {
 
 		// These functions are used internally by the WASM bindings but are not
 		// exposed
-		"NewEventModel":                   {},
 		"NewChannelsManagerGoEventModel":  {},
 		"LoadChannelsManagerGoEventModel": {},
-		"GetChannelDbCipherTrackerFromID": {},
+		"GetDbCipherTrackerFromID":        {},
 
 		// Version functions were renamed to differentiate between WASM and
 		// client versions
@@ -50,8 +49,7 @@ func TestPublicFunctions(t *testing.T) {
 		"GetDependencies": {},
 
 		// DM Functions these are used but not exported by
-		// WASM bindins, so are not exposed.
-		"NewDMReceiver":               {},
+		// WASM bindings, so are not exposed.
 		"NewDMClientWithGoEventModel": {},
 		"GetDMDbCipherTrackerFromID":  {},
 
@@ -66,6 +64,9 @@ func TestPublicFunctions(t *testing.T) {
 
 		// Logging has been moved to startup flags
 		"LogLevel": {},
+
+		// NewFilesystemRemoteStorage is internal for bindings.
+		"NewFileSystemRemoteStorage": {},
 	}
 	wasmFuncs := getPublicFunctions("wasm", t)
 	bindingsFuncs := getPublicFunctions(

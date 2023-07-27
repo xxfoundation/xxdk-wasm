@@ -10,21 +10,23 @@
 package main
 
 import (
-	"crypto/ed25519"
 	"encoding/json"
+	"time"
+
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+
 	"gitlab.com/elixxir/client/v4/channels"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
-	cryptoChannel "gitlab.com/elixxir/crypto/channel"
 	"gitlab.com/elixxir/crypto/fastRNG"
+	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/crypto/message"
+	"gitlab.com/elixxir/wasm-utils/exception"
 	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"gitlab.com/xx_network/crypto/csprng"
 	"gitlab.com/xx_network/primitives/id"
-	"time"
 )
 
 var zeroUUID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
@@ -45,8 +47,8 @@ func (m *manager) registerCallbacks() {
 	m.wtm.RegisterCallback(wChannels.ReceiveMessageTag, m.receiveMessageCB)
 	m.wtm.RegisterCallback(wChannels.ReceiveReplyTag, m.receiveReplyCB)
 	m.wtm.RegisterCallback(wChannels.ReceiveReactionTag, m.receiveReactionCB)
-	m.wtm.RegisterCallback(wChannels.UpdateFromUUIDTag, m.updateFromUUIDCB)
-	m.wtm.RegisterCallback(wChannels.UpdateFromMessageIDTag, m.updateFromMessageIDCB)
+	m.wtm.RegisterCallback(wChannels.UpdateFromUUIDTag, m.updateFromUuidCB)
+	m.wtm.RegisterCallback(wChannels.UpdateFromMessageIDTag, m.updateFromMessageIdCB)
 	m.wtm.RegisterCallback(wChannels.GetMessageTag, m.getMessageCB)
 	m.wtm.RegisterCallback(wChannels.DeleteMessageTag, m.deleteMessageCB)
 	m.wtm.RegisterCallback(wChannels.MuteUserTag, m.muteUserCB)
@@ -54,119 +56,100 @@ func (m *manager) registerCallbacks() {
 
 // newWASMEventModelCB is the callback for NewWASMEventModel. Returns an empty
 // slice on success or an error message on failure.
-func (m *manager) newWASMEventModelCB(data []byte) ([]byte, error) {
+func (m *manager) newWASMEventModelCB(message []byte, reply func(message []byte)) {
 	var msg wChannels.NewWASMEventModelMessage
-	err := json.Unmarshal(data, &msg)
+	err := json.Unmarshal(message, &msg)
 	if err != nil {
-		return []byte{}, errors.Errorf(
-			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
+		reply([]byte(errors.Wrapf(err,
+			"failed to JSON unmarshal %T from main thread", msg).Error()))
+		return
 	}
 
 	// Create new encryption cipher
 	rng := fastRNG.NewStreamGenerator(12, 1024, csprng.NewSystemRNG)
-	encryption, err := cryptoChannel.NewCipherFromJSON(
+	encryption, err := idbCrypto.NewCipherFromJSON(
 		[]byte(msg.EncryptionJSON), rng.GetStream())
 	if err != nil {
-		return []byte{}, errors.Errorf(
-			"failed to JSON unmarshal Cipher from main thread: %+v", err)
-	}
-
-	m.model, err = NewWASMEventModel(msg.DatabaseName, encryption,
-		m.messageReceivedCallback, m.deletedMessageCallback, m.mutedUserCallback)
-	if err != nil {
-		return []byte(err.Error()), nil
-	}
-
-	return []byte{}, nil
-}
-
-// messageReceivedCallback sends calls to the channels.MessageReceivedCallback
-// in the main thread.
-//
-// storeEncryptionStatus adhere to the channels.MessageReceivedCallback type.
-func (m *manager) messageReceivedCallback(
-	uuid uint64, channelID *id.ID, update bool) {
-	// Package parameters for sending
-	msg := &wChannels.MessageReceivedCallbackMessage{
-		UUID:      uuid,
-		ChannelID: channelID,
-		Update:    update,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
-		jww.ERROR.Printf("Could not JSON marshal %T: %+v", msg, err)
+		reply([]byte(errors.Wrap(err,
+			"failed to JSON unmarshal Cipher from main thread").Error()))
 		return
 	}
 
-	// Send it to the main thread
-	m.wtm.SendMessage(wChannels.MessageReceivedCallbackTag, data)
-}
-
-// deletedMessageCallback sends calls to the channels.DeletedMessageCallback in
-// the main thread.
-//
-// storeEncryptionStatus adhere to the channels.MessageReceivedCallback type.
-func (m *manager) deletedMessageCallback(messageID message.ID) {
-	m.wtm.SendMessage(wChannels.DeletedMessageCallbackTag, messageID.Marshal())
-}
-
-// mutedUserCallback sends calls to the channels.MutedUserCallback in the main
-// thread.
-//
-// storeEncryptionStatus adhere to the channels.MessageReceivedCallback type.
-func (m *manager) mutedUserCallback(
-	channelID *id.ID, pubKey ed25519.PublicKey, unmute bool) {
-	// Package parameters for sending
-	msg := &wChannels.MuteUserMessage{
-		ChannelID: channelID,
-		PubKey:    pubKey,
-		Unmute:    unmute,
-	}
-	data, err := json.Marshal(msg)
+	m.model, err = NewWASMEventModel(
+		msg.DatabaseName, encryption, m.eventUpdateCallback)
 	if err != nil {
-		jww.ERROR.Printf("Could not JSON marshal %T: %+v", msg, err)
+		reply([]byte(err.Error()))
 		return
 	}
 
+	reply(nil)
+}
+
+// eventUpdateCallback JSON marshals the interface and sends it to the main
+// thread the with the event type to be sent on the EventUpdate callback.
+func (m *manager) eventUpdateCallback(eventType int64, jsonMarshallable any) {
+	jsonData, err := json.Marshal(jsonMarshallable)
+	if err != nil {
+		jww.FATAL.Panicf("[CH] Failed to JSON marshal %T for EventUpdate "+
+			"callback: %+v", jsonMarshallable, err)
+	}
+
+	// Package parameters for sending
+	msg := wChannels.EventUpdateCallbackMessage{
+		EventType: eventType,
+		JsonData:  jsonData,
+	}
+	data, err := json.Marshal(msg)
+	if err != nil {
+		exception.Throwf("[CH] Could not JSON marshal %T for EventUpdate "+
+			"callback: %+v", msg, err)
+	}
+
 	// Send it to the main thread
-	m.wtm.SendMessage(wChannels.MutedUserCallbackTag, data)
+	err = m.wtm.SendNoResponse(wChannels.EventUpdateCallbackTag, data)
+	if err != nil {
+		exception.Throwf(
+			"[CH] Could not send message for EventUpdate callback: %+v", err)
+	}
 }
 
 // joinChannelCB is the callback for wasmModel.JoinChannel. Always returns nil;
 // meaning, no response is supplied (or expected).
-func (m *manager) joinChannelCB(data []byte) ([]byte, error) {
+func (m *manager) joinChannelCB(message []byte, _ func([]byte)) {
 	var channel cryptoBroadcast.Channel
-	err := json.Unmarshal(data, &channel)
+	err := json.Unmarshal(message, &channel)
 	if err != nil {
-		return nil, errors.Errorf(
-			"failed to JSON unmarshal %T from main thread: %+v", channel, err)
+		jww.ERROR.Printf("[CH] Could not JSON unmarshal %T from main thread: "+
+			"%+v", channel, err)
+		return
 	}
 
 	m.model.JoinChannel(&channel)
-	return nil, nil
 }
 
 // leaveChannelCB is the callback for wasmModel.LeaveChannel. Always returns
 // nil; meaning, no response is supplied (or expected).
-func (m *manager) leaveChannelCB(data []byte) ([]byte, error) {
-	channelID, err := id.Unmarshal(data)
+func (m *manager) leaveChannelCB(message []byte, _ func([]byte)) {
+	channelID, err := id.Unmarshal(message)
 	if err != nil {
-		return nil, errors.Errorf(
-			"failed to JSON unmarshal %T from main thread: %+v", channelID, err)
+		jww.ERROR.Printf("[CH] Could not JSON unmarshal %T from main thread: "+
+			"%+v", channelID, err)
+		return
 	}
 
 	m.model.LeaveChannel(channelID)
-	return nil, nil
 }
 
 // receiveMessageCB is the callback for wasmModel.ReceiveMessage. Returns a UUID
 // of 0 on error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveMessageCB(data []byte) ([]byte, error) {
+func (m *manager) receiveMessageCB(message []byte, reply func(message []byte)) {
 	var msg channels.ModelMessage
-	err := json.Unmarshal(data, &msg)
+	err := json.Unmarshal(message, &msg)
 	if err != nil {
-		return zeroUUID, errors.Errorf(
-			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
+		jww.ERROR.Printf("[CH] Could not JSON unmarshal payload for "+
+			"ReceiveMessage from main thread: %+v", err)
+		reply(zeroUUID)
+		return
 	}
 
 	uuid := m.model.ReceiveMessage(msg.ChannelID, msg.MessageID, msg.Nickname,
@@ -174,21 +157,25 @@ func (m *manager) receiveMessageCB(data []byte) ([]byte, error) {
 		msg.Timestamp, msg.Lease, rounds.Round{ID: msg.Round}, msg.Type,
 		msg.Status, msg.Hidden)
 
-	uuidData, err := json.Marshal(uuid)
+	replyMsg, err := json.Marshal(uuid)
 	if err != nil {
-		return zeroUUID, errors.Errorf("failed to JSON marshal UUID: %+v", err)
+		exception.Throwf(
+			"[CH] Could not JSON marshal UUID for ReceiveMessage: %+v", err)
 	}
-	return uuidData, nil
+
+	reply(replyMsg)
 }
 
 // receiveReplyCB is the callback for wasmModel.ReceiveReply. Returns a UUID of
 // 0 on error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveReplyCB(data []byte) ([]byte, error) {
+func (m *manager) receiveReplyCB(message []byte, reply func(message []byte)) {
 	var msg wChannels.ReceiveReplyMessage
-	err := json.Unmarshal(data, &msg)
+	err := json.Unmarshal(message, &msg)
 	if err != nil {
-		return zeroUUID, errors.Errorf(
-			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
+		jww.ERROR.Printf("[CH] Could not JSON unmarshal payload for "+
+			"ReceiveReply from main thread: %+v", err)
+		reply(zeroUUID)
+		return
 	}
 
 	uuid := m.model.ReceiveReply(msg.ChannelID, msg.MessageID, msg.ReactionTo,
@@ -196,21 +183,25 @@ func (m *manager) receiveReplyCB(data []byte) ([]byte, error) {
 		msg.CodesetVersion, msg.Timestamp, msg.Lease,
 		rounds.Round{ID: msg.Round}, msg.Type, msg.Status, msg.Hidden)
 
-	uuidData, err := json.Marshal(uuid)
+	replyMsg, err := json.Marshal(uuid)
 	if err != nil {
-		return zeroUUID, errors.Errorf("failed to JSON marshal UUID: %+v", err)
+		exception.Throwf(
+			"[CH] Could not JSON marshal UUID for ReceiveReply: %+v", err)
 	}
-	return uuidData, nil
+
+	reply(replyMsg)
 }
 
 // receiveReactionCB is the callback for wasmModel.ReceiveReaction. Returns a
 // UUID of 0 on error or the JSON marshalled UUID (uint64) on success.
-func (m *manager) receiveReactionCB(data []byte) ([]byte, error) {
+func (m *manager) receiveReactionCB(message []byte, reply func(message []byte)) {
 	var msg wChannels.ReceiveReplyMessage
-	err := json.Unmarshal(data, &msg)
+	err := json.Unmarshal(message, &msg)
 	if err != nil {
-		return zeroUUID, errors.Errorf(
-			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
+		jww.ERROR.Printf("[CH] Could not JSON unmarshal payload for "+
+			"ReceiveReaction from main thread: %+v", err)
+		reply(zeroUUID)
+		return
 	}
 
 	uuid := m.model.ReceiveReaction(msg.ChannelID, msg.MessageID,
@@ -218,22 +209,26 @@ func (m *manager) receiveReactionCB(data []byte) ([]byte, error) {
 		msg.DmToken, msg.CodesetVersion, msg.Timestamp, msg.Lease,
 		rounds.Round{ID: msg.Round}, msg.Type, msg.Status, msg.Hidden)
 
-	uuidData, err := json.Marshal(uuid)
+	replyMsg, err := json.Marshal(uuid)
 	if err != nil {
-		return zeroUUID, errors.Errorf("failed to JSON marshal UUID: %+v", err)
+		exception.Throwf(
+			"[CH] Could not JSON marshal UUID for ReceiveReaction: %+v", err)
 	}
-	return uuidData, nil
+
+	reply(replyMsg)
 }
 
-// updateFromUUIDCB is the callback for wasmModel.UpdateFromUUID. Always returns
+// updateFromUuidCB is the callback for wasmModel.UpdateFromUUID. Always returns
 // nil; meaning, no response is supplied (or expected).
-func (m *manager) updateFromUUIDCB(data []byte) ([]byte, error) {
+func (m *manager) updateFromUuidCB(messageData []byte, reply func(message []byte)) {
 	var msg wChannels.MessageUpdateInfo
-	err := json.Unmarshal(data, &msg)
+	err := json.Unmarshal(messageData, &msg)
 	if err != nil {
-		return nil, errors.Errorf(
-			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
+		reply([]byte(errors.Errorf("failed to JSON unmarshal %T from main "+
+			"thread: %+v", msg, err).Error()))
+		return
 	}
+
 	var messageID *message.ID
 	var timestamp *time.Time
 	var round *rounds.Round
@@ -261,20 +256,31 @@ func (m *manager) updateFromUUIDCB(data []byte) ([]byte, error) {
 	err = m.model.UpdateFromUUID(
 		msg.UUID, messageID, timestamp, round, pinned, hidden, status)
 	if err != nil {
-		return []byte(err.Error()), nil
+		reply([]byte(err.Error()))
 	}
 
-	return nil, nil
+	reply(nil)
 }
 
-// updateFromMessageIDCB is the callback for wasmModel.UpdateFromMessageID.
+// updateFromMessageIdCB is the callback for wasmModel.UpdateFromMessageID.
 // Always returns nil; meaning, no response is supplied (or expected).
-func (m *manager) updateFromMessageIDCB(data []byte) ([]byte, error) {
+func (m *manager) updateFromMessageIdCB(message []byte, reply func(message []byte)) {
+	var ue wChannels.UuidError
+	defer func() {
+		if replyMessage, err := json.Marshal(ue); err != nil {
+			exception.Throwf("[CH] Failed to JSON marshal %T for "+
+				"UpdateFromMessageID: %+v", ue, err)
+		} else {
+			reply(replyMessage)
+		}
+	}()
+
 	var msg wChannels.MessageUpdateInfo
-	err := json.Unmarshal(data, &msg)
+	err := json.Unmarshal(message, &msg)
 	if err != nil {
-		return nil, errors.Errorf(
-			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
+		ue.Error = errors.Errorf(
+			"failed to JSON unmarshal %T from main thread: %+v", msg, err).Error()
+		return
 	}
 	var timestamp *time.Time
 	var round *rounds.Round
@@ -296,79 +302,72 @@ func (m *manager) updateFromMessageIDCB(data []byte) ([]byte, error) {
 		status = &msg.Status
 	}
 
-	var ue wChannels.UuidError
 	uuid, err := m.model.UpdateFromMessageID(
 		msg.MessageID, timestamp, round, pinned, hidden, status)
 	if err != nil {
-		ue.Error = []byte(err.Error())
+		ue.Error = err.Error()
 	} else {
 		ue.UUID = uuid
 	}
-
-	data, err = json.Marshal(ue)
-	if err != nil {
-		return nil, errors.Errorf("failed to JSON marshal %T: %+v", ue, err)
-	}
-
-	return data, nil
 }
 
 // getMessageCB is the callback for wasmModel.GetMessage. Returns JSON
 // marshalled channels.GetMessageMessage. If an error occurs, then Error will
 // be set with the error message. Otherwise, Message will be set. Only one field
 // will be set.
-func (m *manager) getMessageCB(data []byte) ([]byte, error) {
-	messageID, err := message.UnmarshalID(data)
-	if err != nil {
-		return nil, errors.Errorf(
-			"failed to JSON unmarshal %T from main thread: %+v", messageID, err)
-	}
+func (m *manager) getMessageCB(messageData []byte, reply func(message []byte)) {
+	var replyMsg wChannels.GetMessageMessage
+	defer func() {
+		if replyMessage, err := json.Marshal(replyMsg); err != nil {
+			exception.Throwf("[CH] Failed to JSON marshal %T for "+
+				"GetMessage: %+v", replyMsg, err)
+		} else {
+			reply(replyMessage)
+		}
+	}()
 
-	reply := wChannels.GetMessageMessage{}
+	messageID, err := message.UnmarshalID(messageData)
+	if err != nil {
+		replyMsg.Error = errors.Errorf("failed to JSON unmarshal %T from "+
+			"main thread: %+v", messageID, err).Error()
+		return
+	}
 
 	msg, err := m.model.GetMessage(messageID)
 	if err != nil {
-		reply.Error = err.Error()
+		replyMsg.Error = err.Error()
 	} else {
-		reply.Message = msg
+		replyMsg.Message = msg
 	}
-
-	messageData, err := json.Marshal(reply)
-	if err != nil {
-		return nil, errors.Errorf("failed to JSON marshal %T from main thread "+
-			"for GetMessage reply: %+v", reply, err)
-	}
-	return messageData, nil
 }
 
 // deleteMessageCB is the callback for wasmModel.DeleteMessage. Always returns
 // nil; meaning, no response is supplied (or expected).
-func (m *manager) deleteMessageCB(data []byte) ([]byte, error) {
-	messageID, err := message.UnmarshalID(data)
+func (m *manager) deleteMessageCB(messageData []byte, reply func(message []byte)) {
+	messageID, err := message.UnmarshalID(messageData)
 	if err != nil {
-		return nil, errors.Errorf(
-			"failed to JSON unmarshal %T from main thread: %+v", messageID, err)
+		reply([]byte(errors.Errorf("failed to JSON unmarshal %T from main "+
+			"thread: %+v", messageID, err).Error()))
+		return
 	}
 
 	err = m.model.DeleteMessage(messageID)
 	if err != nil {
-		return []byte(err.Error()), nil
+		reply([]byte(err.Error()))
 	}
 
-	return nil, nil
+	reply(nil)
 }
 
 // muteUserCB is the callback for wasmModel.MuteUser. Always returns nil;
 // meaning, no response is supplied (or expected).
-func (m *manager) muteUserCB(data []byte) ([]byte, error) {
+func (m *manager) muteUserCB(message []byte, _ func([]byte)) {
 	var msg wChannels.MuteUserMessage
-	err := json.Unmarshal(data, &msg)
+	err := json.Unmarshal(message, &msg)
 	if err != nil {
-		return nil, errors.Errorf(
-			"failed to JSON unmarshal %T from main thread: %+v", msg, err)
+		jww.ERROR.Printf("[CH] Could not JSON unmarshal %T for MuteUser from "+
+			"main thread: %+v", msg, err)
+		return
 	}
-
 	m.model.MuteUser(msg.ChannelID, msg.PubKey, msg.Unmute)
-
-	return nil, nil
 }

@@ -12,16 +12,22 @@ package storage
 import (
 	"crypto/cipher"
 	"encoding/json"
-	"github.com/pkg/errors"
-	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
-	"gitlab.com/xx_network/crypto/csprng"
-	"golang.org/x/crypto/argon2"
-	"golang.org/x/crypto/blake2b"
-	"golang.org/x/crypto/chacha20poly1305"
 	"io"
 	"os"
 	"syscall/js"
+
+	"golang.org/x/crypto/argon2"
+	"golang.org/x/crypto/blake2b"
+	"golang.org/x/crypto/chacha20poly1305"
+
+	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
+
+	"gitlab.com/elixxir/crypto/hash"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/storage"
+	"gitlab.com/elixxir/wasm-utils/utils"
+	"gitlab.com/xx_network/crypto/csprng"
 )
 
 // Data lengths.
@@ -35,6 +41,8 @@ const (
 	// saltLen is the length of the salt. Recommended to be 16 bytes here:
 	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-argon2-04#section-3.1
 	saltLen = 16
+
+	internalPasswordConstant = "XXInternalPassword"
 )
 
 // Storage keys.
@@ -53,7 +61,7 @@ const (
 // Error messages.
 const (
 	// initInternalPassword
-	readInternalPasswordErr     = "could not generate internal password: %+v"
+	readInternalPasswordErr     = "could not generate"
 	internalPasswordNumBytesErr = "expected %d bytes for internal password, found %d bytes"
 
 	// getInternalPassword
@@ -85,17 +93,21 @@ const (
 // Parameters:
 //   - args[0] - The user supplied password (string).
 //
-// Returns:
+// Returns a promise:
 //   - Internal password (Uint8Array).
 //   - Throws TypeError on failure.
 func GetOrInitPassword(_ js.Value, args []js.Value) any {
-	internalPassword, err := getOrInit(args[0].String())
-	if err != nil {
-		utils.Throw(utils.TypeError, err)
-		return nil
+	externalPassword := args[0].String()
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		internalPassword, err := getOrInit(externalPassword)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(internalPassword))
+		}
 	}
 
-	return utils.CopyBytesToJS(internalPassword)
+	return utils.CreatePromise(promiseFn)
 }
 
 // ChangeExternalPassword allows a user to change their external password.
@@ -109,7 +121,7 @@ func GetOrInitPassword(_ js.Value, args []js.Value) any {
 func ChangeExternalPassword(_ js.Value, args []js.Value) any {
 	err := changeExternalPassword(args[0].String(), args[1].String())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -130,7 +142,7 @@ func VerifyPassword(_ js.Value, args []js.Value) any {
 // getOrInit is the private function for GetOrInitPassword that is used for
 // testing.
 func getOrInit(externalPassword string) ([]byte, error) {
-	localStorage := GetLocalStorage()
+	localStorage := storage.GetLocalStorage()
 	internalPassword, err := getInternalPassword(externalPassword, localStorage)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -148,7 +160,10 @@ func getOrInit(externalPassword string) ([]byte, error) {
 // changeExternalPassword is the private function for ChangeExternalPassword
 // that is used for testing.
 func changeExternalPassword(oldExternalPassword, newExternalPassword string) error {
-	localStorage := GetLocalStorage()
+	// NOTE: the following no longer works in synchronized environments, so
+	// disabled in produciton.
+	jww.FATAL.Panicf("cannot change password, unimplemented")
+	localStorage := storage.GetLocalStorage()
 	internalPassword, err := getInternalPassword(
 		oldExternalPassword, localStorage)
 	if err != nil {
@@ -159,13 +174,17 @@ func changeExternalPassword(oldExternalPassword, newExternalPassword string) err
 	if err != nil {
 		return err
 	}
-	localStorage.SetItem(saltKey, salt)
+	if err = localStorage.Set(saltKey, salt); err != nil {
+		return errors.Wrapf(err, "localStorage: failed to set %q", saltKey)
+	}
 
 	key := deriveKey(newExternalPassword, salt, defaultParams())
 
 	encryptedInternalPassword := encryptPassword(
 		internalPassword, key, csprng.NewSystemRNG())
-	localStorage.SetItem(passwordKey, encryptedInternalPassword)
+	if err = localStorage.Set(passwordKey, encryptedInternalPassword); err != nil {
+		return errors.Wrapf(err, "localStorage: failed to set %q", passwordKey)
+	}
 
 	return nil
 }
@@ -173,44 +192,61 @@ func changeExternalPassword(oldExternalPassword, newExternalPassword string) err
 // verifyPassword is the private function for VerifyPassword that is used for
 // testing.
 func verifyPassword(externalPassword string) bool {
-	_, err := getInternalPassword(externalPassword, GetLocalStorage())
+	_, err := getInternalPassword(externalPassword, storage.GetLocalStorage())
 	return err == nil
 }
 
 // initInternalPassword generates a new internal password, stores an encrypted
 // version in local storage, and returns it.
 func initInternalPassword(externalPassword string,
-	localStorage *LocalStorage, csprng io.Reader,
+	localStorage storage.LocalStorage, csprng io.Reader,
 	params argonParams) ([]byte, error) {
 	internalPassword := make([]byte, internalPasswordLen)
 
+	// FIXME: The internal password is now just an expansion of
+	// the users password text. We couldn't preserve the following
+	// when doing cross-device sync.
+	h := hash.CMixHash.New()
+	h.Write([]byte(externalPassword))
+	h.Write(internalPassword)
+	copy(internalPassword, h.Sum(nil)[:internalPasswordLen])
+
 	// Generate internal password
-	n, err := csprng.Read(internalPassword)
-	if err != nil {
-		return nil, errors.Errorf(readInternalPasswordErr, err)
-	} else if n != internalPasswordLen {
-		return nil, errors.Errorf(
-			internalPasswordNumBytesErr, internalPasswordLen, n)
-	}
+	// n, err := csprng.Read(internalPassword)
+	// if err != nil {
+	// 	return nil, errors.Errorf(readInternalPasswordErr, err)
+	// } else if n != internalPasswordLen {
+	// 	return nil, errors.Errorf(
+	// 		internalPasswordNumBytesErr, internalPasswordLen, n)
+	// }
 
 	// Generate and store salt
 	salt, err := makeSalt(csprng)
 	if err != nil {
 		return nil, err
 	}
-	localStorage.SetItem(saltKey, salt)
+	if err = localStorage.Set(saltKey, salt); err != nil {
+		return nil,
+			errors.Wrapf(err, "localStorage: failed to set %q", saltKey)
+	}
 
 	// Store argon2 parameters
 	paramsData, err := json.Marshal(params)
 	if err != nil {
 		return nil, err
 	}
-	localStorage.SetItem(argonParamsKey, paramsData)
+	if err = localStorage.Set(argonParamsKey, paramsData); err != nil {
+		return nil,
+			errors.Wrapf(err, "localStorage: failed to set %q", argonParamsKey)
+	}
 
 	key := deriveKey(externalPassword, salt, params)
 
 	encryptedInternalPassword := encryptPassword(internalPassword, key, csprng)
-	localStorage.SetItem(passwordKey, encryptedInternalPassword)
+	if err = localStorage.Set(passwordKey, encryptedInternalPassword); err != nil {
+		return nil,
+			errors.Wrapf(err, "localStorage: failed to set %q", passwordKey)
+	}
 
 	return internalPassword, nil
 }
@@ -218,18 +254,18 @@ func initInternalPassword(externalPassword string,
 // getInternalPassword retrieves the internal password from local storage,
 // decrypts it, and returns it.
 func getInternalPassword(
-	externalPassword string, localStorage *LocalStorage) ([]byte, error) {
-	encryptedInternalPassword, err := localStorage.GetItem(passwordKey)
+	externalPassword string, localStorage storage.LocalStorage) ([]byte, error) {
+	encryptedInternalPassword, err := localStorage.Get(passwordKey)
 	if err != nil {
 		return nil, errors.WithMessage(err, getPasswordStorageErr)
 	}
 
-	salt, err := localStorage.GetItem(saltKey)
+	salt, err := localStorage.Get(saltKey)
 	if err != nil {
 		return nil, errors.WithMessage(err, getSaltStorageErr)
 	}
 
-	paramsData, err := localStorage.GetItem(argonParamsKey)
+	paramsData, err := localStorage.Get(argonParamsKey)
 	if err != nil {
 		return nil, errors.WithMessage(err, getParamsStorageErr)
 	}

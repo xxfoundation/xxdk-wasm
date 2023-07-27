@@ -11,7 +11,8 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -84,7 +85,7 @@ type fileTransferSentProgressCallback struct {
 func (spc *fileTransferSentProgressCallback) Callback(
 	payload []byte, t *bindings.FilePartTracker, err error) {
 	spc.callback(utils.CopyBytesToJS(payload), newFilePartTrackerJS(t),
-		utils.JsTrace(err))
+		exception.NewTrace(err))
 }
 
 // fileTransferReceiveProgressCallback wraps Javascript callbacks to adhere to
@@ -105,7 +106,7 @@ type fileTransferReceiveProgressCallback struct {
 func (rpc *fileTransferReceiveProgressCallback) Callback(
 	payload []byte, t *bindings.FilePartTracker, err error) {
 	rpc.callback(utils.CopyBytesToJS(payload), newFilePartTrackerJS(t),
-		utils.JsTrace(err))
+		exception.NewTrace(err))
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +125,7 @@ func (rpc *fileTransferReceiveProgressCallback) Callback(
 //
 // Returns:
 //   - Javascript representation of the [FileTransfer] object.
-//   - Throws a TypeError initialising the file transfer manager fails.
+//   - Throws an error initialising the file transfer manager fails.
 func InitFileTransfer(_ js.Value, args []js.Value) any {
 	rfc := &receiveFileCallback{utils.WrapCB(args[1], "Callback")}
 	e2eFileTransferParamsJson := utils.CopyBytesToGo(args[2])
@@ -133,7 +134,7 @@ func InitFileTransfer(_ js.Value, args []js.Value) any {
 	api, err := bindings.InitFileTransfer(
 		args[0].Int(), rfc, e2eFileTransferParamsJson, fileTransferParamsJson)
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -163,7 +164,7 @@ func (f *FileTransfer) Send(_ js.Value, args []js.Value) any {
 	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		ftID, err := f.api.Send(payload, recipientID, retry, spc, args[4].Int())
 		if err != nil {
-			reject(utils.JsTrace(err))
+			reject(exception.NewTrace(err))
 		} else {
 			resolve(utils.CopyBytesToJS(ftID))
 		}
@@ -185,12 +186,12 @@ func (f *FileTransfer) Send(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - File contents (Uint8Array).
-//   - Throws a TypeError the file transfer is incomplete or Receive has already
+//   - Throws an error the file transfer is incomplete or Receive has already
 //     been called.
 func (f *FileTransfer) Receive(_ js.Value, args []js.Value) any {
 	file, err := f.api.Receive(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -208,11 +209,11 @@ func (f *FileTransfer) Receive(_ js.Value, args []js.Value) any {
 //   - args[0] - File transfer [fileTransfer.TransferID] (Uint8Array).
 //
 // Returns:
-//   - Throws a TypeError if the file transfer is incomplete.
+//   - Throws an error if the file transfer is incomplete.
 func (f *FileTransfer) CloseSend(_ js.Value, args []js.Value) any {
 	err := f.api.CloseSend(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -237,7 +238,7 @@ func (f *FileTransfer) CloseSend(_ js.Value, args []js.Value) any {
 //     triggering (int).
 //
 // Returns:
-//   - Throws a TypeError if registering the callback fails.
+//   - Throws an error if registering the callback fails.
 func (f *FileTransfer) RegisterSentProgressCallback(
 	_ js.Value, args []js.Value) any {
 	tidBytes := utils.CopyBytesToGo(args[0])
@@ -245,7 +246,7 @@ func (f *FileTransfer) RegisterSentProgressCallback(
 
 	err := f.api.RegisterSentProgressCallback(tidBytes, spc, args[2].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 
@@ -265,7 +266,7 @@ func (f *FileTransfer) RegisterSentProgressCallback(
 //     triggering (int).
 //
 // Returns:
-//   - Throws a TypeError if registering the callback fails.
+//   - Throws an error if registering the callback fails.
 func (f *FileTransfer) RegisterReceivedProgressCallback(
 	_ js.Value, args []js.Value) any {
 	tidBytes := utils.CopyBytesToGo(args[0])
@@ -274,7 +275,7 @@ func (f *FileTransfer) RegisterReceivedProgressCallback(
 	err := f.api.RegisterReceivedProgressCallback(
 		tidBytes, rpc, args[2].Int())
 	if err != nil {
-		utils.Throw(utils.TypeError, err)
+		exception.ThrowTrace(err)
 		return nil
 	}
 

@@ -15,7 +15,7 @@ import (
 
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/xxdk-wasm/utils"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
 
@@ -26,6 +26,7 @@ const (
 	WriteLogTag   worker.Tag = "WriteLog"
 	GetFileTag    worker.Tag = "GetFile"
 	GetFileExtTag worker.Tag = "GetFileExt"
+	MaxSizeTag    worker.Tag = "MaxSize"
 	SizeTag       worker.Tag = "Size"
 )
 
@@ -38,6 +39,7 @@ func GetLogger() Logger {
 	return logger
 }
 
+// Logger controls and accesses the log file for this binary.
 type Logger interface {
 	// StopLogging stops log message writes. Once logging is stopped, it cannot
 	// be resumed and the log file cannot be recovered.
@@ -65,6 +67,21 @@ type Logger interface {
 // worker file buffer. This must be called only once at initialisation.
 func EnableLogging(logLevel, fileLogLevel jww.Threshold, maxLogFileSizeMB int,
 	workerScriptURL, workerName string) error {
+	return enableLogging(logLevel, fileLogLevel, maxLogFileSizeMB,
+		workerScriptURL, workerName, js.Undefined())
+}
+
+// EnableThreadLogging enables logging to the Javascript console and to
+// a local or remote thread file buffer. This must be called only once at
+// initialisation.
+func EnableThreadLogging(logLevel, fileLogLevel jww.Threshold,
+	maxLogFileSizeMB int, workerName string, messagePort js.Value) error {
+	return enableLogging(
+		logLevel, fileLogLevel, maxLogFileSizeMB, "", workerName, messagePort)
+}
+
+func enableLogging(logLevel, fileLogLevel jww.Threshold, maxLogFileSizeMB int,
+	workerScriptURL, workerName string, messagePort js.Value) error {
 
 	var listeners []jww.LogListener
 	if logLevel > -1 {
@@ -80,13 +97,7 @@ func EnableLogging(logLevel, fileLogLevel jww.Threshold, maxLogFileSizeMB int,
 
 	if fileLogLevel > -1 {
 		maxLogFileSize := maxLogFileSizeMB * 1_000_000
-		if workerScriptURL == "" {
-			fl, err := newFileLogger(fileLogLevel, maxLogFileSize)
-			if err != nil {
-				return errors.Wrap(err, "could not initialize logging to file")
-			}
-			listeners = append(listeners, fl.Listen)
-		} else {
+		if workerScriptURL != "" {
 			wl, err := newWorkerLogger(
 				fileLogLevel, maxLogFileSize, workerScriptURL, workerName)
 			if err != nil {
@@ -94,6 +105,18 @@ func EnableLogging(logLevel, fileLogLevel jww.Threshold, maxLogFileSizeMB int,
 			}
 
 			listeners = append(listeners, wl.Listen)
+		} else if !messagePort.IsUndefined() {
+			tl, err := newThreadLogger(fileLogLevel, workerName, messagePort)
+			if err != nil {
+				return errors.Wrap(err, "could not initialize logging on message port")
+			}
+			listeners = append(listeners, tl.Listen)
+		} else {
+			fl, err := newFileLogger(fileLogLevel, maxLogFileSize)
+			if err != nil {
+				return errors.Wrap(err, "could not initialize logging to file")
+			}
+			listeners = append(listeners, fl.Listen)
 		}
 
 		js.Global().Set("GetLogger", js.FuncOf(GetLoggerJS))
@@ -121,6 +144,7 @@ func GetLoggerJS(js.Value, []js.Value) any {
 	return newLoggerJS(LoggerJS{GetLogger()})
 }
 
+// LoggerJS is the Javascript wrapper for the Logger.
 type LoggerJS struct {
 	api Logger
 }
