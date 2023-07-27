@@ -1,7 +1,7 @@
 .PHONY: update master release update_master update_release build clean binary tests wasm_tests go_tests
 
 clean:
-	rm -rf vendor/
+	go mod tidy
 	go mod vendor -e
 
 update:
@@ -9,14 +9,13 @@ update:
 
 build:
 	GOOS=js GOARCH=wasm go build ./...
-	go mod tidy
 
 update_release:
-	GOFLAGS="" go get -d gitlab.com/elixxir/client/v4@release
-	GOFLAGS="" go get gitlab.com/elixxir/crypto@release
+	GOFLAGS="" go get gitlab.com/xx_network/primitives@release
 	GOFLAGS="" go get gitlab.com/elixxir/primitives@release
 	GOFLAGS="" go get gitlab.com/xx_network/crypto@release
-	GOFLAGS="" go get gitlab.com/xx_network/primitives@release
+	GOFLAGS="" go get gitlab.com/elixxir/crypto@release
+	GOFLAGS="" go get -d gitlab.com/elixxir/client/v4@release
 
 update_master:
 	GOFLAGS="" go get -d gitlab.com/elixxir/client@master
@@ -28,10 +27,17 @@ update_master:
 binary:
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk.wasm main.go
 
+worker_binaries:
+	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-channelsIndexedDkWorker.wasm ./indexedDb/impl/channels/...
+	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-dmIndexedDkWorker.wasm ./indexedDb/impl/dm/...
+	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-logFileWorker.wasm ./logging/workerThread/...
+
+binaries: binary worker_binaries
+
 wasm_tests:
 	cp utils/utils_js.s utils/utils_js.s.bak
 	> utils/utils_js.s
-	-GOOS=js GOARCH=wasm go test ./... -v
+	-GOOS=js GOARCH=wasm go test -v ./...
 	mv utils/utils_js.s.bak utils/utils_js.s
 
 go_tests:

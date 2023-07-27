@@ -7,42 +7,36 @@
 
 //go:build js && wasm
 
-package channelEventModel
+package main
 
 import (
 	"crypto/ed25519"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
-	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+
 	"gitlab.com/elixxir/client/v4/dm"
 	cryptoChannel "gitlab.com/elixxir/crypto/channel"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb"
-	"gitlab.com/elixxir/xxdk-wasm/storage"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 )
 
-const (
-	// databaseSuffix is the suffix to be appended to the name of
-	// the database.
-	databaseSuffix = "_speakeasy_dm"
-
-	// currentVersion is the current version of the IndexDb
-	// runtime. Used for migration purposes.
-	currentVersion uint = 1
-)
+// currentVersion is the current version of the IndexedDb runtime. Used for
+// migration purposes.
+const currentVersion uint = 1
 
 // MessageReceivedCallback is called any time a message is received or updated.
 //
-// update is true if the row is old and was edited.
+// messageUpdate is true if the Message already exists and was edited.
+// conversationUpdate is true if the Conversation was created or modified.
 type MessageReceivedCallback func(
-	uuid uint64, pubKey ed25519.PublicKey, update bool)
+	uuid uint64, pubKey ed25519.PublicKey, messageUpdate, conversationUpdate bool)
 
 // NewWASMEventModel returns a [channels.EventModel] backed by a wasmModel.
-// The name should be a base64 encoding of the users public key.
-func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
+// The name should be a base64 encoding of the users public key. Returns the
+// EventModel based on IndexedDb and the database name as reported by IndexedDb.
+func NewWASMEventModel(databaseName string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) (dm.EventModel, error) {
-	databaseName := path + databaseSuffix
 	return newWASMModel(databaseName, encryption, cb)
 }
 
@@ -50,13 +44,12 @@ func NewWASMEventModel(path string, encryption cryptoChannel.Cipher,
 func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	cb MessageReceivedCallback) (*wasmModel, error) {
 	// Attempt to open database object
-	ctx, cancel := indexedDb.NewContext()
+	ctx, cancel := impl.NewContext()
 	defer cancel()
 	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			if oldVersion == newVersion {
-				jww.INFO.Printf("IndexDb version is current: v%d",
-					newVersion)
+				jww.INFO.Printf("IndexDb version is current: v%d", newVersion)
 				return nil
 			}
 
@@ -82,39 +75,11 @@ func newWASMModel(databaseName string, encryption cryptoChannel.Cipher,
 	db, err := openRequest.Await(ctx)
 	if err != nil {
 		return nil, err
+	} else if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
-	// Save the encryption status to storage
-	encryptionStatus := encryption != nil
-	loadedEncryptionStatus, err := storage.StoreIndexedDbEncryptionStatus(
-		databaseName, encryptionStatus)
-	if err != nil {
-		return nil, err
-	}
-
-	// Verify encryption status does not change
-	if encryptionStatus != loadedEncryptionStatus {
-		return nil, errors.New(
-			"Cannot load database with different encryption status.")
-	} else if !encryptionStatus {
-		jww.WARN.Printf("IndexedDb encryption disabled!")
-	}
-
-	// Attempt to ensure the database has been properly initialized
-	openRequest, err = idb.Global().Open(ctx, databaseName, currentVersion,
-		func(db *idb.Database, oldVersion, newVersion uint) error {
-			return nil
-		})
-	if err != nil {
-		return nil, err
-	}
-	// Wait for database open to finish
-	db, err = openRequest.Await(ctx)
-	if err != nil {
-		return nil, err
-	}
 	wrapper := &wasmModel{db: db, receivedMessageCB: cb, cipher: encryption}
-
 	return wrapper, nil
 }
 
@@ -151,13 +116,8 @@ func v1Upgrade(db *idb.Database) error {
 	if err != nil {
 		return err
 	}
-	_, err = messageStore.CreateIndex(messageStoreParentIndex,
-		js.ValueOf(messageStoreParent), indexOpts)
-	if err != nil {
-		return err
-	}
-	_, err = messageStore.CreateIndex(messageStoreTimestampIndex,
-		js.ValueOf(messageStoreTimestamp), indexOpts)
+	_, err = messageStore.CreateIndex(messageStoreSenderIndex,
+		js.ValueOf(messageStoreSender), indexOpts)
 	if err != nil {
 		return err
 	}
@@ -169,13 +129,6 @@ func v1Upgrade(db *idb.Database) error {
 	}
 	_, err = db.CreateObjectStore(conversationStoreName, conversationStoreOpts)
 	if err != nil {
-		return err
-	}
-
-	// Get the database name and save it to storage
-	if databaseName, err := db.Name(); err != nil {
-		return err
-	} else if err = storage.StoreIndexedDb(databaseName); err != nil {
 		return err
 	}
 

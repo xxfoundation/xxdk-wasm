@@ -19,39 +19,10 @@ before_script:
 stages:
   - test
   - build
+  - combine-artifacts
   - tag
   - doc-update
-  - version_check
-
-build:
-  stage: build
-  except:
-    - tags
-  script:
-    - go mod vendor -v
-    - mkdir -p release
-    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -o release/xxdk.wasm main.go
-    - cp wasm_exec.js release/
-  artifacts:
-    paths:
-      - release/
-
-wasm-test:
-  stage: test
-  except:
-    - tags
-  script:
-    - export PATH=/root/go/bin:$PATH
-    - echo > utils/utils_js.s
-    - env
-    # - go install github.com/agnivade/wasmbrowsertest@latest
-    # - mv ~/go/bin/go_js_wasm_exec ~/go/bin/go_js_wasm_exec.old
-    # - ln -s ~/go/bin/wasmbrowsertest ~/go/bin/go_js_wasm_exec
-    - go mod vendor
-    - unset SSH_PRIVATE_KEY
-    - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)
-    - GOOS=js GOARCH=wasm go test ./indexedDb/... -v
-    - GOOS=js GOARCH=wasm go test ./... -v
+  - version-check
 
 go-test:
   stage: test
@@ -60,6 +31,52 @@ go-test:
   script:
     - go mod vendor -v
     - go test ./... -v
+
+wasm-test:
+  stage: test
+  except:
+    - tags
+  script:
+    - export PATH=/root/go/bin:$PATH
+    - echo > utils/utils_js.s
+    - go mod vendor
+    - unset SSH_PRIVATE_KEY
+    - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)
+    - echo "WASM TESTS DISABLED FOR XX-4522, but will run them just so you can see output"
+    - GOOS=js GOARCH=wasm go test ./... -v
+
+build:
+  stage: build
+  except:
+    - tags
+  script:
+    - go mod vendor -v
+    - mkdir -p release
+    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk.wasm main.go
+    - cp wasm_exec.js release/
+  artifacts:
+    paths:
+      - release/
+    expire_in: 1 hour
+
+build-workers:
+  stage: build
+  except:
+    - tags
+  script:
+    - go mod vendor -v
+    - mkdir -p release
+    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-channelsIndexedDkWorker.wasm ./indexedDb/impl/channels/...
+    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-dmIndexedDkWorker.wasm ./indexedDb/impl/dm/...
+    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-logFileWorker.wasm ./logging/workerThread/...
+    - cp indexedDb/impl/channels/channelsIndexedDbWorker.js release/
+    - cp indexedDb/impl/dm/dmIndexedDbWorker.js release/
+    - cp logging/workerThread/logFileWorker.js release/
+  artifacts:
+    paths:
+      - release/
+    expire_in: 1 hour
+
 
 tag:
   stage: build
@@ -72,20 +89,65 @@ tag:
     - git tag $(sha256sum release/xxdk.wasm | awk '{ print $1 }') -f
     - git push origin_tags -f --tags
 
+combine-artifacts:
+  stage: combine-artifacts
+  except:
+    - tags
+  image: $DOCKER_IMAGE
+  script:
+    - echo $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/pipelines/$CI_PIPELINE_ID/jobs
+    - 'PIPELINE_JOBS=$(curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/pipelines/$CI_PIPELINE_ID/jobs)'
+    - echo $PIPELINE_JOBS
+    - BUILD_JOB_JSON=$(echo $PIPELINE_JOBS | jq '.[] | select(.name=="build")')
+    - BUILD_WORKERS_JOB_JSON=$(echo $PIPELINE_JOBS | jq '.[] | select(.name=="build-workers")')
+
+    - BUILD_JOB_ID=$(echo $BUILD_JOB_JSON | jq -r '.["id"]')
+    - BUILD_WORKERS_JOB_ID=$(echo $BUILD_WORKERS_JOB_JSON | jq -r '.["id"]')
+
+    - rm -rf release
+    - mkdir -p release
+
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/wasm_exec.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/wasm_exec.js'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/xxdk.wasm'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-channelsIndexedDkWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-channelsIndexedDkWorker.wasm'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-dmIndexedDkWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-dmIndexedDkWorker.wasm'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-logFileWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-logFileWorker.wasm'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/channelsIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/channelsIndexedDbWorker.js'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/dmIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/dmIndexedDbWorker.js'
+    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/logFileWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/logFileWorker.js'
+    - ls release
+  artifacts:
+    paths:
+      - release/
+    expose_as: "release"
+
 # This pipeline job will attempt to have pkg.go.dev update docs for xxdk-wasm.
 #
-# pkg.go.dev relies on the proxy.golang.org service (go module cache/proxy) to discover versions of
-# Go modules to make docs of. The proxy keeps a list of all known versions of Go modules. The go
-# mod proxy does cache pulls for about 30 minutes, so if quickly successive commits are done in
-# master/release, this will fail to pull the latest client, and the docs will not update.
+# pkg.go.dev relies on the proxy.golang.org service (go module cache/proxy) to
+# discover versions of Go modules to make docs of. The proxy keeps a list of all
+# known versions of Go modules. The go mod proxy does cache pulls for about 30
+# minutes, so if quickly successive commits are done in master/release, this
+# will fail to pull the latest client, and the docs will not update.
 doc-update:
   stage: doc-update
   except:
     - tags
   image: $DOCKER_IMAGE
   script:
-    # We use GOPRIVATE blank because not want to directly pull client, we want to use the public cache.
-    - GOOS=js GOARCH=wasm GOPRIVATE="" go install gitlab.com/elixxir/xxdk-wasm@$CI_COMMIT_SHA
+    # GOPRIVATE is cleared so that the public cache is pulled instead of directly pulling client.
+    - NEXT_WAIT_TIME=0; until [ $NEXT_WAIT_TIME -eq 15 ] || GOOS=js GOARCH=wasm GOPRIVATE="" go install gitlab.com/elixxir/xxdk-wasm@$CI_COMMIT_SHA; do sleep 60; (( NEXT_WAIT_TIME+=1 )); done; [ $NEXT_WAIT_TIME -lt 15 ]
   only:
     - release
     - master
+
+version-check:
+  stage: version-check
+  except:
+    - tags
+  only:
+    - master
+  image: $DOCKER_IMAGE
+  script:
+    - GITTAG=$(git describe --tags)
+    - CODEVERS=$(cat storage/version.go | grep "const SEMVER =" | cut -d ' ' -f4 | tr -d '"')
+    - if [[ $GITTAG != $CODEVERS ]]; then echo "VERSION NUMBER BAD $GITTAG != $CODEVERS"; exit -1; fi

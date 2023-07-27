@@ -27,7 +27,10 @@ func newCmixJS(api *bindings.Cmix) map[string]any {
 	c := Cmix{api}
 	cmix := map[string]any{
 		// cmix.go
-		"GetID": js.FuncOf(c.GetID),
+		"GetID":          js.FuncOf(c.GetID),
+		"GetReceptionID": js.FuncOf(c.GetReceptionID),
+		"EKVGet":         js.FuncOf(c.EKVGet),
+		"EKVSet":         js.FuncOf(c.EKVSet),
 
 		// identity.go
 		"MakeReceptionIdentity": js.FuncOf(
@@ -145,4 +148,60 @@ func LoadCmix(_ js.Value, args []js.Value) any {
 //   - Tracker ID (int).
 func (c *Cmix) GetID(js.Value, []js.Value) any {
 	return c.api.GetID()
+}
+
+// GetReceptionID returns the default reception identity for this cMix instance.
+//
+// Returns:
+//   - Marshalled bytes of [id.ID] (Uint8Array).
+func (c *Cmix) GetReceptionID(js.Value, []js.Value) any {
+	return utils.CopyBytesToJS(c.api.GetReceptionID())
+}
+
+// EKVGet allows access to a value inside the secure encrypted key value store.
+//
+// Parameters:
+//   - args[0] - Key (string).
+//
+// Returns a promise:
+//   - Resolves to the value (Uint8Array)
+//   - Rejected with an error if accessing the KV fails.
+func (c *Cmix) EKVGet(_ js.Value, args []js.Value) any {
+	key := args[0].String()
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		val, err := c.api.EKVGet(key)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(val))
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
+}
+
+// EKVSet sets a value inside the secure encrypted key value store.
+//
+// Parameters:
+//   - args[0] - Key (string).
+//   - args[1] - Value (Uint8Array).
+//
+// Returns a promise:
+//   - Resolves on a successful save (void).
+//   - Rejected with an error if saving fails.
+func (c *Cmix) EKVSet(_ js.Value, args []js.Value) any {
+	key := args[0].String()
+	val := utils.CopyBytesToGo(args[1])
+
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		err := c.api.EKVSet(key, val)
+		if err != nil {
+			reject(utils.JsTrace(err))
+		} else {
+			resolve(nil)
+		}
+	}
+
+	return utils.CreatePromise(promiseFn)
 }

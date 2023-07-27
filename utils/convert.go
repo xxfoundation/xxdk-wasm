@@ -49,3 +49,14 @@ func JsonToJS(inputJson []byte) (js.Value, error) {
 
 	return js.ValueOf(jsObj), nil
 }
+
+// JsErrorToJson converts the Javascript error to JSON. This should be used for
+// all Javascript error objects instead of JsonToJS.
+func JsErrorToJson(value js.Value) string {
+	if value.IsUndefined() {
+		return "null"
+	}
+
+	properties := Object.Call("getOwnPropertyNames", value)
+	return JSON.Call("stringify", value, properties).String()
+}
