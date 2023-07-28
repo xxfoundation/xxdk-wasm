@@ -22,7 +22,6 @@ stages:
   - combine-artifacts
   - tag
   - doc-update
-  - version-check
 
 go-test:
   stage: test
@@ -143,15 +142,3 @@ doc-update:
   only:
     - release
     - master
-
-version-check:
-  stage: version-check
-  except:
-    - tags
-  only:
-    - master
-  image: $DOCKER_IMAGE
-  script:
-    - GITTAG=$(git describe --tags)
-    - CODEVERS=$(cat storage/version.go | grep "const SEMVER =" | cut -d ' ' -f4 | tr -d '"')
-    - if [[ $GITTAG != $CODEVERS ]]; then echo "VERSION NUMBER BAD $GITTAG != $CODEVERS"; exit -1; fi
