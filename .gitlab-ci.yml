@@ -19,8 +19,6 @@ before_script:
 stages:
   - test
   - build
-  - combine-artifacts
-  - tag
   - doc-update
 
 go-test:
@@ -51,20 +49,9 @@ build:
   script:
     - go mod vendor -v
     - mkdir -p release
+    # Main library
     - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk.wasm main.go
-    - cp wasm_exec.js release/
-  artifacts:
-    paths:
-      - release/
-    expire_in: 1 hour
-
-build-workers:
-  stage: build
-  except:
-    - tags
-  script:
-    - go mod vendor -v
-    - mkdir -p release
+    # Workers
     - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-channelsIndexedDkWorker.wasm ./indexedDb/impl/channels/...
     - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-dmIndexedDkWorker.wasm ./indexedDb/impl/dm/...
     - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-logFileWorker.wasm ./logging/workerThread/...
@@ -73,50 +60,8 @@ build-workers:
     - cp indexedDb/impl/dm/dmIndexedDbWorker.js release/
     - cp logging/workerThread/logFileWorker.js release/
     - cp indexedDb/impl/state/stateIndexedDbWorker.js release/
-  artifacts:
-    paths:
-      - release/
-    expire_in: 1 hour
-
-
-tag:
-  stage: build
-  except:
-    - tags
-  image: $DOCKER_IMAGE
-  script:
-    - git remote add origin_tags git@$GITLAB_SERVER:elixxir/xxdk-wasm.git || true
-    - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -o release/xxdk.wasm main.go
-
-combine-artifacts:
-  stage: combine-artifacts
-  except:
-    - tags
-  image: $DOCKER_IMAGE
-  script:
-    - echo $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/pipelines/$CI_PIPELINE_ID/jobs
-    - 'PIPELINE_JOBS=$(curl --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/pipelines/$CI_PIPELINE_ID/jobs)'
-    - echo $PIPELINE_JOBS
-    - BUILD_JOB_JSON=$(echo $PIPELINE_JOBS | jq '.[] | select(.name=="build")')
-    - BUILD_WORKERS_JOB_JSON=$(echo $PIPELINE_JOBS | jq '.[] | select(.name=="build-workers")')
-
-    - BUILD_JOB_ID=$(echo $BUILD_JOB_JSON | jq -r '.["id"]')
-    - BUILD_WORKERS_JOB_ID=$(echo $BUILD_WORKERS_JOB_JSON | jq -r '.["id"]')
-
-    - rm -rf release
-    - mkdir -p release
-
-    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/wasm_exec.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/wasm_exec.js'
-    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_JOB_ID/artifacts/release/xxdk.wasm'
-    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-channelsIndexedDkWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-channelsIndexedDkWorker.wasm'
-    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-dmIndexedDkWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-dmIndexedDkWorker.wasm'
-    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-logFileWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-logFileWorker.wasm'
-    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/xxdk-stateIndexedDbWorker.wasm $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/xxdk-stateIndexedDbWorker.wasm'
-    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/channelsIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/channelsIndexedDbWorker.js'
-    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/dmIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/dmIndexedDbWorker.js'
-    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/logFileWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/logFileWorker.js'
-    - 'curl --fail --location --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" --output release/stateIndexedDbWorker.js $CI_SERVER_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_WORKERS_JOB_ID/artifacts/release/stateIndexedDbWorker.js'
-    - ls release
+    # Wasm executor
+    - cp wasm_exec.js release/
   artifacts:
     paths:
       - release/
