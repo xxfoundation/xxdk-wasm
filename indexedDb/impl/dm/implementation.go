@@ -181,6 +181,10 @@ func (w *wasmModel) UpdateSentStatus(uuid uint64, messageID message.ID,
 
 	// Extract the existing Message and update the Status
 	newMessage, err := valueToMessage(currentMsg)
+	if err != nil {
+		jww.ERROR.Printf("%+v", err)
+		return
+	}
 
 	newMessage.Status = uint8(status)
 	if !messageID.Equals(message.ID{}) {

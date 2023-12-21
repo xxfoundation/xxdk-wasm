@@ -12,11 +12,12 @@ package main
 import (
 	"crypto/ed25519"
 	"encoding/json"
-	"gitlab.com/elixxir/client/v4/bindings"
 	"strconv"
 	"strings"
 	"syscall/js"
 	"time"
+
+	"gitlab.com/elixxir/client/v4/bindings"
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
@@ -119,6 +120,10 @@ func (w *wasmModel) deleteMsgByChannel(channelID *id.ID) error {
 
 	// Set up the operation
 	keyRange, err := idb.NewKeyRangeOnly(impl.EncodeBytes(channelID.Marshal()))
+	if err != nil {
+		return errors.WithMessagef(parentErr,
+			"Unable to NewKeyRangeOnly: %+v", err)
+	}
 	cursorRequest, err := index.OpenCursorRange(keyRange, idb.CursorNext)
 	if err != nil {
 		return errors.WithMessagef(parentErr, "Unable to open Cursor: %+v", err)
