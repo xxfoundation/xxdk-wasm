@@ -23,16 +23,12 @@ stages:
 
 go-test:
   stage: test
-  except:
-    - tags
   script:
     - go mod vendor -v
     - go test ./... -v
 
 wasm-test:
   stage: test
-  except:
-    - tags
   script:
     - export PATH=/root/go/bin:$PATH
     - go mod vendor
@@ -44,8 +40,6 @@ wasm-test:
 
 build:
   stage: build
-  except:
-    - tags
   script:
     - go mod vendor -v
     - mkdir -p release
@@ -76,12 +70,12 @@ build:
 # will fail to pull the latest client, and the docs will not update.
 doc-update:
   stage: doc-update
-  except:
+  only:
     - tags
   image: $DOCKER_IMAGE
   script:
     # GOPRIVATE is cleared so that the public cache is pulled instead of directly pulling client.
-    - NEXT_WAIT_TIME=0; until [ $NEXT_WAIT_TIME -eq 15 ] || GOOS=js GOARCH=wasm GOPRIVATE="" go install gitlab.com/elixxir/xxdk-wasm@$CI_COMMIT_SHA; do sleep 60; (( NEXT_WAIT_TIME+=1 )); done; [ $NEXT_WAIT_TIME -lt 15 ]
+    - NEXT_WAIT_TIME=0; until [ $NEXT_WAIT_TIME -eq 15 ] || GOOS=js GOARCH=wasm GOPRIVATE="" go install gitlab.com/elixxir/xxdk-wasm@$CI_COMMIT_TAG; do sleep 60; (( NEXT_WAIT_TIME+=1 )); done; [ $NEXT_WAIT_TIME -lt 15 ]
   only:
     - release
     - master
