@@ -87,8 +87,6 @@ tag:
   script:
     - git remote add origin_tags git@$GITLAB_SERVER:elixxir/xxdk-wasm.git || true
     - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -o release/xxdk.wasm main.go
-    - git tag $(sha256sum release/xxdk.wasm | awk '{ print $1 }') -f
-    - git push origin_tags -f --tags
 
 combine-artifacts:
   stage: combine-artifacts
