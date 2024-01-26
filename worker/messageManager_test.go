@@ -11,13 +11,14 @@ package worker
 
 import (
 	"encoding/json"
-	"github.com/hack-pad/safejs"
-	"gitlab.com/elixxir/wasm-utils/utils"
 	"reflect"
 	"strconv"
 	"syscall/js"
 	"testing"
 	"time"
+
+	"github.com/hack-pad/safejs"
+	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
 func TestNewMessageManager(t *testing.T) {
@@ -106,6 +107,8 @@ func TestMessageManager_processReceivedMessage(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to receive message: %+v", err)
 	}
+
+	time.Sleep(15 * time.Millisecond)
 }
 
 // Tests MessageManager.processReceivedPort calls the expected callback.
@@ -149,6 +152,7 @@ func TestMessageManager_processReceivedPort(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to receive message: %+v", err)
 	}
+	time.Sleep(15 * time.Millisecond)
 }
 
 // Tests that MessageManager.RegisterCallback registers a callback that is then
@@ -178,6 +182,7 @@ func TestMessageManager_RegisterCallback(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to receive message: %+v", err)
 	}
+	time.Sleep(15 * time.Millisecond)
 }
 
 // Tests MessageManager.getReceiverCallback returns the expected callback.
@@ -232,6 +237,7 @@ func TestMessageManager_registerSenderCallback(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to receive message: %+v", err)
 	}
+	time.Sleep(15 * time.Millisecond)
 }
 
 // Tests MessageManager.getSenderCallback returns the expected callback and
@@ -317,6 +323,7 @@ func TestMessageManager_RegisterMessageChannelCallback(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to receive message: %+v", err)
 	}
+	time.Sleep(15 * time.Millisecond)
 }
 
 func TestMessageManager_Stop(t *testing.T) {
