@@ -1,4 +1,4 @@
-image: docker-registry.xx.network/elixxir/sysadmin/backend-ci:go1.21.6-cuda11.1.1
+image: docker-registry.xx.network/elixxir/sysadmin/backend-ci:go1.21-cuda11.1.1
 
 before_script:
   - go version || echo "Go executable not found."
