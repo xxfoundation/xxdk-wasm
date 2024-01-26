@@ -452,7 +452,7 @@
 						console.log(value);
 					},
 
-					// func Throw(exception string, message string)
+					// func Throw(exception, message unsafe.Pointer)
 					'gitlab.com/elixxir/wasm-utils/exception.throw': (sp) => {
 						const exception = loadString(sp + 8)
 						const message = loadString(sp + 24)
