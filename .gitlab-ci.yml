@@ -15,6 +15,7 @@ before_script:
   - git config --global url."git@$GITLAB_SERVER:".insteadOf "https://git.xx.network/" --add
   - export PATH=$HOME/go/bin:$PATH
   - export GOPATH=$HOME/go/bin
+  - echo $DOCKER_IMAGE
 
 stages:
   - test
@@ -32,11 +33,12 @@ wasm-test:
   script:
     - export PATH=/root/go/bin:$PATH
     - go mod vendor
-    - unset SSH_PRIVATE_KEY
-    - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)
-    - rm vendor/gitlab.com/elixxir/wasm-utils/exception/throw_js.s
-    - mv vendor/gitlab.com/elixxir/wasm-utils/exception/throws.dev vendor/gitlab.com/elixxir/wasm-utils/exception/throws.go
-    - GOOS=js GOARCH=wasm go test ./... -v
+    # - unset SSH_PRIVATE_KEY
+    # - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)
+    # - rm vendor/gitlab.com/elixxir/wasm-utils/exception/throw_js.s
+    # - mv vendor/gitlab.com/elixxir/wasm-utils/exception/throws.dev vendor/gitlab.com/elixxir/wasm-utils/exception/throws.go
+    # - GOOS=js GOARCH=wasm go test ./... -v
+    - make tests
 
 build:
   stage: build

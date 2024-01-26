@@ -40,12 +40,9 @@ binaries: binary worker_binaries
 wasmException = "vendor/gitlab.com/elixxir/wasm-utils/exception"
 
 wasm_tests:
-	cp $(wasmException)/throw_js.s $(wasmException)/throw_js.s.bak
 	cp $(wasmException)/throws.go $(wasmException)/throws.go.bak
-	> $(wasmException)/throw_js.s
 	cp $(wasmException)/throws.dev $(wasmException)/throws.go
-	-GOOS=js GOARCH=wasm go test -v ./...
-	mv $(wasmException)/throw_js.s.bak $(wasmException)/throw_js.s
+	GOOS=js GOARCH=wasm go test -v ./...
 	mv $(wasmException)/throws.go.bak $(wasmException)/throws.go
 
 go_tests:
