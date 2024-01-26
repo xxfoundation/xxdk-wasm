@@ -1,6 +1,8 @@
 module gitlab.com/elixxir/xxdk-wasm
 
-go 1.19
+go 1.21
+
+toolchain go1.21.5
 
 require (
 	github.com/aquilax/truncate v1.0.0
@@ -14,7 +16,7 @@ require (
 	gitlab.com/elixxir/client/v4 v4.7.2
 	gitlab.com/elixxir/crypto v0.0.9
 	gitlab.com/elixxir/primitives v0.0.4
-	gitlab.com/elixxir/wasm-utils v0.0.1
+	gitlab.com/elixxir/wasm-utils v0.0.2-0.20240126212541-5d98cc8b2555
 	gitlab.com/xx_network/crypto v0.0.6
 	gitlab.com/xx_network/primitives v0.0.5
 	golang.org/x/crypto v0.17.0
