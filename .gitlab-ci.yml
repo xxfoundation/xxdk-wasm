@@ -33,8 +33,8 @@ wasm-test:
   script:
     - export PATH=/root/go/bin:$PATH
     - go mod vendor
-    # - unset SSH_PRIVATE_KEY
-    # - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)
+    - unset SSH_PRIVATE_KEY
+    - unset $(env | grep '=' | awk -F= '{print $1}' | grep -v PATH | grep -v GO | grep -v HOME)
     # - rm vendor/gitlab.com/elixxir/wasm-utils/exception/throw_js.s
     # - mv vendor/gitlab.com/elixxir/wasm-utils/exception/throws.dev vendor/gitlab.com/elixxir/wasm-utils/exception/throws.go
     # - GOOS=js GOARCH=wasm go test ./... -v
