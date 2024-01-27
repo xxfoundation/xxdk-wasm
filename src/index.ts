@@ -4,9 +4,9 @@ declare global {
   interface Window extends XXDKUtils {}
 }
 
-import './wasm_exec';
+import '../wasm_exec';
 // @ts-ignore
-import makeWasm from './xxdk.wasm';
+import makeWasm from '../xxdk.wasm';
 
 export const loadUtils = () => new Promise<XXDKUtils>(async (res) => {
   const go = new (window as any).Go();
