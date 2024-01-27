@@ -2,16 +2,13 @@
     "name": "xxdk-wasm",
     "version": "0.3.6",
     "description": "WebAssembly bindings for xxDK.",
-    "main": "dist/main.ts",
+    "module": "src/index.ts",
     "directories": {
-        "test": "test"
+        "test": "test",
+        "src": "src"
     },
     "files": [
-        "xxdk-channelsIndexedDkWorker.wasm",
-        "xxdk-dmIndexedDkWorker.wasm",
-        "xxdk-logFileWorker.wasm",
-        "xxdk-stateIndexedDkWorker.wasm",
-        "xxdk.wasm"
+        "dist/*"
     ],
     "scripts": {
         "build": "webpack",

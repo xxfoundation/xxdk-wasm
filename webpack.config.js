@@ -2,9 +2,15 @@ const path = require('path');
 
 module.exports = {
     entry: './src/index.ts',
+    devtool: 'inline-source-map',
     output: {
         filename: 'bundle.js',
         path: path.resolve(__dirname, 'dist'),
+        globalObject: 'this',
+        library: {
+            name: 'xxdk-wasm',
+            type: 'umd',
+        },
     },
     module: {
         rules: [
@@ -24,5 +30,5 @@ module.exports = {
     },
     resolve: {
         extensions: ['.tsx', '.ts', '.js'],
-    }
+    },
 };
