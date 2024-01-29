@@ -11,6 +11,7 @@ module.exports = {
             name: 'xxdk-wasm',
             type: 'umd',
         },
+        publicPath: '',
     },
     module: {
         rules: [

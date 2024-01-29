@@ -4,15 +4,21 @@ declare global {
   interface Window extends XXDKUtils {}
 }
 
-import '../wasm_exec';
 // @ts-ignore
-import makeWasm from '../xxdk.wasm';
+// import makeWasm from '../xxdk.wasm';
 
 export const loadUtils = () => new Promise<XXDKUtils>(async (res) => {
-  const go = new (window as any).Go();
-  const result = await makeWasm(go.importObject);
-
-  go.run(result.instance);
+    const Go = require('../wasm_exec');
+    const go = new Go();
+    let mod, inst;
+    WebAssembly.instantiateStreaming(fetch("../xxdk.wasm"), go.importObject).then(async (result) => {
+        mod = result.module;
+        inst = result.instance;
+        await go.run(inst);
+        inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
+    }).catch((err) => {
+        console.error(err);
+    });
 
   const {
     Base64ToUint8Array,
