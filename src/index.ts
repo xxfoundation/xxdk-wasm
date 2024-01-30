@@ -1,24 +1,35 @@
 import type { XXDKUtils } from './types';
 
+import '../wasm_exec.js';
+
+const xxdkWasm: URL = require('../xxdk.wasm');
+
 declare global {
-  interface Window extends XXDKUtils {}
+  interface Window extends XXDKUtils {
+            Go: any;
+  }
 }
 
-// @ts-ignore
-// import makeWasm from '../xxdk.wasm';
+
+var xxdk_base_path: string = "";
+export function setPath(newPath: string) {
+        xxdk_base_path = newPath;
+}
+
+export const loadWasm = () => new Promise<void>(async () => {
+    const xxdk_wasm_path = xxdk_base_path + xxdkWasm;
+    // if (typeof window == "undefined") {
+    const go = new window!.Go();
+    console.log(go);
+    console.log(xxdk_wasm_path);
+    console.log("IMPORT");
+    console.log(go.importObject);
+    let stream = await WebAssembly.instantiateStreaming(fetch(xxdk_wasm_path), go.importObject);
+    go.run(stream.instance);
+});
+
 
 export const loadUtils = () => new Promise<XXDKUtils>(async (res) => {
-    const Go = require('../wasm_exec');
-    const go = new Go();
-    let mod, inst;
-    WebAssembly.instantiateStreaming(fetch("../xxdk.wasm"), go.importObject).then(async (result) => {
-        mod = result.module;
-        inst = result.instance;
-        await go.run(inst);
-        inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
-    }).catch((err) => {
-        console.error(err);
-    });
 
   const {
     Base64ToUint8Array,

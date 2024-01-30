@@ -3,15 +3,17 @@ const path = require('path');
 module.exports = {
     entry: './src/index.ts',
     devtool: 'inline-source-map',
+    mode: 'development',
     output: {
         filename: 'bundle.js',
         path: path.resolve(__dirname, 'dist'),
         globalObject: 'this',
         library: {
-            name: 'xxdk-wasm',
+            name: 'xxdk',
             type: 'umd',
         },
-        publicPath: '',
+        umdNamedDefine: true,
+        publicPath: '/dist/',
     },
     module: {
         rules: [
@@ -21,7 +23,7 @@ module.exports = {
                 exclude: /node_modules/,
             },
             {
-                test: /\.wasm/,
+                test: /\.wasm$/,
                 type: 'asset/resource',
                 generator: {
                     filename: 'wasm-assets/[hash][ext][query]'
