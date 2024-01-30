@@ -6,7 +6,8 @@ const xxdkWasm: URL = require('../xxdk.wasm');
 
 declare global {
   interface Window extends XXDKUtils {
-            Go: any;
+      Go: any;
+      onWasmInitialized: any;
   }
 }
 
@@ -20,12 +21,18 @@ export const loadWasm = () => new Promise<void>(async () => {
     const xxdk_wasm_path = xxdk_base_path + xxdkWasm;
     // if (typeof window == "undefined") {
     const go = new window!.Go();
+
+    
+    let isReady = new Promise((resolve) => {
+        window!.onWasmInitialized = resolve;
+    });
     console.log(go);
     console.log(xxdk_wasm_path);
     console.log("IMPORT");
     console.log(go.importObject);
     let stream = await WebAssembly.instantiateStreaming(fetch(xxdk_wasm_path), go.importObject);
     go.run(stream.instance);
+    await isReady
 });
 
 
