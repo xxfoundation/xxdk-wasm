@@ -1,6 +1,6 @@
 {
     "name": "xxdk-wasm",
-    "version": "0.3.7",
+    "version": "0.3.12",
     "description": "WebAssembly bindings for xxDK.",
     "main": "index.ts",
     "directories": {
