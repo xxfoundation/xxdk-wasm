@@ -29,6 +29,7 @@ update_master:
 	GOFLAGS="" go get -d gitlab.com/elixxir/client/v4@master
 
 binary:
+	mkdir -p assets/wasm
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk.wasm main.go
 	cp xxdk.wasm assets/wasm/
 
@@ -38,6 +39,7 @@ worker_binaries:
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-dmIndexedDkWorker.wasm ./indexedDb/impl/dm/...
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-stateIndexedDkWorker.wasm ./indexedDb/impl/state/...
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-logFileWorker.wasm ./logging/workerThread/...
+	mkdir -p assets/wasm
 	cp xxdk-*.wasm assets/wasm/
 
 binaries: binary worker_binaries
