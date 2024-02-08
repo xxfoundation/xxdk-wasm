@@ -3,6 +3,8 @@
 clean:
 	go mod tidy
 	go mod vendor -e
+	rm *.wasm
+	rm assets/wasm/*
 
 update:
 	-GOFLAGS="" go get all
@@ -28,12 +30,15 @@ update_master:
 
 binary:
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk.wasm main.go
+	cp xxdk.wasm assets/wasm/
+
 
 worker_binaries:
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-channelsIndexedDkWorker.wasm ./indexedDb/impl/channels/...
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-dmIndexedDkWorker.wasm ./indexedDb/impl/dm/...
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-stateIndexedDkWorker.wasm ./indexedDb/impl/state/...
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk-logFileWorker.wasm ./logging/workerThread/...
+	cp xxdk-*.wasm assets/wasm/
 
 binaries: binary worker_binaries
 
