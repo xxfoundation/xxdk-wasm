@@ -5,14 +5,16 @@
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
+// NOTE: wasm_exec.js must always be in the same directory as this script.
 importScripts('wasm_exec.js');
+// NOTE: This relative path must be preserved in distribution.
+const binPath = '../wasm/xxdk-logFileWorker.wasm'
 
 const isReady = new Promise((resolve) => {
     self.onWasmInitialized = resolve;
 });
 
 const go = new Go();
-const binPath = 'xxdk-logFileWorker.wasm'
 WebAssembly.instantiateStreaming(fetch(binPath), go.importObject).then(async (result) => {
     go.run(result.instance);
     await isReady;
