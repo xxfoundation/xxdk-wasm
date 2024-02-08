@@ -1,11 +1,19 @@
 const path = require('path');
 
 module.exports = {
-    entry: './src/index.ts',
+    entry: {
+        bundle: './src/index.ts',
+        logFileWorker: './assets/jsutils/logFileWorker.js',
+        channelsIndexDbWorker: './assets/jsutils/channelsIndexedDbWorker.js',
+        dmIndexedDbWorker: './assets/jsutils/dmIndexedDbWorker.js',
+        ndf: './assets/jsutils/ndf.js',
+        stateIndexedDbWorker: './assets/jsutils/stateIndexedDbWorker.js',
+        wasm_exec: './assets/jsutils/wasm_exec.js',
+    },
     devtool: 'inline-source-map',
     mode: 'development',
     output: {
-        filename: 'bundle.js',
+        filename: '[name].js',
         path: path.resolve(__dirname, 'dist'),
         globalObject: 'this',
         library: {
@@ -26,12 +34,12 @@ module.exports = {
                 test: /\.wasm$/,
                 type: 'asset/resource',
                 generator: {
-                    filename: 'wasm-assets/[hash][ext][query]'
+                    filename: 'assets/wasm/[hash][ext][query]'
                 }
             }
         ]
     },
     resolve: {
-        extensions: ['.tsx', '.ts', '.js'],
+        extensions: ['.tsx', '.ts', 'js' ],
     },
 };

@@ -1,8 +1,9 @@
 import type { XXDKUtils } from './types';
 
-import '../wasm_exec.js';
+import('../assets/jsutils/wasm_exec.js');
 
-const xxdkWasm: URL = require('../xxdk.wasm');
+
+const xxdkWasm: URL = require('../assets/wasm/xxdk.wasm');
 
 declare global {
   interface Window extends XXDKUtils {
@@ -22,10 +23,10 @@ export const loadWasm = () => new Promise<void>(async () => {
     // if (typeof window == "undefined") {
     const go = new window!.Go();
 
-    
     let isReady = new Promise((resolve) => {
         window!.onWasmInitialized = resolve;
     });
+
     console.log(go);
     console.log(xxdk_wasm_path);
     console.log("IMPORT");

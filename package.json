@@ -8,7 +8,6 @@
         "src": "src"
     },
     "files": [
-        "src/index.ts",
         "dist/*"
     ],
     "scripts": {
