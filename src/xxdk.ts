@@ -25,7 +25,7 @@ declare global {
 }
 
 export const InitXXDK = () => new Promise<XXDKUtils>(async (xxdkUtils) => {
-  await import('../assets/jsutils/wasm_exec.js');
+  await import('../wasm_exec.js');
   const isReady = new Promise<void>((resolve) => {
     window!.onWasmInitialized = resolve;
   });

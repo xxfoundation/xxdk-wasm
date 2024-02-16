@@ -16,7 +16,7 @@ module.exports = {
         dmIndexedDbWorker: './assets/jsutils/dmIndexedDbWorker.js',
         ndf: './assets/jsutils/ndf.js',
         stateIndexedDbWorker: './assets/jsutils/stateIndexedDbWorker.js',
-        wasm_exec: './assets/jsutils/wasm_exec.js',
+        wasm_exec: './wasm_exec.js',
     },
     devtool: 'inline-source-map',
     mode: 'development',
