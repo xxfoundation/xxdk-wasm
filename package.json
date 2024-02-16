@@ -12,7 +12,8 @@
     ],
     "scripts": {
         "clean": "rm -rf dist",
-        "build": "npm run clean && webpack",
+        "build": "make binaries && npm run clean && webpack --mode production",
+        "devbuild": "npm run clean && webpack",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "repository": {
