@@ -6,9 +6,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // NOTE: wasm_exec.js must always be in the same directory as this script.
-importScripts(require('./wasm_exec.js'));
+importScripts('./wasm_exec.js');
 // NOTE: This relative path must be preserved in distribution.
-const binPath = require('../wasm/xxdk-dmIndexedDkWorker.wasm');
+const binPath = require('../wasm/xxdk-dmIndexedDbWorker.wasm');
 
 const isReady = new Promise((resolve) => {
     self.onWasmInitialized = resolve;
@@ -19,7 +19,11 @@ go.argv = [
     '--logLevel=2',
     '--threadLogLevel=2',
 ]
-WebAssembly.instantiateStreaming(fetch(binPath), go.importObject).then(async (result) => {
+// NOTE: This is wonky, we are in the right path inside the publicPath
+// (usually `dist` folder), which is where webpack paths start. They also
+// always prefix with a /, so we are going up a directory to come right back
+// into e.g., ../dist/assets/wasm/[somefile].wasm
+WebAssembly.instantiateStreaming(fetch('..' + binPath), go.importObject).then(async (result) => {
     go.run(result.instance);
     await isReady;
 }).catch((err) => {
