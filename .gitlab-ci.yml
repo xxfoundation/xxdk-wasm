@@ -77,7 +77,7 @@ s3upload:
     - cd npm_release && tar -xzvf *.tgz && cd ..
     # Upload to S3
     - mc alias set elixxir-s3 $ARTIFACT_S3_ENDPOINT $ARTIFACT_S3_KEY $ARTIFACT_S3_SECRET
-    - mc cp --recursive --md5 npm_release/package/ elixxir-s3/$ARTIFACT_S3_BUCKET/wasm/
+    - mc cp --recursive --md5 npm_release/package/ elixxir-s3/$ARTIFACT_S3_BUCKET/wasm/xxdk-wasm-0.3.14/
   artifacts:
     paths:
       - npm_release
