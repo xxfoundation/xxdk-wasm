@@ -5,6 +5,9 @@
 .*.swp
 .*.swo
 
+# Ignore emacs tmp files
+\#*#
+
 # Ignore local development scripts
 localdev_*
 
@@ -22,3 +25,7 @@ localdev_*
 
 vendor/
 *.wasm
+
+*~
+dist/
+node_modules/
