@@ -20,6 +20,7 @@ before_script:
 stages:
   - test
   - build
+  - npm
   - doc-update
 
 go-test:
@@ -62,6 +63,24 @@ build:
     paths:
       - release/
     expose_as: "release"
+
+build:
+  stage: npm
+  only:
+    - tags
+  script:
+    - mc --version
+    - mkdir -p npm_release
+    - npm i
+    - npm run build
+    - npm pack --pack-destination npm_release/
+    - cd npm_release && tar -xzvf *.tgz && cd ..
+    # Upload to S3
+    - mc alias set elixxir-s3 $ARTIFACT_S3_ENDPOINT $ARTIFACT_S3_KEY $ARTIFACT_S3_SECRET
+    - mc cp --recursive --md5 npm_release/package/ elixxir-s3/$ARTIFACT_S3_BUCKET/wasm/
+  artifacts:
+    paths:
+      - npm_release
 
 # This pipeline job will attempt to have pkg.go.dev update docs for xxdk-wasm.
 #
