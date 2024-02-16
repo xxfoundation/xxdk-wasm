@@ -23,6 +23,7 @@ go.argv = [
 // (usually `dist` folder), which is where webpack paths start. They also
 // always prefix with a /, so we are going up a directory to come right back
 // into e.g., ../dist/assets/wasm/[somefile].wasm
+console.log("WORKERWASM: " + binPath);
 WebAssembly.instantiateStreaming(fetch('..' + binPath), go.importObject).then(async (result) => {
     go.run(result.instance);
     await isReady;

@@ -1,3 +1,9 @@
+
+import { ChannelEventHandler } from './events/channels';
+import { DMEventHandler } from './events/dm';
+import { RemoteStore } from './types/collective';
+import { RawCipher } from './types/index';
+
 export enum LogLevel {
   TRACE = 0,
   DEBUG = 1,
@@ -17,6 +23,22 @@ export enum PrivacyLevel {
 export type Cipher = {
   GetID: () => number;
   Decrypt: (plaintext: Uint8Array) => Uint8Array;
+}
+
+export type ChannelManagerCallbacks = {
+  EventUpdate: ChannelEventHandler;
+}
+
+export type DMClientEventCallback = {
+  EventUpdate: DMEventHandler;
+}
+
+export type Notifications = {
+  AddToken: (newToken: string, app: string) => void;
+  RemoveToken: () => void;
+  SetMaxState: (maxState: number) => void;
+  GetMaxState: () => number;
+  GetID: () => number;
 }
 
 export type ChannelManager = {
@@ -115,49 +137,69 @@ export type UserMutedCallback = (channelId: Uint8Array, pubkey: string, unmute: 
 export type DMReceivedCallback = (uuid: string, pubkey: Uint8Array, update: boolean, updateConversation: boolean) => void;
 
 export type XXDKUtils = {
-  logger?: Logger;
-  Crash: () => void;
-  GetLogger: () => Logger;
-  LogLevel: (level: LogLevel) => void;
-  getCrashedLogFile: () => Promise<string>;
   NewCmix: (
     ndf: string,
     storageDir: string,
     password: Uint8Array,
     registrationCode: string
   ) => Promise<void>;
+  NewSynchronizedCmix: (
+    ndf: string,
+    storageDir: string,
+    remoteStoragePrefixPath: string,
+    password: Uint8Array,
+    remoteStore: RemoteStore,
+  ) => Promise<void>;
   LoadCmix: (
     storageDirectory: string,
     password: Uint8Array,
     cmixParams: Uint8Array
   ) => Promise<CMix>;
-  GetDefaultCMixParams: () => Uint8Array;GetChannelInfo: (prettyPrint: string) => Uint8Array;
+  LoadSynchronizedCmix: (
+    storageDirectory: string,
+    password: Uint8Array,
+    remoteStore: RemoteStore,
+    cmixParams: Uint8Array
+  ) => Promise<CMix>;
+  LoadNotifications: (
+    cmixId: number
+  ) => Notifications;
+  LoadNotificationsDummy:  (
+    cmixId: number
+  ) => Notifications;
+  GetDefaultCMixParams: () => Uint8Array;
+  GetChannelInfo: (prettyPrint: string) => Uint8Array;
   Base64ToUint8Array: (base64: string) => Uint8Array;
   GenerateChannelIdentity: (cmixId: number) => Uint8Array;
   NewChannelsManagerWithIndexedDb: (
     cmixId: number,
     wasmJsPath: string,
     privateIdentity: Uint8Array,
-    onMessage: MessageReceivedCallback,
-    onDelete: MessageDeletedCallback,
-    onMuted: UserMutedCallback,
+    extensionBuilderIDsJSON: Uint8Array,
+    notificationsId: number,
+    callbacks: ChannelManagerCallbacks,
     channelDbCipher: number
   ) => Promise<ChannelManager>;
   NewDMClientWithIndexedDb: (
     cmixId: number,
+    notificationsId: number,
+    cipherId: number,
     wasmJsPath: string,
     privateIdentity: Uint8Array,
-    messageCallback: DMReceivedCallback,
-    cipherId: number
+    eventCallback: DMClientEventCallback
   ) => Promise<DMClient>;
-  NewDMsDatabaseCipher: (cmixId: number, storagePassword: Uint8Array, payloadMaximumSize: number) => Cipher
+  NewDatabaseCipher: (
+    cmixId: number,
+    storagePassword: Uint8Array,
+    payloadMaximumSize: number
+  ) => RawCipher;
   LoadChannelsManagerWithIndexedDb: (
     cmixId: number,
     wasmJsPath: string,
     storageTag: string,
-    onMessage: MessageReceivedCallback,
-    onDelete: MessageDeletedCallback,
-    onMuted: UserMutedCallback,
+    extensionBuilderIDsJSON: Uint8Array,
+    notificationsId: number,
+    callbacks: ChannelManagerCallbacks,
     channelDbCipher: number
   ) => Promise<ChannelManager>;
   GetPublicChannelIdentityFromPrivate: (privateKey: Uint8Array) => Uint8Array;
@@ -165,7 +207,7 @@ export type XXDKUtils = {
   GetShareUrlType: (url: string) => PrivacyLevel;
   GetVersion: () => string;
   GetClientVersion: () => string;
-  GetOrInitPassword: (password: string) => Uint8Array;
+  GetOrInitPassword: (password: string) => Promise<Uint8Array>;
   ImportPrivateIdentity: (password: string, privateIdentity: Uint8Array) => Uint8Array;
   ConstructIdentity: (publicKey: Uint8Array, codesetVersion: number) => Uint8Array;
   DecodePrivateURL: (url: string, password: string) => string;
@@ -178,8 +220,7 @@ export type XXDKUtils = {
     upperBoundIntervalBetweenCyclesMilliseconds: number
   ) => DummyTraffic;
   GetWasmSemanticVersion: () => Uint8Array;
-  NewChannelsDatabaseCipher: (cmixId: number, storagePassword: Uint8Array, payloadMaximumSize: number) => Cipher;
-  Purge: (storageDirectory: string, userPassword: string) => void;
+  Purge: (userPassword: string) => void;
   ValidForever: () => number;
 }
 
