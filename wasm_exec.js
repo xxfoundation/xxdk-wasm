@@ -460,16 +460,15 @@
 					},
                                         // func Throw(exception, message unsafe.Pointer)
                                         "gitlab.com/elixxir/wasm-utils/exception.throw": (sp) => {
-                                                const exception = loadString(sp + 8)
-                                                const message = loadString(sp + 24)
-                                                throw globalThis[exception](message)
+                                                const exception = loadString(sp + 8);
+                                                const message = loadString(sp + 24);
+                                                throw new Error(exception + ": " + message);
                                         },
                                         'runtime.Throw': (sp) => {
-                                                const exception = loadString(sp + 8)
-                                                const message = loadString(sp + 24)
-                                                throw globalThis[exception](message)
+                                                const exception = loadString(sp + 8);
+                                                const message = loadString(sp + 24);
+                                                throw new Error(exception + ": " + message);
                                         },
-
 				}
 			};
                         this.importObject.go = this.importObject.gojs;
