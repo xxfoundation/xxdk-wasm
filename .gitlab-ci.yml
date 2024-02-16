@@ -64,7 +64,7 @@ build:
       - release/
     expose_as: "release"
 
-build:
+s3upload:
   stage: npm
   only:
     - tags
