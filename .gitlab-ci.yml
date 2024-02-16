@@ -53,10 +53,7 @@ build:
     - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-dmIndexedDbWorker.wasm ./indexedDb/impl/dm/...
     - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-logFileWorker.wasm ./logging/workerThread/...
     - GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o release/xxdk-stateIndexedDbWorker.wasm ./indexedDb/impl/state/...
-    - cp indexedDb/impl/channels/channelsIndexedDbWorker.js release/
-    - cp indexedDb/impl/dm/dmIndexedDbWorker.js release/
-    - cp logging/workerThread/logFileWorker.js release/
-    - cp indexedDb/impl/state/stateIndexedDbWorker.js release/
+    - cp assets/jsutils/* release/
     # Wasm executor
     - cp wasm_exec.js release/
   artifacts:
