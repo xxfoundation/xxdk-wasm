@@ -18,7 +18,7 @@ export let xxdkBasePath : URL | undefined;
 if (typeof window! !== 'undefined') {
   if (typeof window!.xxdkBasePath == 'undefined') {
     window!.xxdkBasePath = default_xxdk_path;
-  } 
+  }
 }
 if (xxdkBasePath === undefined) {
   xxdkBasePath = default_xxdk_path;
@@ -35,17 +35,17 @@ export function setXXDKBasePath(newPath: URL) {
 // apps need to maintain access
 // NOTE: we do not use require here, because these are defined entry points in the webpack config
 export function logFileWorkerPath(): URL {
-  return new URL(window!.xxdkBasePath + 'dist/logFileWorker.js');
+  return new URL(window!.xxdkBasePath + '/dist/logFileWorker.js');
 }
 
 export function channelsIndexedDbWorkerPath(): URL {
-  return new URL(window!.xxdkBasePath + 'dist/channelsIndexedDbWorker.js');
+  return new URL(window!.xxdkBasePath + '/dist/channelsIndexedDbWorker.js');
 }
 
 export function dmIndexedDbWorkerPath(): URL {
-  return new URL(window!.xxdkBasePath + 'dist/dmIndexedDbWorker.js');
+  return new URL(window!.xxdkBasePath + '/dist/dmIndexedDbWorker.js');
 }
 
 export function stateIndexedDbWorkerPath() {
-  return new URL(window!.xxdkBasePath + 'dist/stateIndexedDbWorker.js');
+  return new URL(window!.xxdkBasePath + '/dist/stateIndexedDbWorker.js');
 }
