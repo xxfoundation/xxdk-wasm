@@ -10,7 +10,7 @@ declare global {
 }
 
 // TODO: change this to a real cdn
-export const xxdk_s3_path = "http://elixxir-bins.s3-us-west-1.amazonaws.com/wasm/";
+export const xxdk_s3_path = "https://elixxir-bins.s3-us-west-1.amazonaws.com/wasm/";
 export const default_xxdk_path = new URL(BundleVersion, xxdk_s3_path);
 // TODO: docstring?
 export let xxdkBasePath : URL | undefined;
