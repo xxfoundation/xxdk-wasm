@@ -68,7 +68,7 @@ s3upload:
   script:
     - mc --version
     - jq --version
-    - echo "Detected version: " $(jq -r .version package.json)
+    - echo "Detected version:\ " $(jq -r .version package.json)
     - mkdir -p npm_release
     - npm i
     - npm run build
