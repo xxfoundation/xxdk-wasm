@@ -35,11 +35,13 @@ export const InitXXDK = () => new Promise<XXDKUtils>(async (xxdkUtils) => {
   console.log("Fetching xxdkWASM base: " + window!.xxdkBasePath);
   console.log("Fetching xxdkWASM path: " + xxdkWasm);
 
+  const logWorker = await logFileWorkerPath();
+  console.log("Got logworkerURL: " + logWorker);
   let go = new window!.Go();
   go.argv = [
     '--logLevel=1',
     '--fileLogLevel=1',
-    '--workerScriptURL=' + logFileWorkerPath(),
+    '--workerScriptURL=' + logWorker,
   ]
 
   let stream = await WebAssembly?.instantiateStreaming(
