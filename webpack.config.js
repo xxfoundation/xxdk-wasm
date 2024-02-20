@@ -11,11 +11,7 @@ export const BundleVersion = pkg.name + '-' + pkg.version;
 module.exports = {
     entry: {
         bundle: './src/index.ts',
-        logFileWorker: './assets/jsutils/logFileWorker.js',
-        channelsIndexedDbWorker: './assets/jsutils/channelsIndexedDbWorker.js',
-        dmIndexedDbWorker: './assets/jsutils/dmIndexedDbWorker.js',
-        ndf: './assets/jsutils/ndf.js',
-        stateIndexedDbWorker: './assets/jsutils/stateIndexedDbWorker.js',
+        ndf: './ndf.js',
         wasm_exec: './wasm_exec.js',
     },
     devtool: 'inline-source-map',
