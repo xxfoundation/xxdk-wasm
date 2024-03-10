@@ -115,13 +115,42 @@ export type CMix = {
 }
 
 export type DMClient = {
-  SendText: (pubkey: Uint8Array, dmToken: number, message: string, leaseTimeMs: number, cmixParams: Uint8Array) => Promise<void>;
-  SendReply: (pubkey: Uint8Array, dmToken: number, message: string, replyToId: Uint8Array, leaseTimeMs: number, cmixParams: Uint8Array) => Promise<void>;
-  SendReaction: (pubkey: Uint8Array, dmToken: number, message: string, reactToId: Uint8Array, cmixParams: Uint8Array) => Promise<void>;
-  GetIdentity: () => Uint8Array;
-  SetNickname: (nickname: string) => void;
-  GetNickname: () => string;
-  GetDatabaseName: () => string;
+       GetPublicKey: () => Uint8Array;
+       GetToken: () => number;
+       GetIdentity: () => Uint8Array;
+       ExportPrivateIdentity: (password: string) => Uint8Array;
+       GetNickname: () => string;
+       SetNickname: (nickname: string) => void;
+       BlockPartner: (partnerPubKey: Uint8Array) => void;
+       UnblockPartner: (partnerPubKey: Uint8Array) => void;
+       IsBlocked: (partnerPubKey: Uint8Array) => boolean;
+       GetBlockedPartners: () => Uint8Array;
+       GetDatabaseName: () => string;
+       GetShareURL: (host: string) => Promise<Uint8Array>;
+
+       // DM Sending Methods and Reports
+       SendText: (pubkey: Uint8Array, dmToken: number,
+                  message: string, leaseTimeMs: number,
+                  cmixParams: Uint8Array) => Promise<Uint8Array>;
+       SendReply: (pubkey: Uint8Array, dmToken: number,
+                   message: string, replyToId: Uint8Array,
+                   leaseTimeMs: number,
+                   cmixParams: Uint8Array) => Promise<Uint8Array>;
+       SendReaction: (pubkey: Uint8Array, dmToken: number,
+                      message: string, reactToId: Uint8Array,
+                      cmixParams: Uint8Array) => Promise<Uint8Array>;
+       SendSilent: (pubkey: Uint8Array, dmToken: number,
+                    cmixParams: Uint8Array) => Promise<Uint8Array>;
+       SendInvite: (pubkey: Uint8Array, dmToken: number,
+                    inviteToChannelJson Uint8Array, message: string,
+                    host: string,
+                    cmixParamsJSON: Uint8Array) => Promise<Uint8Array>;
+       DeleteMessage: (partnerPubKeyBytes: Uint8Array, partnerToken: number,
+                       targetMessageIdBytes: Uint8Array,
+                       cmixParamsJSON Uint8Array) => Promise<Uint8Array>;
+       Send: (partnerPubKeyBytes: Uint8Array, partnerToken: number,
+              messageType: number, plaintext Uint8Array, leaseTimeMS: number,
+	      cmixParamsJSON: Uint8Array) => Promise<Uint8Array>;
 }
 
 export type DummyTraffic = {
