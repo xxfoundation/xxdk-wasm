@@ -3,8 +3,8 @@
 clean:
 	go mod tidy
 	go mod vendor -e
-	rm *.wasm
-	rm assets/wasm/*
+	-rm *.wasm
+	-rm assets/wasm/*
 
 update:
 	-GOFLAGS="" go get all
@@ -44,13 +44,11 @@ worker_binaries:
 
 binaries: binary worker_binaries
 
-wasmException = "vendor/gitlab.com/elixxir/wasm-utils/exception"
-
 wasm_tests:
-	cp $(wasmException)/throws.go $(wasmException)/throws.go.bak
-	cp $(wasmException)/throws.dev $(wasmException)/throws.go
-	GOOS=js GOARCH=wasm go test -v ./...
-	mv $(wasmException)/throws.go.bak $(wasmException)/throws.go
+	cp $(shell go env GOROOT)/misc/wasm/wasm_exec.js wasm_exec.js.bak
+	cp wasm_exec.js $(shell go env GOROOT)/misc/wasm/wasm_exec.js
+	- GOOS=js GOARCH=wasm go test -v ./...
+	mv wasm_exec.js.bak $(shell go env GOROOT)/misc/wasm/wasm_exec.js
 
 go_tests:
 	go test ./... -v
