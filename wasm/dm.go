@@ -262,7 +262,7 @@ func (dmc *DMClient) GetID(js.Value, []js.Value) any {
 // Returns:
 //   - Public key (Uint8Array).
 func (dmc *DMClient) GetPublicKey(js.Value, []js.Value) any {
-	return dmc.api.GetPublicKey()
+	return utils.CopyBytesToJS(dmc.api.GetPublicKey())
 }
 
 // GetToken returns the DM token of this client.
