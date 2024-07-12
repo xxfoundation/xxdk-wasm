@@ -269,6 +269,9 @@ func setGlobals() {
 	js.Global().Set("GetClientDependencies", js.FuncOf(wasm.GetClientDependencies))
 	js.Global().Set("GetWasmSemanticVersion", js.FuncOf(wasm.GetWasmSemanticVersion))
 	js.Global().Set("GetXXDKSemanticVersion", js.FuncOf(wasm.GetXXDKSemanticVersion))
+
+	// wasm/rpc.go
+	js.Global().Set("RPCSend", js.FuncOf(wasm.RPCSend))
 }
 
 var (

@@ -3,6 +3,7 @@ import { ChannelEventHandler } from './events/channels';
 import { DMEventHandler } from './events/dm';
 import { RemoteStore } from './types/collective';
 import { RawCipher } from './types/index';
+import { * } from './types/rpc';
 
 export enum LogLevel {
   TRACE = 0,

@@ -10,14 +10,15 @@
 package wasm
 
 import (
+	"sync"
+	"syscall/js"
+
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/storage/utility"
 	"gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"sync"
-	"syscall/js"
 )
 
 // dbCipherTrackerSingleton is used to track DbCipher objects
@@ -123,11 +124,11 @@ func NewDatabaseCipher(_ js.Value, args []js.Value) any {
 	}
 
 	// Generate RNG
-	stream := user.GetRng().GetStream()
+	stream := user.Api.GetRng().GetStream()
 
 	// Load or generate a salt
 	salt, err := utility.NewOrLoadSalt(
-		user.GetStorage().GetKV(), stream)
+		user.Api.GetStorage().GetKV(), stream)
 	if err != nil {
 		exception.ThrowTrace(err)
 		return nil
