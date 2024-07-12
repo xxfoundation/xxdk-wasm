@@ -7,6 +7,10 @@ examples and a test server to serve the compiled WebAssembly module.
 need to ensure that you update the `wasm_exec.js` file as described
 [below](#wasm_execjs).
 
+Examples for how to use this package can be found at:
+
+https://git.xx.network/xx_network/xxdk-examples
+
 ## Updates
 
 The current semantic version of this repository is stored in `SEMVER` in
