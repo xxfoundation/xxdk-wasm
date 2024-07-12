@@ -1,6 +1,6 @@
 {
     "name": "xxdk-wasm",
-    "version": "0.3.18",
+    "version": "0.3.19",
     "description": "WebAssembly bindings for xxDK.",
     "main": "dist/bundle.js",
     "directories": {

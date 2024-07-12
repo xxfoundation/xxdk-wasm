@@ -87,3 +87,50 @@ global.Go = class {
     }
 }
 ```
+
+# NPM instructions
+
+## Test options
+
+### Link
+
+Run this to make the package globally available:
+
+```
+npm link
+```
+
+Then in your app for testing:
+
+```
+npm link xxdk-wasm
+```
+
+### Pack (tarball)
+
+```
+npm pack
+```
+
+This will create a file like `xxdk-wasm-0.3.19.tgz`. Then you can
+install it in your project as follows:
+
+```
+npm i ../xxdk-wasm/xxdk-wasm-0.3.19.tgz
+```
+
+Some tools cache (e.g., nextjs), and you'll need to remove that when
+doing continuous updates between. You can do that in your repo with:
+
+```
+git clean -ffdx
+#O
+rm -rf .next/cache
+```
+
+## Publishing
+
+```
+npm login
+npm publish
+```
