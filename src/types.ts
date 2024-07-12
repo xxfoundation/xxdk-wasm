@@ -3,7 +3,9 @@ import { ChannelEventHandler } from './events/channels';
 import { DMEventHandler } from './events/dm';
 import { RemoteStore } from './types/collective';
 import { RawCipher } from './types/index';
-import { * } from './types/rpc';
+import { RPCSend } from './types/rpc';
+
+export * from './types/rpc';
 
 export enum LogLevel {
   TRACE = 0,
@@ -143,14 +145,14 @@ export type DMClient = {
        SendSilent: (pubkey: Uint8Array, dmToken: number,
                     cmixParams: Uint8Array) => Promise<Uint8Array>;
        SendInvite: (pubkey: Uint8Array, dmToken: number,
-                    inviteToChannelJson Uint8Array, message: string,
+                    inviteToChannelJson: Uint8Array, message: string,
                     host: string,
                     cmixParamsJSON: Uint8Array) => Promise<Uint8Array>;
        DeleteMessage: (partnerPubKeyBytes: Uint8Array, partnerToken: number,
                        targetMessageIdBytes: Uint8Array,
-                       cmixParamsJSON Uint8Array) => Promise<Uint8Array>;
+                       cmixParamsJSON: Uint8Array) => Promise<Uint8Array>;
        Send: (partnerPubKeyBytes: Uint8Array, partnerToken: number,
-              messageType: number, plaintext Uint8Array, leaseTimeMS: number,
+              messageType: number, plaintext: Uint8Array, leaseTimeMS: number,
 	      cmixParamsJSON: Uint8Array) => Promise<Uint8Array>;
 }
 
@@ -252,6 +254,7 @@ export type XXDKUtils = {
   GetWasmSemanticVersion: () => Uint8Array;
   Purge: (userPassword: string) => void;
   ValidForever: () => number;
+  RPCSend: RPCSend;
 }
 
 export type Logger = {
