@@ -67,6 +67,13 @@ func TestPublicFunctions(t *testing.T) {
 
 		// NewFilesystemRemoteStorage is internal for bindings.
 		"NewFileSystemRemoteStorage": {},
+
+		// RPC Server calls (not implemented for wasm)
+		"DeriveRPCPublicKey":        {},
+		"LoadRPCServer":             {},
+		"NewRPCServer":              {},
+		"GenerateRandomReceptionID": {},
+		"GenerateRandomRPCKey":      {},
 	}
 	wasmFuncs := getPublicFunctions("wasm", t)
 	bindingsFuncs := getPublicFunctions(

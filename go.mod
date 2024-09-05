@@ -13,13 +13,13 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/jwalterweatherman v1.1.0
 	github.com/stretchr/testify v1.8.4
-	gitlab.com/elixxir/client/v4 v4.7.3-0.20240201205923-1d997612d968
+	gitlab.com/elixxir/client/v4 v4.7.4
 	gitlab.com/elixxir/crypto v0.0.9
 	gitlab.com/elixxir/primitives v0.0.4
 	gitlab.com/elixxir/wasm-utils v0.0.3
 	gitlab.com/xx_network/crypto v0.0.6
 	gitlab.com/xx_network/primitives v0.0.5
-	golang.org/x/crypto v0.17.0
+	golang.org/x/crypto v0.18.0
 )
 
 require (
@@ -71,8 +71,8 @@ require (
 	gitlab.com/yawning/x448.git v0.0.0-20221003101044-617eb9b7d9b7 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/ratelimit v0.3.0 // indirect
-	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto v0.0.0-20231106174013-bbf56f31fb17 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f // indirect
