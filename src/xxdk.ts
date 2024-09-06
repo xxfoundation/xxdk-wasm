@@ -1,10 +1,7 @@
 import type { XXDKUtils } from './types';
 import { logFileWorkerPath } from './paths';
 
-import DefaultNdf from './ndf.json'
-
 const xxdkWasm: URL = require('../assets/wasm/xxdk.wasm');
-
 
 type Logger = {
   StopLogging: () => void,
@@ -137,7 +134,3 @@ export const InitXXDK = () => new Promise<XXDKUtils>(async (xxdkUtils) => {
     RPCSend
   });
 });
-
-export const GetDefaultNDF = (): String => {
-  return JSON.stringify(DefaultNdf);
-}
