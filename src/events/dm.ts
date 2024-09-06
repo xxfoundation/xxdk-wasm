@@ -1,7 +1,7 @@
 import { DMBlockedUserEvent, DMNotificationsUpdateEvent, DMReceivedEvent } from '../types/events';
 import { TypedEventEmitter } from '../types/emitter';
 import { Decoder, dmNotificationsUpdateEventDecoder, blockedUserEventDecoder, dmReceivedEventDecoder } from '../utils/decoders';
-import * as EventEmitter from 'events';
+import EventEmitter = require('events');
 
 export enum DMEvents {
   DM_NOTIFICATION_UPDATE = 1000,

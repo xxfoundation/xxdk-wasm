@@ -1,6 +1,6 @@
 {
     "name": "xxdk-wasm",
-    "version": "0.3.20",
+    "version": "0.3.21",
     "description": "WebAssembly bindings for xxDK.",
     "main": "dist/bundle.js",
     "directories": {
@@ -10,6 +10,7 @@
     "files": [
         "dist/*"
     ],
+    "types": "dist/index.d.ts",
     "scripts": {
         "clean": "rm -rf dist",
         "build": "make binaries && npm run clean && webpack --mode production",
