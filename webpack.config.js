@@ -11,7 +11,6 @@ export const BundleVersion = pkg.name + '-' + pkg.version;
 module.exports = {
     entry: {
         bundle: './src/index.ts',
-        ndf: './ndf.js',
         wasm_exec: './wasm_exec.js',
     },
     devtool: 'inline-source-map',
