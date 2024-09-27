@@ -230,13 +230,20 @@ func (w *wasmModel) receiveWrapper(messageID message.ID, parentID *message.ID, n
 		if !strings.Contains(err.Error(), impl.ErrDoesNotExist) {
 			return 0, err
 		} else {
+			// If sender key is not equal to partner key, then this is a convo being
+			// created on a self sent message. This means that we shouldn't use the nickname
+			// as it would be our own nickname.
+			nick := nickname
+			if !bytes.Equal(partnerKey, senderKey) {
+				nick = ""
+			}
 			// If there is no extant Conversation, create one.
 			jww.DEBUG.Printf(
 				"[DM indexedDB] Joining conversation with %s", nickname)
 
 			convoToUpdate = &Conversation{
 				Pubkey:           partnerKey,
-				Nickname:         nickname,
+				Nickname:         nick,
 				Token:            partnerToken,
 				CodesetVersion:   codeset,
 				BlockedTimestamp: nil,
@@ -410,7 +417,7 @@ func (w *wasmModel) DeleteMessage(messageID message.ID, senderPubKey ed25519.Pub
 		return false
 	}
 
-	go w.eventCallback(bindings.DmMessageReceived, bindings.DmMessageDeletedJSON{
+	go w.eventCallback(bindings.DmMessageDeleted, bindings.DmMessageDeletedJSON{
 		MessageID: messageID,
 	})
 	return true
