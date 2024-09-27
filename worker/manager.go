@@ -10,6 +10,7 @@
 package worker
 
 import (
+	"sync"
 	"syscall/js"
 	"time"
 
@@ -38,6 +39,45 @@ type Manager struct {
 	w Worker
 }
 
+// Keep track of all managers created so that they can be stopped
+// by the main WASM thread
+type ManagersTracker struct {
+	tracked map[int]*Manager
+	count   int
+	mux     sync.Mutex
+}
+
+// Only add managers locally
+func (mt *ManagersTracker) add(m *Manager) {
+	mt.mux.Lock()
+	defer mt.mux.Unlock()
+
+	id := mt.count
+	mt.count++
+
+	mt.tracked[id] = m
+}
+
+// Stop all managers except logger
+func (mt *ManagersTracker) Stop() {
+	mt.mux.Lock()
+	defer mt.mux.Unlock()
+	for id, m := range mt.tracked {
+		name := m.Name()
+		if name == "xxdkLogFileWorker-main" {
+			// Don't stop the logfile manager
+			continue
+		}
+		m.Stop()
+		delete(mt.tracked, id)
+	}
+}
+
+var Tracker = &ManagersTracker{
+	tracked: make(map[int]*Manager),
+	count:   0,
+}
+
 // NewManager generates a new Manager. This functions will only return once
 // communication with the worker has been established.
 func NewManager(aURL, name string, messageLogging bool) (*Manager, error) {
@@ -57,6 +97,8 @@ func NewManager(aURL, name string, messageLogging bool) (*Manager, error) {
 		mm: mm,
 		w:  w,
 	}
+
+	Tracker.add(m)
 
 	// Register a callback that will receive initial message from worker
 	// indicating that it is ready
