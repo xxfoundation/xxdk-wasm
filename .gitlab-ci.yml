@@ -56,7 +56,7 @@ build:
     # Wasm executor
     - cp wasm_exec.js release/
     # ndf reference file
-    - cp ndf.js release/
+    - cp src/ndf.js release/
   artifacts:
     paths:
       - release/
