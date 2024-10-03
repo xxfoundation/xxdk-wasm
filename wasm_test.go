@@ -74,6 +74,10 @@ func TestPublicFunctions(t *testing.T) {
 		"NewRPCServer":              {},
 		"GenerateRandomReceptionID": {},
 		"GenerateRandomRPCKey":      {},
+
+		// DeleteCmixInstance is mapped to "UnloadCmix", we
+		// don't expose the bindings managers to wasm.
+		"DeleteCmixInstance": {},
 	}
 	wasmFuncs := getPublicFunctions("wasm", t)
 	bindingsFuncs := getPublicFunctions(

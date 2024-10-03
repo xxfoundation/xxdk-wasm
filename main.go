@@ -22,6 +22,7 @@ import (
 	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
+	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
 
 func main() {
@@ -75,6 +76,13 @@ var wasmCmd = &cobra.Command{
 		<-make(chan bool)
 		os.Exit(0)
 	},
+}
+
+func stopWorkers(_ js.Value, _ []js.Value) any {
+	// Stop all existing managers
+	jww.INFO.Printf("Stopping xxDK WebAssembly workers...")
+	worker.Tracker.Stop()
+	return nil
 }
 
 // setGlobals enables all global functions to be accessible to Javascript.
@@ -166,6 +174,7 @@ func setGlobals() {
 	js.Global().Set("LoadCmix", js.FuncOf(wasm.LoadCmix))
 	js.Global().Set("LoadSynchronizedCmix",
 		js.FuncOf(wasm.LoadSynchronizedCmix))
+	js.Global().Set("UnloadCmix", js.FuncOf(wasm.UnloadCmix))
 
 	// wasm/delivery.go
 	js.Global().Set("SetDashboardURL", js.FuncOf(wasm.SetDashboardURL))
@@ -272,6 +281,9 @@ func setGlobals() {
 
 	// wasm/rpc.go
 	js.Global().Set("RPCSend", js.FuncOf(wasm.RPCSend))
+
+	// Stop all existing workers (except logfile worker)
+	js.Global().Set("StopWorkers", js.FuncOf(stopWorkers))
 }
 
 var (

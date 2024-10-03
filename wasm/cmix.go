@@ -233,6 +233,18 @@ func LoadSynchronizedCmix(_ js.Value, args []js.Value) any {
 	return utils.CreatePromise(promiseFn)
 }
 
+// UnloadCmix will unload an existing cMix instance
+//
+// Parameters:
+//   - args[0] - ID of [Cmix] object in tracker (int). This can be retrieved
+//     using [Cmix.GetID].
+//
+// Returns error or nil
+func UnloadCmix(_ js.Value, args []js.Value) any {
+	cmixID := args[0].Int()
+	return bindings.DeleteCmixInstance(cmixID)
+}
+
 // GetID returns the ID for this [bindings.Cmix] in the cmixTracker.
 //
 // Returns:
