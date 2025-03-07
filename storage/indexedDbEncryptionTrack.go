@@ -10,8 +10,9 @@
 package storage
 
 import (
-	"github.com/pkg/errors"
 	"os"
+
+	"github.com/pkg/errors"
 
 	"gitlab.com/elixxir/wasm-utils/storage"
 )
@@ -24,7 +25,7 @@ const databaseEncryptionToggleKey = "xxdkWasmDatabaseEncryptionToggle/"
 func StoreIndexedDbEncryptionStatus(
 	databaseName string, encryptionStatus bool) (
 	loadedEncryptionStatus bool, err error) {
-	ls := storage.GetLocalStorage()
+	ls := storage.GetExternalStorage()
 	data, err := ls.Get(databaseEncryptionToggleKey + databaseName)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

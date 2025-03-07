@@ -86,11 +86,16 @@ func Purge(_ js.Value, args []js.Value) any {
 	}
 
 	// Get local storage
-	ls := storage.GetLocalStorage()
+	ls := storage.GetExternalStorage()
 
 	// Clear all local storage saved by this WASM project
-	n := ls.Clear()
-	jww.DEBUG.Printf("[PURGE] Cleared %d WASM keys in local storage", n)
+	n, err := ls.Clear()
+	if err != nil {
+		exception.Throwf(
+			"failed to clear external storage: %+v", err)
+		return nil
+	}
+	jww.DEBUG.Printf("[PURGE] Cleared %d WASM keys in external storage", n)
 
 	return nil
 }

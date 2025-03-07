@@ -36,11 +36,11 @@ const (
 // On first load, only the xxDK WASM and xxDK client versions are stored.
 func CheckAndStoreVersions() error {
 	return checkAndStoreVersions(
-		SEMVER, bindings.GetVersion(), storage.GetLocalStorage())
+		SEMVER, bindings.GetVersion(), storage.GetExternalStorage())
 }
 
 func checkAndStoreVersions(
-	currentWasmVer, currentClientVer string, ls storage.LocalStorage) error {
+	currentWasmVer, currentClientVer string, ls storage.ExternalStorage) error {
 	// Get the stored client version, if it exists
 	storedClientVer, err :=
 		initOrLoadStoredSemver(clientVerKey, currentClientVer, ls)
@@ -91,7 +91,7 @@ func checkAndStoreVersions(
 // local storage. If no version is stored, then the current version is stored
 // and returned.
 func initOrLoadStoredSemver(
-	key, currentVersion string, ls storage.LocalStorage) (string, error) {
+	key, currentVersion string, ls storage.ExternalStorage) (string, error) {
 	storedVersion, err := ls.Get(key)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

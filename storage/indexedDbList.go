@@ -23,7 +23,7 @@ const indexedDbListKey = "xxDkWasmIndexedDbList"
 // GetIndexedDbList returns the list of stored indexedDb databases.
 func GetIndexedDbList() (map[string]struct{}, error) {
 	list := make(map[string]struct{})
-	listBytes, err := storage.GetLocalStorage().Get(indexedDbListKey)
+	listBytes, err := storage.GetExternalStorage().Get(indexedDbListKey)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	} else if err == nil {
@@ -50,7 +50,7 @@ func StoreIndexedDb(databaseName string) error {
 		return err
 	}
 
-	err = storage.GetLocalStorage().Set(indexedDbListKey, listBytes)
+	err = storage.GetExternalStorage().Set(indexedDbListKey, listBytes)
 	if err != nil {
 		return errors.Wrapf(err,
 			"localStorage: failed to set %q", indexedDbListKey)
