@@ -16,7 +16,7 @@ require (
 	gitlab.com/elixxir/client/v4 v4.7.5
 	gitlab.com/elixxir/crypto v0.0.9
 	gitlab.com/elixxir/primitives v0.0.4
-	gitlab.com/elixxir/wasm-utils v0.0.3
+	gitlab.com/elixxir/wasm-utils v0.0.4-0.20250312230449-40a61644c53a
 	gitlab.com/xx_network/crypto v0.0.6
 	gitlab.com/xx_network/primitives v0.0.5
 	golang.org/x/crypto v0.18.0

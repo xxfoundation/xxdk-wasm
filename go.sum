@@ -466,6 +466,8 @@ gitlab.com/elixxir/primitives v0.0.4 h1:bgvaOv835kBjr7ZqBzhyYq1LEHFSg6KAiKR5OXf3
 gitlab.com/elixxir/primitives v0.0.4/go.mod h1:/Eue23ILU8q1wONloYa0QSGaaeCBnAW7RfwrAnqfzWo=
 gitlab.com/elixxir/wasm-utils v0.0.3 h1:xvQvf6uLJPViI9fo5OznUYU2oXs+Gz0TTaBAGQj9NOI=
 gitlab.com/elixxir/wasm-utils v0.0.3/go.mod h1:SOr/S+JkPc+11k4RqxPm0bLvsiHV50uTxrbyRQLyM44=
+gitlab.com/elixxir/wasm-utils v0.0.4-0.20250312230449-40a61644c53a h1:0U1tsq2RpyaY0bgIPj1rdiIRUhHK8/tqc0FPx5AE2xk=
+gitlab.com/elixxir/wasm-utils v0.0.4-0.20250312230449-40a61644c53a/go.mod h1:SOr/S+JkPc+11k4RqxPm0bLvsiHV50uTxrbyRQLyM44=
 gitlab.com/xx_network/comms v0.0.6 h1:t5ZQW5LviQ1WPGQgJSsMrwlWSmpO3j7ZtPrxMTA3owE=
 gitlab.com/xx_network/comms v0.0.6/go.mod h1:R80yHVNLPX/lSHc4hz0CVbQL0LlTz1KoMU5pgA1VbC8=
 gitlab.com/xx_network/crypto v0.0.6 h1:+C44rBhclcbWrGa5EOic5yDF3NrXAbXScCb/mXmm3Ro=
