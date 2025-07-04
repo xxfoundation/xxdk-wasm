@@ -112,38 +112,42 @@ func newDbCipherJS(c *DbCipher) map[string]any {
 //   - JavaScript representation of the [DbCipher] object.
 //   - Throws an error if creating the cipher fails.
 func NewDatabaseCipher(_ js.Value, args []js.Value) any {
-	cmixId := args[0].Int()
-	password := utils.CopyBytesToGo(args[1])
-	plaintTextBlockSize := args[2].Int()
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		cmixId := args[0].Int()
+		password := utils.CopyBytesToGo(args[1])
+		plaintTextBlockSize := args[2].Int()
 
-	// Get user from singleton
-	user, err := bindings.GetCMixInstance(cmixId)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		// Get user from singleton
+		user, err := bindings.GetCMixInstance(cmixId)
+		if err != nil {
+			reject(exception.NewTrace(err))
+			return
+		}
+
+		// Generate RNG
+		stream := user.Api.GetRng().GetStream()
+
+		// Load or generate a salt
+		salt, err := utility.NewOrLoadSalt(
+			user.Api.GetStorage().GetKV(), stream)
+		if err != nil {
+			reject(exception.NewTrace(err))
+			return
+		}
+
+		// Construct a cipher
+		c, err := indexedDb.NewCipher(
+			password, salt, plaintTextBlockSize, stream)
+		if err != nil {
+			reject(exception.NewTrace(err))
+			return
+		}
+
+		// Add to singleton and return
+		resolve(newDbCipherJS(dbCipherTrackerSingleton.create(c)))
 	}
 
-	// Generate RNG
-	stream := user.Api.GetRng().GetStream()
-
-	// Load or generate a salt
-	salt, err := utility.NewOrLoadSalt(
-		user.Api.GetStorage().GetKV(), stream)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	// Construct a cipher
-	c, err := indexedDb.NewCipher(
-		password, salt, plaintTextBlockSize, stream)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	// Add to singleton and return
-	return newDbCipherJS(dbCipherTrackerSingleton.create(c))
+	return utils.CreatePromise(promiseFn)
 }
 
 // GetID returns the ID for this [DbCipher] in the

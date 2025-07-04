@@ -304,13 +304,16 @@ func (dmc *DMClient) ExportPrivateIdentity(_ js.Value, args []js.Value) any {
 //   - The nickname (string).
 //   - Throws an error if the channel has no nickname set.
 func (dmc *DMClient) GetNickname(_ js.Value, _ []js.Value) any {
-	nickname, err := dmc.api.GetNickname()
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		nickname, err := dmc.api.GetNickname()
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(nickname)
+		}
 	}
 
-	return nickname
+	return utils.CreatePromise(promiseFn)
 }
 
 // SetNickname sets the nickname to use for this user.

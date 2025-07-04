@@ -420,12 +420,17 @@ func (r *RemoteKV) ListenOnRemoteKey(_ js.Value, args []js.Value) any {
 		localEvents = args[3].Bool()
 	}
 
-	id, err := r.api.ListenOnRemoteKey(key, version, cb,
-		localEvents)
-	if err != nil {
-		exception.ThrowTrace(err)
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		id, err := r.api.ListenOnRemoteKey(key, version, cb,
+			localEvents)
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(id)
+		}
 	}
-	return id
+
+	return utils.CreatePromise(promiseFn)
 }
 
 // ListenOnRemoteMap allows the caller to receive updates when the map or map

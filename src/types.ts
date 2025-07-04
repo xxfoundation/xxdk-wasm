@@ -92,7 +92,7 @@ export type ChannelManager = {
     messageValidityTimeoutMilliseconds: number,
     cmixParams: Uint8Array
   ) => Promise<Uint8Array>;
-  IsChannelAdmin: (channelId: Uint8Array) => boolean;
+  IsChannelAdmin: (channelId: Uint8Array) => Promise<boolean>;
   GenerateChannel: (channelname: string, description: string, privacyLevel: PrivacyLevel) => Promise<string>;
   GetStorageTag: () => string | undefined;
   SetNickname: (newNickname: string, channel: Uint8Array) => void;
@@ -110,7 +110,7 @@ type HealthCallback = { Callback: (healthy: boolean) => void }
 export type CMix = {
   AddHealthCallback: (callback: HealthCallback) => number;
   GetID: () => number;
-  IsReady: (threshold: number) => Uint8Array;
+  IsReady: (threshold: number) => Promise<Uint8Array>;
   ReadyToSend: () => boolean;
   StartNetworkFollower: (timeoutMilliseconds: number) => void;
   StopNetworkFollower: () => void;
@@ -122,7 +122,7 @@ export type DMClient = {
        GetToken: () => number;
        GetIdentity: () => Uint8Array;
        ExportPrivateIdentity: (password: string) => Uint8Array;
-       GetNickname: () => string;
+       GetNickname: () => Promise<string>;
        SetNickname: (nickname: string) => void;
        BlockPartner: (partnerPubKey: Uint8Array) => void;
        UnblockPartner: (partnerPubKey: Uint8Array) => void;
@@ -196,9 +196,7 @@ export type XXDKUtils = {
   LoadNotifications: (
     cmixId: number
   ) => Notifications;
-  LoadNotificationsDummy:  (
-    cmixId: number
-  ) => Notifications;
+  LoadNotificationsDummy: (cmixId: number) => Promise<Notifications>;
   GetDefaultCMixParams: () => Uint8Array;
   GetChannelInfo: (prettyPrint: string) => Uint8Array;
   Base64ToUint8Array: (base64: string) => Uint8Array;

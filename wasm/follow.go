@@ -57,14 +57,17 @@ import (
 // Returns:
 //   - Throws an error if starting the network follower fails.
 func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) any {
-	err := c.api.StartNetworkFollower(args[0].Int())
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		err := c.api.StartNetworkFollower(args[0].Int())
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			storage.IncrementNumClientsRunning()
+			resolve()
+		}
 	}
 
-	storage.IncrementNumClientsRunning()
-	return nil
+	return utils.CreatePromise(promiseFn)
 }
 
 // StopNetworkFollower stops the network follower if it is running.
@@ -186,13 +189,15 @@ func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) any {
 //   - JSON of [bindings.IsReadyInfo] (Uint8Array).
 //   - Throws TypeError if getting the information fails.
 func (c *Cmix) IsReady(_ js.Value, args []js.Value) any {
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 	isReadyInfo, err := c.api.IsReady(args[0].Float())
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(utils.CopyBytesToJS(isReadyInfo))
+		}
 	}
-
-	return utils.CopyBytesToJS(isReadyInfo)
+	return utils.CreatePromise(promiseFn)
 }
 
 // PauseNodeRegistrations stops all node registrations and returns a function to

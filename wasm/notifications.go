@@ -14,6 +14,7 @@ import (
 
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
 type Notifications struct {
@@ -60,14 +61,16 @@ func LoadNotifications(_ js.Value, args []js.Value) any {
 //
 // Returns a notifications object or throws an error
 func LoadNotificationsDummy(_ js.Value, args []js.Value) any {
-	cMixID := args[0].Int()
-	api, err := bindings.LoadNotificationsDummy(cMixID)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		cMixID := args[0].Int()
+		api, err := bindings.LoadNotificationsDummy(cMixID)
+		if err != nil {
+			reject(exception.NewTrace(err))
+			return
+		}
+		resolve(newNotificationsJS(api))
 	}
-
-	return newNotificationsJS(api)
+	return utils.CreatePromise(promiseFn)
 }
 
 // GetID returns the bindings ID for the [bindings.Notifications] object

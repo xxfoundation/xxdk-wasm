@@ -1853,13 +1853,16 @@ func GetChannelNotificationReportsForMe(_ js.Value, args []js.Value) any {
 //     (boolean).
 //   - Throws an error if the channel ID cannot be unmarshalled.
 func (cm *ChannelsManager) IsChannelAdmin(_ js.Value, args []js.Value) any {
-	isAdmin, err := cm.api.IsChannelAdmin(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+		isAdmin, err := cm.api.IsChannelAdmin(utils.CopyBytesToGo(args[0]))
+		if err != nil {
+			reject(exception.NewTrace(err))
+		} else {
+			resolve(isAdmin)
+		}
 	}
 
-	return isAdmin
+	return utils.CreatePromise(promiseFn)
 }
 
 // ExportChannelAdminKey gets the private key for the given channel ID, encrypts
