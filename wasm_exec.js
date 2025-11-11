@@ -472,23 +472,8 @@
 					"debug": (value) => {
 						console.log(value);
 					},
-
-					// func Throw(exception, message unsafe.Pointer)
-					"gitlab.com/elixxir/wasm-utils/exception.throw": (sp) => {
-						sp >>>= 0;
-						const exception = loadString(sp + 8);
-						const message = loadString(sp + 24);
-						throw new Error(exception + ": " + message);
-					},
-					'runtime.Throw': (sp) => {
-						sp >>>= 0;
-						const exception = loadString(sp + 8);
-						const message = loadString(sp + 24);
-						throw new Error(exception + ": " + message);
-					},
 				}
 			};
-			this.importObject.go = this.importObject.gojs;
 		}
 
 		async run(instance) {

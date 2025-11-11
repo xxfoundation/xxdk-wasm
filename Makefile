@@ -30,6 +30,7 @@ update_master:
 
 binary:
 	mkdir -p assets/wasm
+	cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" ./wasm_exec.js
 	GOOS=js GOARCH=wasm go build -ldflags '-w -s' -trimpath -o xxdk.wasm main.go
 	cp xxdk.wasm assets/wasm/
 

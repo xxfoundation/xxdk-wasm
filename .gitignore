@@ -25,6 +25,7 @@ localdev_*
 
 vendor/
 *.wasm
+wasm_exec.js
 
 *~
 dist/

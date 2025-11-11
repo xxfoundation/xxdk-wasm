@@ -48,6 +48,7 @@ export const InitXXDK = () => new Promise<XXDKUtils>(async (xxdkUtils) => {
   go.run(stream.instance);
   await isReady;
 
+  // Get functions directly from WASM (SafeFunc now returns Promises automatically)
   const {
     Base64ToUint8Array,
     ConstructIdentity,
@@ -78,9 +79,8 @@ export const InitXXDK = () => new Promise<XXDKUtils>(async (xxdkUtils) => {
     NewSynchronizedCmix,
     Purge,
     ValidForever,
-    RPCSend,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } = (window as any) || {};
+    RPCSend
+  } = window;
 
   const { GetLogger } = window;
   if(GetLogger) {
@@ -101,6 +101,7 @@ export const InitXXDK = () => new Promise<XXDKUtils>(async (xxdkUtils) => {
     window.logger = logger
   }
 
+  // Return WASM functions (SafeFunc automatically provides Promises)
   xxdkUtils({
     NewCmix,
     NewSynchronizedCmix,
