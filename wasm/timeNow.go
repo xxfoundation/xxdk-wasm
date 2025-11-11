@@ -36,7 +36,7 @@ func (ts *timeSource) NowMs() int64 {
 //     this object should a NowMs() method which return a 64-bit integer value.
 func SetTimeSource(_ js.Value, args []js.Value) any {
 	bindings.SetTimeSource(&timeSource{utils.WrapCB(args[0], "NowMs")})
-	return nil
+	return js.Undefined()
 }
 
 // SetOffset will set an internal offset variable. All calls to [netTime.Now]
@@ -48,5 +48,5 @@ func SetTimeSource(_ js.Value, args []js.Value) any {
 //     represent the number in microseconds this offset will be (int).
 func SetOffset(_ js.Value, args []js.Value) any {
 	bindings.SetOffset(int64(args[0].Int()))
-	return nil
+	return js.Undefined()
 }

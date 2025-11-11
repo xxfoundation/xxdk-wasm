@@ -10,8 +10,9 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
+
+	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
 // Request sends a contact request from the user identity in the imported [E2e]
@@ -144,7 +145,7 @@ func (e *E2e) ReplayConfirm(_ js.Value, args []js.Value) (any, error) {
 // replay them on the callbacks.
 func (e *E2e) CallAllReceivedRequests(js.Value, []js.Value) any {
 	e.api.CallAllReceivedRequests()
-	return nil
+	return js.Undefined()
 }
 
 // DeleteRequest deletes sent or received requests for a specific partner ID.
@@ -161,7 +162,7 @@ func (e *E2e) DeleteRequest(_ js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // DeleteAllRequests clears all requests from auth storage.
@@ -174,7 +175,7 @@ func (e *E2e) DeleteAllRequests(js.Value, []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // DeleteSentRequests clears all sent requests from auth storage.
@@ -187,7 +188,7 @@ func (e *E2e) DeleteSentRequests(js.Value, []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // DeleteReceiveRequests clears all received requests from auth storage.
@@ -200,7 +201,7 @@ func (e *E2e) DeleteReceiveRequests(js.Value, []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // GetReceivedRequest returns a contact if there is a received request for it.
@@ -263,7 +264,7 @@ func (e *E2e) AddPartnerCallback(_ js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // DeletePartnerCallback deletes the callback that overrides the generic
@@ -281,5 +282,5 @@ func (e *E2e) DeletePartnerCallback(_ js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }

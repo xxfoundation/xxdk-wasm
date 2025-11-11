@@ -786,7 +786,7 @@ func (cm *ChannelsManager) LeaveChannel(_ js.Value, args []js.Value) any {
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
 
@@ -809,7 +809,7 @@ func (cm *ChannelsManager) ReplayChannel(_ js.Value, args []js.Value) any {
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
 
@@ -850,7 +850,7 @@ func (cm *ChannelsManager) EnableDirectMessages(_ js.Value, args []js.Value) any
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
 
@@ -869,7 +869,7 @@ func (cm *ChannelsManager) DisableDirectMessages(_ js.Value, args []js.Value) an
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
 
@@ -1522,7 +1522,7 @@ func (cm *ChannelsManager) SetNickname(_ js.Value, args []js.Value) any {
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
 
@@ -1540,7 +1540,7 @@ func (cm *ChannelsManager) DeleteNickname(_ js.Value, args []js.Value) any {
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
 
@@ -1581,7 +1581,7 @@ func IsNicknameValid(_ js.Value, args []js.Value) any {
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
 
@@ -1709,7 +1709,7 @@ func (cm *ChannelsManager) SetMobileNotificationsLevel(_ js.Value,
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
 
@@ -1917,7 +1917,7 @@ func (cm *ChannelsManager) ImportChannelAdminKey(_ js.Value, args []js.Value) an
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
 
@@ -1938,7 +1938,7 @@ func (cm *ChannelsManager) DeleteChannelAdminKey(_ js.Value, args []js.Value) an
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
 
@@ -2014,7 +2014,7 @@ func (cm *ChannelsManager) RegisterReceiveHandler(_ js.Value, args []js.Value) a
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
 

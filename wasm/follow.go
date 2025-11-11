@@ -63,7 +63,7 @@ func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) (any, error) {
 	}
 
 	storage.IncrementNumClientsRunning()
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // StopNetworkFollower stops the network follower if it is running.
@@ -81,7 +81,7 @@ func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) (any, error) {
 	}
 
 	storage.DecrementNumClientsRunning()
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // SetTrackNetworkPeriod allows changing the frequency that follower threads
@@ -106,7 +106,7 @@ func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) (any, error) {
 //   - args[0] - The duration of the period, in milliseconds (int).
 func (c *Cmix) SetTrackNetworkPeriod(_ js.Value, args []js.Value) any {
 	c.api.SetTrackNetworkPeriod(args[0].Int())
-	return nil
+	return js.Undefined()
 }
 
 // WaitForNetwork will block until either the network is healthy or the passed
@@ -123,7 +123,7 @@ func (c *Cmix) WaitForNetwork(_ js.Value, args []js.Value) (any, error) {
 	if !c.api.WaitForNetwork(timeoutMS) {
 		return nil, fmt.Errorf("network did not become healthy within timeout")
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // ReadyToSend determines if the network is ready to send messages on. It
@@ -201,7 +201,7 @@ func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) (any, error) 
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // ChangeNumberOfNodeRegistrations changes the number of parallel node
@@ -220,7 +220,7 @@ func (c *Cmix) ChangeNumberOfNodeRegistrations(_ js.Value, args []js.Value) (any
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // HasRunningProcessies checks if any background threads are running and returns
@@ -301,7 +301,7 @@ func (c *Cmix) AddHealthCallback(_ js.Value, args []js.Value) any {
 //   - args[0] - Callback registration ID (int).
 func (c *Cmix) RemoveHealthCallback(_ js.Value, args []js.Value) any {
 	c.api.RemoveHealthCallback(int64(args[0].Int()))
-	return nil
+	return js.Undefined()
 }
 
 // clientError adheres to the [bindings.ClientError] interface.
@@ -324,7 +324,7 @@ func (ce *clientError) Report(source, message, trace string) {
 func (c *Cmix) RegisterClientErrorCallback(_ js.Value, args []js.Value) any {
 	c.api.RegisterClientErrorCallback(
 		&clientError{utils.WrapCB(args[0], "Report")})
-	return nil
+	return js.Undefined()
 }
 
 // trackServicesCallback adheres to the [bindings.TrackServicesCallback]
@@ -450,7 +450,7 @@ func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) (any, erro
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // TrackServices will return, via a callback, the list of services that the
@@ -464,5 +464,5 @@ func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) (any, erro
 func (c *Cmix) TrackServices(_ js.Value, args []js.Value) any {
 	c.api.TrackServices(
 		&trackServicesCallback{utils.WrapCB(args[0], "Callback")})
-	return nil
+	return js.Undefined()
 }

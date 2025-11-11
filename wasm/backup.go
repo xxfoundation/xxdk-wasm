@@ -10,9 +10,10 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"syscall/js"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +161,7 @@ func (b *Backup) StopBackup(this js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // IsBackupRunning returns true if the backup has been initialized and is
@@ -178,5 +179,5 @@ func (b *Backup) IsBackupRunning(js.Value, []js.Value) any {
 //   - args[0] - JSON to store (string).
 func (b *Backup) AddJson(_ js.Value, args []js.Value) any {
 	b.api.AddJson(args[0].String())
-	return nil
+	return js.Undefined()
 }

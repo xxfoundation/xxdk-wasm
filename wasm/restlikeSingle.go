@@ -10,9 +10,10 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"syscall/js"
 )
 
 // RestlikeCallback wraps Javascript callbacks to adhere to the
@@ -95,5 +96,5 @@ func AsyncRequestRestLike(_ js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }

@@ -29,6 +29,15 @@ import (
 	"gitlab.com/xx_network/crypto/csprng"
 )
 
+// jsArgsToAny converts a slice of js.Value to a slice of any for variadic functions.
+func jsArgsToAny(args []js.Value) []any {
+	result := make([]any, len(args))
+	for i, arg := range args {
+		result[i] = arg
+	}
+	return result
+}
+
 // Data lengths.
 const (
 	// Length of the internal password (256-bit)
@@ -103,7 +112,7 @@ func GetOrInitPassword(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return utils.CopyBytesToJS(internalPassword), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 // ChangeExternalPassword allows a user to change their external password.
@@ -121,8 +130,8 @@ func ChangeExternalPassword(_ js.Value, args []js.Value) any {
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
-	}).Invoke(js.Value{}, args)
+		return js.Undefined(), nil
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 // VerifyPassword determines if the user-provided password is correct.

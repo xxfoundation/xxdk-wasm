@@ -10,9 +10,10 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"syscall/js"
 )
 
 // SetDashboardURL is a function which modifies the base dashboard URL that is
@@ -27,7 +28,7 @@ import (
 func SetDashboardURL(_ js.Value, args []js.Value) any {
 	bindings.SetDashboardURL(args[0].String())
 
-	return nil
+	return js.Undefined()
 }
 
 // messageDeliveryCallback wraps Javascript callbacks to adhere to the
@@ -90,5 +91,5 @@ func (c *Cmix) WaitForRoundResult(_ js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }

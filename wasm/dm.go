@@ -1,15 +1,20 @@
-////////////////////////////////////////////////////////////////////////////////
+//go:build js && wasm
+
+// //////////////////////////////////////////////////////////////////////////////
 // Copyright © 2022 xx foundation                                             //
-//                                                                            //
+//
+//	//
+//
 // Use of this source code is governed by a license that can be found in the  //
 // LICENSE file.                                                              //
-////////////////////////////////////////////////////////////////////////////////
-//go:build js && wasm
+// //////////////////////////////////////////////////////////////////////////////
 package wasm
+
 import (
 	"encoding/base64"
 	"encoding/json"
 	"syscall/js"
+
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/dm"
@@ -17,14 +22,16 @@ import (
 	"gitlab.com/elixxir/wasm-utils/utils"
 	indexDB "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
 )
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // Basic Channel API                                                          //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // DMClient wraps the [bindings.DMClient] object so its methods can be wrapped
 // to be Javascript compatible.
 type DMClient struct {
 	api *bindings.DMClient
 }
+
 // newDMClientJS creates a new Javascript compatible object (map[string]any)
 // that matches the [DMClient] structure.
 func newDMClientJS(api *bindings.DMClient) map[string]any {
@@ -60,19 +67,23 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 	}
 	return dmClientMap
 }
+
 // dmCallbacks wraps Javascript callbacks to adhere to the
 // [bindings.DmCallbacks] interface.
 type dmCallbacks struct {
 	eventUpdate func(args ...any) js.Value
 }
+
 // newDmCallbacks adds the callbacks from the Javascript object.
 func newDmCallbacks(value js.Value) *dmCallbacks {
 	return &dmCallbacks{eventUpdate: utils.WrapCB(value, "EventUpdate")}
 }
+
 // EventUpdate implements [bindings.DmCallbacks.EventUpdate].
 func (dmCBS *dmCallbacks) EventUpdate(eventType int64, jsonData []byte) {
 	dmCBS.eventUpdate(eventType, utils.CopyBytesToJS(jsonData))
 }
+
 // NewDMClient creates a new [DMClient] from a private identity
 // ([codename.PrivateIdentity]), used for direct messaging.
 //
@@ -114,6 +125,7 @@ func NewDMClient(_ js.Value, args []js.Value) any {
 		return newDMClientJS(cm), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // NewDMClientWithIndexedDb creates a new [DMClient] from a private identity
 // ([codename.PrivateIdentity]) and an indexedDbWorker as a backend
 // to manage the event model.
@@ -160,6 +172,7 @@ func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 			cmixID, notificationsID, wasmJsPath, privateIdentity, cipher, cbs), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // NewDMClientWithIndexedDbUnsafe creates a new [DMClient] from a private
 // identity ([codename.PrivateIdentity]) and an indexedDbWorker as a backend
 // to manage the event model. However, the data is written in plain text and not
@@ -229,6 +242,7 @@ func newDMClientWithIndexedDb(cmixID, notificationsID int, wasmJsPath string,
 
 	return utils.Promise.New(handler)
 }
+
 // GetID returns the ECDH Public Key for this [DMClient] in the [DMClient]
 // tracker.
 //
@@ -237,6 +251,7 @@ func newDMClientWithIndexedDb(cmixID, notificationsID int, wasmJsPath string,
 func (dmc *DMClient) GetID(js.Value, []js.Value) any {
 	return dmc.api.GetID()
 }
+
 // GetPublicKey returns the bytes of the public key for this client.
 //
 // Returns:
@@ -244,10 +259,12 @@ func (dmc *DMClient) GetID(js.Value, []js.Value) any {
 func (dmc *DMClient) GetPublicKey(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(dmc.api.GetPublicKey())
 }
+
 // GetToken returns the DM token of this client.
 func (dmc *DMClient) GetToken(js.Value, []js.Value) any {
 	return dmc.api.GetToken()
 }
+
 // GetIdentity returns the public identity associated with this client.
 //
 // Returns:
@@ -255,6 +272,7 @@ func (dmc *DMClient) GetToken(js.Value, []js.Value) any {
 func (dmc *DMClient) GetIdentity(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(dmc.api.GetIdentity())
 }
+
 // ExportPrivateIdentity encrypts and exports the private identity to a portable
 // string.
 //
@@ -271,6 +289,7 @@ func (dmc *DMClient) ExportPrivateIdentity(this js.Value, args []js.Value) (any,
 	}
 	return utils.CopyBytesToJS(i), nil
 }
+
 // GetNickname gets the nickname associated with this DM user. Throws an error
 // if no nickname is set.
 //
@@ -284,6 +303,7 @@ func (dmc *DMClient) GetNickname(this js.Value, args []js.Value) (any, error) {
 	}
 	return nickname, nil
 }
+
 // SetNickname sets the nickname to use for this user.
 //
 // Parameters:
@@ -296,8 +316,9 @@ func (dmc *DMClient) SetNickname(this js.Value, args []js.Value) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
+
 // BlockPartner prevents receiving messages and notifications from the partner.
 //
 // Parameters:
@@ -308,8 +329,9 @@ func (dmc *DMClient) SetNickname(this js.Value, args []js.Value) (any, error) {
 func (dmc *DMClient) BlockPartner(this js.Value, args []js.Value) (any, error) {
 	partnerPubKey := utils.CopyBytesToGo(args[0])
 	dmc.api.BlockPartner(partnerPubKey)
-	return nil, nil
+	return js.Undefined(), nil
 }
+
 // UnblockPartner unblocks a blocked partner to allow DM messages.
 //
 // Parameters:
@@ -320,8 +342,9 @@ func (dmc *DMClient) BlockPartner(this js.Value, args []js.Value) (any, error) {
 func (dmc *DMClient) UnblockPartner(this js.Value, args []js.Value) (any, error) {
 	partnerPubKey := utils.CopyBytesToGo(args[0])
 	dmc.api.UnblockPartner(partnerPubKey)
-	return nil, nil
+	return js.Undefined(), nil
 }
+
 // IsBlocked indicates if the given partner is blocked.
 //
 // Parameters:
@@ -335,6 +358,7 @@ func (dmc *DMClient) IsBlocked(this js.Value, args []js.Value) (any, error) {
 	isBlocked := dmc.api.IsBlocked(partnerPubKey)
 	return isBlocked, nil
 }
+
 // GetBlockedPartners returns all partners who are blocked by this user.
 //
 // Returns:
@@ -351,9 +375,10 @@ func (dmc *DMClient) GetBlockedPartners(this js.Value, args []js.Value) (any, er
 	blocked := utils.CopyBytesToJS(dmc.api.GetBlockedPartners())
 	return blocked, nil
 }
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // Channel Sending Methods and Reports                                        //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // SendText is used to send a formatted direct message to a user.
 //
 // Parameters:
@@ -390,6 +415,7 @@ func (dmc *DMClient) SendText(this js.Value, args []js.Value) (any, error) {
 	}
 	return utils.CopyBytesToJS(sendReport), nil
 }
+
 // SendReply is used to send a formatted direct message reply.
 //
 // If the message ID that the reply is sent to does not exist, then the other
@@ -440,6 +466,7 @@ func (dmc *DMClient) SendReply(this js.Value, args []js.Value) (any, error) {
 	}
 	return utils.CopyBytesToJS(sendReport), nil
 }
+
 // SendReaction is used to send a reaction to a message over a channel.
 // The reaction must be a single emoji with no other characters, and will
 // be rejected otherwise.
@@ -480,6 +507,7 @@ func (dmc *DMClient) SendReaction(this js.Value, args []js.Value) (any, error) {
 	}
 	return utils.CopyBytesToJS(sendReport), nil
 }
+
 // SendSilent is used to send to a channel a message with no notifications.
 // Its primary purpose is to communicate new nicknames without calling [Send].
 //
@@ -509,6 +537,7 @@ func (dmc *DMClient) SendSilent(this js.Value, args []js.Value) (any, error) {
 	}
 	return utils.CopyBytesToJS(sendReport), nil
 }
+
 // SendInvite is used to send to a DM partner an invitation to another
 // channel.
 //
@@ -548,6 +577,7 @@ func (dmc *DMClient) SendInvite(this js.Value, args []js.Value) (any, error) {
 	}
 	return utils.CopyBytesToJS(sendReport), nil
 }
+
 // DeleteMessage sends a message to the partner to delete a message this user
 // sent. Also deletes it from the local database.
 //
@@ -579,6 +609,7 @@ func (dmc *DMClient) DeleteMessage(this js.Value, args []js.Value) (any, error) 
 	}
 	return utils.CopyBytesToJS(sendReport), nil
 }
+
 // Send is used to send a raw message. In general, it
 // should be wrapped in a function that defines the wire protocol.
 //
@@ -623,6 +654,7 @@ func (dmc *DMClient) Send(this js.Value, args []js.Value) (any, error) {
 	}
 	return utils.CopyBytesToJS(sendReport), nil
 }
+
 // GetDatabaseName returns the storage tag, so users listening to the database
 // can separately listen and read updates there.
 //
@@ -632,9 +664,10 @@ func (dmc *DMClient) GetDatabaseName(js.Value, []js.Value) any {
 	return base64.RawStdEncoding.EncodeToString(dmc.api.GetPublicKey()) +
 		"_speakeasy_dm"
 }
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // DM Share URL                                                          //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // DMShareURL is returned from [DMClient.GetShareURL]. It includes the
 // user's share URL.
 //
@@ -648,6 +681,7 @@ type DMShareURL struct {
 	URL      string `json:"url"`
 	Password string `json:"password"`
 }
+
 // DMUser is returned from [DecodeDMShareURL]. It includes the token
 // and public key of the user who created the URL.
 //
@@ -661,6 +695,7 @@ type DMUser struct {
 	Token     int32  `json:"token"`
 	PublicKey []byte `json:"publicKey"`
 }
+
 // GetShareURL generates a URL that can be used to share a URL to initiate d
 // direct messages with this user.
 //
@@ -678,6 +713,7 @@ func (dmc *DMClient) GetShareURL(this js.Value, args []js.Value) (any, error) {
 	}
 	return utils.CopyBytesToJS(urlReport), nil
 }
+
 // GetNotificationLevel gets the notification level for a given DM partner's
 // public key
 //
@@ -695,6 +731,7 @@ func (dmc *DMClient) GetNotificationLevel(this js.Value, args []js.Value) (any, 
 	}
 	return level, nil
 }
+
 // SetMobileNotificationsLevel sets the notification level for the given DM
 // conversation partner.
 //
@@ -712,8 +749,9 @@ func (dmc *DMClient) SetMobileNotificationsLevel(this js.Value,
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
+
 // DecodeDMShareURL decodes the user's URL into a [DMUser].
 //
 // Parameters:
@@ -733,6 +771,7 @@ func DecodeDMShareURL(_ js.Value, args []js.Value) any {
 		return utils.CopyBytesToJS(report), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // GetDmNotificationReportsForMe checks the notification data against the filter
 // list to determine which notifications belong to the user. A list of
 // notification reports is returned detailing all notifications for the user.
@@ -781,18 +820,21 @@ func GetDmNotificationReportsForMe(_ js.Value, args []js.Value) any {
 		return utils.CopyBytesToJS(forMe), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // Event Model Logic                                                          //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // dmReceiverBuilder adheres to the [bindings.DMReceiverBuilder] interface.
 type dmReceiverBuilder struct {
 	build func(args ...any) js.Value
 }
+
 // newDMReceiverBuilder maps the methods on the Javascript object to a new
 // dmReceiverBuilder.
 func newDMReceiverBuilder(arg js.Value) *dmReceiverBuilder {
 	return &dmReceiverBuilder{build: arg.Invoke}
 }
+
 // Build initializes and returns the event model. It wraps a Javascript object
 // that has all the methods in [bindings.EventModel] to make it adhere to the Go
 // interface [bindings.EventModel].
@@ -809,6 +851,7 @@ func (emb *dmReceiverBuilder) Build(path string) bindings.DMReceiver {
 		getConversations: utils.WrapCB(emJs, "GetConversations"),
 	}
 }
+
 // dmReceiver wraps Javascript callbacks to adhere to the [dm.EventModel]
 // interface.
 type dmReceiver struct {
@@ -821,6 +864,7 @@ type dmReceiver struct {
 	getConversation  func(args ...any) js.Value
 	getConversations func(args ...any) js.Value
 }
+
 // Receive is called when a raw direct message is received with unknown type.
 // It may be called multiple times on the same message. It is incumbent on the
 // user of the API to filter such called by message ID.
@@ -863,6 +907,7 @@ func (em *dmReceiver) Receive(messageID []byte, nickname string, text,
 		dmToken, codeset, timestamp, roundId, mType, status)
 	return int64(uuid.Int())
 }
+
 // ReceiveText is called whenever a direct message is received that is a text
 // type. It may be called multiple times on the same message. It is incumbent on
 // the user of the API to filter such called by message ID.
@@ -906,6 +951,7 @@ func (em *dmReceiver) ReceiveText(messageID []byte, nickname, text string,
 		dmToken, codeset, timestamp, roundId, status)
 	return int64(uuid.Int())
 }
+
 // ReceiveReply is called whenever a direct message is received that is a reply.
 // It may be called multiple times on the same message. It is incumbent on the
 // user of the API to filter such called by message ID.
@@ -952,6 +998,7 @@ func (em *dmReceiver) ReceiveReply(messageID, reactionTo []byte, nickname,
 		dmToken, codeset, timestamp, roundId, status)
 	return int64(uuid.Int())
 }
+
 // ReceiveReaction is called whenever a reaction to a direct message is
 // received. It may be called multiple times on the same reaction. It is
 // incumbent on the user of the API to filter such called by message ID.
@@ -998,6 +1045,7 @@ func (em *dmReceiver) ReceiveReaction(messageID, reactionTo []byte,
 		dmToken, codeset, timestamp, roundId, status)
 	return int64(uuid.Int())
 }
+
 // UpdateSentStatus is called whenever the sent status of a message has changed.
 //
 // Parameters:
@@ -1019,6 +1067,7 @@ func (em *dmReceiver) UpdateSentStatus(
 	em.updateSentStatus(
 		uuid, utils.CopyBytesToJS(messageID), timestamp, roundID, status)
 }
+
 // DeleteMessage deletes the message with the given [message.ID] belonging to
 // the sender. If the message exists and belongs to the sender, then it is
 // deleted and [DeleteMessage] returns true. If it does not exist, it returns
@@ -1033,6 +1082,7 @@ func (em *dmReceiver) DeleteMessage(messageID, senderPubKey []byte) bool {
 	return em.deleteMessage(
 		utils.CopyBytesToJS(messageID), utils.CopyBytesToJS(senderPubKey)).Bool()
 }
+
 // GetConversation returns the conversation held by the model (receiver).
 //
 // Parameters:
@@ -1051,6 +1101,7 @@ func (em *dmReceiver) GetConversation(senderPubKey []byte) []byte {
 	conversationsBytes, _ := json.Marshal(conversation)
 	return conversationsBytes
 }
+
 // GetConversations returns all conversations held by the model (receiver).
 //
 // Returns:
@@ -1065,6 +1116,7 @@ func (em *dmReceiver) GetConversations() []byte {
 	conversationsBytes, _ := json.Marshal(conversations)
 	return conversationsBytes
 }
+
 // truncate truncates the string to length n. If the string is trimmed, then
 // ellipses (...) are appended.
 func truncate(s string, n int) string {

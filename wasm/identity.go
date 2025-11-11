@@ -10,10 +10,11 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/xxdk"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"syscall/js"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,7 +42,7 @@ func StoreReceptionIdentity(_ js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // LoadReceptionIdentity loads the given identity in [Cmix] storage with the

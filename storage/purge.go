@@ -89,6 +89,6 @@ func Purge(_ js.Value, args []js.Value) any {
 		n := ls.Clear()
 		jww.DEBUG.Printf("[PURGE] Cleared %d WASM keys in local storage", n)
 
-		return nil, nil
-	}).Invoke(js.Value{}, args)
+		return js.Undefined(), nil
+	}).Invoke(jsArgsToAny(args)...)
 }

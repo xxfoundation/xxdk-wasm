@@ -34,7 +34,7 @@ func (lw *logWriter) Log(s string) { lw.log(s) }
 //     be of the form func(string).
 func RegisterLogWriter(_ js.Value, args []js.Value) any {
 	bindings.RegisterLogWriter(&logWriter{args[0].Invoke})
-	return nil
+	return js.Undefined()
 }
 
 // EnableGrpcLogs sets GRPC trace logging.
@@ -44,5 +44,5 @@ func RegisterLogWriter(_ js.Value, args []js.Value) any {
 //     be of the form func(string).
 func EnableGrpcLogs(_ js.Value, args []js.Value) any {
 	bindings.EnableGrpcLogs(&logWriter{args[0].Invoke})
-	return nil
+	return js.Undefined()
 }

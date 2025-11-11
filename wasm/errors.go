@@ -10,9 +10,10 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"syscall/js"
 )
 
 // CreateUserFriendlyErrorMessage will convert the passed in error string to an
@@ -56,6 +57,6 @@ func UpdateCommonErrors(_ js.Value, args []js.Value) any {
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }

@@ -105,7 +105,7 @@ func NewCmix(_ js.Value, args []js.Value) any {
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
 
@@ -144,7 +144,7 @@ func NewSynchronizedCmix(_ js.Value, args []js.Value) any {
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
 
@@ -287,5 +287,5 @@ func (c *Cmix) EKVSet(this js.Value, args []js.Value) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }

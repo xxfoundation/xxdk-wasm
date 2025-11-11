@@ -1,24 +1,31 @@
-////////////////////////////////////////////////////////////////////////////////
+//go:build js && wasm
+
+// //////////////////////////////////////////////////////////////////////////////
 // Copyright © 2022 xx foundation                                             //
-//                                                                            //
+//
+//	//
+//
 // Use of this source code is governed by a license that can be found in the  //
 // LICENSE file.                                                              //
-////////////////////////////////////////////////////////////////////////////////
-//go:build js && wasm
+// //////////////////////////////////////////////////////////////////////////////
 package wasm
+
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"syscall/js"
 )
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // Structs and Interfaces                                                     //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // UserDiscovery wraps the [bindings.UserDiscovery] object so its methods can be
 // wrapped to be Javascript compatible.
 type UserDiscovery struct {
 	api *bindings.UserDiscovery
 }
+
 // newE2eJS creates a new Javascript compatible object (map[string]any) that
 // matches the [E2e] structure.
 func newUserDiscoveryJS(api *bindings.UserDiscovery) map[string]any {
@@ -34,6 +41,7 @@ func newUserDiscoveryJS(api *bindings.UserDiscovery) map[string]any {
 	}
 	return udMap
 }
+
 // GetID returns the ID for this [UserDiscovery] in the [UserDiscovery] tracker.
 //
 // Returns:
@@ -41,11 +49,13 @@ func newUserDiscoveryJS(api *bindings.UserDiscovery) map[string]any {
 func (ud *UserDiscovery) GetID(js.Value, []js.Value) any {
 	return ud.api.GetID()
 }
+
 // udNetworkStatus wraps Javascript callbacks to adhere to the
 // [bindings.UdNetworkStatus] interface.
 type udNetworkStatus struct {
 	udNetworkStatus func(args ...any) js.Value
 }
+
 // UdNetworkStatus returns the status of UD.
 //
 // Returns:
@@ -53,9 +63,10 @@ type udNetworkStatus struct {
 func (uns *udNetworkStatus) UdNetworkStatus() int {
 	return uns.udNetworkStatus().Int()
 }
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // Manager functions                                                          //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // NewOrLoadUd loads an existing Manager from storage or creates a new one if
 // there is no extant storage information. Parameters need be provided to
 // specify how to connect to the User Discovery service. These parameters may be
@@ -105,6 +116,7 @@ func NewOrLoadUd(_ js.Value, args []js.Value) any {
 		return newUserDiscoveryJS(api), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // NewUdManagerFromBackup builds a new user discover manager from a backup. It
 // will construct a manager that is already registered and restore already
 // registered facts into store.
@@ -148,6 +160,7 @@ func NewUdManagerFromBackup(_ js.Value, args []js.Value) any {
 		return newUserDiscoveryJS(api), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // GetFacts returns a JSON marshalled list of [fact.Fact] objects that exist
 // within the Store's registeredFacts map.
 //
@@ -156,6 +169,7 @@ func NewUdManagerFromBackup(_ js.Value, args []js.Value) any {
 func (ud *UserDiscovery) GetFacts(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(ud.api.GetFacts())
 }
+
 // GetContact returns the marshalled bytes of the [contact.Contact] for UD as
 // retrieved from the NDF.
 //
@@ -171,6 +185,7 @@ func (ud *UserDiscovery) GetContact(_ js.Value, args []js.Value) any {
 		return utils.CopyBytesToJS(c), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // ConfirmFact confirms a fact first registered via
 // [UserDiscovery.SendRegisterFact]. The confirmation ID comes from
 // [UserDiscovery.SendRegisterFact] while the code will come over the associated
@@ -188,9 +203,10 @@ func (ud *UserDiscovery) ConfirmFact(_ js.Value, args []js.Value) any {
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // SendRegisterFact adds a fact for the user to user discovery. Will only
 // succeed if the user is already registered and the system does not have the
 // fact currently registered for any user.
@@ -215,6 +231,7 @@ func (ud *UserDiscovery) SendRegisterFact(_ js.Value, args []js.Value) any {
 		return confirmationID, nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // PermanentDeleteAccount removes the username associated with this user from
 // the UD service. This will only take a username type fact, and the fact must
 // be associated with this user.
@@ -230,9 +247,10 @@ func (ud *UserDiscovery) PermanentDeleteAccount(_ js.Value, args []js.Value) any
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // RemoveFact removes a previously confirmed fact. This will fail if the fact
 // passed in is not UD service does not associate this fact with this user.
 //
@@ -247,17 +265,19 @@ func (ud *UserDiscovery) RemoveFact(_ js.Value, args []js.Value) any {
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // User Discovery Lookup                                                      //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // udLookupCallback wraps Javascript callbacks to adhere to the
 // [bindings.UdLookupCallback] interface.
 type udLookupCallback struct {
 	callback func(args ...any) js.Value
 }
+
 // Callback is called by [LookupUD] to return the contact that matches the
 // passed in ID.
 //
@@ -274,6 +294,7 @@ func (ulc *udLookupCallback) Callback(contactBytes []byte, err error) {
 	}
 	ulc.callback(utils.CopyBytesToJS(contactBytes), errVal)
 }
+
 // LookupUD returns the public key of the passed ID as known by the user
 // discovery system or returns by the timeout.
 //
@@ -307,14 +328,16 @@ func LookupUD(_ js.Value, args []js.Value) (any, error) {
 
 	return utils.CopyBytesToJS(sendReport), nil
 }
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // User Discovery Search                                                      //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // udSearchCallback wraps Javascript callbacks to adhere to the
 // [bindings.UdSearchCallback] interface.
 type udSearchCallback struct {
 	callback func(args ...any) js.Value
 }
+
 // Callback is called by [SearchUD] to return a list of [contact.Contact]
 // objects that match the list of facts passed into [SearchUD].
 //
@@ -339,6 +362,7 @@ func (usc *udSearchCallback) Callback(contactListJSON []byte, err error) {
 	}
 	usc.callback(utils.CopyBytesToJS(contactListJSON), errVal)
 }
+
 // SearchUD searches user discovery for the passed Facts. The searchCallback
 // will return a list of contacts, each having the facts it hit against. This is
 // NOT intended to be used to search for multiple users at once; that can have a

@@ -89,7 +89,7 @@ func (n *Notifications) AddToken(_ js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // RemoveToken implements [bindings.Notifications.RemoveToken].
@@ -100,7 +100,7 @@ func (n *Notifications) RemoveToken(_ js.Value, args []js.Value) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // SetMaxState implements [bindings.Notifications.SetMaxState]
@@ -117,7 +117,7 @@ func (n *Notifications) SetMaxState(_ js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // GetMaxState implements [bindings.Notifications.GetMaxState]

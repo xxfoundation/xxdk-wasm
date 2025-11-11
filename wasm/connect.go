@@ -10,9 +10,10 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"syscall/js"
 )
 
 // Connection wraps the [bindings.Connection] object so its methods can be
@@ -106,7 +107,7 @@ func (c *Connection) Close(js.Value, []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // GetPartner returns the [partner.Manager] for this [Connection].
@@ -152,5 +153,5 @@ func (c *Connection) RegisterListener(_ js.Value, args []js.Value) (any, error) 
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }

@@ -35,7 +35,7 @@ func (e *E2e) DeleteContact(_ js.Value, args []js.Value) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // GetAllPartnerIDs returns a list of all partner IDs that the user has an E2E
@@ -148,7 +148,7 @@ func (e *E2e) RemoveService(_ js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // SendE2E send a message containing the payload to the recipient of the passed
@@ -237,7 +237,7 @@ func (e *E2e) AddService(_ js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // RegisterListener registers a new listener.
@@ -261,5 +261,5 @@ func (e *E2e) RegisterListener(_ js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }

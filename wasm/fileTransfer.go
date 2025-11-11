@@ -10,9 +10,10 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"syscall/js"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,7 +243,7 @@ func (f *FileTransfer) closeSendImpl(args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -280,7 +281,7 @@ func (f *FileTransfer) registerSentProgressCallbackImpl(args []js.Value) (any, e
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // RegisterReceivedProgressCallback allows for the registration of a callback to
@@ -314,7 +315,7 @@ func (f *FileTransfer) registerReceivedProgressCallbackImpl(args []js.Value) (an
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////

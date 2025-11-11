@@ -279,7 +279,7 @@ func (cft *ChannelsFileTransfer) registerSentProgressCallbackImpl(args []js.Valu
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // RetryUpload retries uploading a failed file upload. Returns an error if the
@@ -321,7 +321,7 @@ func (cft *ChannelsFileTransfer) retryUploadImpl(args []js.Value) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // CloseSend deletes a file from the internal storage once a transfer has
@@ -351,7 +351,7 @@ func (cft *ChannelsFileTransfer) closeSendImpl(args []js.Value) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -457,7 +457,7 @@ func (cft *ChannelsFileTransfer) registerReceivedProgressCallbackImpl(args []js.
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////

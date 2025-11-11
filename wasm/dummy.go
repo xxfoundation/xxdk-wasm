@@ -10,9 +10,10 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"syscall/js"
 )
 
 // DummyTraffic wraps the [bindings.DummyTraffic] object so its methods can be
@@ -84,7 +85,7 @@ func (dt *DummyTraffic) Pause(this js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // Start will start up the [DummyTraffic]'s sending thread, meaning messages
@@ -106,7 +107,7 @@ func (dt *DummyTraffic) Start(this js.Value, args []js.Value) (any, error) {
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // GetStatus returns the current state of the [DummyTraffic] manager's sending

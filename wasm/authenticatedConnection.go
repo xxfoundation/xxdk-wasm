@@ -10,9 +10,10 @@
 package wasm
 
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"syscall/js"
 )
 
 // AuthenticatedConnection wraps the [bindings.AuthenticatedConnection] object
@@ -83,7 +84,11 @@ func (ac *AuthenticatedConnection) SendE2E(this js.Value, args []js.Value) (any,
 // Returns:
 //   - Throws an error if closing fails.
 func (ac *AuthenticatedConnection) Close(js.Value, []js.Value) any {
-	return ac.api.Close()
+	err := ac.api.Close()
+	if err != nil {
+		return js.Global().Get("Error").New(err.Error())
+	}
+	return js.Undefined()
 }
 
 // GetPartner returns the [partner.Manager] for this [AuthenticatedConnection].
@@ -112,7 +117,7 @@ func (ac *AuthenticatedConnection) RegisterListener(
 		return nil, err
 	}
 
-	return nil, nil
+	return js.Undefined(), nil
 }
 
 // ConnectWithAuthentication is called by the client (i.e., the one establishing

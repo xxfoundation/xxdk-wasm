@@ -223,5 +223,5 @@ func (c *DbCipher) UnmarshalJSON(this js.Value, args []js.Value) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }

@@ -1,24 +1,31 @@
-////////////////////////////////////////////////////////////////////////////////
+//go:build js && wasm
+
+// //////////////////////////////////////////////////////////////////////////////
 // Copyright © 2022 xx foundation                                             //
-//                                                                            //
+//
+//	//
+//
 // Use of this source code is governed by a license that can be found in the  //
 // LICENSE file.                                                              //
-////////////////////////////////////////////////////////////////////////////////
-//go:build js && wasm
+// //////////////////////////////////////////////////////////////////////////////
 package wasm
+
 import (
 	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/utils"
 )
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // RemoteKV Methods                                                           //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // RemoteKV wraps the [bindings.RemoteKV] object so its methods can be wrapped
 // to be Javascript compatible.
 type RemoteKV struct {
 	api *bindings.RemoteKV
 }
+
 // newRemoteKvJS creates a new Javascript compatible object (map[string]any)
 // that matches the [RemoteKV] structure.
 func newRemoteKvJS(api *bindings.RemoteKV) map[string]any {
@@ -49,6 +56,7 @@ func newRemoteKvJS(api *bindings.RemoteKV) map[string]any {
 	}
 	return rkvMap
 }
+
 // Get returns the object stored at the specified version.
 // returns a json of [versioned.Object].
 //
@@ -70,6 +78,7 @@ func (r *RemoteKV) Get(this js.Value, args []js.Value) (any, error) {
 	}
 	return utils.CopyBytesToJS(value), nil
 }
+
 // Delete removes a given key from the data store.
 //
 // Parameters:
@@ -86,8 +95,9 @@ func (r *RemoteKV) Delete(this js.Value, args []js.Value) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
+
 // Set upserts new data into the storage
 // When calling this, you are responsible for prefixing the
 // key with the correct type optionally unique id! Call
@@ -110,8 +120,9 @@ func (r *RemoteKV) Set(this js.Value, args []js.Value) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
+
 // GetPrefix returns the full prefix of the KV.
 //
 // Returns a promise:
@@ -120,6 +131,7 @@ func (r *RemoteKV) GetPrefix(this js.Value, args []js.Value) (any, error) {
 	prefix := r.api.GetPrefix()
 	return prefix, nil
 }
+
 // HasPrefix returns whether this prefix exists in the KV
 //
 // Parameters:
@@ -130,6 +142,7 @@ func (r *RemoteKV) HasPrefix(this js.Value, args []js.Value) (any, error) {
 	prefix := args[0].String()
 	return r.api.HasPrefix(prefix), nil
 }
+
 // Prefix returns a new KV with the new prefix appending
 //
 // Parameters:
@@ -146,6 +159,7 @@ func (r *RemoteKV) Prefix(this js.Value, args []js.Value) (any, error) {
 	}
 	return newRemoteKvJS(newAPI), nil
 }
+
 // Root returns the KV with no prefixes.
 //
 // Returns a promise:
@@ -158,6 +172,7 @@ func (r *RemoteKV) Root(this js.Value, args []js.Value) (any, error) {
 	}
 	return newRemoteKvJS(newAPI), nil
 }
+
 // IsMemStore returns true if the underlying KV is memory based.
 //
 // Returns a promise:
@@ -166,6 +181,7 @@ func (r *RemoteKV) Root(this js.Value, args []js.Value) (any, error) {
 func (r *RemoteKV) IsMemStore(this js.Value, args []js.Value) (any, error) {
 	return r.api.IsMemStore(), nil
 }
+
 // GetFullKey returns the key with all prefixes appended
 func (r *RemoteKV) GetFullKey(this js.Value, args []js.Value) (any, error) {
 	key := args[0].String()
@@ -173,6 +189,7 @@ func (r *RemoteKV) GetFullKey(this js.Value, args []js.Value) (any, error) {
 	fullKey := r.api.GetFullKey(key, version)
 	return fullKey, nil
 }
+
 // StoreMapElement stores a versioned map element into the KV. This relies
 // on the underlying remote [KV.StoreMapElement] function to lock and control
 // updates, but it uses [versioned.Object] values.
@@ -197,8 +214,9 @@ func (r *RemoteKV) StoreMapElement(this js.Value, args []js.Value) (any, error) 
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
+
 // StoreMap saves a versioned map element into the KV. This relies
 // on the underlying remote [KV.StoreMap] function to lock and control
 // updates, but it uses [versioned.Object] values.
@@ -221,8 +239,9 @@ func (r *RemoteKV) StoreMap(this js.Value, args []js.Value) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
+
 // DeleteMapElement removes a versioned map element from the KV.
 //
 // Parameters:
@@ -245,6 +264,7 @@ func (r *RemoteKV) DeleteMapElement(this js.Value, args []js.Value) (any, error)
 	}
 	return utils.CopyBytesToJS(deleted), nil
 }
+
 // GetMap loads a versioned map from the KV. This relies
 // on the underlying remote [KV.GetMap] function to lock and control
 // updates, but it uses [versioned.Object] values.
@@ -267,6 +287,7 @@ func (r *RemoteKV) GetMap(this js.Value, args []js.Value) (any, error) {
 	}
 	return utils.CopyBytesToJS(mapJSON), nil
 }
+
 // GetMapElement loads a versioned map element from the KV. This relies
 // on the underlying remote [KV.GetMapElement] function to lock and control
 // updates, but it uses [versioned.Object] values.
@@ -290,6 +311,7 @@ func (r *RemoteKV) GetMapElement(this js.Value, args []js.Value) (any, error) {
 	}
 	return utils.CopyBytesToJS(element), nil
 }
+
 // ListenOnRemoteKey sets up a callback listener for the object specified by the
 // key and version. It returns the ID of the callback or -1.
 // The version and "localEvents" flags are only respected on first call.
@@ -320,6 +342,7 @@ func (r *RemoteKV) ListenOnRemoteKey(_ js.Value, args []js.Value) any {
 		return id, nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // ListenOnRemoteMap allows the caller to receive updates when the map or map
 // elements are updated. It returns the ID of the callback or -1 and an error.
 // The version and "localEvents" flags are only respected on first call.
@@ -350,12 +373,14 @@ func (r *RemoteKV) ListenOnRemoteMap(_ js.Value, args []js.Value) any {
 		return id, nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // GetAllRemoteKeyListeners returns a JSON list of { key: [id, id, id, ...] },
 // where key is the key for the listener and the list is an list of integer ids
 // of each listener.
 func (r *RemoteKV) GetAllRemoteKeyListeners(_ js.Value, args []js.Value) any {
-	return r.api.GetAllRemoteKeyListeners()
+	return utils.CopyBytesToJS(r.api.GetAllRemoteKeyListeners())
 }
+
 // GeRemoteKeyListeners returns a JSON list of [id, id, id, ...],
 // where the list is an list of integer ids of each listener.
 //
@@ -363,8 +388,9 @@ func (r *RemoteKV) GetAllRemoteKeyListeners(_ js.Value, args []js.Value) any {
 //   - args[0] - the key to look at
 func (r *RemoteKV) GetRemoteKeyListeners(_ js.Value, args []js.Value) any {
 	key := args[0].String()
-	return r.api.GetRemoteKeyListeners(key)
+	return utils.CopyBytesToJS(r.api.GetRemoteKeyListeners(key))
 }
+
 // DeleteRemoteKeyListener deletes a specific listener for a key.
 //
 // Parameters:
@@ -377,14 +403,16 @@ func (r *RemoteKV) DeleteRemoteKeyListener(this js.Value, args []js.Value) (any,
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
+
 // GetAllRemoteMapListeners returns a JSON list of { key: [id, id, id, ...] },
 // where key is the key for the listener and the list is an list of integer ids
 // of each listener.
 func (r *RemoteKV) GetAllRemoteMapListeners(_ js.Value, args []js.Value) any {
-	return r.api.GetAllRemoteMapListeners()
+	return utils.CopyBytesToJS(r.api.GetAllRemoteMapListeners())
 }
+
 // GeRemoteMapListeners returns a JSON list of [id, id, id, ...],
 // where the list is an list of integer ids of each listener.
 //
@@ -392,8 +420,9 @@ func (r *RemoteKV) GetAllRemoteMapListeners(_ js.Value, args []js.Value) any {
 //   - args[0] - the key to look at
 func (r *RemoteKV) GetRemoteMapListeners(_ js.Value, args []js.Value) any {
 	key := args[0].String()
-	return r.api.GetRemoteMapListeners(key)
+	return utils.CopyBytesToJS(r.api.GetRemoteMapListeners(key))
 }
+
 // DeleteRemoteMapListener deletes a specific listener for a key.
 //
 // Parameters:
@@ -406,11 +435,12 @@ func (r *RemoteKV) DeleteRemoteMapListener(this js.Value, args []js.Value) (any,
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return js.Undefined(), nil
 }
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // RemoteStore                                                                //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // RemoteStore wraps Javascript callbacks to adhere to the
 // [bindings.RemoteStore] interface.
 type RemoteStore struct {
@@ -420,6 +450,7 @@ type RemoteStore struct {
 	getLastWrite    func(args ...any) js.Value
 	readDir         func(args ...any) js.Value
 }
+
 // newRemoteStoreCallbacks maps the functions of the Javascript object matching
 // [bindings.RemoteStore] to a RemoteStoreCallbacks.
 func newRemoteStore(arg js.Value) *RemoteStore {
@@ -431,6 +462,7 @@ func newRemoteStore(arg js.Value) *RemoteStore {
 		readDir:         utils.WrapCB(arg, "ReadDir"),
 	}
 }
+
 // Read impelements [bindings.RemoteStore.Read]
 //
 // Parameters:
@@ -446,6 +478,7 @@ func (rsCB *RemoteStore) Read(path string) ([]byte, error) {
 	}
 	return utils.CopyBytesToGo(v[0]), nil
 }
+
 // Write implements [bindings.RemoteStore.Write]
 //
 // Parameters:
@@ -461,6 +494,7 @@ func (rsCB *RemoteStore) Write(path string, data []byte) error {
 	}
 	return nil
 }
+
 // GetLastModified implements [bindings.RemoteStore.GetLastModified]
 //
 // Parameters:
@@ -476,6 +510,7 @@ func (rsCB *RemoteStore) GetLastModified(path string) (string, error) {
 	}
 	return v[0].String(), nil
 }
+
 // GetLastWrite implements [bindings.RemoteStore.GetLastWrite()
 //
 // Returns:
@@ -488,6 +523,7 @@ func (rsCB *RemoteStore) GetLastWrite() (string, error) {
 	}
 	return v[0].String(), nil
 }
+
 // ReadDir implements [bindings.RemoteStore.ReadDir]
 //
 // Parameters:
@@ -503,14 +539,16 @@ func (rsCB *RemoteStore) ReadDir(path string) ([]byte, error) {
 	}
 	return utils.CopyBytesToGo(v[0]), nil
 }
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // Callbacks                                                                  //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // KeyChangedByRemoteCallback wraps the passed javascript function and
 // implements [bindings.KeyChangedByRemoteCallback]
 type KeyChangedByRemoteCallback struct {
 	callback func(args ...any) js.Value
 }
+
 func (k *KeyChangedByRemoteCallback) Callback(key string, old, new []byte,
 	opType int8) {
 	k.callback(key, utils.CopyBytesToJS(old), utils.CopyBytesToJS(new),
@@ -522,11 +560,13 @@ func newKeyChangedByRemoteCallback(
 		callback: utils.WrapCB(jsFunc, "Callback"),
 	}
 }
+
 // MapChangedByRemoteCallback wraps the passed javascript function and
 // implements [bindings.KeyChangedByRemoteCallback]
 type MapChangedByRemoteCallback struct {
 	callback func(args ...any) js.Value
 }
+
 func (m *MapChangedByRemoteCallback) Callback(mapName string,
 	editsJSON []byte) {
 	m.callback(mapName, utils.CopyBytesToJS(editsJSON))

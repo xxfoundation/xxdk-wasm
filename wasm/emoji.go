@@ -126,5 +126,5 @@ func ValidateReaction(_ js.Value, args []js.Value) any {
 		return js.Global().Get("Error").New(err.Error())
 	}
 
-	return nil
+	return js.Null()
 }

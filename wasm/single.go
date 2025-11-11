@@ -102,7 +102,7 @@ func newStopperJS(api bindings.Stopper) map[string]any {
 // Stop stops the registered listener.
 func (s *Stopper) Stop(js.Value, []js.Value) any {
 	s.api.Stop()
-	return nil
+	return js.Undefined()
 }
 
 ////////////////////////////////////////////////////////////////////////////////

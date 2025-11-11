@@ -1,24 +1,31 @@
-////////////////////////////////////////////////////////////////////////////////
+//go:build js && wasm
+
+// //////////////////////////////////////////////////////////////////////////////
 // Copyright © 2022 xx foundation                                             //
-//                                                                            //
+//
+//	//
+//
 // Use of this source code is governed by a license that can be found in the  //
 // LICENSE file.                                                              //
-////////////////////////////////////////////////////////////////////////////////
-//go:build js && wasm
+// //////////////////////////////////////////////////////////////////////////////
 package wasm
+
 import (
+	"syscall/js"
+
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/wasm-utils/utils"
-	"syscall/js"
 )
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // Group Chat                                                                 //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // GroupChat wraps the [bindings.GroupChat] object so its methods can be wrapped
 // to be Javascript compatible.
 type GroupChat struct {
 	api *bindings.GroupChat
 }
+
 // newGroupChatJS creates a new Javascript compatible object (map[string]any)
 // that matches the [GroupChat] structure.
 func newGroupChatJS(api *bindings.GroupChat) map[string]any {
@@ -35,6 +42,7 @@ func newGroupChatJS(api *bindings.GroupChat) map[string]any {
 	}
 	return gcMap
 }
+
 // NewGroupChat creates a bindings-layer group chat manager.
 //
 // Parameters:
@@ -59,6 +67,7 @@ func NewGroupChat(_ js.Value, args []js.Value) any {
 		return newGroupChatJS(api), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // MakeGroup creates a new group and sends a group request to all members in the
 // group.
 //
@@ -85,6 +94,7 @@ func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) (any, error) {
 	}
 	return utils.CopyBytesToJS(sendReport), nil
 }
+
 // ResendRequest resends a group request to all members in the group.
 //
 // Parameters:
@@ -103,6 +113,7 @@ func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) (any, error) {
 	}
 	return utils.CopyBytesToJS(sendReport), nil
 }
+
 // JoinGroup allows a user to join a group when a request is received.
 // If an error is returned, handle it properly first; you may then retry later
 // with the same trackedGroupId.
@@ -119,9 +130,10 @@ func (g *GroupChat) JoinGroup(_ js.Value, args []js.Value) any {
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // LeaveGroup deletes a group so a user no longer has access.
 //
 // Parameters:
@@ -136,9 +148,10 @@ func (g *GroupChat) LeaveGroup(_ js.Value, args []js.Value) any {
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return js.Undefined(), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // Send is the bindings-level function for sending to a group.
 //
 // Parameters:
@@ -164,6 +177,7 @@ func (g *GroupChat) Send(_ js.Value, args []js.Value) (any, error) {
 	}
 	return utils.CopyBytesToJS(sendReport), nil
 }
+
 // GetGroups returns a list of group IDs that the user is a member of.
 //
 // Returns:
@@ -178,6 +192,7 @@ func (g *GroupChat) GetGroups(_ js.Value, args []js.Value) any {
 		return utils.CopyBytesToJS(groups), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // GetGroup returns the group with the group ID. If no group exists, then the
 // error "failed to find group" is returned.
 //
@@ -197,6 +212,7 @@ func (g *GroupChat) GetGroup(_ js.Value, args []js.Value) any {
 		return newGroupJS(grp), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // NumGroups returns the number of groups the user is a part of.
 //
 // Returns:
@@ -204,14 +220,16 @@ func (g *GroupChat) GetGroup(_ js.Value, args []js.Value) any {
 func (g *GroupChat) NumGroups(js.Value, []js.Value) any {
 	return g.api.NumGroups()
 }
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // Group Structure                                                            //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // Group wraps the [bindings.Group] object so its methods can be wrapped to be
 // Javascript compatible.
 type Group struct {
 	api *bindings.Group
 }
+
 // newGroupJS creates a new Javascript compatible object (map[string]any) that
 // matches the [Group] structure.
 func newGroupJS(api *bindings.Group) map[string]any {
@@ -227,6 +245,7 @@ func newGroupJS(api *bindings.Group) map[string]any {
 	}
 	return gMap
 }
+
 // GetName returns the name set by the user for the group.
 //
 // Returns:
@@ -234,6 +253,7 @@ func newGroupJS(api *bindings.Group) map[string]any {
 func (g *Group) GetName(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(g.api.GetName())
 }
+
 // GetID return the 33-byte unique group ID. This represents the [id.ID] object.
 //
 // Returns:
@@ -241,6 +261,7 @@ func (g *Group) GetName(js.Value, []js.Value) any {
 func (g *Group) GetID(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(g.api.GetID())
 }
+
 // GetInitMessage returns initial message sent with the group request.
 //
 // Returns:
@@ -248,6 +269,7 @@ func (g *Group) GetID(js.Value, []js.Value) any {
 func (g *Group) GetInitMessage(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(g.api.GetInitMessage())
 }
+
 // GetCreatedNano returns the time the group was created in nanoseconds. This is
 // also the time the group requests were sent.
 //
@@ -256,6 +278,7 @@ func (g *Group) GetInitMessage(js.Value, []js.Value) any {
 func (g *Group) GetCreatedNano(js.Value, []js.Value) any {
 	return g.api.GetCreatedNano()
 }
+
 // GetCreatedMS returns the time the group was created in milliseconds. This is
 // also the time the group requests were sent.
 //
@@ -264,6 +287,7 @@ func (g *Group) GetCreatedNano(js.Value, []js.Value) any {
 func (g *Group) GetCreatedMS(js.Value, []js.Value) any {
 	return g.api.GetCreatedMS()
 }
+
 // GetMembership retrieves a list of group members. The list is in order;
 // the first contact is the leader/creator of the group.
 // All subsequent members are ordered by their ID.
@@ -280,6 +304,7 @@ func (g *Group) GetMembership(_ js.Value, args []js.Value) any {
 		return utils.CopyBytesToJS(membership), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
+
 // Serialize serializes the [Group].
 //
 // Returns:
@@ -287,6 +312,7 @@ func (g *Group) GetMembership(_ js.Value, args []js.Value) any {
 func (g *Group) Serialize(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(g.api.Serialize())
 }
+
 // DeserializeGroup converts the results of [Group.Serialize] into a
 // [bindings.Group] so that its methods can be called.
 //
@@ -305,14 +331,16 @@ func DeserializeGroup(_ js.Value, args []js.Value) any {
 		return newGroupJS(grp), nil
 	}).Invoke(jsArgsToAny(args)...)
 }
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
 // Callbacks                                                                  //
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 // groupRequest wraps Javascript callbacks to adhere to the
 // [bindings.GroupRequest] interface.
 type groupRequest struct {
 	callback func(args ...any) js.Value
 }
+
 // Callback is called when a group request is received.
 //
 // Parameters:
@@ -320,12 +348,14 @@ type groupRequest struct {
 func (gr *groupRequest) Callback(g *bindings.Group) {
 	gr.callback(newGroupJS(g))
 }
+
 // groupChatProcessor wraps Javascript callbacks to adhere to the
 // [bindings.GroupChatProcessor] interface.
 type groupChatProcessor struct {
 	process func(args ...any) js.Value
 	string  func(args ...any) js.Value
 }
+
 // Process decrypts and hands off the message to its internal down stream
 // message processing system.
 //
@@ -350,6 +380,7 @@ func (gcp *groupChatProcessor) Process(decryptedMessage, msg,
 		utils.CopyBytesToJS(msg), utils.CopyBytesToJS(receptionId), ephemeralId,
 		roundId, roundURL, errVal)
 }
+
 // String returns a name identifying this processor. Used for debugging.
 func (gcp *groupChatProcessor) String() string {
 	return gcp.string().String()
