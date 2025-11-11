@@ -11,7 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -51,11 +51,11 @@ func CreateUserFriendlyErrorMessage(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Throws an error if the JSON cannot be unmarshalled.
 func UpdateCommonErrors(_ js.Value, args []js.Value) any {
-	err := bindings.UpdateCommonErrors(args[0].String())
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return nil
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		err := bindings.UpdateCommonErrors(args[0].String())
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}).Invoke(js.Value{}, args)
 }

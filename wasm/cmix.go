@@ -15,7 +15,6 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
@@ -37,46 +36,43 @@ func newCmixJS(api *bindings.Cmix) map[string]any {
 		// cmix.go
 		"GetID":          js.FuncOf(c.GetID),
 		"GetReceptionID": js.FuncOf(c.GetReceptionID),
-		"GetRemoteKV":    js.FuncOf(c.GetRemoteKV),
-		"EKVGet":         js.FuncOf(c.EKVGet),
-		"EKVSet":         js.FuncOf(c.EKVSet),
+		"GetRemoteKV":    utils.SafeFunc(c.GetRemoteKV),
+		"EKVGet":         utils.SafeFunc(c.EKVGet),
+		"EKVSet":         utils.SafeFunc(c.EKVSet),
 
 		// identity.go
-		"MakeReceptionIdentity": js.FuncOf(
-			c.MakeReceptionIdentity),
-		"MakeLegacyReceptionIdentity": js.FuncOf(
-			c.MakeLegacyReceptionIdentity),
-		"GetReceptionRegistrationValidationSignature": js.FuncOf(
-			c.GetReceptionRegistrationValidationSignature),
+		"MakeReceptionIdentity":                       utils.SafeFunc(c.MakeReceptionIdentity),
+		"MakeLegacyReceptionIdentity":                 utils.SafeFunc(c.MakeLegacyReceptionIdentity),
+		"GetReceptionRegistrationValidationSignature": js.FuncOf(c.GetReceptionRegistrationValidationSignature),
 
 		// follow.go
-		"StartNetworkFollower":            js.FuncOf(c.StartNetworkFollower),
-		"StopNetworkFollower":             js.FuncOf(c.StopNetworkFollower),
+		"StartNetworkFollower":            utils.SafeFunc(c.StartNetworkFollower),
+		"StopNetworkFollower":             utils.SafeFunc(c.StopNetworkFollower),
 		"SetTrackNetworkPeriod":           js.FuncOf(c.SetTrackNetworkPeriod),
-		"WaitForNetwork":                  js.FuncOf(c.WaitForNetwork),
+		"WaitForNetwork":                  utils.SafeFunc(c.WaitForNetwork),
 		"ReadyToSend":                     js.FuncOf(c.ReadyToSend),
 		"NetworkFollowerStatus":           js.FuncOf(c.NetworkFollowerStatus),
-		"GetNodeRegistrationStatus":       js.FuncOf(c.GetNodeRegistrationStatus),
-		"IsReady":                         js.FuncOf(c.IsReady),
-		"PauseNodeRegistrations":          js.FuncOf(c.PauseNodeRegistrations),
-		"ChangeNumberOfNodeRegistrations": js.FuncOf(c.ChangeNumberOfNodeRegistrations),
+		"GetNodeRegistrationStatus":       utils.SafeFunc(c.GetNodeRegistrationStatus),
+		"IsReady":                         utils.SafeFunc(c.IsReady),
+		"PauseNodeRegistrations":          utils.SafeFunc(c.PauseNodeRegistrations),
+		"ChangeNumberOfNodeRegistrations": utils.SafeFunc(c.ChangeNumberOfNodeRegistrations),
 		"HasRunningProcessies":            js.FuncOf(c.HasRunningProcessies),
 		"IsHealthy":                       js.FuncOf(c.IsHealthy),
-		"GetRunningProcesses":             js.FuncOf(c.GetRunningProcesses),
+		"GetRunningProcesses":             utils.SafeFunc(c.GetRunningProcesses),
 		"AddHealthCallback":               js.FuncOf(c.AddHealthCallback),
 		"RemoveHealthCallback":            js.FuncOf(c.RemoveHealthCallback),
 		"RegisterClientErrorCallback":     js.FuncOf(c.RegisterClientErrorCallback),
-		"TrackServicesWithIdentity":       js.FuncOf(c.TrackServicesWithIdentity),
+		"TrackServicesWithIdentity":       utils.SafeFunc(c.TrackServicesWithIdentity),
 		"TrackServices":                   js.FuncOf(c.TrackServices),
 
 		// connect.go
-		"Connect": js.FuncOf(c.Connect),
+		"Connect": utils.SafeFunc(c.Connect),
 
 		// delivery.go
-		"WaitForRoundResult": js.FuncOf(c.WaitForRoundResult),
+		"WaitForRoundResult": utils.SafeFunc(c.WaitForRoundResult),
 
 		// authenticatedConnection.go
-		"ConnectWithAuthentication": js.FuncOf(c.ConnectWithAuthentication),
+		"ConnectWithAuthentication": utils.SafeFunc(c.ConnectWithAuthentication),
 	}
 
 	return cmix
@@ -99,21 +95,18 @@ func newCmixJS(api *bindings.Cmix) map[string]any {
 //   - Resolves on success.
 //   - Rejected with an error if creating a new cMix client fails.
 func NewCmix(_ js.Value, args []js.Value) any {
-	ndfJSON := args[0].String()
-	storageDir := args[1].String()
-	password := utils.CopyBytesToGo(args[2])
-	registrationCode := args[3].String()
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		ndfJSON := args[0].String()
+		storageDir := args[1].String()
+		password := utils.CopyBytesToGo(args[2])
+		registrationCode := args[3].String()
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		err := bindings.NewCmix(ndfJSON, storageDir, password, registrationCode)
 		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve()
+			return nil, err
 		}
-	}
-
-	return utils.CreatePromise(promiseFn)
+		return nil, nil
+	}).Invoke(js.Value{}, args)
 }
 
 // NewSynchronizedCmix clones a cMix from remote storage.
@@ -132,13 +125,13 @@ func NewCmix(_ js.Value, args []js.Value) any {
 //   - Resolves on success.
 //   - Rejected with an error if creating a new cMix client fails.
 func NewSynchronizedCmix(_ js.Value, args []js.Value) any {
-	ndfJSON := args[0].String()
-	storageDir := args[1].String()
-	remoteStoragePrefixPath := args[2].String()
-	password := utils.CopyBytesToGo(args[3])
-	rs := newRemoteStore(args[4])
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		ndfJSON := args[0].String()
+		storageDir := args[1].String()
+		remoteStoragePrefixPath := args[2].String()
+		password := utils.CopyBytesToGo(args[3])
+		rs := newRemoteStore(args[4])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		// Block loading of synchronized Cmix during initialisation
 		initializing.Store(true)
 
@@ -149,13 +142,10 @@ func NewSynchronizedCmix(_ js.Value, args []js.Value) any {
 		initializing.Store(false)
 
 		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve()
+			return nil, err
 		}
-	}
-
-	return utils.CreatePromise(promiseFn)
+		return nil, nil
+	}).Invoke(js.Value{}, args)
 }
 
 // LoadCmix will load an existing user storage from the storageDir using the
@@ -177,21 +167,17 @@ func NewSynchronizedCmix(_ js.Value, args []js.Value) any {
 //   - Resolves to a Javascript representation of the [Cmix] object.
 //   - Rejected with an error if loading [Cmix] fails.
 func LoadCmix(_ js.Value, args []js.Value) any {
-	storageDir := args[0].String()
-	password := utils.CopyBytesToGo(args[1])
-	cmixParamsJSON := utils.CopyBytesToGo(args[2])
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		storageDir := args[0].String()
+		password := utils.CopyBytesToGo(args[1])
+		cmixParamsJSON := utils.CopyBytesToGo(args[2])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		net, err := bindings.LoadCmix(storageDir, password,
-			cmixParamsJSON)
+		net, err := bindings.LoadCmix(storageDir, password, cmixParamsJSON)
 		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(newCmixJS(net))
+			return nil, err
 		}
-	}
-
-	return utils.CreatePromise(promiseFn)
+		return newCmixJS(net), nil
+	}).Invoke(js.Value{}, args)
 }
 
 // LoadSynchronizedCmix will [LoadCmix] using a RemoteStore to establish
@@ -209,28 +195,24 @@ func LoadCmix(_ js.Value, args []js.Value) any {
 //   - Resolves to a Javascript representation of the [Cmix] object.
 //   - Rejected with an error if loading [Cmix] fails.
 func LoadSynchronizedCmix(_ js.Value, args []js.Value) any {
-	storageDir := args[0].String()
-	remoteStoragePrefixPath := args[1].String()
-	password := utils.CopyBytesToGo(args[2])
-	rs := newRemoteStore(args[3])
-	cmixParamsJSON := utils.CopyBytesToGo(args[4])
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		storageDir := args[0].String()
+		remoteStoragePrefixPath := args[1].String()
+		password := utils.CopyBytesToGo(args[2])
+		rs := newRemoteStore(args[3])
+		cmixParamsJSON := utils.CopyBytesToGo(args[4])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		if initializing.Load() {
-			reject(exception.NewTrace(fmt.Errorf(
-				"cannot Load when New is running")))
+			return nil, fmt.Errorf("cannot Load when New is running")
 		}
 		net, err := bindings.LoadSynchronizedCmix(storageDir,
 			remoteStoragePrefixPath, password,
 			rs, cmixParamsJSON)
 		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(newCmixJS(net))
+			return nil, err
 		}
-	}
-
-	return utils.CreatePromise(promiseFn)
+		return newCmixJS(net), nil
+	}).Invoke(js.Value{}, args)
 }
 
 // UnloadCmix will unload an existing cMix instance
@@ -265,13 +247,9 @@ func (c *Cmix) GetReceptionID(js.Value, []js.Value) any {
 //
 // Returns a promise:
 //   - Resolves with the RemoteKV object.
-func (c *Cmix) GetRemoteKV(js.Value, []js.Value) any {
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		kv := c.api.GetRemoteKV()
-		resolve(newRemoteKvJS(kv))
-	}
-
-	return utils.CreatePromise(promiseFn)
+func (c *Cmix) GetRemoteKV(this js.Value, args []js.Value) (any, error) {
+	kv := c.api.GetRemoteKV()
+	return newRemoteKvJS(kv), nil
 }
 
 // EKVGet allows access to a value inside the secure encrypted key value store.
@@ -282,19 +260,14 @@ func (c *Cmix) GetRemoteKV(js.Value, []js.Value) any {
 // Returns a promise:
 //   - Resolves to the value (Uint8Array)
 //   - Rejected with an error if accessing the KV fails.
-func (c *Cmix) EKVGet(_ js.Value, args []js.Value) any {
+func (c *Cmix) EKVGet(this js.Value, args []js.Value) (any, error) {
 	key := args[0].String()
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		val, err := c.api.EKVGet(key)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(utils.CopyBytesToJS(val))
-		}
+	val, err := c.api.EKVGet(key)
+	if err != nil {
+		return nil, err
 	}
-
-	return utils.CreatePromise(promiseFn)
+	return utils.CopyBytesToJS(val), nil
 }
 
 // EKVSet sets a value inside the secure encrypted key value store.
@@ -306,18 +279,13 @@ func (c *Cmix) EKVGet(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - Resolves on a successful save (void).
 //   - Rejected with an error if saving fails.
-func (c *Cmix) EKVSet(_ js.Value, args []js.Value) any {
+func (c *Cmix) EKVSet(this js.Value, args []js.Value) (any, error) {
 	key := args[0].String()
 	val := utils.CopyBytesToGo(args[1])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		err := c.api.EKVSet(key, val)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(nil)
-		}
+	err := c.api.EKVSet(key, val)
+	if err != nil {
+		return nil, err
 	}
-
-	return utils.CreatePromise(promiseFn)
+	return nil, nil
 }

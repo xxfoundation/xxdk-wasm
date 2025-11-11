@@ -11,7 +11,6 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
@@ -29,17 +28,14 @@ import (
 //   - Resolves to the JSON of the NDF ([ndf.NetworkDefinition]) (Uint8Array).
 //   - Rejected with an error if downloading fails.
 func DownloadAndVerifySignedNdfWithUrl(_ js.Value, args []js.Value) any {
-	url := args[0].String()
-	cert := args[1].String()
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		url := args[0].String()
+		cert := args[1].String()
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
 		ndf, err := bindings.DownloadAndVerifySignedNdfWithUrl(url, cert)
 		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(utils.CopyBytesToJS(ndf))
+			return nil, err
 		}
-	}
-
-	return utils.CreatePromise(promiseFn)
+		return utils.CopyBytesToJS(ndf), nil
+	}).Invoke(js.Value{}, args)
 }

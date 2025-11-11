@@ -11,7 +11,6 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
@@ -31,7 +30,7 @@ type Backup struct {
 func newBackupJS(api *bindings.Backup) map[string]any {
 	b := Backup{api}
 	backupMap := map[string]any{
-		"StopBackup":      js.FuncOf(b.StopBackup),
+		"StopBackup":      utils.SafeFunc(b.StopBackup),
 		"IsBackupRunning": js.FuncOf(b.IsBackupRunning),
 		"AddJson":         js.FuncOf(b.AddJson),
 	}
@@ -69,23 +68,24 @@ func (ubf *updateBackupFunc) UpdateBackup(encryptedBackup []byte) {
 //   - args[4] - Backup file contents (Uint8Array).
 //
 // Returns:
-//   - JSON of [bindings.BackupReport] (Uint8Array).
-//   - Throws an error if creating [Cmix] from backup fails.
+//   - Promise that resolves to JSON of [bindings.BackupReport] (Uint8Array).
+//   - Promise rejects if creating [Cmix] from backup fails.
 func NewCmixFromBackup(_ js.Value, args []js.Value) any {
-	ndfJSON := args[0].String()
-	storageDir := args[1].String()
-	backupPassphrase := args[2].String()
-	sessionPassword := utils.CopyBytesToGo(args[3])
-	backupFileContents := utils.CopyBytesToGo(args[4])
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		ndfJSON := args[0].String()
+		storageDir := args[1].String()
+		backupPassphrase := args[2].String()
+		sessionPassword := utils.CopyBytesToGo(args[3])
+		backupFileContents := utils.CopyBytesToGo(args[4])
 
-	report, err := bindings.NewCmixFromBackup(ndfJSON, storageDir,
-		backupPassphrase, sessionPassword, backupFileContents)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
+		report, err := bindings.NewCmixFromBackup(ndfJSON, storageDir,
+			backupPassphrase, sessionPassword, backupFileContents)
+		if err != nil {
+			return nil, err
+		}
 
-	return utils.CopyBytesToJS(report)
+		return utils.CopyBytesToJS(report), nil
+	}).Invoke(js.Value{}, args)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,18 +104,19 @@ func NewCmixFromBackup(_ js.Value, args []js.Value) any {
 //     [bindings.UpdateBackupFunc] interface.
 //
 // Returns:
-//   - Javascript representation of the [Backup] object.
-//   - Throws an error if initializing the [Backup] fails.
+//   - Promise that resolves to Javascript representation of the [Backup] object.
+//   - Promise rejects if initializing the [Backup] fails.
 func InitializeBackup(_ js.Value, args []js.Value) any {
-	cb := &updateBackupFunc{utils.WrapCB(args[3], "UpdateBackup")}
-	api, err := bindings.InitializeBackup(
-		args[0].Int(), args[1].Int(), args[2].String(), cb)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		cb := &updateBackupFunc{utils.WrapCB(args[3], "UpdateBackup")}
+		api, err := bindings.InitializeBackup(
+			args[0].Int(), args[1].Int(), args[2].String(), cb)
+		if err != nil {
+			return nil, err
+		}
 
-	return newBackupJS(api)
+		return newBackupJS(api), nil
+	}).Invoke(js.Value{}, args)
 }
 
 // ResumeBackup resumes the backup processes with a new callback.
@@ -133,32 +134,33 @@ func InitializeBackup(_ js.Value, args []js.Value) any {
 //     that has been passed into [InitializeBackup].
 //
 // Returns:
-//   - Javascript representation of the [Backup] object.
-//   - Throws an error if initializing the [Backup] fails.
+//   - Promise that resolves to Javascript representation of the [Backup] object.
+//   - Promise rejects if initializing the [Backup] fails.
 func ResumeBackup(_ js.Value, args []js.Value) any {
-	cb := &updateBackupFunc{utils.WrapCB(args[2], "UpdateBackup")}
-	api, err := bindings.ResumeBackup(args[0].Int(), args[1].Int(), cb)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		cb := &updateBackupFunc{utils.WrapCB(args[2], "UpdateBackup")}
+		api, err := bindings.ResumeBackup(args[0].Int(), args[1].Int(), cb)
+		if err != nil {
+			return nil, err
+		}
 
-	return newBackupJS(api)
+		return newBackupJS(api), nil
+	}).Invoke(js.Value{}, args)
 }
 
 // StopBackup stops the backup processes and deletes the user's password from
 // storage. To enable backups again, call [InitializeBackup].
 //
 // Returns:
-//   - Throws an error if stopping the backup fails.
-func (b *Backup) StopBackup(js.Value, []js.Value) any {
+//   - Promise that resolves to nil on success.
+//   - Promise rejects if stopping the backup fails.
+func (b *Backup) StopBackup(this js.Value, args []js.Value) (any, error) {
 	err := b.api.StopBackup()
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // IsBackupRunning returns true if the backup has been initialized and is

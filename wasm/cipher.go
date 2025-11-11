@@ -17,7 +17,6 @@ import (
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/storage/utility"
 	"gitlab.com/elixxir/crypto/indexedDb"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
@@ -89,10 +88,10 @@ type DbCipher struct {
 func newDbCipherJS(c *DbCipher) map[string]any {
 	DbCipherMap := map[string]any{
 		"GetID":         js.FuncOf(c.GetID),
-		"Encrypt":       js.FuncOf(c.Encrypt),
-		"Decrypt":       js.FuncOf(c.Decrypt),
-		"MarshalJSON":   js.FuncOf(c.MarshalJSON),
-		"UnmarshalJSON": js.FuncOf(c.UnmarshalJSON),
+		"Encrypt":       utils.SafeFunc(c.Encrypt),
+		"Decrypt":       utils.SafeFunc(c.Decrypt),
+		"MarshalJSON":   utils.SafeFunc(c.MarshalJSON),
+		"UnmarshalJSON": utils.SafeFunc(c.UnmarshalJSON),
 	}
 
 	return DbCipherMap
@@ -112,38 +111,37 @@ func newDbCipherJS(c *DbCipher) map[string]any {
 //   - JavaScript representation of the [DbCipher] object.
 //   - Throws an error if creating the cipher fails.
 func NewDatabaseCipher(_ js.Value, args []js.Value) any {
-	cmixId := args[0].Int()
-	password := utils.CopyBytesToGo(args[1])
-	plaintTextBlockSize := args[2].Int()
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		cmixId := args[0].Int()
+		password := utils.CopyBytesToGo(args[1])
+		plaintTextBlockSize := args[2].Int()
 
-	// Get user from singleton
-	user, err := bindings.GetCMixInstance(cmixId)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
+		// Get user from singleton
+		user, err := bindings.GetCMixInstance(cmixId)
+		if err != nil {
+			return nil, err
+		}
 
-	// Generate RNG
-	stream := user.Api.GetRng().GetStream()
+		// Generate RNG
+		stream := user.Api.GetRng().GetStream()
 
-	// Load or generate a salt
-	salt, err := utility.NewOrLoadSalt(
-		user.Api.GetStorage().GetKV(), stream)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
+		// Load or generate a salt
+		salt, err := utility.NewOrLoadSalt(
+			user.Api.GetStorage().GetKV(), stream)
+		if err != nil {
+			return nil, err
+		}
 
-	// Construct a cipher
-	c, err := indexedDb.NewCipher(
-		password, salt, plaintTextBlockSize, stream)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
+		// Construct a cipher
+		c, err := indexedDb.NewCipher(
+			password, salt, plaintTextBlockSize, stream)
+		if err != nil {
+			return nil, err
+		}
 
-	// Add to singleton and return
-	return newDbCipherJS(dbCipherTrackerSingleton.create(c))
+		// Add to singleton and return
+		return newDbCipherJS(dbCipherTrackerSingleton.create(c)), nil
+	}).Invoke(js.Value{}, args)
 }
 
 // GetID returns the ID for this [DbCipher] in the
@@ -166,14 +164,13 @@ func (c *DbCipher) GetID(js.Value, []js.Value) any {
 // Returns:
 //   - The ciphertext of the plaintext passed in (String).
 //   - Throws an error if it fails to encrypt the plaintext.
-func (c *DbCipher) Encrypt(_ js.Value, args []js.Value) any {
+func (c *DbCipher) Encrypt(this js.Value, args []js.Value) (any, error) {
 	ciphertext, err := c.api.Encrypt(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return ciphertext
+	return ciphertext, nil
 }
 
 // Decrypt will decrypt the passed in encrypted value. The plaintext will be
@@ -187,14 +184,13 @@ func (c *DbCipher) Encrypt(_ js.Value, args []js.Value) any {
 // Returns:
 //   - The plaintext of the ciphertext passed in (Uint8Array).
 //   - Throws an error if it fails to encrypt the plaintext.
-func (c *DbCipher) Decrypt(_ js.Value, args []js.Value) any {
+func (c *DbCipher) Decrypt(this js.Value, args []js.Value) (any, error) {
 	plaintext, err := c.api.Decrypt(args[0].String())
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return utils.CopyBytesToJS(plaintext)
+	return utils.CopyBytesToJS(plaintext), nil
 }
 
 // MarshalJSON marshals the cipher into valid JSON.
@@ -202,14 +198,13 @@ func (c *DbCipher) Decrypt(_ js.Value, args []js.Value) any {
 // Returns:
 //   - JSON of the cipher (Uint8Array).
 //   - Throws an error if marshalling fails.
-func (c *DbCipher) MarshalJSON(js.Value, []js.Value) any {
+func (c *DbCipher) MarshalJSON(this js.Value, args []js.Value) (any, error) {
 	data, err := c.api.MarshalJSON()
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return utils.CopyBytesToJS(data)
+	return utils.CopyBytesToJS(data), nil
 }
 
 // UnmarshalJSON unmarshalls JSON into the cipher.
@@ -223,11 +218,10 @@ func (c *DbCipher) MarshalJSON(js.Value, []js.Value) any {
 // Returns:
 //   - JSON of the cipher (Uint8Array).
 //   - Throws an error if marshalling fails.
-func (c *DbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
+func (c *DbCipher) UnmarshalJSON(this js.Value, args []js.Value) (any, error) {
 	err := c.api.UnmarshalJSON(utils.CopyBytesToGo(args[0]))
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
-	return nil
+	return nil, nil
 }

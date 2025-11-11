@@ -24,7 +24,6 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/crypto/hash"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/storage"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/xx_network/crypto/csprng"
@@ -94,20 +93,17 @@ const (
 //   - args[0] - The user supplied password (string).
 //
 // Returns a promise:
-//   - Internal password (Uint8Array).
-//   - Throws TypeError on failure.
+//   - Resolves to internal password (Uint8Array).
+//   - Rejects with an error on failure.
 func GetOrInitPassword(_ js.Value, args []js.Value) any {
-	externalPassword := args[0].String()
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		externalPassword := args[0].String()
 		internalPassword, err := getOrInit(externalPassword)
 		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(utils.CopyBytesToJS(internalPassword))
+			return nil, err
 		}
-	}
-
-	return utils.CreatePromise(promiseFn)
+		return utils.CopyBytesToJS(internalPassword), nil
+	}).Invoke(js.Value{}, args)
 }
 
 // ChangeExternalPassword allows a user to change their external password.
@@ -116,16 +112,17 @@ func GetOrInitPassword(_ js.Value, args []js.Value) any {
 //   - args[0] - The user's old password (string).
 //   - args[1] - The user's new password (string).
 //
-// Returns:
-//   - Throws TypeError on failure.
+// Returns a promise:
+//   - Resolves on success.
+//   - Rejects with an error on failure.
 func ChangeExternalPassword(_ js.Value, args []js.Value) any {
-	err := changeExternalPassword(args[0].String(), args[1].String())
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return nil
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		err := changeExternalPassword(args[0].String(), args[1].String())
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}).Invoke(js.Value{}, args)
 }
 
 // VerifyPassword determines if the user-provided password is correct.

@@ -22,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
@@ -221,7 +220,7 @@ func (mm *MessageManager) messageReception(
 
 			safeData, err := event.Data()
 			if err != nil {
-				exception.Throwf("Failed to process message: %+v", err)
+				jww.FATAL.Panicf("[WW] [%s] Failed to process message: %+v", mm.name, err)
 			}
 			data := safejs.Unsafe(safeData)
 

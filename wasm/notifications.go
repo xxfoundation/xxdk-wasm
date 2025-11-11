@@ -13,7 +13,7 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
 type Notifications struct {
@@ -25,9 +25,9 @@ type Notifications struct {
 func newNotificationsJS(api *bindings.Notifications) map[string]any {
 	n := Notifications{api}
 	notificationsImplJS := map[string]any{
-		"AddToken":    js.FuncOf(n.AddToken),
-		"RemoveToken": js.FuncOf(n.RemoveToken),
-		"SetMaxState": js.FuncOf(n.SetMaxState),
+		"AddToken":    utils.SafeFunc(n.AddToken),
+		"RemoveToken": utils.SafeFunc(n.RemoveToken),
+		"SetMaxState": utils.SafeFunc(n.SetMaxState),
 		"GetMaxState": js.FuncOf(n.GetMaxState),
 		"GetID":       js.FuncOf(n.GetID),
 	}
@@ -41,15 +41,14 @@ func newNotificationsJS(api *bindings.Notifications) map[string]any {
 //   - args[0] - the cMixID integer
 //
 // Returns a notifications object or throws an error
-func LoadNotifications(_ js.Value, args []js.Value) any {
+func LoadNotifications(_ js.Value, args []js.Value) (any, error) {
 	cMixID := args[0].Int()
 	api, err := bindings.LoadNotifications(cMixID)
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return newNotificationsJS(api)
+	return newNotificationsJS(api), nil
 }
 
 // LoadNotificationsDummy returns a JS wrapped implementation of
@@ -59,15 +58,14 @@ func LoadNotifications(_ js.Value, args []js.Value) any {
 //   - args[0] - the cMixID integer
 //
 // Returns a notifications object or throws an error
-func LoadNotificationsDummy(_ js.Value, args []js.Value) any {
+func LoadNotificationsDummy(_ js.Value, args []js.Value) (any, error) {
 	cMixID := args[0].Int()
 	api, err := bindings.LoadNotificationsDummy(cMixID)
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return newNotificationsJS(api)
+	return newNotificationsJS(api), nil
 }
 
 // GetID returns the bindings ID for the [bindings.Notifications] object
@@ -82,27 +80,27 @@ func (n *Notifications) GetID(js.Value, []js.Value) any {
 //   - args[1] - app string
 //
 // Returns nothing or an error (throwable)
-func (n *Notifications) AddToken(_ js.Value, args []js.Value) any {
+func (n *Notifications) AddToken(_ js.Value, args []js.Value) (any, error) {
 	newToken := args[0].String()
 	app := args[1].String()
 
 	err := n.api.AddToken(newToken, app)
 	if err != nil {
-		exception.ThrowTrace(err)
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // RemoveToken implements [bindings.Notifications.RemoveToken].
 //
 // Returns nothing or throws an error.
-func (n *Notifications) RemoveToken(_ js.Value, args []js.Value) any {
+func (n *Notifications) RemoveToken(_ js.Value, args []js.Value) (any, error) {
 	err := n.api.RemoveToken()
 	if err != nil {
-		exception.ThrowTrace(err)
+		return nil, err
 	}
-	return nil
+	return nil, nil
 }
 
 // SetMaxState implements [bindings.Notifications.SetMaxState]
@@ -111,15 +109,15 @@ func (n *Notifications) RemoveToken(_ js.Value, args []js.Value) any {
 //   - args[0] - maxState integer
 //
 // Returns nothing or throws an error
-func (n *Notifications) SetMaxState(_ js.Value, args []js.Value) any {
+func (n *Notifications) SetMaxState(_ js.Value, args []js.Value) (any, error) {
 	maxState := int64(args[0].Int())
 
 	err := n.api.SetMaxState(maxState)
 	if err != nil {
-		exception.ThrowTrace(err)
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // GetMaxState implements [bindings.Notifications.GetMaxState]

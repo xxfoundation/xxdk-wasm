@@ -11,7 +11,6 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
@@ -38,7 +37,7 @@ import (
 //     passed into [Cmix.WaitForRoundResult] to see if the send succeeded
 //     (Uint8Array).
 //   - Rejected with an error if transmission fails.
-func TransmitSingleUse(_ js.Value, args []js.Value) any {
+func TransmitSingleUse(_ js.Value, args []js.Value) (any, error) {
 	e2eID := args[0].Int()
 	recipient := utils.CopyBytesToGo(args[1])
 	tag := args[2].String()
@@ -46,17 +45,13 @@ func TransmitSingleUse(_ js.Value, args []js.Value) any {
 	paramsJSON := utils.CopyBytesToGo(args[4])
 	responseCB := &singleUseResponse{utils.WrapCB(args[5], "Callback")}
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := bindings.TransmitSingleUse(
-			e2eID, recipient, tag, payload, paramsJSON, responseCB)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(utils.CopyBytesToJS(sendReport))
-		}
+	sendReport, err := bindings.TransmitSingleUse(
+		e2eID, recipient, tag, payload, paramsJSON, responseCB)
+	if err != nil {
+		return nil, err
 	}
 
-	return utils.CreatePromise(promiseFn)
+	return utils.CopyBytesToJS(sendReport), nil
 }
 
 // Listen starts a single-use listener on a given tag using the passed in [E2e]
@@ -73,15 +68,14 @@ func TransmitSingleUse(_ js.Value, args []js.Value) any {
 //   - Javascript representation of the [Stopper] object, an interface
 //     containing a function used to stop the listener.
 //   - Throws an error if listening fails.
-func Listen(_ js.Value, args []js.Value) any {
+func Listen(_ js.Value, args []js.Value) (any, error) {
 	cb := &singleUseCallback{utils.WrapCB(args[2], "Callback")}
 	api, err := bindings.Listen(args[0].Int(), args[1].String(), cb)
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return newStopperJS(api)
+	return newStopperJS(api), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +123,13 @@ type singleUseCallback struct {
 //     (Uint8Array).
 //   - err - Returns an error on failure (Error).
 func (suc *singleUseCallback) Callback(callbackReport []byte, err error) {
-	suc.callback(utils.CopyBytesToJS(callbackReport), exception.NewTrace(err))
+	var errVal js.Value
+	if err != nil {
+		errVal = js.Global().Get("Error").New(err.Error())
+	} else {
+		errVal = js.Undefined()
+	}
+	suc.callback(utils.CopyBytesToJS(callbackReport), errVal)
 }
 
 // singleUseResponse wraps Javascript callbacks to adhere to the
@@ -146,5 +146,11 @@ type singleUseResponse struct {
 //     (Uint8Array).
 //   - err - Returns an error on failure (Error).
 func (sur *singleUseResponse) Callback(responseReport []byte, err error) {
-	sur.callback(utils.CopyBytesToJS(responseReport), exception.NewTrace(err))
+	var errVal js.Value
+	if err != nil {
+		errVal = js.Global().Get("Error").New(err.Error())
+	} else {
+		errVal = js.Undefined()
+	}
+	sur.callback(utils.CopyBytesToJS(responseReport), errVal)
 }

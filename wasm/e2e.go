@@ -11,7 +11,6 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
@@ -36,34 +35,34 @@ func newE2eJS(api *bindings.E2e) map[string]any {
 
 		// e2eHandler.go
 		"GetReceptionID":          js.FuncOf(e.GetReceptionID),
-		"DeleteContact":           js.FuncOf(e.DeleteContact),
-		"GetAllPartnerIDs":        js.FuncOf(e.GetAllPartnerIDs),
+		"DeleteContact":           utils.SafeFunc(e.DeleteContact),
+		"GetAllPartnerIDs":        utils.SafeFunc(e.GetAllPartnerIDs),
 		"PayloadSize":             js.FuncOf(e.PayloadSize),
 		"SecondPartitionSize":     js.FuncOf(e.SecondPartitionSize),
 		"PartitionSize":           js.FuncOf(e.PartitionSize),
 		"FirstPartitionSize":      js.FuncOf(e.FirstPartitionSize),
-		"GetHistoricalDHPrivkey":  js.FuncOf(e.GetHistoricalDHPrivkey),
-		"GetHistoricalDHPubkey":   js.FuncOf(e.GetHistoricalDHPubkey),
-		"HasAuthenticatedChannel": js.FuncOf(e.HasAuthenticatedChannel),
-		"RemoveService":           js.FuncOf(e.RemoveService),
-		"SendE2E":                 js.FuncOf(e.SendE2E),
-		"AddService":              js.FuncOf(e.AddService),
-		"RegisterListener":        js.FuncOf(e.RegisterListener),
+		"GetHistoricalDHPrivkey":  utils.SafeFunc(e.GetHistoricalDHPrivkey),
+		"GetHistoricalDHPubkey":   utils.SafeFunc(e.GetHistoricalDHPubkey),
+		"HasAuthenticatedChannel": utils.SafeFunc(e.HasAuthenticatedChannel),
+		"RemoveService":           utils.SafeFunc(e.RemoveService),
+		"SendE2E":                 utils.SafeFunc(e.SendE2E),
+		"AddService":              utils.SafeFunc(e.AddService),
+		"RegisterListener":        utils.SafeFunc(e.RegisterListener),
 
 		// e2eAuth.go
-		"Request":                 js.FuncOf(e.Request),
-		"Confirm":                 js.FuncOf(e.Confirm),
-		"Reset":                   js.FuncOf(e.Reset),
-		"ReplayConfirm":           js.FuncOf(e.ReplayConfirm),
+		"Request":                 utils.SafeFunc(e.Request),
+		"Confirm":                 utils.SafeFunc(e.Confirm),
+		"Reset":                   utils.SafeFunc(e.Reset),
+		"ReplayConfirm":           utils.SafeFunc(e.ReplayConfirm),
 		"CallAllReceivedRequests": js.FuncOf(e.CallAllReceivedRequests),
-		"DeleteRequest":           js.FuncOf(e.DeleteRequest),
-		"DeleteAllRequests":       js.FuncOf(e.DeleteAllRequests),
-		"DeleteSentRequests":      js.FuncOf(e.DeleteSentRequests),
-		"DeleteReceiveRequests":   js.FuncOf(e.DeleteReceiveRequests),
-		"GetReceivedRequest":      js.FuncOf(e.GetReceivedRequest),
-		"VerifyOwnership":         js.FuncOf(e.VerifyOwnership),
-		"AddPartnerCallback":      js.FuncOf(e.AddPartnerCallback),
-		"DeletePartnerCallback":   js.FuncOf(e.DeletePartnerCallback),
+		"DeleteRequest":           utils.SafeFunc(e.DeleteRequest),
+		"DeleteAllRequests":       utils.SafeFunc(e.DeleteAllRequests),
+		"DeleteSentRequests":      utils.SafeFunc(e.DeleteSentRequests),
+		"DeleteReceiveRequests":   utils.SafeFunc(e.DeleteReceiveRequests),
+		"GetReceivedRequest":      utils.SafeFunc(e.GetReceivedRequest),
+		"VerifyOwnership":         utils.SafeFunc(e.VerifyOwnership),
+		"AddPartnerCallback":      utils.SafeFunc(e.AddPartnerCallback),
+		"DeletePartnerCallback":   utils.SafeFunc(e.DeletePartnerCallback),
 	}
 
 	return e2eMap
@@ -93,18 +92,19 @@ func (e *E2e) GetID(js.Value, []js.Value) any {
 //   - Javascript representation of the [E2e] object.
 //   - Throws an error if logging in fails.
 func Login(_ js.Value, args []js.Value) any {
-	callbacks := newAuthCallbacks(args[1])
-	identity := utils.CopyBytesToGo(args[2])
-	e2eParamsJSON := utils.CopyBytesToGo(args[3])
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		callbacks := newAuthCallbacks(args[1])
+		identity := utils.CopyBytesToGo(args[2])
+		e2eParamsJSON := utils.CopyBytesToGo(args[3])
 
-	newE2E, err := bindings.Login(
-		args[0].Int(), callbacks, identity, e2eParamsJSON)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
+		newE2E, err := bindings.Login(
+			args[0].Int(), callbacks, identity, e2eParamsJSON)
+		if err != nil {
+			return nil, err
+		}
 
-	return newE2eJS(newE2E)
+		return newE2eJS(newE2E), nil
+	}).Invoke(js.Value{}, args)
 }
 
 // LoginEphemeral creates and returns a new ephemeral [E2e] object and adds it
@@ -123,18 +123,19 @@ func Login(_ js.Value, args []js.Value) any {
 //   - Javascript representation of the [E2e] object.
 //   - Throws an error if logging in fails.
 func LoginEphemeral(_ js.Value, args []js.Value) any {
-	callbacks := newAuthCallbacks(args[1])
-	identity := utils.CopyBytesToGo(args[2])
-	e2eParamsJSON := utils.CopyBytesToGo(args[3])
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		callbacks := newAuthCallbacks(args[1])
+		identity := utils.CopyBytesToGo(args[2])
+		e2eParamsJSON := utils.CopyBytesToGo(args[3])
 
-	newE2E, err := bindings.LoginEphemeral(
-		args[0].Int(), callbacks, identity, e2eParamsJSON)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
+		newE2E, err := bindings.LoginEphemeral(
+			args[0].Int(), callbacks, identity, e2eParamsJSON)
+		if err != nil {
+			return nil, err
+		}
 
-	return newE2eJS(newE2E)
+		return newE2eJS(newE2E), nil
+	}).Invoke(js.Value{}, args)
 }
 
 // GetContact returns a [contact.Contact] object for the [E2e]
@@ -169,14 +170,19 @@ func (e *E2e) GetUdCertFromNdf(js.Value, []js.Value) any {
 // Returns
 //   - Marshalled bytes of [contact.Contact] (Uint8Array).
 //   - Throws an error if the contact file cannot be loaded.
-func (e *E2e) GetUdContactFromNdf(js.Value, []js.Value) any {
+func (e *E2e) GetUdContactFromNdf(_ js.Value, args []js.Value) any {
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		return e.getUdContactFromNdfImpl(args)
+	}).Invoke(js.Value{}, args)
+}
+
+func (e *E2e) getUdContactFromNdfImpl(_ []js.Value) (any, error) {
 	b, err := e.api.GetUdContactFromNdf()
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return utils.CopyBytesToJS(b)
+	return utils.CopyBytesToJS(b), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////

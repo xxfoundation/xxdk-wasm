@@ -11,7 +11,6 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
@@ -30,23 +29,19 @@ import (
 //     (Uint8Array).
 //   - Rejected with an error if parsing the parameters or making the request
 //     fails.
-func RestlikeRequest(_ js.Value, args []js.Value) any {
+func RestlikeRequest(_ js.Value, args []js.Value) (any, error) {
 	cmixId := args[0].Int()
 	connectionID := args[1].Int()
 	request := utils.CopyBytesToGo(args[2])
 	e2eParamsJSON := utils.CopyBytesToGo(args[3])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		msg, err := bindings.RestlikeRequest(
-			cmixId, connectionID, request, e2eParamsJSON)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(utils.CopyBytesToJS(msg))
-		}
+	msg, err := bindings.RestlikeRequest(
+		cmixId, connectionID, request, e2eParamsJSON)
+	if err != nil {
+		return nil, err
 	}
 
-	return utils.CreatePromise(promiseFn)
+	return utils.CopyBytesToJS(msg), nil
 }
 
 // RestlikeRequestAuth performs an authenticated restlike request.
@@ -63,21 +58,17 @@ func RestlikeRequest(_ js.Value, args []js.Value) any {
 //     (Uint8Array).
 //   - Rejected with an error if parsing the parameters or making the request
 //     fails.
-func RestlikeRequestAuth(_ js.Value, args []js.Value) any {
+func RestlikeRequestAuth(_ js.Value, args []js.Value) (any, error) {
 	cmixId := args[0].Int()
 	authConnectionID := args[1].Int()
 	request := utils.CopyBytesToGo(args[2])
 	e2eParamsJSON := utils.CopyBytesToGo(args[3])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		msg, err := bindings.RestlikeRequestAuth(
-			cmixId, authConnectionID, request, e2eParamsJSON)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(utils.CopyBytesToJS(msg))
-		}
+	msg, err := bindings.RestlikeRequestAuth(
+		cmixId, authConnectionID, request, e2eParamsJSON)
+	if err != nil {
+		return nil, err
 	}
 
-	return utils.CreatePromise(promiseFn)
+	return utils.CopyBytesToJS(msg), nil
 }

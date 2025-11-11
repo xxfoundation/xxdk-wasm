@@ -13,7 +13,6 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 )
 
@@ -55,13 +54,14 @@ import (
 //
 // [UTS #51 section A.1: Data Files]: https://www.unicode.org/reports/tr51/#Data_Files
 func SupportedEmojis(js.Value, []js.Value) any {
-	data, err := bindings.SupportedEmojis()
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		data, err := bindings.SupportedEmojis()
+		if err != nil {
+			return nil, err
+		}
 
-	return utils.CopyBytesToJS(data)
+		return utils.CopyBytesToJS(data), nil
+	}).Invoke(js.Value{}, nil)
 }
 
 // SupportedEmojisMap returns a map of emojis that are supported by the backend
@@ -100,13 +100,14 @@ func SupportedEmojis(js.Value, []js.Value) any {
 //		  }
 //		]
 func SupportedEmojisMap(js.Value, []js.Value) any {
-	data, err := bindings.SupportedEmojisMap()
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		data, err := bindings.SupportedEmojisMap()
+		if err != nil {
+			return nil, err
+		}
 
-	return utils.CopyBytesToJS(data)
+		return utils.CopyBytesToJS(data), nil
+	}).Invoke(js.Value{}, nil)
 }
 
 // ValidateReaction checks that the reaction only contains a single grapheme
@@ -122,7 +123,7 @@ func SupportedEmojisMap(js.Value, []js.Value) any {
 func ValidateReaction(_ js.Value, args []js.Value) any {
 	err := bindings.ValidateReaction(args[0].String())
 	if err != nil {
-		return exception.NewError(err)
+		return js.Global().Get("Error").New(err.Error())
 	}
 
 	return nil

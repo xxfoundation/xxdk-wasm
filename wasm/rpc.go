@@ -37,7 +37,7 @@ import (
 // Returns:
 //   - Javascript representation of the [DMClient] object.
 //   - Throws an error if creating the manager fails.
-func RPCSend(_ js.Value, args []js.Value) any {
+func RPCSend(_ js.Value, args []js.Value) (any, error) {
 	cMixID := args[0].Int()
 	recipient := utils.CopyBytesToGo(args[1])
 	pubkey := utils.CopyBytesToGo(args[2])
@@ -49,28 +49,26 @@ func RPCSend(_ js.Value, args []js.Value) any {
 		hasCb = true
 	}
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		r := bindings.RPCSend(cMixID, recipient, pubkey, request)
-		cbs := &rpcResponse{
-			responseFn: func(response []byte) {
-				if hasCb {
-					cb.Invoke(utils.CopyBytesToJS(response))
-					return
-				}
-				jww.INFO.Printf("[RPCSend] Callback: %s",
-					string(response))
+	r := bindings.RPCSend(cMixID, recipient, pubkey, request)
+	cbs := &rpcResponse{
+		responseFn: func(response []byte) {
+			if hasCb {
+				cb.Invoke(utils.CopyBytesToJS(response))
+				return
+			}
+			jww.INFO.Printf("[RPCSend] Callback: %s",
+				string(response))
 
-			},
-			errFn: func(err []byte) {
-				reject(utils.CopyBytesToJS(err))
-			},
-		}
-		r.Callback(cbs)
-		// We resolve only once per promise rules, which means we take
-		// the final return value.
-		resolve(utils.CopyBytesToJS(r.Await()))
+		},
+		errFn: func(err []byte) {
+			// Error callback - just log it
+			jww.ERROR.Printf("[RPCSend] Error: %s", string(err))
+		},
 	}
-	return utils.CreatePromise(promiseFn)
+	r.Callback(cbs)
+	// We resolve only once per promise rules, which means we take
+	// the final return value.
+	return utils.CopyBytesToJS(r.Await()), nil
 }
 
 type rpcResponse struct {

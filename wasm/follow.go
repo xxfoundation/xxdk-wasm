@@ -10,9 +10,9 @@
 package wasm
 
 import (
+	"fmt"
 	"syscall/js"
 
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 )
@@ -56,15 +56,14 @@ import (
 //
 // Returns:
 //   - Throws an error if starting the network follower fails.
-func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) any {
+func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) (any, error) {
 	err := c.api.StartNetworkFollower(args[0].Int())
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
 	storage.IncrementNumClientsRunning()
-	return nil
+	return nil, nil
 }
 
 // StopNetworkFollower stops the network follower if it is running.
@@ -75,15 +74,14 @@ func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Throws an error if the follower is in the wrong state to stop or if it
 //     fails to stop.
-func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) any {
+func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) (any, error) {
 	err := c.api.StopNetworkFollower()
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
 	storage.DecrementNumClientsRunning()
-	return nil
+	return nil, nil
 }
 
 // SetTrackNetworkPeriod allows changing the frequency that follower threads
@@ -120,17 +118,12 @@ func (c *Cmix) SetTrackNetworkPeriod(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - A promise that resolves if the network is healthy and rejects if the
 //     network is not healthy.
-func (c *Cmix) WaitForNetwork(_ js.Value, args []js.Value) any {
+func (c *Cmix) WaitForNetwork(_ js.Value, args []js.Value) (any, error) {
 	timeoutMS := args[0].Int()
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		if c.api.WaitForNetwork(timeoutMS) {
-			resolve()
-		} else {
-			reject()
-		}
+	if !c.api.WaitForNetwork(timeoutMS) {
+		return nil, fmt.Errorf("network did not become healthy within timeout")
 	}
-
-	return utils.CreatePromise(promiseFn)
+	return nil, nil
 }
 
 // ReadyToSend determines if the network is ready to send messages on. It
@@ -164,14 +157,13 @@ func (c *Cmix) NetworkFollowerStatus(js.Value, []js.Value) any {
 //     NDF.
 //   - An error if it cannot get the node registration status. The most likely
 //     cause is that the network is unhealthy.
-func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) any {
+func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) (any, error) {
 	b, err := c.api.GetNodeRegistrationStatus()
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return utils.CopyBytesToJS(b)
+	return utils.CopyBytesToJS(b), nil
 }
 
 // IsReady returns true if at least the given percent of node registrations have
@@ -185,14 +177,13 @@ func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) any {
 // Returns:
 //   - JSON of [bindings.IsReadyInfo] (Uint8Array).
 //   - Throws TypeError if getting the information fails.
-func (c *Cmix) IsReady(_ js.Value, args []js.Value) any {
+func (c *Cmix) IsReady(_ js.Value, args []js.Value) (any, error) {
 	isReadyInfo, err := c.api.IsReady(args[0].Float())
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return utils.CopyBytesToJS(isReadyInfo)
+	return utils.CopyBytesToJS(isReadyInfo), nil
 }
 
 // PauseNodeRegistrations stops all node registrations and returns a function to
@@ -204,14 +195,13 @@ func (c *Cmix) IsReady(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Throws TypeError if pausing fails.
-func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) any {
+func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) (any, error) {
 	err := c.api.PauseNodeRegistrations(args[0].Int())
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // ChangeNumberOfNodeRegistrations changes the number of parallel node
@@ -224,14 +214,13 @@ func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Throws TypeError if changing registrations fails.
-func (c *Cmix) ChangeNumberOfNodeRegistrations(_ js.Value, args []js.Value) any {
+func (c *Cmix) ChangeNumberOfNodeRegistrations(_ js.Value, args []js.Value) (any, error) {
 	err := c.api.ChangeNumberOfNodeRegistrations(args[0].Int(), args[1].Int())
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // HasRunningProcessies checks if any background threads are running and returns
@@ -270,14 +259,13 @@ func (c *Cmix) IsHealthy(js.Value, []js.Value) any {
 //	  "FileTransfer{BatchBuilderThread, FilePartSendingThread#0, FilePartSendingThread#1, FilePartSendingThread#2, FilePartSendingThread#3}",
 //	  "MessageReception Worker 0"
 //	}
-func (c *Cmix) GetRunningProcesses(js.Value, []js.Value) any {
+func (c *Cmix) GetRunningProcesses(js.Value, []js.Value) (any, error) {
 	list, err := c.api.GetRunningProcesses()
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return utils.CopyBytesToJS(list)
+	return utils.CopyBytesToJS(list), nil
 }
 
 // networkHealthCallback adheres to the [bindings.NetworkHealthCallback]
@@ -379,7 +367,13 @@ type trackServicesCallback struct {
 //	  },
 //	]
 func (tsc *trackServicesCallback) Callback(marshalData []byte, err error) {
-	tsc.callback(utils.CopyBytesToJS(marshalData), exception.NewTrace(err))
+	var errVal js.Value
+	if err != nil {
+		errVal = js.Global().Get("Error").New(err.Error())
+	} else {
+		errVal = js.Undefined()
+	}
+	tsc.callback(utils.CopyBytesToJS(marshalData), errVal)
 }
 
 // trackCompressedServicesCallback adheres to the
@@ -424,7 +418,13 @@ type trackCompressedServicesCallback struct {
 //	   ]
 //	 }
 func (tsc *trackCompressedServicesCallback) Callback(marshalData []byte, err error) {
-	tsc.callback(utils.CopyBytesToJS(marshalData), exception.NewTrace(err))
+	var errVal js.Value
+	if err != nil {
+		errVal = js.Global().Get("Error").New(err.Error())
+	} else {
+		errVal = js.Undefined()
+	}
+	tsc.callback(utils.CopyBytesToJS(marshalData), errVal)
 }
 
 // TrackServicesWithIdentity will return via a callback the list of services the
@@ -442,16 +442,15 @@ func (tsc *trackCompressedServicesCallback) Callback(marshalData []byte, err err
 //
 // Returns:
 //   - Throws TypeError if the [E2e] ID is invalid.
-func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) any {
+func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) (any, error) {
 	err := c.api.TrackServicesWithIdentity(args[0].Int(),
 		&trackServicesCallback{utils.WrapCB(args[0], "Callback")},
 		&trackCompressedServicesCallback{utils.WrapCB(args[0], "Callback")})
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // TrackServices will return, via a callback, the list of services that the

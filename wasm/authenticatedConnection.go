@@ -11,7 +11,6 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
@@ -30,10 +29,10 @@ func newAuthenticatedConnectionJS(
 	acMap := map[string]any{
 		"IsAuthenticated":  js.FuncOf(ac.IsAuthenticated),
 		"GetId":            js.FuncOf(ac.GetId),
-		"SendE2E":          js.FuncOf(ac.SendE2E),
+		"SendE2E":          utils.SafeFunc(ac.SendE2E),
 		"Close":            js.FuncOf(ac.Close),
 		"GetPartner":       js.FuncOf(ac.GetPartner),
-		"RegisterListener": js.FuncOf(ac.RegisterListener),
+		"RegisterListener": utils.SafeFunc(ac.RegisterListener),
 	}
 
 	return acMap
@@ -67,20 +66,15 @@ func (ac *AuthenticatedConnection) GetId(js.Value, []js.Value) any {
 //   - Resolves to the JSON of [bindings.E2ESendReport], which can be passed
 //     into [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //   - Rejected with an error if sending fails.
-func (ac *AuthenticatedConnection) SendE2E(_ js.Value, args []js.Value) any {
+func (ac *AuthenticatedConnection) SendE2E(this js.Value, args []js.Value) (any, error) {
 	mt := args[0].Int()
 	payload := utils.CopyBytesToGo(args[1])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := ac.api.SendE2E(mt, payload)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(utils.CopyBytesToJS(sendReport))
-		}
+	sendReport, err := ac.api.SendE2E(mt, payload)
+	if err != nil {
+		return nil, err
 	}
-
-	return utils.CreatePromise(promiseFn)
+	return utils.CopyBytesToJS(sendReport), nil
 }
 
 // Close deletes this [AuthenticatedConnection]'s [partner.Manager] and releases
@@ -111,15 +105,14 @@ func (ac *AuthenticatedConnection) GetPartner(js.Value, []js.Value) any {
 // Returns:
 //   - Throws an error is registering the listener fails.
 func (ac *AuthenticatedConnection) RegisterListener(
-	_ js.Value, args []js.Value) any {
+	this js.Value, args []js.Value) (any, error) {
 	err := ac.api.RegisterListener(args[0].Int(),
 		&listener{utils.WrapCB(args[1], "Hear"), utils.WrapCB(args[1], "Name")})
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // ConnectWithAuthentication is called by the client (i.e., the one establishing
@@ -135,20 +128,15 @@ func (ac *AuthenticatedConnection) RegisterListener(
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [Connection] object.
 //   - Rejected with an error if loading the parameters or connecting fails.
-func (c *Cmix) ConnectWithAuthentication(_ js.Value, args []js.Value) any {
+func (c *Cmix) ConnectWithAuthentication(this js.Value, args []js.Value) (any, error) {
 	e2eID := args[0].Int()
 	recipientContact := utils.CopyBytesToGo(args[1])
 	e2eParamsJSON := utils.CopyBytesToGo(args[2])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		ac, err := c.api.ConnectWithAuthentication(
-			e2eID, recipientContact, e2eParamsJSON)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(newAuthenticatedConnectionJS(ac))
-		}
+	ac, err := c.api.ConnectWithAuthentication(
+		e2eID, recipientContact, e2eParamsJSON)
+	if err != nil {
+		return nil, err
 	}
-
-	return utils.CreatePromise(promiseFn)
+	return newAuthenticatedConnectionJS(ac), nil
 }

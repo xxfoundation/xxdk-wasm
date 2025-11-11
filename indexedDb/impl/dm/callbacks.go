@@ -18,7 +18,6 @@ import (
 	"gitlab.com/elixxir/client/v4/dm"
 	"gitlab.com/elixxir/crypto/fastRNG"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	wDm "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"gitlab.com/xx_network/crypto/csprng"
@@ -94,14 +93,14 @@ func (m *manager) eventUpdateCallback(eventType int64, jsonMarshallable any) {
 	}
 	data, err := json.Marshal(msg)
 	if err != nil {
-		exception.Throwf("[DM] Could not JSON marshal %T for EventUpdate "+
+		jww.FATAL.Panicf("[DM] Could not JSON marshal %T for EventUpdate "+
 			"callback: %+v", msg, err)
 	}
 
 	// Send it to the main thread
 	err = m.wtm.SendNoResponse(wDm.EventUpdateCallbackTag, data)
 	if err != nil {
-		exception.Throwf(
+		jww.FATAL.Panicf(
 			"[DM] Could not send message for EventUpdate callback: %+v", err)
 	}
 }
@@ -125,8 +124,9 @@ func (m *manager) receiveCB(message []byte, reply func(message []byte)) {
 
 	replyMsg, err := json.Marshal(uuid)
 	if err != nil {
-		exception.Throwf(
-			"[DM] Could not JSON marshal UUID for Receive: %+v", err)
+		jww.ERROR.Printf("[DM] Could not JSON marshal UUID for Receive: %+v", err)
+		reply(zeroUUID)
+		return
 	}
 
 	reply(replyMsg)
@@ -151,8 +151,9 @@ func (m *manager) receiveTextCB(message []byte, reply func(message []byte)) {
 
 	replyMsg, err := json.Marshal(uuid)
 	if err != nil {
-		exception.Throwf(
-			"[DM] Could not JSON marshal UUID for ReceiveText: %+v", err)
+		jww.ERROR.Printf("[DM] Could not JSON marshal UUID for ReceiveText: %+v", err)
+		reply(zeroUUID)
+		return
 	}
 
 	reply(replyMsg)
@@ -176,8 +177,9 @@ func (m *manager) receiveReplyCB(message []byte, reply func(message []byte)) {
 
 	replyMsg, err := json.Marshal(uuid)
 	if err != nil {
-		exception.Throwf(
-			"[DM] Could not JSON marshal UUID for ReceiveReply: %+v", err)
+		jww.ERROR.Printf("[DM] Could not JSON marshal UUID for ReceiveReply: %+v", err)
+		reply(zeroUUID)
+		return
 	}
 
 	reply(replyMsg)
@@ -201,8 +203,9 @@ func (m *manager) receiveReactionCB(message []byte, reply func(message []byte)) 
 
 	replyMsg, err := json.Marshal(uuid)
 	if err != nil {
-		exception.Throwf(
-			"[DM] Could not JSON marshal UUID for ReceiveReaction: %+v", err)
+		jww.ERROR.Printf("[DM] Could not JSON marshal UUID for ReceiveReaction: %+v", err)
+		reply(zeroUUID)
+		return
 	}
 
 	reply(replyMsg)
@@ -248,8 +251,10 @@ func (m *manager) getConversationCB(message []byte, reply func(message []byte)) 
 	result := m.model.GetConversation(message)
 	replyMessage, err := json.Marshal(result)
 	if err != nil {
-		exception.Throwf("[DM] Could not JSON marshal %T for "+
+		jww.ERROR.Printf("[DM] Could not JSON marshal %T for "+
 			"GetConversation: %+v", result, err)
+		reply(nil)
+		return
 	}
 	reply(replyMessage)
 }
@@ -260,8 +265,10 @@ func (m *manager) getConversationsCB(_ []byte, reply func(message []byte)) {
 	result := m.model.GetConversations()
 	replyMessage, err := json.Marshal(result)
 	if err != nil {
-		exception.Throwf("[DM] Could not JSON marshal %T for "+
+		jww.ERROR.Printf("[DM] Could not JSON marshal %T for "+
 			"GetConversations: %+v", result, err)
+		reply(nil)
+		return
 	}
 	reply(replyMessage)
 }

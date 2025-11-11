@@ -45,10 +45,13 @@ worker_binaries:
 binaries: binary worker_binaries
 
 wasm_tests:
-	cp $(shell go env GOROOT)/misc/wasm/wasm_exec.js wasm_exec.js.bak
-	cp wasm_exec.js $(shell go env GOROOT)/misc/wasm/wasm_exec.js
-	- GOOS=js GOARCH=wasm go test -v ./...
-	mv wasm_exec.js.bak $(shell go env GOROOT)/misc/wasm/wasm_exec.js
+	@echo "Running WASM tests (requires wasmbrowsertest)"
+	@if ! command -v wasmbrowsertest >/dev/null 2>&1; then \
+		echo "Error: wasmbrowsertest not found. Install with:"; \
+		echo "  go install github.com/agnivade/wasmbrowsertest@latest"; \
+		exit 1; \
+	fi
+	GOOS=js GOARCH=wasm go test -exec=wasmbrowsertest -v ./...
 
 go_tests:
 	go test ./... -v

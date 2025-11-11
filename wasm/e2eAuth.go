@@ -10,7 +10,6 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
@@ -40,20 +39,16 @@ import (
 // Returns a promise:
 //   - Resolves to the ID of the round (int).
 //   - Rejected with an error if sending the request fails.
-func (e *E2e) Request(_ js.Value, args []js.Value) any {
+func (e *E2e) Request(_ js.Value, args []js.Value) (any, error) {
 	partnerContact := utils.CopyBytesToGo(args[0])
 	factsListJson := utils.CopyBytesToGo(args[1])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		rid, err := e.api.Request(partnerContact, factsListJson)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(rid)
-		}
+	rid, err := e.api.Request(partnerContact, factsListJson)
+	if err != nil {
+		return nil, err
 	}
 
-	return utils.CreatePromise(promiseFn)
+	return rid, nil
 }
 
 // Confirm sends a confirmation for a received request. It can only be called
@@ -78,19 +73,15 @@ func (e *E2e) Request(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - Resolves to the ID of the round (int).
 //   - Rejected with an error if sending the confirmation fails.
-func (e *E2e) Confirm(_ js.Value, args []js.Value) any {
+func (e *E2e) Confirm(_ js.Value, args []js.Value) (any, error) {
 	partnerContact := utils.CopyBytesToGo(args[0])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		rid, err := e.api.Confirm(partnerContact)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(rid)
-		}
+	rid, err := e.api.Confirm(partnerContact)
+	if err != nil {
+		return nil, err
 	}
 
-	return utils.CreatePromise(promiseFn)
+	return rid, nil
 }
 
 // Reset sends a contact reset request from the user identity in the imported
@@ -113,19 +104,15 @@ func (e *E2e) Confirm(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - Resolves to the ID of the round (int).
 //   - Rejected with an error if sending the reset fails.
-func (e *E2e) Reset(_ js.Value, args []js.Value) any {
+func (e *E2e) Reset(_ js.Value, args []js.Value) (any, error) {
 	partnerContact := utils.CopyBytesToGo(args[0])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		rid, err := e.api.Reset(partnerContact)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(rid)
-		}
+	rid, err := e.api.Reset(partnerContact)
+	if err != nil {
+		return nil, err
 	}
 
-	return utils.CreatePromise(promiseFn)
+	return rid, nil
 }
 
 // ReplayConfirm resends a confirmation to the partner. It will fail to send if
@@ -142,19 +129,15 @@ func (e *E2e) Reset(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - Resolves to the ID of the round (int).
 //   - Rejected with an error if resending the confirmation fails.
-func (e *E2e) ReplayConfirm(_ js.Value, args []js.Value) any {
+func (e *E2e) ReplayConfirm(_ js.Value, args []js.Value) (any, error) {
 	partnerContact := utils.CopyBytesToGo(args[0])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		rid, err := e.api.ReplayConfirm(partnerContact)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(rid)
-		}
+	rid, err := e.api.ReplayConfirm(partnerContact)
+	if err != nil {
+		return nil, err
 	}
 
-	return utils.CreatePromise(promiseFn)
+	return rid, nil
 }
 
 // CallAllReceivedRequests will iterate through all pending contact requests and
@@ -171,57 +154,53 @@ func (e *E2e) CallAllReceivedRequests(js.Value, []js.Value) any {
 //
 // Returns:
 //   - Throws TypeError if the deletion fails.
-func (e *E2e) DeleteRequest(_ js.Value, args []js.Value) any {
+func (e *E2e) DeleteRequest(_ js.Value, args []js.Value) (any, error) {
 	partnerContact := utils.CopyBytesToGo(args[0])
 	err := e.api.DeleteRequest(partnerContact)
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // DeleteAllRequests clears all requests from auth storage.
 //
 // Returns:
 //   - Throws TypeError if the deletion fails.
-func (e *E2e) DeleteAllRequests(js.Value, []js.Value) any {
+func (e *E2e) DeleteAllRequests(js.Value, []js.Value) (any, error) {
 	err := e.api.DeleteAllRequests()
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // DeleteSentRequests clears all sent requests from auth storage.
 //
 // Returns:
 //   - Throws TypeError if the deletion fails.
-func (e *E2e) DeleteSentRequests(js.Value, []js.Value) any {
+func (e *E2e) DeleteSentRequests(js.Value, []js.Value) (any, error) {
 	err := e.api.DeleteSentRequests()
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // DeleteReceiveRequests clears all received requests from auth storage.
 //
 // Returns:
 //   - Throws TypeError if the deletion fails.
-func (e *E2e) DeleteReceiveRequests(js.Value, []js.Value) any {
+func (e *E2e) DeleteReceiveRequests(js.Value, []js.Value) (any, error) {
 	err := e.api.DeleteReceiveRequests()
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // GetReceivedRequest returns a contact if there is a received request for it.
@@ -232,15 +211,14 @@ func (e *E2e) DeleteReceiveRequests(js.Value, []js.Value) any {
 // Returns:
 //   - Marshalled bytes of [contact.Contact] (Uint8Array).
 //   - Throws TypeError if getting the received request fails.
-func (e *E2e) GetReceivedRequest(_ js.Value, args []js.Value) any {
+func (e *E2e) GetReceivedRequest(_ js.Value, args []js.Value) (any, error) {
 	partnerContact := utils.CopyBytesToGo(args[0])
 	c, err := e.api.GetReceivedRequest(partnerContact)
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return utils.CopyBytesToJS(c)
+	return utils.CopyBytesToJS(c), nil
 }
 
 // VerifyOwnership checks if the received ownership proof is valid.
@@ -255,17 +233,16 @@ func (e *E2e) GetReceivedRequest(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Returns true if the ownership is valid (boolean).
 //   - Throws TypeError if loading the parameters fails.
-func (e *E2e) VerifyOwnership(_ js.Value, args []js.Value) any {
+func (e *E2e) VerifyOwnership(_ js.Value, args []js.Value) (any, error) {
 	receivedContact := utils.CopyBytesToGo(args[0])
 	verifiedContact := utils.CopyBytesToGo(args[1])
 	isValid, err := e.api.VerifyOwnership(
 		receivedContact, verifiedContact, args[2].Int())
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return isValid
+	return isValid, nil
 }
 
 // AddPartnerCallback adds a new callback that overrides the generic auth
@@ -278,16 +255,15 @@ func (e *E2e) VerifyOwnership(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Throws TypeError if the [id.ID] cannot be unmarshalled.
-func (e *E2e) AddPartnerCallback(_ js.Value, args []js.Value) any {
+func (e *E2e) AddPartnerCallback(_ js.Value, args []js.Value) (any, error) {
 	partnerID := utils.CopyBytesToGo(args[0])
 	callbacks := newAuthCallbacks(args[1])
 	err := e.api.AddPartnerCallback(partnerID, callbacks)
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // DeletePartnerCallback deletes the callback that overrides the generic
@@ -298,13 +274,12 @@ func (e *E2e) AddPartnerCallback(_ js.Value, args []js.Value) any {
 //
 // Returns:
 //   - Throws TypeError if the [id.ID] cannot be unmarshalled.
-func (e *E2e) DeletePartnerCallback(_ js.Value, args []js.Value) any {
+func (e *E2e) DeletePartnerCallback(_ js.Value, args []js.Value) (any, error) {
 	partnerID := utils.CopyBytesToGo(args[0])
 	err := e.api.DeletePartnerCallback(partnerID)
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }

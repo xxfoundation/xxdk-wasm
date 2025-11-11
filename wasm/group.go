@@ -4,46 +4,37 @@
 // Use of this source code is governed by a license that can be found in the  //
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
-
 //go:build js && wasm
-
 package wasm
-
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
-
 ////////////////////////////////////////////////////////////////////////////////
 // Group Chat                                                                 //
 ////////////////////////////////////////////////////////////////////////////////
-
 // GroupChat wraps the [bindings.GroupChat] object so its methods can be wrapped
 // to be Javascript compatible.
 type GroupChat struct {
 	api *bindings.GroupChat
 }
-
 // newGroupChatJS creates a new Javascript compatible object (map[string]any)
 // that matches the [GroupChat] structure.
 func newGroupChatJS(api *bindings.GroupChat) map[string]any {
 	gc := GroupChat{api}
 	gcMap := map[string]any{
-		"MakeGroup":     js.FuncOf(gc.MakeGroup),
-		"ResendRequest": js.FuncOf(gc.ResendRequest),
+		"MakeGroup":     utils.SafeFunc(gc.MakeGroup),
+		"ResendRequest": utils.SafeFunc(gc.ResendRequest),
 		"JoinGroup":     js.FuncOf(gc.JoinGroup),
 		"LeaveGroup":    js.FuncOf(gc.LeaveGroup),
-		"Send":          js.FuncOf(gc.Send),
+		"Send":          utils.SafeFunc(gc.Send),
 		"GetGroups":     js.FuncOf(gc.GetGroups),
 		"GetGroup":      js.FuncOf(gc.GetGroup),
 		"NumGroups":     js.FuncOf(gc.NumGroups),
 	}
-
 	return gcMap
 }
-
 // NewGroupChat creates a bindings-layer group chat manager.
 //
 // Parameters:
@@ -57,19 +48,17 @@ func newGroupChatJS(api *bindings.GroupChat) map[string]any {
 //   - Javascript representation of the [GroupChat] object.
 //   - Throws an error if creating the [GroupChat] fails.
 func NewGroupChat(_ js.Value, args []js.Value) any {
-	requestFunc := &groupRequest{utils.WrapCB(args[1], "Callback")}
-	p := &groupChatProcessor{
-		utils.WrapCB(args[2], "Process"), utils.WrapCB(args[2], "String")}
-
-	api, err := bindings.NewGroupChat(args[0].Int(), requestFunc, p)
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return newGroupChatJS(api)
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		requestFunc := &groupRequest{utils.WrapCB(args[1], "Callback")}
+		p := &groupChatProcessor{
+			utils.WrapCB(args[2], "Process"), utils.WrapCB(args[2], "String")}
+		api, err := bindings.NewGroupChat(args[0].Int(), requestFunc, p)
+		if err != nil {
+			return nil, err
+		}
+		return newGroupChatJS(api), nil
+	}).Invoke(js.Value{}, args)
 }
-
 // MakeGroup creates a new group and sends a group request to all members in the
 // group.
 //
@@ -86,23 +75,16 @@ func NewGroupChat(_ js.Value, args []js.Value) any {
 //   - Resolves to the JSON of the [bindings.GroupReport], which can be passed
 //     into [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //   - Rejected with an error if making the group fails.
-func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) any {
+func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) (any, error) {
 	membershipBytes := utils.CopyBytesToGo(args[0])
 	message := utils.CopyBytesToGo(args[1])
 	name := utils.CopyBytesToGo(args[2])
-
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := g.api.MakeGroup(membershipBytes, message, name)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(utils.CopyBytesToJS(sendReport))
-		}
+	sendReport, err := g.api.MakeGroup(membershipBytes, message, name)
+	if err != nil {
+		return nil, err
 	}
-
-	return utils.CreatePromise(promiseFn)
+	return utils.CopyBytesToJS(sendReport), nil
 }
-
 // ResendRequest resends a group request to all members in the group.
 //
 // Parameters:
@@ -113,20 +95,14 @@ func (g *GroupChat) MakeGroup(_ js.Value, args []js.Value) any {
 //   - Resolves to the JSON of the [bindings.GroupReport], which can be passed
 //     into [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //   - Rejected with an error if resending the request fails.
-func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) any {
+func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) (any, error) {
 	groupId := utils.CopyBytesToGo(args[0])
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := g.api.ResendRequest(groupId)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(utils.CopyBytesToJS(sendReport))
-		}
+	sendReport, err := g.api.ResendRequest(groupId)
+	if err != nil {
+		return nil, err
 	}
-
-	return utils.CreatePromise(promiseFn)
+	return utils.CopyBytesToJS(sendReport), nil
 }
-
 // JoinGroup allows a user to join a group when a request is received.
 // If an error is returned, handle it properly first; you may then retry later
 // with the same trackedGroupId.
@@ -138,15 +114,14 @@ func (g *GroupChat) ResendRequest(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Throws an error if joining the group fails.
 func (g *GroupChat) JoinGroup(_ js.Value, args []js.Value) any {
-	err := g.api.JoinGroup(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return nil
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		err := g.api.JoinGroup(utils.CopyBytesToGo(args[0]))
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}).Invoke(js.Value{}, args)
 }
-
 // LeaveGroup deletes a group so a user no longer has access.
 //
 // Parameters:
@@ -156,15 +131,14 @@ func (g *GroupChat) JoinGroup(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Throws an error if leaving the group fails.
 func (g *GroupChat) LeaveGroup(_ js.Value, args []js.Value) any {
-	err := g.api.LeaveGroup(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return nil
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		err := g.api.LeaveGroup(utils.CopyBytesToGo(args[0]))
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}).Invoke(js.Value{}, args)
 }
-
 // Send is the bindings-level function for sending to a group.
 //
 // Parameters:
@@ -180,38 +154,30 @@ func (g *GroupChat) LeaveGroup(_ js.Value, args []js.Value) any {
 //     passed into [Cmix.WaitForRoundResult] to see if the send succeeded
 //     (Uint8Array).
 //   - Rejected with an error if sending the message to the group fails.
-func (g *GroupChat) Send(_ js.Value, args []js.Value) any {
+func (g *GroupChat) Send(_ js.Value, args []js.Value) (any, error) {
 	groupId := utils.CopyBytesToGo(args[0])
 	message := utils.CopyBytesToGo(args[1])
 	tag := args[2].String()
-
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := g.api.Send(groupId, message, tag)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(utils.CopyBytesToJS(sendReport))
-		}
+	sendReport, err := g.api.Send(groupId, message, tag)
+	if err != nil {
+		return nil, err
 	}
-
-	return utils.CreatePromise(promiseFn)
+	return utils.CopyBytesToJS(sendReport), nil
 }
-
 // GetGroups returns a list of group IDs that the user is a member of.
 //
 // Returns:
 //   - JSON of array of [id.ID] representing all group ID's (Uint8Array).
 //   - Throws an error if getting the groups fails.
-func (g *GroupChat) GetGroups(js.Value, []js.Value) any {
-	groups, err := g.api.GetGroups()
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return utils.CopyBytesToJS(groups)
+func (g *GroupChat) GetGroups(_ js.Value, args []js.Value) any {
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		groups, err := g.api.GetGroups()
+		if err != nil {
+			return nil, err
+		}
+		return utils.CopyBytesToJS(groups), nil
+	}).Invoke(js.Value{}, args)
 }
-
 // GetGroup returns the group with the group ID. If no group exists, then the
 // error "failed to find group" is returned.
 //
@@ -223,15 +189,14 @@ func (g *GroupChat) GetGroups(js.Value, []js.Value) any {
 //   - Javascript representation of the [GroupChat] object.
 //   - Throws an error if getting the group fails.
 func (g *GroupChat) GetGroup(_ js.Value, args []js.Value) any {
-	grp, err := g.api.GetGroup(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return newGroupJS(grp)
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		grp, err := g.api.GetGroup(utils.CopyBytesToGo(args[0]))
+		if err != nil {
+			return nil, err
+		}
+		return newGroupJS(grp), nil
+	}).Invoke(js.Value{}, args)
 }
-
 // NumGroups returns the number of groups the user is a part of.
 //
 // Returns:
@@ -239,17 +204,14 @@ func (g *GroupChat) GetGroup(_ js.Value, args []js.Value) any {
 func (g *GroupChat) NumGroups(js.Value, []js.Value) any {
 	return g.api.NumGroups()
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 // Group Structure                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-
 // Group wraps the [bindings.Group] object so its methods can be wrapped to be
 // Javascript compatible.
 type Group struct {
 	api *bindings.Group
 }
-
 // newGroupJS creates a new Javascript compatible object (map[string]any) that
 // matches the [Group] structure.
 func newGroupJS(api *bindings.Group) map[string]any {
@@ -263,10 +225,8 @@ func newGroupJS(api *bindings.Group) map[string]any {
 		"GetMembership":  js.FuncOf(g.GetMembership),
 		"Serialize":      js.FuncOf(g.Serialize),
 	}
-
 	return gMap
 }
-
 // GetName returns the name set by the user for the group.
 //
 // Returns:
@@ -274,7 +234,6 @@ func newGroupJS(api *bindings.Group) map[string]any {
 func (g *Group) GetName(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(g.api.GetName())
 }
-
 // GetID return the 33-byte unique group ID. This represents the [id.ID] object.
 //
 // Returns:
@@ -282,7 +241,6 @@ func (g *Group) GetName(js.Value, []js.Value) any {
 func (g *Group) GetID(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(g.api.GetID())
 }
-
 // GetInitMessage returns initial message sent with the group request.
 //
 // Returns:
@@ -290,7 +248,6 @@ func (g *Group) GetID(js.Value, []js.Value) any {
 func (g *Group) GetInitMessage(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(g.api.GetInitMessage())
 }
-
 // GetCreatedNano returns the time the group was created in nanoseconds. This is
 // also the time the group requests were sent.
 //
@@ -299,7 +256,6 @@ func (g *Group) GetInitMessage(js.Value, []js.Value) any {
 func (g *Group) GetCreatedNano(js.Value, []js.Value) any {
 	return g.api.GetCreatedNano()
 }
-
 // GetCreatedMS returns the time the group was created in milliseconds. This is
 // also the time the group requests were sent.
 //
@@ -308,7 +264,6 @@ func (g *Group) GetCreatedNano(js.Value, []js.Value) any {
 func (g *Group) GetCreatedMS(js.Value, []js.Value) any {
 	return g.api.GetCreatedMS()
 }
-
 // GetMembership retrieves a list of group members. The list is in order;
 // the first contact is the leader/creator of the group.
 // All subsequent members are ordered by their ID.
@@ -316,16 +271,15 @@ func (g *Group) GetCreatedMS(js.Value, []js.Value) any {
 // Returns:
 //   - JSON of [group.Membership] (Uint8Array).
 //   - Throws an error if marshalling fails.
-func (g *Group) GetMembership(js.Value, []js.Value) any {
-	membership, err := g.api.GetMembership()
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return utils.CopyBytesToJS(membership)
+func (g *Group) GetMembership(_ js.Value, args []js.Value) any {
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		membership, err := g.api.GetMembership()
+		if err != nil {
+			return nil, err
+		}
+		return utils.CopyBytesToJS(membership), nil
+	}).Invoke(js.Value{}, args)
 }
-
 // Serialize serializes the [Group].
 //
 // Returns:
@@ -333,7 +287,6 @@ func (g *Group) GetMembership(js.Value, []js.Value) any {
 func (g *Group) Serialize(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(g.api.Serialize())
 }
-
 // DeserializeGroup converts the results of [Group.Serialize] into a
 // [bindings.Group] so that its methods can be called.
 //
@@ -344,25 +297,22 @@ func (g *Group) Serialize(js.Value, []js.Value) any {
 //   - Javascript representation of the [GroupChat] object.
 //   - Throws an error if getting the group fails.
 func DeserializeGroup(_ js.Value, args []js.Value) any {
-	grp, err := bindings.DeserializeGroup(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
-
-	return newGroupJS(grp)
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		grp, err := bindings.DeserializeGroup(utils.CopyBytesToGo(args[0]))
+		if err != nil {
+			return nil, err
+		}
+		return newGroupJS(grp), nil
+	}).Invoke(js.Value{}, args)
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 // Callbacks                                                                  //
 ////////////////////////////////////////////////////////////////////////////////
-
 // groupRequest wraps Javascript callbacks to adhere to the
 // [bindings.GroupRequest] interface.
 type groupRequest struct {
 	callback func(args ...any) js.Value
 }
-
 // Callback is called when a group request is received.
 //
 // Parameters:
@@ -370,14 +320,12 @@ type groupRequest struct {
 func (gr *groupRequest) Callback(g *bindings.Group) {
 	gr.callback(newGroupJS(g))
 }
-
 // groupChatProcessor wraps Javascript callbacks to adhere to the
 // [bindings.GroupChatProcessor] interface.
 type groupChatProcessor struct {
 	process func(args ...any) js.Value
 	string  func(args ...any) js.Value
 }
-
 // Process decrypts and hands off the message to its internal down stream
 // message processing system.
 //
@@ -392,11 +340,16 @@ type groupChatProcessor struct {
 //   - err - Returns an error on failure (Error).
 func (gcp *groupChatProcessor) Process(decryptedMessage, msg,
 	receptionId []byte, ephemeralId, roundId int64, roundURL string, err error) {
+	var errVal js.Value
+	if err != nil {
+		errVal = js.Global().Get("Error").New(err.Error())
+	} else {
+		errVal = js.Undefined()
+	}
 	gcp.process(utils.CopyBytesToJS(decryptedMessage),
 		utils.CopyBytesToJS(msg), utils.CopyBytesToJS(receptionId), ephemeralId,
-		roundId, roundURL, exception.NewTrace(err))
+		roundId, roundURL, errVal)
 }
-
 // String returns a name identifying this processor. Used for debugging.
 func (gcp *groupChatProcessor) String() string {
 	return gcp.string().String()

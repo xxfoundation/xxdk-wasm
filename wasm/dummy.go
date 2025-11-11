@@ -11,7 +11,7 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
+	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
 
@@ -26,8 +26,8 @@ type DummyTraffic struct {
 func newDummyTrafficJS(newDT *bindings.DummyTraffic) map[string]any {
 	dt := DummyTraffic{newDT}
 	dtMap := map[string]any{
-		"Pause":     js.FuncOf(dt.Pause),
-		"Start":     js.FuncOf(dt.Start),
+		"Pause":     utils.SafeFunc(dt.Pause),
+		"Start":     utils.SafeFunc(dt.Start),
 		"GetStatus": js.FuncOf(dt.GetStatus),
 	}
 
@@ -55,14 +55,15 @@ func newDummyTrafficJS(newDT *bindings.DummyTraffic) map[string]any {
 //   - Javascript representation of the DummyTraffic object.
 //   - Throws an error if creating the manager fails.
 func NewDummyTrafficManager(_ js.Value, args []js.Value) any {
-	dt, err := bindings.NewDummyTrafficManager(
-		args[0].Int(), args[1].Int(), args[2].Int(), args[3].Int())
-	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
-	}
+	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+		dt, err := bindings.NewDummyTrafficManager(
+			args[0].Int(), args[1].Int(), args[2].Int(), args[3].Int())
+		if err != nil {
+			return nil, err
+		}
 
-	return newDummyTrafficJS(dt)
+		return newDummyTrafficJS(dt), nil
+	}).Invoke(js.Value{}, args)
 }
 
 // Pause will pause the [DummyTraffic]'s sending thread, meaning messages will
@@ -77,14 +78,13 @@ func NewDummyTrafficManager(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Throws an error if it fails to send a pause signal to the sending
 //     thread.
-func (dt *DummyTraffic) Pause(js.Value, []js.Value) any {
+func (dt *DummyTraffic) Pause(this js.Value, args []js.Value) (any, error) {
 	err := dt.api.Pause()
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // Start will start up the [DummyTraffic]'s sending thread, meaning messages
@@ -100,14 +100,13 @@ func (dt *DummyTraffic) Pause(js.Value, []js.Value) any {
 // Returns:
 //   - Throws an error if it fails to send a start signal to the sending
 //     thread.
-func (dt *DummyTraffic) Start(js.Value, []js.Value) any {
+func (dt *DummyTraffic) Start(this js.Value, args []js.Value) (any, error) {
 	err := dt.api.Start()
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // GetStatus returns the current state of the [DummyTraffic] manager's sending

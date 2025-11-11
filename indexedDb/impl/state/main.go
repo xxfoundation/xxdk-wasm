@@ -17,7 +17,6 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -54,7 +53,7 @@ var stateCmd = &cobra.Command{
 		jww.INFO.Print("[WW] Starting xxDK WebAssembly State Database Worker.")
 		tm, err := worker.NewThreadManager("DmIndexedDbWorker", true)
 		if err != nil {
-			exception.ThrowTrace(err)
+			jww.FATAL.Panicf("Failed to create thread manager: %+v", err)
 		}
 		m := &manager{wtm: tm}
 		m.registerCallbacks()

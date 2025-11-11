@@ -12,8 +12,8 @@ package main
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	stateWorker "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/state"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
@@ -87,7 +87,7 @@ func (m *manager) getCB(message []byte, reply func(message []byte)) {
 
 	replyMessage, err := json.Marshal(msg)
 	if err != nil {
-		exception.Throwf("Could not JSON marshal %T for Get: %+v", msg, err)
+		jww.FATAL.Panicf("Could not JSON marshal %T for Get: %+v", msg, err)
 	}
 
 	reply(replyMessage)

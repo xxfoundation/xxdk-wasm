@@ -109,9 +109,9 @@ func setGlobals() {
 	js.Global().Set("ResumeBackup", js.FuncOf(wasm.ResumeBackup))
 
 	// wasm/notifications.go
-	js.Global().Set("LoadNotifications", js.FuncOf(wasm.LoadNotifications))
+	js.Global().Set("LoadNotifications", utils.SafeFunc(wasm.LoadNotifications))
 	js.Global().Set("LoadNotificationsDummy",
-		js.FuncOf(wasm.LoadNotificationsDummy))
+		utils.SafeFunc(wasm.LoadNotificationsDummy))
 
 	// wasm/channels.go
 	js.Global().Set("GenerateChannelIdentity",
@@ -207,19 +207,19 @@ func setGlobals() {
 
 	// wasm/identity.go
 	js.Global().Set("StoreReceptionIdentity",
-		js.FuncOf(wasm.StoreReceptionIdentity))
+		utils.SafeFunc(wasm.StoreReceptionIdentity))
 	js.Global().Set("LoadReceptionIdentity",
-		js.FuncOf(wasm.LoadReceptionIdentity))
+		utils.SafeFunc(wasm.LoadReceptionIdentity))
 	js.Global().Set("GetContactFromReceptionIdentity",
-		js.FuncOf(wasm.GetContactFromReceptionIdentity))
+		utils.SafeFunc(wasm.GetContactFromReceptionIdentity))
 	js.Global().Set("GetIDFromContact",
-		js.FuncOf(wasm.GetIDFromContact))
+		utils.SafeFunc(wasm.GetIDFromContact))
 	js.Global().Set("GetPubkeyFromContact",
-		js.FuncOf(wasm.GetPubkeyFromContact))
+		utils.SafeFunc(wasm.GetPubkeyFromContact))
 	js.Global().Set("SetFactsOnContact",
-		js.FuncOf(wasm.SetFactsOnContact))
+		utils.SafeFunc(wasm.SetFactsOnContact))
 	js.Global().Set("GetFactsFromContact",
-		js.FuncOf(wasm.GetFactsFromContact))
+		utils.SafeFunc(wasm.GetFactsFromContact))
 
 	// wasm/logging.go
 	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
@@ -242,21 +242,21 @@ func setGlobals() {
 		js.FuncOf(wasm.GetDefaultE2eFileTransferParams))
 
 	// wasm/restlike.go
-	js.Global().Set("RestlikeRequest", js.FuncOf(wasm.RestlikeRequest))
-	js.Global().Set("RestlikeRequestAuth", js.FuncOf(wasm.RestlikeRequestAuth))
+	js.Global().Set("RestlikeRequest", utils.SafeFunc(wasm.RestlikeRequest))
+	js.Global().Set("RestlikeRequestAuth", utils.SafeFunc(wasm.RestlikeRequestAuth))
 
 	// wasm/restlikeSingle.go
 	js.Global().Set("RequestRestLike",
-		js.FuncOf(wasm.RequestRestLike))
+		utils.SafeFunc(wasm.RequestRestLike))
 	js.Global().Set("AsyncRequestRestLike",
-		js.FuncOf(wasm.AsyncRequestRestLike))
+		utils.SafeFunc(wasm.AsyncRequestRestLike))
 
 	// wasm/secrets.go
 	js.Global().Set("GenerateSecret", js.FuncOf(wasm.GenerateSecret))
 
 	// wasm/single.go
-	js.Global().Set("TransmitSingleUse", js.FuncOf(wasm.TransmitSingleUse))
-	js.Global().Set("Listen", js.FuncOf(wasm.Listen))
+	js.Global().Set("TransmitSingleUse", utils.SafeFunc(wasm.TransmitSingleUse))
+	js.Global().Set("Listen", utils.SafeFunc(wasm.Listen))
 
 	// wasm/sync.go
 
@@ -268,19 +268,19 @@ func setGlobals() {
 	js.Global().Set("NewOrLoadUd", js.FuncOf(wasm.NewOrLoadUd))
 	js.Global().Set("NewUdManagerFromBackup",
 		js.FuncOf(wasm.NewUdManagerFromBackup))
-	js.Global().Set("LookupUD", js.FuncOf(wasm.LookupUD))
-	js.Global().Set("SearchUD", js.FuncOf(wasm.SearchUD))
+	js.Global().Set("LookupUD", utils.SafeFunc(wasm.LookupUD))
+	js.Global().Set("SearchUD", utils.SafeFunc(wasm.SearchUD))
 
 	// wasm/version.go
 	js.Global().Set("GetVersion", js.FuncOf(wasm.GetVersion))
 	js.Global().Set("GetClientVersion", js.FuncOf(wasm.GetClientVersion))
 	js.Global().Set("GetClientGitVersion", js.FuncOf(wasm.GetClientGitVersion))
 	js.Global().Set("GetClientDependencies", js.FuncOf(wasm.GetClientDependencies))
-	js.Global().Set("GetWasmSemanticVersion", js.FuncOf(wasm.GetWasmSemanticVersion))
-	js.Global().Set("GetXXDKSemanticVersion", js.FuncOf(wasm.GetXXDKSemanticVersion))
+	js.Global().Set("GetWasmSemanticVersion", utils.SafeFunc(wasm.GetWasmSemanticVersion))
+	js.Global().Set("GetXXDKSemanticVersion", utils.SafeFunc(wasm.GetXXDKSemanticVersion))
 
 	// wasm/rpc.go
-	js.Global().Set("RPCSend", js.FuncOf(wasm.RPCSend))
+	js.Global().Set("RPCSend", utils.SafeFunc(wasm.RPCSend))
 
 	// Stop all existing workers (except logfile worker)
 	js.Global().Set("StopWorkers", js.FuncOf(stopWorkers))

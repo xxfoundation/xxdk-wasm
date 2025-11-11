@@ -14,7 +14,6 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 )
@@ -68,7 +67,7 @@ type VersionInfo struct {
 // Returns:
 //   - JSON of [VersionInfo] (Uint8Array).
 //   - Throws an error if getting the version failed.
-func GetWasmSemanticVersion(js.Value, []js.Value) any {
+func GetWasmSemanticVersion(_ js.Value, args []js.Value) (any, error) {
 	vi := VersionInfo{
 		Current: storage.SEMVER,
 		Updated: false,
@@ -81,10 +80,10 @@ func GetWasmSemanticVersion(js.Value, []js.Value) any {
 
 	data, err := json.Marshal(vi)
 	if err != nil {
-		exception.ThrowTrace(err)
+		return nil, err
 	}
 
-	return utils.CopyBytesToJS(data)
+	return utils.CopyBytesToJS(data), nil
 }
 
 // GetXXDKSemanticVersion returns the current version of the xxdk client, it's
@@ -93,7 +92,7 @@ func GetWasmSemanticVersion(js.Value, []js.Value) any {
 // Returns:
 //   - JSON of [VersionInfo] (Uint8Array).
 //   - Throws an error if getting the version failed.
-func GetXXDKSemanticVersion(js.Value, []js.Value) any {
+func GetXXDKSemanticVersion(_ js.Value, args []js.Value) (any, error) {
 	vi := VersionInfo{
 		Current: bindings.GetVersion(),
 		Updated: false,
@@ -105,8 +104,8 @@ func GetXXDKSemanticVersion(js.Value, []js.Value) any {
 
 	data, err := json.Marshal(vi)
 	if err != nil {
-		exception.ThrowTrace(err)
+		return nil, err
 	}
 
-	return utils.CopyBytesToJS(data)
+	return utils.CopyBytesToJS(data), nil
 }

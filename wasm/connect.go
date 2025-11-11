@@ -11,7 +11,6 @@ package wasm
 
 import (
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/exception"
 	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
 )
@@ -29,10 +28,10 @@ func newConnectJS(api *bindings.Connection) map[string]any {
 	connectionMap := map[string]any{
 		// connect.go
 		"GetId":            js.FuncOf(c.GetId),
-		"SendE2E":          js.FuncOf(c.SendE2E),
-		"Close":            js.FuncOf(c.Close),
+		"SendE2E":          utils.SafeFunc(c.SendE2E),
+		"Close":            utils.SafeFunc(c.Close),
 		"GetPartner":       js.FuncOf(c.GetPartner),
-		"RegisterListener": js.FuncOf(c.RegisterListener),
+		"RegisterListener": utils.SafeFunc(c.RegisterListener),
 	}
 
 	return connectionMap
@@ -61,21 +60,17 @@ func (c *Connection) GetId(js.Value, []js.Value) any {
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [Connection] object.
 //   - Rejected with an error if loading the parameters or connecting fails.
-func (c *Cmix) Connect(_ js.Value, args []js.Value) any {
+func (c *Cmix) Connect(_ js.Value, args []js.Value) (any, error) {
 	e2eID := args[0].Int()
 	recipientContact := utils.CopyBytesToGo(args[1])
 	e2eParamsJSON := utils.CopyBytesToGo(args[2])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		api, err := c.api.Connect(e2eID, recipientContact, e2eParamsJSON)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(newConnectJS(api))
-		}
+	api, err := c.api.Connect(e2eID, recipientContact, e2eParamsJSON)
+	if err != nil {
+		return nil, err
 	}
 
-	return utils.CreatePromise(promiseFn)
+	return newConnectJS(api), nil
 }
 
 // SendE2E is a wrapper for sending specifically to the [Connection]'s
@@ -89,34 +84,29 @@ func (c *Cmix) Connect(_ js.Value, args []js.Value) any {
 //   - Resolves to the JSON of the [bindings.E2ESendReport], which can be passed
 //     into [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //   - Rejected with an error if sending fails.
-func (c *Connection) SendE2E(_ js.Value, args []js.Value) any {
+func (c *Connection) SendE2E(_ js.Value, args []js.Value) (any, error) {
 	e2eID := args[0].Int()
 	payload := utils.CopyBytesToGo(args[1])
 
-	promiseFn := func(resolve, reject func(args ...any) js.Value) {
-		sendReport, err := c.api.SendE2E(e2eID, payload)
-		if err != nil {
-			reject(exception.NewTrace(err))
-		} else {
-			resolve(utils.CopyBytesToJS(sendReport))
-		}
+	sendReport, err := c.api.SendE2E(e2eID, payload)
+	if err != nil {
+		return nil, err
 	}
 
-	return utils.CreatePromise(promiseFn)
+	return utils.CopyBytesToJS(sendReport), nil
 }
 
 // Close deletes this [Connection]'s [partner.Manager] and releases resources.
 //
 // Returns:
 //   - Throws an error if closing fails.
-func (c *Connection) Close(js.Value, []js.Value) any {
+func (c *Connection) Close(js.Value, []js.Value) (any, error) {
 	err := c.api.Close()
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 // GetPartner returns the [partner.Manager] for this [Connection].
@@ -155,13 +145,12 @@ func (l *listener) Name() string { return l.name().String() }
 //
 // Returns:
 //   - Throws an error is registering the listener fails.
-func (c *Connection) RegisterListener(_ js.Value, args []js.Value) any {
+func (c *Connection) RegisterListener(_ js.Value, args []js.Value) (any, error) {
 	err := c.api.RegisterListener(args[0].Int(),
 		&listener{utils.WrapCB(args[1], "Hear"), utils.WrapCB(args[1], "Name")})
 	if err != nil {
-		exception.ThrowTrace(err)
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }

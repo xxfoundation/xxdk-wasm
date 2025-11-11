@@ -154,10 +154,10 @@ type LoggerJS struct {
 func newLoggerJS(l LoggerJS) map[string]any {
 	logFileWorker := map[string]any{
 		"StopLogging": js.FuncOf(l.StopLogging),
-		"GetFile":     js.FuncOf(l.GetFile),
+		"GetFile":     utils.SafeFunc(l.GetFile),
 		"Threshold":   js.FuncOf(l.Threshold),
 		"MaxSize":     js.FuncOf(l.MaxSize),
-		"Size":        js.FuncOf(l.Size),
+		"Size":        utils.SafeFunc(l.Size),
 		"Worker":      js.FuncOf(l.Worker),
 	}
 
@@ -180,12 +180,8 @@ func (l *LoggerJS) StopLogging(js.Value, []js.Value) any {
 //
 // Returns a promise:
 //   - Resolves to the log file contents (string).
-func (l *LoggerJS) GetFile(js.Value, []js.Value) any {
-	promiseFn := func(resolve, _ func(args ...any) js.Value) {
-		resolve(string(l.api.GetFile()))
-	}
-
-	return utils.CreatePromise(promiseFn)
+func (l *LoggerJS) GetFile(this js.Value, args []js.Value) (any, error) {
+	return string(l.api.GetFile()), nil
 }
 
 // Threshold returns the log level threshold used in the file.
@@ -211,12 +207,8 @@ func (l *LoggerJS) MaxSize(js.Value, []js.Value) any {
 //
 // Returns a promise:
 //   - Resolves to the current file size (int).
-func (l *LoggerJS) Size(js.Value, []js.Value) any {
-	promiseFn := func(resolve, _ func(args ...any) js.Value) {
-		resolve(l.api.Size())
-	}
-
-	return utils.CreatePromise(promiseFn)
+func (l *LoggerJS) Size(this js.Value, args []js.Value) (any, error) {
+	return l.api.Size(), nil
 }
 
 // Worker returns the web worker object.
