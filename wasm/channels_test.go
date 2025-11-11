@@ -117,3 +117,22 @@ func Benchmark_constructIdentity(b *testing.B) {
 		}(identities[i])
 	}
 }
+
+// Test_GetShareUrlType verifies that GetShareUrlType can be called without
+// panicking due to invalid js.Value usage. This test exercises the fix for
+// the "panic: ValueOf: invalid value" error that occurred when using
+// js.Value{} instead of js.Undefined() in the Invoke call.
+func Test_GetShareUrlType(t *testing.T) {
+	// Create a test share URL (the format doesn't matter much for this test,
+	// we're primarily testing that the function doesn't panic)
+	testURL := js.ValueOf("https://example.com/channel#public")
+
+	// Call the function - this should not panic
+	result := GetShareUrlType(js.Undefined(), []js.Value{testURL})
+
+	// The result should be a Promise (in the browser context)
+	// We can't easily await it in this test, but we can verify it's not nil/undefined
+	if !result.(js.Value).Truthy() {
+		t.Error("GetShareUrlType returned falsy value")
+	}
+}

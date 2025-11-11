@@ -195,14 +195,18 @@ export type XXDKUtils = {
   ) => Promise<CMix>;
   LoadNotifications: (
     cmixId: number
-  ) => Notifications;
+  ) => Promise<Notifications>;
   LoadNotificationsDummy:  (
     cmixId: number
-  ) => Notifications;
+  ) => Promise<Notifications>;
   GetDefaultCMixParams: () => Uint8Array;
-  GetChannelInfo: (prettyPrint: string) => Uint8Array;
-  Base64ToUint8Array: (base64: string) => Uint8Array;
-  GenerateChannelIdentity: (cmixId: number) => Uint8Array;
+  GetDefaultE2EParams: () => Uint8Array;
+  GetDefaultE2eFileTransferParams: () => Uint8Array;
+  GetDefaultFileTransferParams: () => Uint8Array;
+  GetDefaultSingleUseParams: () => Uint8Array;
+  GetChannelInfo: (prettyPrint: string) => Promise<Uint8Array>;
+  Base64ToUint8Array: (base64: string) => Promise<Uint8Array>;
+  GenerateChannelIdentity: (cmixId: number) => Promise<Uint8Array>;
   NewChannelsManagerWithIndexedDb: (
     cmixId: number,
     wasmJsPath: string,
@@ -224,7 +228,7 @@ export type XXDKUtils = {
     cmixId: number,
     storagePassword: Uint8Array,
     payloadMaximumSize: number
-  ) => RawCipher;
+  ) => Promise<RawCipher>;
   LoadChannelsManagerWithIndexedDb: (
     cmixId: number,
     wasmJsPath: string,
@@ -234,26 +238,26 @@ export type XXDKUtils = {
     callbacks: ChannelManagerCallbacks,
     channelDbCipher: number
   ) => Promise<ChannelManager>;
-  GetPublicChannelIdentityFromPrivate: (privateKey: Uint8Array) => Uint8Array;
-  IsNicknameValid: (nickname: string) => null;
-  GetShareUrlType: (url: string) => PrivacyLevel;
-  GetVersion: () => string;
-  GetClientVersion: () => string;
+  GetPublicChannelIdentityFromPrivate: (privateKey: Uint8Array) => Promise<Uint8Array>;
+  IsNicknameValid: (nickname: string) => Promise<null>;
+  GetShareUrlType: (url: string) => Promise<PrivacyLevel>;
+  GetVersion: () => Promise<string>;
+  GetClientVersion: () => Promise<string>;
   GetOrInitPassword: (password: string) => Promise<Uint8Array>;
-  ImportPrivateIdentity: (password: string, privateIdentity: Uint8Array) => Uint8Array;
-  ConstructIdentity: (publicKey: Uint8Array, codesetVersion: number) => Uint8Array;
-  DecodePrivateURL: (url: string, password: string) => string;
-  DecodePublicURL: (url: string) => string;
-  GetChannelJSON: (prettyPrint: string) => Uint8Array;
+  ImportPrivateIdentity: (password: string, privateIdentity: Uint8Array) => Promise<Uint8Array>;
+  ConstructIdentity: (publicKey: Uint8Array, codesetVersion: number) => Promise<Uint8Array>;
+  DecodePrivateURL: (url: string, password: string) => Promise<string>;
+  DecodePublicURL: (url: string) => Promise<string>;
+  GetChannelJSON: (prettyPrint: string) => Promise<Uint8Array>;
   NewDummyTrafficManager: (
     cmixId: number,
     maximumOfMessagesPerCycle: number,
     durationToWaitBetweenSendsMilliseconds: number,
     upperBoundIntervalBetweenCyclesMilliseconds: number
-  ) => DummyTraffic;
-  GetWasmSemanticVersion: () => Uint8Array;
-  Purge: (userPassword: string) => void;
-  ValidForever: () => number;
+  ) => Promise<DummyTraffic>;
+  GetWasmSemanticVersion: () => Promise<Uint8Array>;
+  Purge: (userPassword: string) => Promise<void>;
+  ValidForever: () => Promise<number>;
   RPCSend: RPCSend;
 }
 

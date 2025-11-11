@@ -37,5 +37,5 @@ func DownloadAndVerifySignedNdfWithUrl(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return utils.CopyBytesToJS(ndf), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }

@@ -138,7 +138,7 @@ func (rpc *fileTransferReceiveProgressCallback) Callback(
 func InitFileTransfer(_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return initFileTransferImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func initFileTransferImpl(args []js.Value) (any, error) {
@@ -172,7 +172,7 @@ func initFileTransferImpl(args []js.Value) (any, error) {
 func (f *FileTransfer) Send(_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return f.sendImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func (f *FileTransfer) sendImpl(args []js.Value) (any, error) {
@@ -206,7 +206,7 @@ func (f *FileTransfer) sendImpl(args []js.Value) (any, error) {
 func (f *FileTransfer) Receive(_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return f.receiveImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func (f *FileTransfer) receiveImpl(args []js.Value) (any, error) {
@@ -233,7 +233,7 @@ func (f *FileTransfer) receiveImpl(args []js.Value) (any, error) {
 func (f *FileTransfer) CloseSend(_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return f.closeSendImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func (f *FileTransfer) closeSendImpl(args []js.Value) (any, error) {
@@ -268,7 +268,7 @@ func (f *FileTransfer) RegisterSentProgressCallback(
 	_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return f.registerSentProgressCallbackImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func (f *FileTransfer) registerSentProgressCallbackImpl(args []js.Value) (any, error) {
@@ -301,7 +301,7 @@ func (f *FileTransfer) RegisterReceivedProgressCallback(
 	_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return f.registerReceivedProgressCallbackImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func (f *FileTransfer) registerReceivedProgressCallbackImpl(args []js.Value) (any, error) {

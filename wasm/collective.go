@@ -318,7 +318,7 @@ func (r *RemoteKV) ListenOnRemoteKey(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return id, nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // ListenOnRemoteMap allows the caller to receive updates when the map or map
 // elements are updated. It returns the ID of the callback or -1 and an error.
@@ -348,7 +348,7 @@ func (r *RemoteKV) ListenOnRemoteMap(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return id, nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // GetAllRemoteKeyListeners returns a JSON list of { key: [id, id, id, ...] },
 // where key is the key for the listener and the list is an list of integer ids

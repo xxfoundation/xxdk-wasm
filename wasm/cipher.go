@@ -141,7 +141,7 @@ func NewDatabaseCipher(_ js.Value, args []js.Value) any {
 
 		// Add to singleton and return
 		return newDbCipherJS(dbCipherTrackerSingleton.create(c)), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 // GetID returns the ID for this [DbCipher] in the

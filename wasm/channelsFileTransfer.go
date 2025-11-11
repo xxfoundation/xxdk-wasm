@@ -64,7 +64,7 @@ func newChannelsFileTransferJS(api *bindings.ChannelsFileTransfer) map[string]an
 func InitChannelsFileTransfer(_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return initChannelsFileTransferImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func initChannelsFileTransferImpl(args []js.Value) (any, error) {
@@ -158,7 +158,7 @@ func (cft *ChannelsFileTransfer) MaxPreviewSize(js.Value, []js.Value) any {
 func (cft *ChannelsFileTransfer) Upload(_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return cft.uploadImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func (cft *ChannelsFileTransfer) uploadImpl(args []js.Value) (any, error) {
@@ -204,7 +204,7 @@ func (cft *ChannelsFileTransfer) uploadImpl(args []js.Value) (any, error) {
 func (cft *ChannelsFileTransfer) Send(_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return cft.sendImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func (cft *ChannelsFileTransfer) sendImpl(args []js.Value) (any, error) {
@@ -264,7 +264,7 @@ func (cft *ChannelsFileTransfer) RegisterSentProgressCallback(
 	_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return cft.registerSentProgressCallbackImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func (cft *ChannelsFileTransfer) registerSentProgressCallbackImpl(args []js.Value) (any, error) {
@@ -307,7 +307,7 @@ func (cft *ChannelsFileTransfer) registerSentProgressCallbackImpl(args []js.Valu
 func (cft *ChannelsFileTransfer) RetryUpload(_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return cft.retryUploadImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func (cft *ChannelsFileTransfer) retryUploadImpl(args []js.Value) (any, error) {
@@ -341,7 +341,7 @@ func (cft *ChannelsFileTransfer) retryUploadImpl(args []js.Value) (any, error) {
 func (cft *ChannelsFileTransfer) CloseSend(_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return cft.closeSendImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func (cft *ChannelsFileTransfer) closeSendImpl(args []js.Value) (any, error) {
@@ -390,7 +390,7 @@ func (cft *ChannelsFileTransfer) closeSendImpl(args []js.Value) (any, error) {
 func (cft *ChannelsFileTransfer) Download(_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return cft.downloadImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func (cft *ChannelsFileTransfer) downloadImpl(args []js.Value) (any, error) {
@@ -442,7 +442,7 @@ func (cft *ChannelsFileTransfer) RegisterReceivedProgressCallback(
 	_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return cft.registerReceivedProgressCallbackImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func (cft *ChannelsFileTransfer) registerReceivedProgressCallbackImpl(args []js.Value) (any, error) {

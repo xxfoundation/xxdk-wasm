@@ -63,7 +63,7 @@ func NewDummyTrafficManager(_ js.Value, args []js.Value) any {
 		}
 
 		return newDummyTrafficJS(dt), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 // Pause will pause the [DummyTraffic]'s sending thread, meaning messages will

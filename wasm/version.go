@@ -21,9 +21,9 @@ import (
 // GetVersion returns the current xxDK WASM semantic version.
 //
 // Returns:
-//   - Current version (string).
-func GetVersion(js.Value, []js.Value) any {
-	return storage.SEMVER
+//   - Current version (Uint8Array).
+func GetVersion(_ js.Value, _ []js.Value) any {
+	return utils.CopyBytesToJS([]byte(storage.SEMVER))
 }
 
 // GetClientVersion returns the current client xxDK semantic version

@@ -103,7 +103,7 @@ func NewOrLoadUd(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return newUserDiscoveryJS(api), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // NewUdManagerFromBackup builds a new user discover manager from a backup. It
 // will construct a manager that is already registered and restore already
@@ -146,7 +146,7 @@ func NewUdManagerFromBackup(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return newUserDiscoveryJS(api), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // GetFacts returns a JSON marshalled list of [fact.Fact] objects that exist
 // within the Store's registeredFacts map.
@@ -169,7 +169,7 @@ func (ud *UserDiscovery) GetContact(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return utils.CopyBytesToJS(c), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // ConfirmFact confirms a fact first registered via
 // [UserDiscovery.SendRegisterFact]. The confirmation ID comes from
@@ -189,7 +189,7 @@ func (ud *UserDiscovery) ConfirmFact(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return nil, nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // SendRegisterFact adds a fact for the user to user discovery. Will only
 // succeed if the user is already registered and the system does not have the
@@ -213,7 +213,7 @@ func (ud *UserDiscovery) SendRegisterFact(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return confirmationID, nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // PermanentDeleteAccount removes the username associated with this user from
 // the UD service. This will only take a username type fact, and the fact must
@@ -231,7 +231,7 @@ func (ud *UserDiscovery) PermanentDeleteAccount(_ js.Value, args []js.Value) any
 			return nil, err
 		}
 		return nil, nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // RemoveFact removes a previously confirmed fact. This will fail if the fact
 // passed in is not UD service does not associate this fact with this user.
@@ -248,7 +248,7 @@ func (ud *UserDiscovery) RemoveFact(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return nil, nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 ////////////////////////////////////////////////////////////////////////////////
 // User Discovery Lookup                                                      //

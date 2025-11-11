@@ -85,7 +85,7 @@ func NewCmixFromBackup(_ js.Value, args []js.Value) any {
 		}
 
 		return utils.CopyBytesToJS(report), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,7 +116,7 @@ func InitializeBackup(_ js.Value, args []js.Value) any {
 		}
 
 		return newBackupJS(api), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 // ResumeBackup resumes the backup processes with a new callback.
@@ -145,7 +145,7 @@ func ResumeBackup(_ js.Value, args []js.Value) any {
 		}
 
 		return newBackupJS(api), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 // StopBackup stops the backup processes and deletes the user's password from

@@ -61,7 +61,7 @@ func SupportedEmojis(js.Value, []js.Value) any {
 		}
 
 		return utils.CopyBytesToJS(data), nil
-	}).Invoke(js.Value{}, nil)
+	}).Invoke(js.Undefined(), nil)
 }
 
 // SupportedEmojisMap returns a map of emojis that are supported by the backend
@@ -107,7 +107,7 @@ func SupportedEmojisMap(js.Value, []js.Value) any {
 		}
 
 		return utils.CopyBytesToJS(data), nil
-	}).Invoke(js.Value{}, nil)
+	}).Invoke(js.Undefined(), nil)
 }
 
 // ValidateReaction checks that the reaction only contains a single grapheme

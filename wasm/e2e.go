@@ -104,7 +104,7 @@ func Login(_ js.Value, args []js.Value) any {
 		}
 
 		return newE2eJS(newE2E), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 // LoginEphemeral creates and returns a new ephemeral [E2e] object and adds it
@@ -135,7 +135,7 @@ func LoginEphemeral(_ js.Value, args []js.Value) any {
 		}
 
 		return newE2eJS(newE2E), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 // GetContact returns a [contact.Contact] object for the [E2e]
@@ -173,7 +173,7 @@ func (e *E2e) GetUdCertFromNdf(js.Value, []js.Value) any {
 func (e *E2e) GetUdContactFromNdf(_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
 		return e.getUdContactFromNdfImpl(args)
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 func (e *E2e) getUdContactFromNdfImpl(_ []js.Value) (any, error) {

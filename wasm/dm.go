@@ -112,7 +112,7 @@ func NewDMClient(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return newDMClientJS(cm), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // NewDMClientWithIndexedDb creates a new [DMClient] from a private identity
 // ([codename.PrivateIdentity]) and an indexedDbWorker as a backend
@@ -158,7 +158,7 @@ func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
 		}
 		return newDMClientWithIndexedDb(
 			cmixID, notificationsID, wasmJsPath, privateIdentity, cipher, cbs), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // NewDMClientWithIndexedDbUnsafe creates a new [DMClient] from a private
 // identity ([codename.PrivateIdentity]) and an indexedDbWorker as a backend
@@ -731,7 +731,7 @@ func DecodeDMShareURL(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return utils.CopyBytesToJS(report), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // GetDmNotificationReportsForMe checks the notification data against the filter
 // list to determine which notifications belong to the user. A list of
@@ -779,7 +779,7 @@ func GetDmNotificationReportsForMe(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return utils.CopyBytesToJS(forMe), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 ////////////////////////////////////////////////////////////////////////////////
 // Event Model Logic                                                          //

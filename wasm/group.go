@@ -57,7 +57,7 @@ func NewGroupChat(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return newGroupChatJS(api), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // MakeGroup creates a new group and sends a group request to all members in the
 // group.
@@ -120,7 +120,7 @@ func (g *GroupChat) JoinGroup(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return nil, nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // LeaveGroup deletes a group so a user no longer has access.
 //
@@ -137,7 +137,7 @@ func (g *GroupChat) LeaveGroup(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return nil, nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // Send is the bindings-level function for sending to a group.
 //
@@ -176,7 +176,7 @@ func (g *GroupChat) GetGroups(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return utils.CopyBytesToJS(groups), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // GetGroup returns the group with the group ID. If no group exists, then the
 // error "failed to find group" is returned.
@@ -195,7 +195,7 @@ func (g *GroupChat) GetGroup(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return newGroupJS(grp), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // NumGroups returns the number of groups the user is a part of.
 //
@@ -278,7 +278,7 @@ func (g *Group) GetMembership(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return utils.CopyBytesToJS(membership), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 // Serialize serializes the [Group].
 //
@@ -303,7 +303,7 @@ func DeserializeGroup(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return newGroupJS(grp), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 ////////////////////////////////////////////////////////////////////////////////
 // Callbacks                                                                  //

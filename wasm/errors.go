@@ -57,5 +57,5 @@ func UpdateCommonErrors(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return nil, nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }

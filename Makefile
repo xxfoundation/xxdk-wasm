@@ -3,8 +3,10 @@
 clean:
 	go mod tidy
 	go mod vendor -e
-	-rm *.wasm
-	-rm assets/wasm/*
+	go clean -cache
+	-rm -f *.wasm
+	-rm -rf assets/wasm/*
+	-rm -rf dist/
 
 update:
 	-GOFLAGS="" go get all

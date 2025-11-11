@@ -43,44 +43,65 @@ export const InitXXDK = () => new Promise<XXDKUtils>(async (xxdkUtils) => {
     '--workerScriptURL=' + logWorker,
   ]
 
+  // Debug: Check main WASM fetch
+  console.log("[XXDK] Fetching main WASM from:", xxdkWasmPath.toString());
+  const mainWasmResponse = await fetch(xxdkWasmPath);
+  console.log("[XXDK] Main WASM fetch status:", mainWasmResponse.status);
+  console.log("[XXDK] Main WASM content-type:", mainWasmResponse.headers.get('content-type'));
+
+  if (!mainWasmResponse.ok) {
+    const text = await mainWasmResponse.text();
+    console.error("[XXDK] Main WASM fetch failed. Response body:", text.substring(0, 500));
+    throw new Error(`Failed to fetch main WASM: ${mainWasmResponse.status} ${mainWasmResponse.statusText}`);
+  }
+
   let stream = await WebAssembly?.instantiateStreaming(
-    fetch(xxdkWasmPath), go.importObject);
+    mainWasmResponse, go.importObject);
   go.run(stream.instance);
   await isReady;
 
-  // Get functions directly from WASM (SafeFunc now returns Promises automatically)
-  const {
-    Base64ToUint8Array,
-    ConstructIdentity,
-    DecodePrivateURL,
-    DecodePublicURL,
-    GenerateChannelIdentity,
-    GetChannelInfo,
-    GetChannelJSON,
-    GetClientVersion,
-    GetDefaultCMixParams,
-    GetOrInitPassword,
-    GetPublicChannelIdentityFromPrivate,
-    GetShareUrlType,
-    GetVersion,
-    GetWasmSemanticVersion,
-    ImportPrivateIdentity,
-    IsNicknameValid,
-    LoadChannelsManagerWithIndexedDb,
-    LoadCmix,
-    LoadNotifications,
-    LoadNotificationsDummy,
-    LoadSynchronizedCmix,
-    NewChannelsManagerWithIndexedDb,
-    NewCmix,
-    NewDMClientWithIndexedDb,
-    NewDatabaseCipher,
-    NewDummyTrafficManager,
-    NewSynchronizedCmix,
-    Purge,
-    ValidForever,
-    RPCSend
-  } = window;
+  // Get functions from WASM
+  // All functions wrapped in SafeFunc return Promises
+  const wasmRaw = window as any;
+
+  // Functions that return Promises (wrapped in SafeFunc in Go)
+  // Cast to any to avoid type signature mismatches - the actual types are defined in XXDKUtils
+  const Base64ToUint8Array = wasmRaw.Base64ToUint8Array as any;
+  const ConstructIdentity = wasmRaw.ConstructIdentity as any;
+  const DecodePrivateURL = wasmRaw.DecodePrivateURL as any;
+  const DecodePublicURL = wasmRaw.DecodePublicURL as any;
+  const GenerateChannelIdentity = wasmRaw.GenerateChannelIdentity as any;
+  const GetChannelInfo = wasmRaw.GetChannelInfo as any;
+  const GetChannelJSON = wasmRaw.GetChannelJSON as any;
+  const GetClientVersion = wasmRaw.GetClientVersion as any;
+  const GetOrInitPassword = wasmRaw.GetOrInitPassword as any;
+  const GetPublicChannelIdentityFromPrivate = wasmRaw.GetPublicChannelIdentityFromPrivate as any;
+  const GetShareUrlType = wasmRaw.GetShareUrlType as any;
+  const GetVersion = wasmRaw.GetVersion as any;
+  const GetWasmSemanticVersion = wasmRaw.GetWasmSemanticVersion as any;
+  const ImportPrivateIdentity = wasmRaw.ImportPrivateIdentity as any;
+  const IsNicknameValid = wasmRaw.IsNicknameValid as any;
+  const LoadChannelsManagerWithIndexedDb = wasmRaw.LoadChannelsManagerWithIndexedDb as any;
+  const LoadCmix = wasmRaw.LoadCmix as any;
+  const LoadNotifications = wasmRaw.LoadNotifications as any;
+  const LoadNotificationsDummy = wasmRaw.LoadNotificationsDummy as any;
+  const LoadSynchronizedCmix = wasmRaw.LoadSynchronizedCmix as any;
+  const NewChannelsManagerWithIndexedDb = wasmRaw.NewChannelsManagerWithIndexedDb as any;
+  const NewCmix = wasmRaw.NewCmix as any;
+  const NewDatabaseCipher = wasmRaw.NewDatabaseCipher as any;
+  const NewDMClientWithIndexedDb = wasmRaw.NewDMClientWithIndexedDb as any;
+  const NewDummyTrafficManager = wasmRaw.NewDummyTrafficManager as any;
+  const NewSynchronizedCmix = wasmRaw.NewSynchronizedCmix as any;
+  const Purge = wasmRaw.Purge as any;
+  const RPCSend = wasmRaw.RPCSend as any;
+  const ValidForever = wasmRaw.ValidForever as any;
+
+  // Parameter getters are truly synchronous - not wrapped in SafeFunc
+  const GetDefaultCMixParams = wasmRaw.GetDefaultCMixParams as any;
+  const GetDefaultE2EParams = wasmRaw.GetDefaultE2EParams as any;
+  const GetDefaultE2eFileTransferParams = wasmRaw.GetDefaultE2eFileTransferParams as any;
+  const GetDefaultFileTransferParams = wasmRaw.GetDefaultFileTransferParams as any;
+  const GetDefaultSingleUseParams = wasmRaw.GetDefaultSingleUseParams as any;
 
   const { GetLogger } = window;
   if(GetLogger) {
@@ -112,6 +133,10 @@ export const InitXXDK = () => new Promise<XXDKUtils>(async (xxdkUtils) => {
     GetChannelInfo,
     GenerateChannelIdentity,
     GetDefaultCMixParams,
+    GetDefaultE2EParams,
+    GetDefaultE2eFileTransferParams,
+    GetDefaultFileTransferParams,
+    GetDefaultSingleUseParams,
     NewChannelsManagerWithIndexedDb,
     Base64ToUint8Array,
     LoadChannelsManagerWithIndexedDb,

@@ -106,7 +106,7 @@ func NewCmix(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return nil, nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 // NewSynchronizedCmix clones a cMix from remote storage.
@@ -145,7 +145,7 @@ func NewSynchronizedCmix(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return nil, nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 // LoadCmix will load an existing user storage from the storageDir using the
@@ -177,7 +177,7 @@ func LoadCmix(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return newCmixJS(net), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 // LoadSynchronizedCmix will [LoadCmix] using a RemoteStore to establish
@@ -212,7 +212,7 @@ func LoadSynchronizedCmix(_ js.Value, args []js.Value) any {
 			return nil, err
 		}
 		return newCmixJS(net), nil
-	}).Invoke(js.Value{}, args)
+	}).Invoke(jsArgsToAny(args)...)
 }
 
 // UnloadCmix will unload an existing cMix instance
