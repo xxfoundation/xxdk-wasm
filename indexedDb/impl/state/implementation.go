@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package main
+package state
 
 import (
 	"encoding/json"

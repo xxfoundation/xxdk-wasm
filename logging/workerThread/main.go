@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package main
+package workerThread
 
 import (
 	"encoding/binary"
@@ -35,16 +35,9 @@ type workerLogFile struct {
 	b  *circbuf.Buffer
 }
 
-func main() {
-	// Set to os.Args because the default is os.Args[1:] and in WASM, args start
-	// at 0, not 1.
-	LoggerCmd.SetArgs(os.Args)
-
-	err := LoggerCmd.Execute()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+// RunLoggerWorker returns the logger worker command for main.go to execute
+func RunLoggerWorker() *cobra.Command {
+	return LoggerCmd
 }
 
 var LoggerCmd = &cobra.Command{

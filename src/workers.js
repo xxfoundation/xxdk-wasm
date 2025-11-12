@@ -16,6 +16,7 @@ export function startLogFileWorker(wasm) {
   });
 
   const go = new Go();
+  go.argv = ['--workerType=logger'];
 
   // Debug: Check the fetch response before instantiateStreaming
   fetch(wasm).then(async (response) => {
@@ -47,6 +48,7 @@ export function startChannelsIndexedDbWorker(wasm) {
   });
   const go = new Go();
   go.argv = [
+    '--workerType=channels',
     '--logLevel=2',
     '--threadLogLevel=2',
   ]
@@ -79,6 +81,7 @@ export function startDmIndexedDbWorker(wasm) {
   });
   const go = new Go();
   go.argv = [
+    '--workerType=dm',
     '--logLevel=2',
     '--threadLogLevel=2',
   ]
@@ -111,6 +114,7 @@ export function startStateIndexedDbWorker(wasm) {
   });
   const go = new Go();
   go.argv = [
+    '--workerType=state',
     '--logLevel=2',
     '--threadLogLevel=2',
   ]

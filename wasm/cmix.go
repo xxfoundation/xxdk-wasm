@@ -38,10 +38,20 @@ type GenericKeyValue struct {
 	keys   func(args ...any) js.Value
 }
 
+// kvRegistry stores references to prevent JS GC
+var kvRegistry = js.Global().Get("Map").New()
+var kvCounter int
+
 // newGenericKeyValue maps the functions of the Javascript object matching
 // [bindings.GenericKeyValue] to a GenericKeyValue.
 func newGenericKeyValue(arg js.Value) *GenericKeyValue {
 	fmt.Println("[DEBUG] newGenericKeyValue: arg type:", arg.Type())
+
+	// Register in JS Map to prevent GC
+	kvCounter++
+	kvRegistry.Call("set", kvCounter, arg)
+	fmt.Println("[DEBUG] newGenericKeyValue: Registered KV with ID:", kvCounter)
+
 	return &GenericKeyValue{
 		parent: arg, // Store parent to keep callbacks alive!
 		get:    utils.WrapCB(arg, "Get"),

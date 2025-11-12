@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package main
+package dm
 
 import (
 	"fmt"
@@ -24,16 +24,9 @@ import (
 // SEMVER is the current semantic version of the xxDK DM web worker.
 const SEMVER = "0.1.0"
 
-func main() {
-	// Set to os.Args because the default is os.Args[1:] and in WASM, args start
-	// at 0, not 1.
-	dmCmd.SetArgs(os.Args)
-
-	err := dmCmd.Execute()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+// RunDmWorker returns the dm worker command for main.go to execute
+func RunDmWorker() *cobra.Command {
+	return dmCmd
 }
 
 var dmCmd = &cobra.Command{

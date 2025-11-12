@@ -47,28 +47,28 @@ export function setXXDKBasePath(newPath: URL) {
 // TODO: These functions should be kept internal to this package but the current API and legacy
 // apps need to maintain access
 export async function logFileWorkerPath(): Promise<URL> {
-  const binPath = require('../assets/wasm/xxdk-logFileWorker.wasm');
+  const binPath = require('../assets/wasm/xxdk.wasm');
   const wasm = new URL(window!.xxdkBasePath + binPath.toString());
   console.info("Loading logFileWorker (" + wasm + ")");
   return downloadWorkerToBlobURL(wasm, startLogFileWorker);
 }
 
 export async function channelsIndexedDbWorkerPath(): Promise<URL> {
-  const binPath = require('../assets/wasm/xxdk-channelsIndexedDbWorker.wasm');
+  const binPath = require('../assets/wasm/xxdk.wasm');
   const wasm = new URL(window!.xxdkBasePath + binPath.toString());
   console.info("Loading channelsIndexedDbWorker (" + wasm + ")");
   return downloadWorkerToBlobURL(wasm, startChannelsIndexedDbWorker);
 }
 
 export async function dmIndexedDbWorkerPath(): Promise<URL> {
-  const binPath = require('../assets/wasm/xxdk-dmIndexedDbWorker.wasm');
+  const binPath = require('../assets/wasm/xxdk.wasm');
   const wasm = new URL(window!.xxdkBasePath + binPath.toString());
   console.info("Loading dmIndexedDbWorker (" + wasm + ")");
   return downloadWorkerToBlobURL(wasm, startDmIndexedDbWorker);
 }
 
 export async function stateIndexedDbWorkerPath(): Promise<URL> {
-  const binPath = require('../assets/wasm/xxdk-stateIndexedDbWorker.wasm');
+  const binPath = require('../assets/wasm/xxdk.wasm');
   const wasm = new URL(window!.xxdkBasePath + binPath.toString());
   console.info("Loading stateIndexedDbWorker (" + wasm + ")");
   return downloadWorkerToBlobURL(wasm, startStateIndexedDbWorker);

@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package main
+package state
 
 import (
 	"fmt"
@@ -24,16 +24,9 @@ import (
 // SEMVER is the current semantic version of the xxDK web worker.
 const SEMVER = "0.1.0"
 
-func main() {
-	// Set to os.Args because the default is os.Args[1:] and in WASM, args start
-	// at 0, not 1.
-	stateCmd.SetArgs(os.Args)
-
-	err := stateCmd.Execute()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+// RunStateWorker returns the state worker command for main.go to execute
+func RunStateWorker() *cobra.Command {
+	return stateCmd
 }
 
 var stateCmd = &cobra.Command{

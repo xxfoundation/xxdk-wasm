@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package main
+package state
 
 const (
 	// Text representation of primary key value (keyPath).

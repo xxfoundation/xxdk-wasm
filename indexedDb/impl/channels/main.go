@@ -11,6 +11,7 @@ package channels
 
 import (
 	"fmt"
+	"os"
 	"syscall/js"
 
 	"github.com/spf13/cobra"

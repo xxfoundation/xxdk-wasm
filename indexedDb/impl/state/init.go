@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package main
+package state
 
 import (
 	"github.com/hack-pad/go-indexeddb/idb"

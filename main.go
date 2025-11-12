@@ -23,15 +23,65 @@ import (
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
+
+	// Import worker packages
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl/channels"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl/dm"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl/state"
+	"gitlab.com/elixxir/xxdk-wasm/logging/workerThread"
 )
 
 func main() {
 	// Set to os.Args because the default is os.Args[1:] and in WASM, args start
 	// at 0, not 1.
+
+	// Check if this is being run as a worker based on --workerType flag
+	for _, arg := range os.Args {
+		if len(arg) > 13 && arg[:13] == "--workerType=" {
+			workerType := arg[13:]
+			runWorker(workerType)
+			return
+		}
+	}
+
+	// Not a worker, run main WASM
 	wasmCmd.SetArgs(os.Args)
 
 	err := wasmCmd.Execute()
 	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+// runWorker runs the appropriate worker based on workerType
+func runWorker(workerType string) {
+	var cmd *cobra.Command
+
+	switch workerType {
+	case "channels":
+		cmd = channels.RunChannelsWorker()
+	case "dm":
+		cmd = dm.RunDmWorker()
+	case "state":
+		cmd = state.RunStateWorker()
+	case "logger":
+		cmd = workerThread.RunLoggerWorker()
+	default:
+		fmt.Printf("Unknown worker type: %s\n", workerType)
+		os.Exit(1)
+	}
+
+	// Filter out --workerType flag before passing to worker command
+	filteredArgs := make([]string, 0, len(os.Args))
+	for _, arg := range os.Args {
+		if len(arg) < 13 || arg[:13] != "--workerType=" {
+			filteredArgs = append(filteredArgs, arg)
+		}
+	}
+
+	cmd.SetArgs(filteredArgs)
+	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}

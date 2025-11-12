@@ -7,7 +7,7 @@
 
 //go:build js && wasm
 
-package main
+package channels
 
 import (
 	"time"
