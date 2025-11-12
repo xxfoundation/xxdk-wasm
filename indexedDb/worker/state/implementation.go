@@ -70,3 +70,31 @@ func (w *wasmModel) Get(key string) ([]byte, error) {
 
 	return msg.Value, nil
 }
+
+func (w *wasmModel) Delete(key string) error {
+	response, err := w.wh.SendMessage(DeleteTag, []byte(key))
+	if err != nil {
+		jww.FATAL.Panicf("Failed to send message to %q: %+v", DeleteTag, err)
+	} else if len(response) > 0 {
+		return errors.New(string(response))
+	}
+
+	return nil
+}
+
+func (w *wasmModel) Keys() ([]byte, error) {
+	response, err := w.wh.SendMessage(KeysTag, nil)
+	if err != nil {
+		jww.FATAL.Panicf("Failed to send message to %q: %+v", KeysTag, err)
+	}
+
+	// Response is JSON array of keys or error message
+	// Try to parse as JSON array first
+	var keys []string
+	if err = json.Unmarshal(response, &keys); err != nil {
+		// If not valid JSON, treat as error message
+		return nil, errors.New(string(response))
+	}
+
+	return response, nil
+}

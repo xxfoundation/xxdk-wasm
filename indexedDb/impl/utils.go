@@ -37,6 +37,8 @@ const (
 type WebState interface {
 	Get(key string) ([]byte, error)
 	Set(key string, value []byte) error
+	Delete(key string) error
+	Keys() ([]byte, error)
 }
 
 // NewContext builds a context for indexedDb operations.
@@ -264,6 +266,40 @@ func Delete(db *idb.Database, objectStoreName string, key js.Value) error {
 	jww.DEBUG.Printf("Successfully deleted value at %s/%s",
 		objectStoreName, utils.JsToJson(key))
 	return nil
+}
+
+// GetAllKeys is a generic helper for getting all keys from the given [idb.ObjectStore].
+func GetAllKeys(db *idb.Database, objectStoreName string) (js.Value, error) {
+	parentErr := errors.Errorf("failed to GetAllKeys %s", objectStoreName)
+
+	// Prepare the Transaction
+	txn, err := db.Transaction(idb.TransactionReadOnly, objectStoreName)
+	if err != nil {
+		return js.Undefined(), errors.WithMessagef(parentErr,
+			"Unable to create Transaction: %+v", err)
+	}
+	store, err := txn.ObjectStore(objectStoreName)
+	if err != nil {
+		return js.Undefined(), errors.WithMessagef(parentErr,
+			"Unable to get ObjectStore: %+v", err)
+	}
+
+	// Set up the operation
+	getAllKeysRequest, err := store.GetAllKeys()
+	if err != nil {
+		return js.Undefined(), errors.WithMessagef(parentErr,
+			"Unable to GetAllKeys from ObjectStore: %+v", err)
+	}
+
+	// Perform the operation (ArrayRequest has a Request field)
+	resultObj, err := SendRequest(getAllKeysRequest.Request)
+	if err != nil {
+		return js.Undefined(), errors.WithMessagef(parentErr,
+			"Unable to get keys from ObjectStore: %+v", err)
+	}
+
+	jww.DEBUG.Printf("Got all keys from %s", objectStoreName)
+	return resultObj, nil
 }
 
 // DeleteIndex is a generic helper for removing values from the

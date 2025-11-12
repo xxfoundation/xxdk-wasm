@@ -1,7 +1,6 @@
 
 import { ChannelEventHandler } from './events/channels';
 import { DMEventHandler } from './events/dm';
-import { RemoteStore } from './types/collective';
 import { RawCipher } from './types/index';
 import { RPCSend } from './types/rpc';
 
@@ -110,10 +109,10 @@ type HealthCallback = { Callback: (healthy: boolean) => void }
 export type CMix = {
   AddHealthCallback: (callback: HealthCallback) => number;
   GetID: () => number;
-  IsReady: (threshold: number) => Uint8Array;
+  IsReady: (threshold: number) => Promise<Uint8Array>;
   ReadyToSend: () => boolean;
-  StartNetworkFollower: (timeoutMilliseconds: number) => void;
-  StopNetworkFollower: () => void;
+  StartNetworkFollower: (timeoutMilliseconds: number) => Promise<void>;
+  StopNetworkFollower: () => Promise<void>;
   WaitForNetwork: (timeoutMilliseconds: number) => Promise<void>;
 }
 
@@ -168,6 +167,14 @@ export type MessageDeletedCallback = (uuid: Uint8Array) => void;
 export type UserMutedCallback = (channelId: Uint8Array, pubkey: string, unmute: boolean) => void;
 export type DMReceivedCallback = (uuid: string, pubkey: Uint8Array, update: boolean, updateConversation: boolean) => void;
 
+// GenericKeyValue interface for advanced users who want to provide custom storage
+export type GenericKeyValue = {
+  Get: (key: string) => Promise<Uint8Array>;
+  Set: (key: string, value: Uint8Array) => Promise<void>;
+  Delete: (key: string) => Promise<void>;
+  Keys: () => Promise<Uint8Array>;
+}
+
 export type XXDKUtils = {
   NewCmix: (
     ndf: string,
@@ -175,22 +182,22 @@ export type XXDKUtils = {
     password: Uint8Array,
     registrationCode: string
   ) => Promise<void>;
-  NewSynchronizedCmix: (
+  NewCmixWithKV: (
+    kv: GenericKeyValue,
     ndf: string,
     storageDir: string,
-    remoteStoragePrefixPath: string,
     password: Uint8Array,
-    remoteStore: RemoteStore,
+    registrationCode: string
   ) => Promise<void>;
   LoadCmix: (
     storageDirectory: string,
     password: Uint8Array,
     cmixParams: Uint8Array
   ) => Promise<CMix>;
-  LoadSynchronizedCmix: (
+  LoadCmixWithKV: (
+    kv: GenericKeyValue,
     storageDirectory: string,
     password: Uint8Array,
-    remoteStore: RemoteStore,
     cmixParams: Uint8Array
   ) => Promise<CMix>;
   LoadNotifications: (

@@ -64,3 +64,33 @@ func (s *stateModel) Set(key string, value []byte) error {
 	}
 	return nil
 }
+
+func (s *stateModel) Delete(key string) error {
+	err := impl.Delete(s.db, stateStoreName, js.ValueOf(key))
+	if err != nil {
+		return errors.Errorf("Unable to delete key %s: %+v", key, err)
+	}
+	return nil
+}
+
+func (s *stateModel) Keys() ([]byte, error) {
+	keys, err := impl.GetAllKeys(s.db, stateStoreName)
+	if err != nil {
+		return nil, errors.Errorf("Unable to get all keys: %+v", err)
+	}
+
+	// Convert JS array of keys to Go string slice
+	keysLength := keys.Length()
+	keysList := make([]string, keysLength)
+	for i := 0; i < keysLength; i++ {
+		keysList[i] = keys.Index(i).String()
+	}
+
+	// Return JSON-encoded list of keys
+	keysJSON, err := json.Marshal(keysList)
+	if err != nil {
+		return nil, errors.Errorf("Unable to marshal keys: %+v", err)
+	}
+
+	return keysJSON, nil
+}

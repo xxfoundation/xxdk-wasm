@@ -28,6 +28,65 @@ type Cmix struct {
 	api *bindings.Cmix
 }
 
+// GenericKeyValue implements [bindings.GenericKeyValue] by wrapping a JavaScript object.
+// It stores the parent js.Value to prevent the JavaScript callbacks from being garbage collected.
+type GenericKeyValue struct {
+	parent js.Value // Keep the parent object alive to prevent callback GC
+	get    func(args ...any) js.Value
+	set    func(args ...any) js.Value
+	delete func(args ...any) js.Value
+	keys   func(args ...any) js.Value
+}
+
+// newGenericKeyValue maps the functions of the Javascript object matching
+// [bindings.GenericKeyValue] to a GenericKeyValue.
+func newGenericKeyValue(arg js.Value) *GenericKeyValue {
+	fmt.Println("[DEBUG] newGenericKeyValue: arg type:", arg.Type())
+	return &GenericKeyValue{
+		parent: arg, // Store parent to keep callbacks alive!
+		get:    utils.WrapCB(arg, "Get"),
+		set:    utils.WrapCB(arg, "Set"),
+		delete: utils.WrapCB(arg, "Delete"),
+		keys:   utils.WrapCB(arg, "Keys"),
+	}
+}
+
+// Get implements [bindings.GenericKeyValue.Get]
+func (kv *GenericKeyValue) Get(key string) ([]byte, error) {
+	v, awaitErr := utils.Await(kv.get(key))
+	if awaitErr != nil {
+		return nil, js.Error{Value: awaitErr[0]}
+	}
+	return utils.CopyBytesToGo(v[0]), nil
+}
+
+// Set implements [bindings.GenericKeyValue.Set]
+func (kv *GenericKeyValue) Set(key string, value []byte) error {
+	_, awaitErr := utils.Await(kv.set(key, utils.CopyBytesToJS(value)))
+	if awaitErr != nil {
+		return js.Error{Value: awaitErr[0]}
+	}
+	return nil
+}
+
+// Delete implements [bindings.GenericKeyValue.Delete]
+func (kv *GenericKeyValue) Delete(key string) error {
+	_, awaitErr := utils.Await(kv.delete(key))
+	if awaitErr != nil {
+		return js.Error{Value: awaitErr[0]}
+	}
+	return nil
+}
+
+// Keys implements [bindings.GenericKeyValue.Keys]
+func (kv *GenericKeyValue) Keys() ([]byte, error) {
+	v, awaitErr := utils.Await(kv.keys())
+	if awaitErr != nil {
+		return nil, js.Error{Value: awaitErr[0]}
+	}
+	return utils.CopyBytesToGo(v[0]), nil
+}
+
 // newCmixJS creates a new Javascript compatible object (map[string]any) that
 // matches the [Cmix] structure.
 func newCmixJS(api *bindings.Cmix) map[string]any {
@@ -36,7 +95,6 @@ func newCmixJS(api *bindings.Cmix) map[string]any {
 		// cmix.go
 		"GetID":          js.FuncOf(c.GetID),
 		"GetReceptionID": js.FuncOf(c.GetReceptionID),
-		"GetRemoteKV":    utils.SafeFunc(c.GetRemoteKV),
 		"EKVGet":         utils.SafeFunc(c.EKVGet),
 		"EKVSet":         utils.SafeFunc(c.EKVSet),
 
@@ -79,68 +137,35 @@ func newCmixJS(api *bindings.Cmix) map[string]any {
 }
 
 // NewCmix creates user storage, generates keys, connects, and registers with
-// the network. Note that this does not register a username/identity, but merely
-// creates a new cryptographic identity for adding such information at a later
-// date.
+// the network using a GenericKeyValue for storage. Note that this does not
+// register a username/identity, but merely creates a new cryptographic identity
+// for adding such information at a later date.
 //
 // Users of this function should delete the storage directory on error.
 //
 // Parameters:
-//   - args[0] - NDF JSON ([ndf.NetworkDefinition]) (string).
-//   - args[1] - Storage directory path (string).
-//   - args[2] - Password used for storage (Uint8Array).
-//   - args[3] - Registration code (string).
+//   - args[0] - Javascript [GenericKeyValue] implementation.
+//   - args[1] - NDF JSON ([ndf.NetworkDefinition]) (string).
+//   - args[2] - Storage directory path (string).
+//   - args[3] - Password used for storage (Uint8Array).
+//   - args[4] - Registration code (string).
 //
 // Returns a promise:
 //   - Resolves on success.
 //   - Rejected with an error if creating a new cMix client fails.
 func NewCmix(_ js.Value, args []js.Value) any {
 	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		ndfJSON := args[0].String()
-		storageDir := args[1].String()
-		password := utils.CopyBytesToGo(args[2])
-		registrationCode := args[3].String()
-
-		err := bindings.NewCmix(ndfJSON, storageDir, password, registrationCode)
-		if err != nil {
-			return nil, err
-		}
-		return js.Undefined(), nil
-	}).Invoke(jsArgsToAny(args)...)
-}
-
-// NewSynchronizedCmix clones a cMix from remote storage.
-//
-// Users of this function should delete the storage directory on error.
-//
-// Parameters:
-//   - args[0] - NDF JSON ([ndf.NetworkDefinition]) (string).
-//   - args[1] - Storage directory path (string).
-//   - args[2] - The remote "directory" or path prefix used by the RemoteStore
-//     when reading/writing files (string).
-//   - args[3] - Password used for storage (Uint8Array).
-//   - args[4] - Javascript [RemoteStore] implementation.
-//
-// Returns a promise:
-//   - Resolves on success.
-//   - Rejected with an error if creating a new cMix client fails.
-func NewSynchronizedCmix(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		ndfJSON := args[0].String()
-		storageDir := args[1].String()
-		remoteStoragePrefixPath := args[2].String()
+		fmt.Println("[DEBUG] NewCmix: Starting")
+		kv := newGenericKeyValue(args[0])
+		fmt.Println("[DEBUG] NewCmix: Created GenericKeyValue, parent stored:", !kv.parent.IsUndefined())
+		ndfJSON := args[1].String()
+		storageDir := args[2].String()
 		password := utils.CopyBytesToGo(args[3])
-		rs := newRemoteStore(args[4])
+		registrationCode := args[4].String()
 
-		// Block loading of synchronized Cmix during initialisation
-		initializing.Store(true)
-
-		err := bindings.NewSynchronizedCmix(ndfJSON, storageDir,
-			remoteStoragePrefixPath, password, rs)
-
-		// Unblock loading of synchronized Cmix during initialisation
-		initializing.Store(false)
-
+		fmt.Println("[DEBUG] NewCmix: Calling bindings.NewCmixWithKV")
+		err := bindings.NewCmixWithKV(kv, ndfJSON, storageDir, password, registrationCode)
+		fmt.Println("[DEBUG] NewCmix: Returned from bindings.NewCmixWithKV, err:", err)
 		if err != nil {
 			return nil, err
 		}
@@ -148,7 +173,8 @@ func NewSynchronizedCmix(_ js.Value, args []js.Value) any {
 	}).Invoke(jsArgsToAny(args)...)
 }
 
-// LoadCmix will load an existing user storage from the storageDir using the
+// LoadCmix will load an existing user storage backed by a key-value store from
+// the storageDir using the
 // password. This will fail if the user storage does not exist or the password
 // is incorrect.
 //
@@ -180,40 +206,6 @@ func LoadCmix(_ js.Value, args []js.Value) any {
 	}).Invoke(jsArgsToAny(args)...)
 }
 
-// LoadSynchronizedCmix will [LoadCmix] using a RemoteStore to establish
-// a synchronized RemoteKV.
-//
-// Parameters:
-//   - args[0] - Storage directory path (string).
-//   - args[1] - The remote "directory" or path prefix used by the RemoteStore
-//     when reading/writing files (string).
-//   - args[2] - Password used for storage (Uint8Array).
-//   - args[3] - Javascript [RemoteStore] implementation.
-//   - args[4] - JSON of [xxdk.CMIXParams] (Uint8Array).
-//
-// Returns a promise:
-//   - Resolves to a Javascript representation of the [Cmix] object.
-//   - Rejected with an error if loading [Cmix] fails.
-func LoadSynchronizedCmix(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		storageDir := args[0].String()
-		remoteStoragePrefixPath := args[1].String()
-		password := utils.CopyBytesToGo(args[2])
-		rs := newRemoteStore(args[3])
-		cmixParamsJSON := utils.CopyBytesToGo(args[4])
-
-		if initializing.Load() {
-			return nil, fmt.Errorf("cannot Load when New is running")
-		}
-		net, err := bindings.LoadSynchronizedCmix(storageDir,
-			remoteStoragePrefixPath, password,
-			rs, cmixParamsJSON)
-		if err != nil {
-			return nil, err
-		}
-		return newCmixJS(net), nil
-	}).Invoke(jsArgsToAny(args)...)
-}
 
 // UnloadCmix will unload an existing cMix instance
 //
@@ -243,14 +235,6 @@ func (c *Cmix) GetReceptionID(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(c.api.GetReceptionID())
 }
 
-// GetRemoteKV returns the cMix RemoteKV
-//
-// Returns a promise:
-//   - Resolves with the RemoteKV object.
-func (c *Cmix) GetRemoteKV(this js.Value, args []js.Value) (any, error) {
-	kv := c.api.GetRemoteKV()
-	return newRemoteKvJS(kv), nil
-}
 
 // EKVGet allows access to a value inside the secure encrypted key value store.
 //

@@ -32,6 +32,8 @@ func (m *manager) registerCallbacks() {
 	m.wtm.RegisterCallback(stateWorker.NewStateTag, m.newStateCB)
 	m.wtm.RegisterCallback(stateWorker.SetTag, m.setCB)
 	m.wtm.RegisterCallback(stateWorker.GetTag, m.getCB)
+	m.wtm.RegisterCallback(stateWorker.DeleteTag, m.deleteCB)
+	m.wtm.RegisterCallback(stateWorker.KeysTag, m.keysCB)
 }
 
 // newStateCB is the callback for NewState. Returns an empty
@@ -91,4 +93,29 @@ func (m *manager) getCB(message []byte, reply func(message []byte)) {
 	}
 
 	reply(replyMessage)
+}
+
+// deleteCB is the callback for stateModel.Delete.
+// Returns nil on success or an error message on failure.
+func (m *manager) deleteCB(message []byte, reply func(message []byte)) {
+	key := string(message)
+	err := m.model.Delete(key)
+	if err != nil {
+		reply([]byte(err.Error()))
+		return
+	}
+
+	reply(nil)
+}
+
+// keysCB is the callback for stateModel.Keys.
+// Returns JSON array of keys on success or an error message on failure.
+func (m *manager) keysCB(message []byte, reply func(message []byte)) {
+	result, err := m.model.Keys()
+	if err != nil {
+		reply([]byte(err.Error()))
+		return
+	}
+
+	reply(result)
 }

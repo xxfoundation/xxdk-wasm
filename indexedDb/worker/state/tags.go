@@ -17,4 +17,6 @@ const (
 	NewStateTag worker.Tag = "NewState"
 	SetTag      worker.Tag = "Set"
 	GetTag      worker.Tag = "Get"
+	DeleteTag   worker.Tag = "Delete"
+	KeysTag     worker.Tag = "Keys"
 )
