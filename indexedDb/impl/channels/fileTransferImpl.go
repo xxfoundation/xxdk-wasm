@@ -10,12 +10,12 @@
 package channels
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/client/v4/channels"
 	cft "gitlab.com/elixxir/client/v4/channelsFileTransfer"
 	"gitlab.com/elixxir/crypto/fileTransfer"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	"strings"
 	"time"

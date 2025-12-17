@@ -13,7 +13,7 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // DummyTraffic wraps the [bindings.DummyTraffic] object so its methods can be
@@ -27,8 +27,8 @@ type DummyTraffic struct {
 func newDummyTrafficJS(newDT *bindings.DummyTraffic) map[string]any {
 	dt := DummyTraffic{newDT}
 	dtMap := map[string]any{
-		"Pause":     utils.SafeFunc(dt.Pause),
-		"Start":     utils.SafeFunc(dt.Start),
+		"Pause":     js.FuncOf(dt.Pause),
+		"Start":     js.FuncOf(dt.Start),
 		"GetStatus": js.FuncOf(dt.GetStatus),
 	}
 
@@ -56,15 +56,24 @@ func newDummyTrafficJS(newDT *bindings.DummyTraffic) map[string]any {
 //   - Javascript representation of the DummyTraffic object.
 //   - Throws an error if creating the manager fails.
 func NewDummyTrafficManager(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	cmixID := args[0].Int()
+	maxMessages := args[1].Int()
+	avgDuration := args[2].Int()
+	upperBound := args[3].Int()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		dt, err := bindings.NewDummyTrafficManager(
-			args[0].Int(), args[1].Int(), args[2].Int(), args[3].Int())
+			cmixID, maxMessages, avgDuration, upperBound)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
 
-		return newDummyTrafficJS(dt), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(newDummyTrafficJS(dt))
+	})
 }
 
 // Pause will pause the [DummyTraffic]'s sending thread, meaning messages will
@@ -79,13 +88,19 @@ func NewDummyTrafficManager(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Throws an error if it fails to send a pause signal to the sending
 //     thread.
-func (dt *DummyTraffic) Pause(this js.Value, args []js.Value) (any, error) {
-	err := dt.api.Pause()
-	if err != nil {
-		return nil, err
-	}
+func (dt *DummyTraffic) Pause(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		// No args to parse
+		err := dt.api.Pause()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return js.Undefined(), nil
+		resolve(js.Undefined())
+	})
 }
 
 // Start will start up the [DummyTraffic]'s sending thread, meaning messages
@@ -101,13 +116,19 @@ func (dt *DummyTraffic) Pause(this js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - Throws an error if it fails to send a start signal to the sending
 //     thread.
-func (dt *DummyTraffic) Start(this js.Value, args []js.Value) (any, error) {
-	err := dt.api.Start()
-	if err != nil {
-		return nil, err
-	}
+func (dt *DummyTraffic) Start(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		// No args to parse
+		err := dt.api.Start()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return js.Undefined(), nil
+		resolve(js.Undefined())
+	})
 }
 
 // GetStatus returns the current state of the [DummyTraffic] manager's sending

@@ -13,9 +13,10 @@ import (
 	"syscall/js"
 	"time"
 
-	"github.com/hack-pad/safejs"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+
+	"gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // ThreadReceptionCallback is called with a message received from the main
@@ -65,7 +66,7 @@ func (tm *ThreadManager) Stop() error {
 }
 
 func (tm *ThreadManager) GetWorker() js.Value {
-	return safejs.Unsafe(tm.t.Value)
+	return tm.t.Value
 }
 
 // SignalReady sends a signal to the main thread indicating that the worker is
@@ -129,7 +130,7 @@ type Thread struct {
 
 // NewThread creates a new Thread from Global.
 func NewThread() (Thread, error) {
-	self, err := safejs.Global().Get("self")
+	self, err := jsutil.Get(js.Global(), "self")
 	if err != nil {
 		return Thread{}, err
 	}
@@ -147,7 +148,8 @@ func NewThread() (Thread, error) {
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/DedicatedWorkerGlobalScope/name
 func (t *Thread) Name() string {
-	return safejs.Unsafe(t.Value).Get("name").String()
+	name, _ := jsutil.Get(t.Value, "name")
+	return name.String()
 }
 
 // Close discards any tasks queued in the worker's event loop, effectively
@@ -155,6 +157,6 @@ func (t *Thread) Name() string {
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/DedicatedWorkerGlobalScope/close
 func (t *Thread) Close() error {
-	_, err := t.Call("close")
+	_, err := jsutil.Call(t.Value, "close")
 	return err
 }

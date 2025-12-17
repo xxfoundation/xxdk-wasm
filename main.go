@@ -18,7 +18,7 @@ import (
 
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/wasm"
@@ -27,7 +27,7 @@ import (
 	// Import worker packages
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl/channels"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl/dm"
-	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl/state"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
 	"gitlab.com/elixxir/xxdk-wasm/logging/workerThread"
 )
 
@@ -36,12 +36,32 @@ func main() {
 	// at 0, not 1.
 
 	// Check if this is being run as a worker based on --workerType flag
+	var workerType string
 	for _, arg := range os.Args {
 		if len(arg) > 13 && arg[:13] == "--workerType=" {
-			workerType := arg[13:]
-			runWorker(workerType)
+			workerType = arg[13:]
+			break
+		}
+	}
+
+	// If it's a worker, check if it's already started
+	if workerType != "" {
+		// Check global registry to prevent duplicate workers
+		global := js.Global()
+		if global.Get("__xxdkWorkers").IsUndefined() {
+			global.Set("__xxdkWorkers", js.Global().Get("Object").New())
+		}
+		workers := global.Get("__xxdkWorkers")
+
+		// Check if this worker type is already running
+		if !workers.Get(workerType).IsUndefined() {
 			return
 		}
+
+		// Mark this worker as started
+		workers.Set(workerType, true)
+		runWorker(workerType)
+		return
 	}
 
 	// Not a worker, run main WASM
@@ -63,8 +83,6 @@ func runWorker(workerType string) {
 		cmd = channels.RunChannelsWorker()
 	case "dm":
 		cmd = dm.RunDmWorker()
-	case "state":
-		cmd = state.RunStateWorker()
 	case "logger":
 		cmd = workerThread.RunLoggerWorker()
 	default:
@@ -159,9 +177,9 @@ func setGlobals() {
 	js.Global().Set("ResumeBackup", js.FuncOf(wasm.ResumeBackup))
 
 	// wasm/notifications.go
-	js.Global().Set("LoadNotifications", utils.SafeFunc(wasm.LoadNotifications))
+	js.Global().Set("LoadNotifications", js.FuncOf(wasm.LoadNotifications))
 	js.Global().Set("LoadNotificationsDummy",
-		utils.SafeFunc(wasm.LoadNotificationsDummy))
+		js.FuncOf(wasm.LoadNotificationsDummy))
 
 	// wasm/channels.go
 	js.Global().Set("GenerateChannelIdentity",
@@ -219,7 +237,9 @@ func setGlobals() {
 
 	// wasm/cmix.go
 	js.Global().Set("NewCmix", js.FuncOf(wasm.NewCmix))
+	js.Global().Set("NewCmixWithKV", js.FuncOf(wasm.NewCmixWithKV))
 	js.Global().Set("LoadCmix", js.FuncOf(wasm.LoadCmix))
+	js.Global().Set("LoadCmixWithKV", js.FuncOf(wasm.LoadCmixWithKV))
 	js.Global().Set("UnloadCmix", js.FuncOf(wasm.UnloadCmix))
 
 	// wasm/delivery.go
@@ -253,19 +273,19 @@ func setGlobals() {
 
 	// wasm/identity.go
 	js.Global().Set("StoreReceptionIdentity",
-		utils.SafeFunc(wasm.StoreReceptionIdentity))
+		js.FuncOf(wasm.StoreReceptionIdentity))
 	js.Global().Set("LoadReceptionIdentity",
-		utils.SafeFunc(wasm.LoadReceptionIdentity))
+		js.FuncOf(wasm.LoadReceptionIdentity))
 	js.Global().Set("GetContactFromReceptionIdentity",
-		utils.SafeFunc(wasm.GetContactFromReceptionIdentity))
+		js.FuncOf(wasm.GetContactFromReceptionIdentity))
 	js.Global().Set("GetIDFromContact",
-		utils.SafeFunc(wasm.GetIDFromContact))
+		js.FuncOf(wasm.GetIDFromContact))
 	js.Global().Set("GetPubkeyFromContact",
-		utils.SafeFunc(wasm.GetPubkeyFromContact))
+		js.FuncOf(wasm.GetPubkeyFromContact))
 	js.Global().Set("SetFactsOnContact",
-		utils.SafeFunc(wasm.SetFactsOnContact))
+		js.FuncOf(wasm.SetFactsOnContact))
 	js.Global().Set("GetFactsFromContact",
-		utils.SafeFunc(wasm.GetFactsFromContact))
+		js.FuncOf(wasm.GetFactsFromContact))
 
 	// wasm/logging.go
 	js.Global().Set("RegisterLogWriter", js.FuncOf(wasm.RegisterLogWriter))
@@ -288,21 +308,21 @@ func setGlobals() {
 		js.FuncOf(wasm.GetDefaultE2eFileTransferParams))
 
 	// wasm/restlike.go
-	js.Global().Set("RestlikeRequest", utils.SafeFunc(wasm.RestlikeRequest))
-	js.Global().Set("RestlikeRequestAuth", utils.SafeFunc(wasm.RestlikeRequestAuth))
+	js.Global().Set("RestlikeRequest", js.FuncOf(wasm.RestlikeRequest))
+	js.Global().Set("RestlikeRequestAuth", js.FuncOf(wasm.RestlikeRequestAuth))
 
 	// wasm/restlikeSingle.go
 	js.Global().Set("RequestRestLike",
-		utils.SafeFunc(wasm.RequestRestLike))
+		js.FuncOf(wasm.RequestRestLike))
 	js.Global().Set("AsyncRequestRestLike",
-		utils.SafeFunc(wasm.AsyncRequestRestLike))
+		js.FuncOf(wasm.AsyncRequestRestLike))
 
 	// wasm/secrets.go
 	js.Global().Set("GenerateSecret", js.FuncOf(wasm.GenerateSecret))
 
 	// wasm/single.go
-	js.Global().Set("TransmitSingleUse", utils.SafeFunc(wasm.TransmitSingleUse))
-	js.Global().Set("Listen", utils.SafeFunc(wasm.Listen))
+	js.Global().Set("TransmitSingleUse", js.FuncOf(wasm.TransmitSingleUse))
+	js.Global().Set("Listen", js.FuncOf(wasm.Listen))
 
 	// wasm/sync.go
 
@@ -314,22 +334,28 @@ func setGlobals() {
 	js.Global().Set("NewOrLoadUd", js.FuncOf(wasm.NewOrLoadUd))
 	js.Global().Set("NewUdManagerFromBackup",
 		js.FuncOf(wasm.NewUdManagerFromBackup))
-	js.Global().Set("LookupUD", utils.SafeFunc(wasm.LookupUD))
-	js.Global().Set("SearchUD", utils.SafeFunc(wasm.SearchUD))
+	js.Global().Set("LookupUD", js.FuncOf(wasm.LookupUD))
+	js.Global().Set("SearchUD", js.FuncOf(wasm.SearchUD))
 
 	// wasm/version.go
 	js.Global().Set("GetVersion", js.FuncOf(wasm.GetVersion))
 	js.Global().Set("GetClientVersion", js.FuncOf(wasm.GetClientVersion))
 	js.Global().Set("GetClientGitVersion", js.FuncOf(wasm.GetClientGitVersion))
 	js.Global().Set("GetClientDependencies", js.FuncOf(wasm.GetClientDependencies))
-	js.Global().Set("GetWasmSemanticVersion", utils.SafeFunc(wasm.GetWasmSemanticVersion))
-	js.Global().Set("GetXXDKSemanticVersion", utils.SafeFunc(wasm.GetXXDKSemanticVersion))
+	js.Global().Set("GetWasmSemanticVersion", js.FuncOf(wasm.GetWasmSemanticVersion))
+	js.Global().Set("GetXXDKSemanticVersion", js.FuncOf(wasm.GetXXDKSemanticVersion))
 
 	// wasm/rpc.go
-	js.Global().Set("RPCSend", utils.SafeFunc(wasm.RPCSend))
+	js.Global().Set("RPCSend", js.FuncOf(wasm.RPCSend))
 
 	// Stop all existing workers (except logfile worker)
 	js.Global().Set("StopWorkers", js.FuncOf(stopWorkers))
+
+	// indexedDb/worker/kv/manager.go
+	js.Global().Set("SetKVWorkerManager", js.FuncOf(kv.SetKVWorkerManager))
+
+	// Try to initialize KV from globalThis (in case TypeScript created worker first)
+	kv.InitKVFromGlobal()
 }
 
 var (

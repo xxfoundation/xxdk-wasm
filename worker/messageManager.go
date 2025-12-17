@@ -11,18 +11,16 @@ package worker
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+	"strings"
 	"sync"
 	"syscall/js"
 	"time"
 
-	"github.com/aquilax/truncate"
-	"github.com/hack-pad/safejs"
+	json "github.com/goccy/go-json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // SenderCallback is called when the sender of a message gets a response. The
@@ -77,7 +75,7 @@ type MessageManager struct {
 // return once communication with the remote thread has been established.
 // TODO: test
 func NewMessageManager(
-	v safejs.Value, name string, p Params) (*MessageManager, error) {
+	v js.Value, name string, p Params) (*MessageManager, error) {
 	mm := initMessageManager(name, p)
 	mp, err := NewMessagePort(v)
 	if err != nil {
@@ -160,47 +158,28 @@ func (mm *MessageManager) SendNoResponse(tag Tag, data []byte) error {
 // to the remote thread.
 // TODO: test
 func (mm *MessageManager) sendMessage(tag Tag, id uint64, data []byte) error {
-	if mm.MessageLogging {
-		jww.DEBUG.Printf("[WW] [%s] Sending message for %q and ID %d: %s",
-			mm.name, tag, id, truncate.Truncate(
-				fmt.Sprintf("%q", data), 64, "...", truncate.PositionMiddle))
-	}
+	// Note: Cannot use jww logging here as it may recursively call this function
+	// through workerLogger, causing deadlock with marshalLock
 
-	msg := Message{
-		Tag:      tag,
-		ID:       id,
-		Response: false,
-		Data:     data,
-	}
+	msg := Message{Tag: tag, ID: id, Response: false, Data: data}
 	payload, err := json.Marshal(msg)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to marshal message")
 	}
-
 	return mm.p.PostMessageTransferBytes(payload)
 }
 
 // sendResponse sends a reply to the remote thread with the given tag and ID.
 // TODO: test
 func (mm *MessageManager) sendResponse(tag Tag, id uint64, data []byte) error {
-	if mm.MessageLogging {
-		jww.DEBUG.Printf("[WW] [%s] Sending reply for %q and ID %d: %s",
-			mm.name, tag, id, truncate.Truncate(
-				fmt.Sprintf("%q", data), 64, "...", truncate.PositionMiddle))
-	}
+	// Note: Cannot use jww logging here as it may recursively call this function
+	// through workerLogger, causing deadlock with marshalLock
 
-	msg := Message{
-		Tag:      tag,
-		ID:       id,
-		Response: true,
-		Data:     data,
-	}
-
+	msg := Message{Tag: tag, ID: id, Response: true, Data: data}
 	payload, err := json.Marshal(msg)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to marshal response")
 	}
-
 	return mm.p.PostMessageTransferBytes(payload)
 }
 
@@ -217,35 +196,45 @@ func (mm *MessageManager) messageReception(
 				"[WW] [%s] Quitting message reception thread.", mm.name)
 			return
 		case event := <-events:
-
-			safeData, err := event.Data()
-			if err != nil {
-				jww.FATAL.Panicf("[WW] [%s] Failed to process message: %+v", mm.name, err)
-			}
-			data := safejs.Unsafe(safeData)
-
-			switch data.Type() {
-			case js.TypeObject:
-				if data.Get("constructor").Equal(utils.Uint8Array) {
-					err = mm.processReceivedMessage(utils.CopyBytesToGo(data))
-					if err != nil {
-						jww.ERROR.Printf("[WW] [%s] Failed to process "+
-							"received message: %+v", mm.name, err)
-					}
-					break
-				} else if port := data.Get("port"); port.Truthy() {
-					err = mm.processReceivedPort(port, data)
-					if err != nil {
-						jww.ERROR.Printf("[WW] [%s] Failed to process "+
-							"received MessagePort: %+v", mm.name, err)
-					}
-					break
+			// Check for parse errors first
+			if err := event.Error(); err != nil {
+				// Suppress "Go program has already exited" spam - these flood the
+				// console after a crash and hide the original crash trace
+				errStr := err.Error()
+				if !strings.Contains(errStr, "Go program has already exited") {
+					jww.ERROR.Printf("[WW] [%s] Failed to parse message event: %+v", mm.name, err)
 				}
-				fallthrough
+				continue
+			}
 
-			default:
-				jww.ERROR.Printf("[WW] [%s] Cannot handle data of type %q: %s",
-					mm.name, data.Type(), utils.JsToJson(data))
+			switch event.EventType() {
+			case MessageEventTypeBytes:
+				// Data was already copied to Go bytes in parseMessageEvent
+				data, err := event.DataBytes()
+				if err != nil {
+					jww.ERROR.Printf("[WW] [%s] Failed to get message bytes: %+v", mm.name, err)
+					continue
+				}
+				err = mm.processReceivedMessage(data)
+				if err != nil {
+					jww.ERROR.Printf("[WW] [%s] Failed to process "+
+						"received message: %+v", mm.name, err)
+				}
+
+			case MessageEventTypePort:
+				port, portData, err := event.PortData()
+				if err != nil {
+					jww.ERROR.Printf("[WW] [%s] Failed to get port data: %+v", mm.name, err)
+					continue
+				}
+				err = mm.processReceivedPort(port, portData)
+				if err != nil {
+					jww.ERROR.Printf("[WW] [%s] Failed to process "+
+						"received MessagePort: %+v", mm.name, err)
+				}
+
+			case MessageEventTypeUnknown:
+				jww.ERROR.Printf("[WW] [%s] Received unknown message event type", mm.name)
 			}
 		}
 	}
@@ -254,35 +243,49 @@ func (mm *MessageManager) messageReception(
 // processReceivedMessage processes the received message and calls the
 // associated callback. This functions blocks until the callback returns.
 func (mm *MessageManager) processReceivedMessage(data []byte) error {
+	// CRITICAL: Copy data FIRST, before ANY use including logging.
+	// json.Unmarshal creates string headers that point into the input buffer.
+	// Even string(data) for logging can hold references that outlive the buffer.
+	// If the original buffer gets GC'd while strings are still in use
+	// (especially in async logging), we get "marked free object in span" errors.
+	// By copying first, all subsequent operations use memory we own.
+	dataCopy := append([]byte(nil), data...)
+
+	// DEBUG LOGGING DISABLED - investigating if %q formatting causes zombie pointers
+	// jww.DEBUG.Printf("[WW] [%s] Raw received data: %q", mm.name, string(dataCopy))
+
 	var msg Message
-	err := json.Unmarshal(data, &msg)
+	err := json.Unmarshal(dataCopy, &msg)
 	if err != nil {
+		jww.ERROR.Printf("[WW] [%s] Failed to unmarshal message: %+v", mm.name, err)
 		return err
 	}
 
-	if mm.MessageLogging {
-		jww.DEBUG.Printf("[WW] [%s] Received message for %q and ID %d "+
-			"with data: %s", mm.name, msg.Tag, msg.ID, truncate.Truncate(
-			fmt.Sprintf("%q", data), 64, "...", truncate.PositionMiddle))
-	}
+	// Copy msg.Tag to ensure it doesn't reference dataCopy after this function returns
+	// (closures below capture msg.Tag which could outlive dataCopy)
+	tagCopy := Tag(string([]byte(msg.Tag)))
+	idCopy := msg.ID
+
+	// DEBUG LOGGING DISABLED - investigating zombie pointer issue
+	_ = mm.MessageLogging // suppress unused warning
 
 	if msg.Response {
-		callback, err := mm.getSenderCallback(msg.Tag, msg.ID)
+		callback, err := mm.getSenderCallback(tagCopy, idCopy)
 		if err != nil {
 			return err
 		}
 
 		callback(msg.Data)
 	} else {
-		callback, err := mm.getReceiverCallback(msg.Tag)
+		callback, err := mm.getReceiverCallback(tagCopy)
 		if err != nil {
 			return err
 		}
 
 		callback(msg.Data, func(message []byte) {
-			if err = mm.sendResponse(msg.Tag, msg.ID, message); err != nil {
+			if err = mm.sendResponse(tagCopy, idCopy, message); err != nil {
 				jww.FATAL.Panicf("[WW] [%s] Failed to send response for %q "+
-					"and ID %d: %+v", mm.name, msg.Tag, msg.ID, err)
+					"and ID %d: %+v", mm.name, tagCopy, idCopy, err)
 			}
 		})
 	}

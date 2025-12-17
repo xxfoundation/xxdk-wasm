@@ -13,7 +13,7 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 type Notifications struct {
@@ -25,9 +25,9 @@ type Notifications struct {
 func newNotificationsJS(api *bindings.Notifications) map[string]any {
 	n := Notifications{api}
 	notificationsImplJS := map[string]any{
-		"AddToken":    utils.SafeFunc(n.AddToken),
-		"RemoveToken": utils.SafeFunc(n.RemoveToken),
-		"SetMaxState": utils.SafeFunc(n.SetMaxState),
+		"AddToken":    js.FuncOf(n.AddToken),
+		"RemoveToken": js.FuncOf(n.RemoveToken),
+		"SetMaxState": js.FuncOf(n.SetMaxState),
 		"GetMaxState": js.FuncOf(n.GetMaxState),
 		"GetID":       js.FuncOf(n.GetID),
 	}
@@ -41,14 +41,21 @@ func newNotificationsJS(api *bindings.Notifications) map[string]any {
 //   - args[0] - the cMixID integer
 //
 // Returns a notifications object or throws an error
-func LoadNotifications(_ js.Value, args []js.Value) (any, error) {
+func LoadNotifications(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	cMixID := args[0].Int()
-	api, err := bindings.LoadNotifications(cMixID)
-	if err != nil {
-		return nil, err
-	}
 
-	return newNotificationsJS(api), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		api, err := bindings.LoadNotifications(cMixID)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(newNotificationsJS(api))
+	})
 }
 
 // LoadNotificationsDummy returns a JS wrapped implementation of
@@ -58,14 +65,21 @@ func LoadNotifications(_ js.Value, args []js.Value) (any, error) {
 //   - args[0] - the cMixID integer
 //
 // Returns a notifications object or throws an error
-func LoadNotificationsDummy(_ js.Value, args []js.Value) (any, error) {
+func LoadNotificationsDummy(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	cMixID := args[0].Int()
-	api, err := bindings.LoadNotificationsDummy(cMixID)
-	if err != nil {
-		return nil, err
-	}
 
-	return newNotificationsJS(api), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		api, err := bindings.LoadNotificationsDummy(cMixID)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(newNotificationsJS(api))
+	})
 }
 
 // GetID returns the bindings ID for the [bindings.Notifications] object
@@ -80,27 +94,39 @@ func (n *Notifications) GetID(js.Value, []js.Value) any {
 //   - args[1] - app string
 //
 // Returns nothing or an error (throwable)
-func (n *Notifications) AddToken(_ js.Value, args []js.Value) (any, error) {
+func (n *Notifications) AddToken(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	newToken := args[0].String()
 	app := args[1].String()
 
-	err := n.api.AddToken(newToken, app)
-	if err != nil {
-		return nil, err
-	}
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := n.api.AddToken(newToken, app)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return js.Undefined(), nil
+		resolve(js.Undefined())
+	})
 }
 
 // RemoveToken implements [bindings.Notifications.RemoveToken].
 //
 // Returns nothing or throws an error.
-func (n *Notifications) RemoveToken(_ js.Value, args []js.Value) (any, error) {
-	err := n.api.RemoveToken()
-	if err != nil {
-		return nil, err
-	}
-	return js.Undefined(), nil
+func (n *Notifications) RemoveToken(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		// No args to parse
+		err := n.api.RemoveToken()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+	})
 }
 
 // SetMaxState implements [bindings.Notifications.SetMaxState]
@@ -109,15 +135,21 @@ func (n *Notifications) RemoveToken(_ js.Value, args []js.Value) (any, error) {
 //   - args[0] - maxState integer
 //
 // Returns nothing or throws an error
-func (n *Notifications) SetMaxState(_ js.Value, args []js.Value) (any, error) {
+func (n *Notifications) SetMaxState(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	maxState := int64(args[0].Int())
 
-	err := n.api.SetMaxState(maxState)
-	if err != nil {
-		return nil, err
-	}
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := n.api.SetMaxState(maxState)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return js.Undefined(), nil
+		resolve(js.Undefined())
+	})
 }
 
 // GetMaxState implements [bindings.Notifications.GetMaxState]

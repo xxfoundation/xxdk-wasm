@@ -11,11 +11,18 @@ package storage
 
 import (
 	"testing"
+
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
 )
 
 // Tests that StoreIndexedDbEncryptionStatus stores the initial encryption value
 // and return that value on subsequent checks.
 func TestStoreIndexedDbEncryptionStatus(t *testing.T) {
+	store := kv.GetStore()
+	if store == nil {
+		t.Skip("KV store not available")
+	}
+
 	databaseName := "databaseA"
 
 	encryptionStatus, err := StoreIndexedDbEncryptionStatus(databaseName, true)

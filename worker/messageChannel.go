@@ -10,17 +10,18 @@
 package worker
 
 import (
-	"github.com/hack-pad/safejs"
+	"syscall/js"
+
 	"github.com/pkg/errors"
 
-	"gitlab.com/elixxir/wasm-utils/utils"
+	"gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // MessageChannel wraps a Javascript MessageChannel object.
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/MessageChannel
 type MessageChannel struct {
-	safejs.Value
+	js.Value
 }
 
 // NewMessageChannel returns a new MessageChannel object with two new
@@ -28,10 +29,7 @@ type MessageChannel struct {
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/MessageChannel/MessageChannel
 func NewMessageChannel() (MessageChannel, error) {
-	v, err := jsMessageChannel.New()
-	if err != nil {
-		return MessageChannel{}, err
-	}
+	v := jsMessageChannel.New()
 	return MessageChannel{v}, nil
 }
 
@@ -47,8 +45,8 @@ func CreateMessageChannel(w1, w2 *Manager, channelName, key string) error {
 	if err != nil {
 		return err
 	}
-	channelNameJS := utils.CopyBytesToJS([]byte(channelName))
-	keyJS := utils.CopyBytesToJS([]byte(key))
+	channelNameJS := jsutil.CopyBytesToJS([]byte(channelName))
+	keyJS := jsutil.CopyBytesToJS([]byte(key))
 
 	port1, err := mc.Port1()
 	if err != nil {
@@ -82,7 +80,7 @@ func CreateMessageChannel(w1, w2 *Manager, channelName, key string) error {
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/MessageChannel/port1
 func (mc MessageChannel) Port1() (MessagePort, error) {
-	v, err := mc.Get("port1")
+	v, err := jsutil.Get(mc.Value, "port1")
 	if err != nil {
 		return MessagePort{}, err
 	}
@@ -95,7 +93,7 @@ func (mc MessageChannel) Port1() (MessagePort, error) {
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/MessageChannel/port2
 func (mc MessageChannel) Port2() (MessagePort, error) {
-	v, err := mc.Get("port2")
+	v, err := jsutil.Get(mc.Value, "port2")
 	if err != nil {
 		return MessagePort{}, err
 	}

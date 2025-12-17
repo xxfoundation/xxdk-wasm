@@ -14,7 +14,7 @@ import (
 
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/xxdk"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,16 +33,24 @@ import (
 //
 // Returns:
 //   - Throws an error if the identity cannot be stored in storage.
-func StoreReceptionIdentity(_ js.Value, args []js.Value) (any, error) {
+func StoreReceptionIdentity(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	storageKey := args[0].String()
 	identity := utils.CopyBytesToGo(args[1])
-	err := bindings.StoreReceptionIdentity(
-		args[0].String(), identity, args[2].Int())
+	storageID := args[2].Int()
 
-	if err != nil {
-		return nil, err
-	}
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := bindings.StoreReceptionIdentity(storageKey, identity, storageID)
 
-	return js.Undefined(), nil
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(js.Undefined())
+	})
 }
 
 // LoadReceptionIdentity loads the given identity in [Cmix] storage with the
@@ -55,13 +63,22 @@ func StoreReceptionIdentity(_ js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - JSON of the stored [xxdk.ReceptionIdentity] object (Uint8Array).
 //   - Throws an error if the identity cannot be retrieved from storage.
-func LoadReceptionIdentity(_ js.Value, args []js.Value) (any, error) {
-	ri, err := bindings.LoadReceptionIdentity(args[0].String(), args[1].Int())
-	if err != nil {
-		return nil, err
-	}
+func LoadReceptionIdentity(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	storageKey := args[0].String()
+	storageID := args[1].Int()
 
-	return utils.CopyBytesToJS(ri), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		ri, err := bindings.LoadReceptionIdentity(storageKey, storageID)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(utils.CopyBytesToJS(ri))
+	})
 }
 
 // MakeReceptionIdentity generates a new cryptographic identity for receiving
@@ -70,13 +87,19 @@ func LoadReceptionIdentity(_ js.Value, args []js.Value) (any, error) {
 // Returns a promise:
 //   - Resolves to the JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
 //   - Rejected with an error if creating a new identity fails.
-func (c *Cmix) MakeReceptionIdentity(js.Value, []js.Value) (any, error) {
-	ri, err := c.api.MakeReceptionIdentity()
-	if err != nil {
-		return nil, err
-	}
+func (c *Cmix) MakeReceptionIdentity(_ js.Value, args []js.Value) any {
+	// No args to parse
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		ri, err := c.api.MakeReceptionIdentity()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return utils.CopyBytesToJS(ri), nil
+		resolve(utils.CopyBytesToJS(ri))
+	})
 }
 
 // MakeLegacyReceptionIdentity generates the legacy identity for receiving
@@ -85,13 +108,19 @@ func (c *Cmix) MakeReceptionIdentity(js.Value, []js.Value) (any, error) {
 // Returns a promise:
 //   - Resolves to the JSON of the [xxdk.ReceptionIdentity] object (Uint8Array).
 //   - Rejected with an error if creating a new legacy identity fails.
-func (c *Cmix) MakeLegacyReceptionIdentity(js.Value, []js.Value) (any, error) {
-	ri, err := c.api.MakeLegacyReceptionIdentity()
-	if err != nil {
-		return nil, err
-	}
+func (c *Cmix) MakeLegacyReceptionIdentity(_ js.Value, args []js.Value) any {
+	// No args to parse
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		ri, err := c.api.MakeLegacyReceptionIdentity()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return utils.CopyBytesToJS(ri), nil
+		resolve(utils.CopyBytesToJS(ri))
+	})
 }
 
 // GetReceptionRegistrationValidationSignature returns the signature provided by
@@ -118,15 +147,22 @@ func (c *Cmix) GetReceptionRegistrationValidationSignature(
 // Returns:
 //   - Marshalled bytes of [contact.Contact] (string).
 //   - Throws an error if unmarshalling the identity fails.
-func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) (any, error) {
-	// Note that this function does not appear in normal bindings
+func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	identityJSON := utils.CopyBytesToGo(args[0])
-	identity, err := xxdk.UnmarshalReceptionIdentity(identityJSON)
-	if err != nil {
-		return nil, err
-	}
 
-	return utils.CopyBytesToJS(identity.GetContact().Marshal()), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		// Note that this function does not appear in normal bindings
+		identity, err := xxdk.UnmarshalReceptionIdentity(identityJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(utils.CopyBytesToJS(identity.GetContact().Marshal()))
+	})
 }
 
 // GetIDFromContact returns the ID in the [contact.Contact] object.
@@ -137,13 +173,21 @@ func GetContactFromReceptionIdentity(_ js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - Marshalled bytes of [id.ID] (Uint8Array).
 //   - Throws an error if loading the ID from the contact file fails.
-func GetIDFromContact(_ js.Value, args []js.Value) (any, error) {
-	cID, err := bindings.GetIDFromContact(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		return nil, err
-	}
+func GetIDFromContact(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	contactBytes := utils.CopyBytesToGo(args[0])
 
-	return utils.CopyBytesToJS(cID), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		cID, err := bindings.GetIDFromContact(contactBytes)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(utils.CopyBytesToJS(cID))
+	})
 }
 
 // GetPubkeyFromContact returns the DH public key in the [contact.Contact]
@@ -155,13 +199,21 @@ func GetIDFromContact(_ js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - Bytes of the [cyclic.Int] object (Uint8Array).
 //   - Throws an error if loading the public key from the contact file fails.
-func GetPubkeyFromContact(_ js.Value, args []js.Value) (any, error) {
-	key, err := bindings.GetPubkeyFromContact([]byte(args[0].String()))
-	if err != nil {
-		return nil, err
-	}
+func GetPubkeyFromContact(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	contactStr := args[0].String()
 
-	return utils.CopyBytesToJS(key), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		key, err := bindings.GetPubkeyFromContact([]byte(contactStr))
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(utils.CopyBytesToJS(key))
+	})
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,15 +230,22 @@ func GetPubkeyFromContact(_ js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - Marshalled bytes of the modified [contact.Contact] (string).
 //   - Throws an error if loading or modifying the contact fails.
-func SetFactsOnContact(_ js.Value, args []js.Value) (any, error) {
+func SetFactsOnContact(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	marshaledContact := utils.CopyBytesToGo(args[0])
 	factListJSON := utils.CopyBytesToGo(args[1])
-	c, err := bindings.SetFactsOnContact(marshaledContact, factListJSON)
-	if err != nil {
-		return nil, err
-	}
 
-	return c, nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		c, err := bindings.SetFactsOnContact(marshaledContact, factListJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(c)
+	})
 }
 
 // GetFactsFromContact returns the fact list in the [contact.Contact] object.
@@ -197,11 +256,19 @@ func SetFactsOnContact(_ js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - JSON of [fact.FactList] (Uint8Array).
 //   - Throws an error if loading the contact fails.
-func GetFactsFromContact(_ js.Value, args []js.Value) (any, error) {
-	fl, err := bindings.GetFactsFromContact(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		return nil, err
-	}
+func GetFactsFromContact(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	contactBytes := utils.CopyBytesToGo(args[0])
 
-	return utils.CopyBytesToJS(fl), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		fl, err := bindings.GetFactsFromContact(contactBytes)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(utils.CopyBytesToJS(fl))
+	})
 }

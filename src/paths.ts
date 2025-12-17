@@ -1,7 +1,7 @@
 import { BundleVersion } from './version';
 
 import { startLogFileWorker, startChannelsIndexedDbWorker,
-  startDmIndexedDbWorker, startStateIndexedDbWorker } from './workers.js';
+  startDmIndexedDbWorker, startKVWorker } from './workers.js';
 
 // wasmExec is the path to wasm_exec.js, which is also the root at the
 // publicPath in webpack set as an entry point in the config.
@@ -67,11 +67,25 @@ export async function dmIndexedDbWorkerPath(): Promise<URL> {
   return downloadWorkerToBlobURL(wasm, startDmIndexedDbWorker);
 }
 
-export async function stateIndexedDbWorkerPath(): Promise<URL> {
-  const binPath = require('../assets/wasm/xxdk.wasm');
-  const wasm = new URL(window!.xxdkBasePath + binPath.toString());
-  console.info("Loading stateIndexedDbWorker (" + wasm + ")");
-  return downloadWorkerToBlobURL(wasm, startStateIndexedDbWorker);
+// Cache for KV worker blob URL
+let kvWorkerBlobURL: string | null = null;
+
+/**
+ * Get the KV worker URL.
+ * The KV worker is a pure JavaScript worker (no WASM) that handles IndexedDB operations.
+ * The worker code is serialized from startKVWorker and loaded as a blob URL.
+ */
+export async function kvWorkerPath(): Promise<string> {
+  if (kvWorkerBlobURL) {
+    return kvWorkerBlobURL;
+  }
+
+  // Create blob URL from serialized worker function
+  const workerCode = `(${startKVWorker.toString()})();`;
+  const blob = new Blob([workerCode], { type: 'text/javascript' });
+  kvWorkerBlobURL = URL.createObjectURL(blob);
+  console.info("[XXDK] KV worker path: " + kvWorkerBlobURL);
+  return kvWorkerBlobURL;
 }
 
 // NOTE: Whereas we can load the workers via function.toString(), they all need
@@ -85,7 +99,6 @@ async function downloadWorkerToBlobURL(wasm: URL, workerFn: (wasm: URL) => any):
   ];
   const urlStr = URL.createObjectURL(new Blob(blobElems, {type: 'text/javascript'}));
   console.info("[XXDK] Loaded " + wasm.toString() + " worker at: " + urlStr.toString());
-  console.trace("[XXDK] worker contents: " + blobElems.toString());
   return new URL(urlStr);
 }
 
@@ -97,7 +110,6 @@ async function wasmExecBlob(): Promise<URL> {
   }
 
   const url = new URL(window!.xxdkBasePath + wasmExec.toString());
-  console.trace("[XXDK] wasm_exec.js download url: " + url.toString());
   try {
     const response = await fetch(url);
     const data = await response.text();
@@ -107,6 +119,5 @@ async function wasmExecBlob(): Promise<URL> {
     console.error("[XXDK] Unable to load wasm_exec.js into a blob url: " + x);
     throw(x);
   }
-  console.info("[XXDK] wasm_exec.js loaded at: " + window!.xxdkWasmExecBlobURL);
   return window!.xxdkWasmExecBlobURL;
 }

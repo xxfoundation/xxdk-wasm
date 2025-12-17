@@ -12,7 +12,7 @@ package dm
 import (
 	"bytes"
 	"crypto/ed25519"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"strings"
 	"syscall/js"
 	"time"
@@ -26,7 +26,7 @@ import (
 	"gitlab.com/elixxir/client/v4/dm"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/crypto/message"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/netTime"
@@ -108,7 +108,7 @@ func (w *wasmModel) Receive(messageID message.ID, nickname string, text []byte,
 	uuid, err := w.receiveWrapper(messageID, nil, nickname, string(text),
 		partnerKey, senderKey, dmToken, codeset, timestamp, round, mType, status)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(err, parentErr))
+		jww.ERROR.Printf("%s: %+v", parentErr, err)
 		return 0
 	}
 	return uuid
@@ -124,7 +124,7 @@ func (w *wasmModel) ReceiveText(messageID message.ID, nickname, text string,
 		partnerKey, senderKey, dmToken, codeset, timestamp, round,
 		dm.TextType, status)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(err, parentErr))
+		jww.ERROR.Printf("%s: %+v", parentErr, err)
 		return 0
 	}
 	return uuid
@@ -140,7 +140,7 @@ func (w *wasmModel) ReceiveReply(messageID, reactionTo message.ID, nickname,
 		partnerKey, senderKey, dmToken, codeset, timestamp, round,
 		dm.ReplyType, status)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(err, parentErr))
+		jww.ERROR.Printf("%s: %+v", parentErr, err)
 		return 0
 	}
 	return uuid
@@ -156,7 +156,7 @@ func (w *wasmModel) ReceiveReaction(messageID, reactionTo message.ID, nickname,
 		partnerKey, senderKey, dmToken, codeset, timestamp, round,
 		dm.ReactionType, status)
 	if err != nil {
-		jww.ERROR.Printf("%+v", errors.WithMessagef(err, parentErr))
+		jww.ERROR.Printf("%s: %+v", parentErr, err)
 		return 0
 	}
 	return uuid

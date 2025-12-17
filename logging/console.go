@@ -60,7 +60,7 @@ func NewJsConsoleLogListener(threshold jww.Threshold) *JsConsoleLogListener {
 		Threshold: threshold,
 		Value:     consoleObj,
 		trace:     &Console{"debug", consoleObj},
-		debug:     &Console{"log", consoleObj},
+		debug:     &Console{"debug", consoleObj},
 		info:      &Console{"info", consoleObj},
 		warn:      &Console{"warn", consoleObj},
 		error:     &Console{"error", consoleObj},

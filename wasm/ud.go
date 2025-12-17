@@ -14,7 +14,7 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -100,21 +100,26 @@ func (uns *udNetworkStatus) UdNetworkStatus() int {
 //     registered to the specified UD service.
 //   - Throws an error if creating or loading fails.
 func NewOrLoadUd(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		e2eID := args[0].Int()
-		follower := &udNetworkStatus{utils.WrapCB(args[1], "UdNetworkStatus")}
-		username := args[2].String()
-		registrationValidationSignature := utils.CopyBytesToGo(args[3])
-		cert := utils.CopyBytesToGo(args[4])
-		contactFile := utils.CopyBytesToGo(args[5])
-		address := args[6].String()
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	e2eID := args[0].Int()
+	follower := &udNetworkStatus{utils.WrapCB(args[1], "UdNetworkStatus")}
+	username := args[2].String()
+	registrationValidationSignature := utils.CopyBytesToGo(args[3])
+	cert := utils.CopyBytesToGo(args[4])
+	contactFile := utils.CopyBytesToGo(args[5])
+	address := args[6].String()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		api, err := bindings.NewOrLoadUd(e2eID, follower, username,
 			registrationValidationSignature, cert, contactFile, address)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return newUserDiscoveryJS(api), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(newUserDiscoveryJS(api))
+	})
 }
 
 // NewUdManagerFromBackup builds a new user discover manager from a backup. It
@@ -145,20 +150,25 @@ func NewOrLoadUd(_ js.Value, args []js.Value) any {
 //     from backup.
 //   - Throws an error if getting UD from backup fails.
 func NewUdManagerFromBackup(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		e2eID := args[0].Int()
-		follower := &udNetworkStatus{utils.WrapCB(args[1], "UdNetworkStatus")}
-		cert := utils.CopyBytesToGo(args[5])
-		contactFile := utils.CopyBytesToGo(args[6])
-		address := args[7].String()
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	e2eID := args[0].Int()
+	follower := &udNetworkStatus{utils.WrapCB(args[1], "UdNetworkStatus")}
+	cert := utils.CopyBytesToGo(args[5])
+	contactFile := utils.CopyBytesToGo(args[6])
+	address := args[7].String()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		api, err := bindings.NewUdManagerFromBackup(
 			e2eID, follower, cert,
 			contactFile, address)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return newUserDiscoveryJS(api), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(newUserDiscoveryJS(api))
+	})
 }
 
 // GetFacts returns a JSON marshalled list of [fact.Fact] objects that exist
@@ -177,13 +187,17 @@ func (ud *UserDiscovery) GetFacts(js.Value, []js.Value) any {
 //   - Marshalled bytes of [contact.Contact] (Uint8Array).
 //   - Throws TypeError if getting the contact fails.
 func (ud *UserDiscovery) GetContact(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+	// No args to parse
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		c, err := ud.api.GetContact()
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return utils.CopyBytesToJS(c), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(utils.CopyBytesToJS(c))
+	})
 }
 
 // ConfirmFact confirms a fact first registered via
@@ -198,13 +212,20 @@ func (ud *UserDiscovery) GetContact(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Throws TypeError if confirming the fact fails.
 func (ud *UserDiscovery) ConfirmFact(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		err := ud.api.ConfirmFact(args[0].String(), args[1].String())
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	factType := args[0].String()
+	factValue := args[1].String()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := ud.api.ConfirmFact(factType, factValue)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return js.Undefined(), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(js.Undefined())
+	})
 }
 
 // SendRegisterFact adds a fact for the user to user discovery. Will only
@@ -223,13 +244,19 @@ func (ud *UserDiscovery) ConfirmFact(_ js.Value, args []js.Value) any {
 //   - The confirmation ID (string).
 //   - Throws TypeError if sending the fact fails.
 func (ud *UserDiscovery) SendRegisterFact(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		confirmationID, err := ud.api.SendRegisterFact(utils.CopyBytesToGo(args[0]))
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	factBytes := utils.CopyBytesToGo(args[0])
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		confirmationID, err := ud.api.SendRegisterFact(factBytes)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return confirmationID, nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(confirmationID)
+	})
 }
 
 // PermanentDeleteAccount removes the username associated with this user from
@@ -242,13 +269,19 @@ func (ud *UserDiscovery) SendRegisterFact(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Throws TypeError if deletion fails.
 func (ud *UserDiscovery) PermanentDeleteAccount(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		err := ud.api.PermanentDeleteAccount(utils.CopyBytesToGo(args[0]))
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	factBytes := utils.CopyBytesToGo(args[0])
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := ud.api.PermanentDeleteAccount(factBytes)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return js.Undefined(), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(js.Undefined())
+	})
 }
 
 // RemoveFact removes a previously confirmed fact. This will fail if the fact
@@ -260,13 +293,19 @@ func (ud *UserDiscovery) PermanentDeleteAccount(_ js.Value, args []js.Value) any
 // Returns:
 //   - Throws TypeError if removing the fact fails.
 func (ud *UserDiscovery) RemoveFact(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		err := ud.api.RemoveFact(utils.CopyBytesToGo(args[0]))
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	factBytes := utils.CopyBytesToGo(args[0])
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := ud.api.RemoveFact(factBytes)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return js.Undefined(), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(js.Undefined())
+	})
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -313,20 +352,26 @@ func (ulc *udLookupCallback) Callback(contactBytes []byte, err error) {
 //     passed into [Cmix.WaitForRoundResult] to see if the send succeeded
 //     (Uint8Array).
 //   - Rejected with an error if the lookup fails.
-func LookupUD(_ js.Value, args []js.Value) (any, error) {
+func LookupUD(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	e2eID := args[0].Int()
 	udContact := utils.CopyBytesToGo(args[1])
 	cb := &udLookupCallback{utils.WrapCB(args[2], "Callback")}
 	lookupId := utils.CopyBytesToGo(args[3])
 	singleRequestParamsJSON := utils.CopyBytesToGo(args[4])
 
-	sendReport, err := bindings.LookupUD(
-		e2eID, udContact, cb, lookupId, singleRequestParamsJSON)
-	if err != nil {
-		return nil, err
-	}
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		sendReport, err := bindings.LookupUD(
+			e2eID, udContact, cb, lookupId, singleRequestParamsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return utils.CopyBytesToJS(sendReport), nil
+		resolve(utils.CopyBytesToJS(sendReport))
+	})
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -381,18 +426,24 @@ func (usc *udSearchCallback) Callback(contactListJSON []byte, err error) {
 //     passed into [Cmix.WaitForRoundResult] to see if the send succeeded
 //     (Uint8Array).
 //   - Rejected with an error if the search fails.
-func SearchUD(_ js.Value, args []js.Value) (any, error) {
+func SearchUD(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	e2eID := args[0].Int()
 	udContact := utils.CopyBytesToGo(args[1])
 	cb := &udSearchCallback{utils.WrapCB(args[2], "Callback")}
 	factListJSON := utils.CopyBytesToGo(args[3])
 	singleRequestParamsJSON := utils.CopyBytesToGo(args[4])
 
-	sendReport, err := bindings.SearchUD(
-		e2eID, udContact, cb, factListJSON, singleRequestParamsJSON)
-	if err != nil {
-		return nil, err
-	}
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		sendReport, err := bindings.SearchUD(
+			e2eID, udContact, cb, factListJSON, singleRequestParamsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return utils.CopyBytesToJS(sendReport), nil
+		resolve(utils.CopyBytesToJS(sendReport))
+	})
 }

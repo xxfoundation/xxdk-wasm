@@ -13,7 +13,7 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,9 +137,23 @@ func (rpc *fileTransferReceiveProgressCallback) Callback(
 //   - Javascript representation of the [FileTransfer] object.
 //   - Throws an error initialising the file transfer manager fails.
 func InitFileTransfer(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return initFileTransferImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	e2eID := args[0].Int()
+	rfc := &receiveFileCallback{utils.WrapCB(args[1], "Callback")}
+	e2eFileTransferParamsJson := utils.CopyBytesToGo(args[2])
+	fileTransferParamsJson := utils.CopyBytesToGo(args[3])
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		api, err := bindings.InitFileTransfer(
+			e2eID, rfc, e2eFileTransferParamsJson, fileTransferParamsJson)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(newFileTransferJS(api))
+	})
 }
 
 func initFileTransferImpl(args []js.Value) (any, error) {
@@ -171,9 +185,23 @@ func initFileTransferImpl(args []js.Value) (any, error) {
 //   - Resolves to a unique ID for this file transfer (Uint8Array).
 //   - Rejected with an error if sending fails.
 func (f *FileTransfer) Send(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return f.sendImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	payload := utils.CopyBytesToGo(args[0])
+	recipientID := utils.CopyBytesToGo(args[1])
+	retry := float32(args[2].Float())
+	spc := &fileTransferSentProgressCallback{utils.WrapCB(args[3], "Callback")}
+	duration := args[4].Int()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		ftID, err := f.api.Send(payload, recipientID, retry, spc, duration)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(ftID))
+	})
 }
 
 func (f *FileTransfer) sendImpl(args []js.Value) (any, error) {
@@ -205,9 +233,19 @@ func (f *FileTransfer) sendImpl(args []js.Value) (any, error) {
 //   - Throws an error the file transfer is incomplete or Receive has already
 //     been called.
 func (f *FileTransfer) Receive(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return f.receiveImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	transferID := utils.CopyBytesToGo(args[0])
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		file, err := f.api.Receive(transferID)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(file))
+	})
 }
 
 func (f *FileTransfer) receiveImpl(args []js.Value) (any, error) {
@@ -232,9 +270,19 @@ func (f *FileTransfer) receiveImpl(args []js.Value) (any, error) {
 // Returns:
 //   - Throws an error if the file transfer is incomplete.
 func (f *FileTransfer) CloseSend(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return f.closeSendImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	transferID := utils.CopyBytesToGo(args[0])
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := f.api.CloseSend(transferID)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+	})
 }
 
 func (f *FileTransfer) closeSendImpl(args []js.Value) (any, error) {
@@ -267,9 +315,21 @@ func (f *FileTransfer) closeSendImpl(args []js.Value) (any, error) {
 //   - Throws an error if registering the callback fails.
 func (f *FileTransfer) RegisterSentProgressCallback(
 	_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return f.registerSentProgressCallbackImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	tidBytes := utils.CopyBytesToGo(args[0])
+	spc := &fileTransferSentProgressCallback{utils.WrapCB(args[1], "Callback")}
+	duration := args[2].Int()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := f.api.RegisterSentProgressCallback(tidBytes, spc, duration)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+	})
 }
 
 func (f *FileTransfer) registerSentProgressCallbackImpl(args []js.Value) (any, error) {
@@ -300,9 +360,21 @@ func (f *FileTransfer) registerSentProgressCallbackImpl(args []js.Value) (any, e
 //   - Throws an error if registering the callback fails.
 func (f *FileTransfer) RegisterReceivedProgressCallback(
 	_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return f.registerReceivedProgressCallbackImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	tidBytes := utils.CopyBytesToGo(args[0])
+	rpc := &fileTransferReceiveProgressCallback{utils.WrapCB(args[1], "Callback")}
+	duration := args[2].Int()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := f.api.RegisterReceivedProgressCallback(tidBytes, rpc, duration)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+	})
 }
 
 func (f *FileTransfer) registerReceivedProgressCallbackImpl(args []js.Value) (any, error) {

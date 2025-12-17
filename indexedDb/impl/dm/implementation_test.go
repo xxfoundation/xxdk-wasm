@@ -12,13 +12,13 @@ package dm
 import (
 	"bytes"
 	"crypto/ed25519"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"fmt"
 	"github.com/stretchr/testify/require"
 	"gitlab.com/elixxir/client/v4/cmix/rounds"
 	"gitlab.com/elixxir/client/v4/dm"
 	"gitlab.com/elixxir/crypto/message"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	"gitlab.com/xx_network/primitives/id"
 	"os"
@@ -74,12 +74,12 @@ func TestImpl_Receive(t *testing.T) {
 	// Next, we expect the message to be created
 	testMessageObj, err := impl.Get(m.db, messageStoreName, js.ValueOf(uuid))
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	testMessage := &Message{}
 	err = json.Unmarshal([]byte(utils.JsToJson(testMessageObj)), testMessage)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	// Spot check a message attribute
 	if !bytes.Equal(testMessage.SenderPubKey, partnerPubKey) {

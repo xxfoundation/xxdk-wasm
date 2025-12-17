@@ -13,7 +13,7 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // CreateUserFriendlyErrorMessage will convert the passed in error string to an
@@ -52,11 +52,17 @@ func CreateUserFriendlyErrorMessage(_ js.Value, args []js.Value) any {
 // Returns:
 //   - Throws an error if the JSON cannot be unmarshalled.
 func UpdateCommonErrors(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		err := bindings.UpdateCommonErrors(args[0].String())
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	errorJSON := args[0].String()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := bindings.UpdateCommonErrors(errorJSON)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return js.Undefined(), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(js.Undefined())
+	})
 }

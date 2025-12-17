@@ -1,32 +1,31 @@
 module gitlab.com/elixxir/xxdk-wasm
 
-go 1.21
-
-toolchain go1.21.5
+go 1.25.3
 
 require (
-	github.com/aquilax/truncate v1.0.0
+	github.com/Max-Sum/base32768 v0.0.0-20230304063302-18e6ce5945fd
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
+	github.com/goccy/go-json v0.10.5
 	github.com/hack-pad/go-indexeddb v0.3.2
-	github.com/hack-pad/safejs v0.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/jwalterweatherman v1.1.0
 	github.com/stretchr/testify v1.8.4
-	gitlab.com/elixxir/crypto v0.0.11
+	gitlab.com/elixxir/crypto v0.0.15
 	gitlab.com/elixxir/primitives v0.0.4
-	gitlab.com/elixxir/wasm-utils v0.1.2
-	gitlab.com/xx_network/crypto v0.0.7
-	gitlab.com/xx_network/primitives v0.0.5
+	gitlab.com/xx_network/crypto v0.0.11
+	gitlab.com/xx_network/primitives v0.0.6
 	golang.org/x/crypto v0.18.0
 )
 
-require github.com/rcarback/go-bip39 v1.1.1 // indirect
+require (
+	github.com/hack-pad/safejs v0.1.1 // indirect
+	github.com/rcarback/go-bip39 v1.1.1 // indirect
+)
 
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect
 	git.xx.network/elixxir/grpc-web-go-client v0.0.1 // indirect
-	github.com/Max-Sum/base32768 v0.0.0-20230304063302-18e6ce5945fd // indirect
 	github.com/badoux/checkmail v1.2.1 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
@@ -62,9 +61,9 @@ require (
 	github.com/ttacon/libphonenumber v1.2.1 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	gitlab.com/elixxir/bloomfilter v0.0.1 // indirect
-	gitlab.com/elixxir/client/v4 v4.8.0
-	gitlab.com/elixxir/comms v0.0.5 // indirect
-	gitlab.com/elixxir/ekv v0.5.1 // indirect
+	gitlab.com/elixxir/client/v4 v4.8.4
+	gitlab.com/elixxir/comms v0.0.6 // indirect
+	gitlab.com/elixxir/ekv v0.5.2 // indirect
 	gitlab.com/xx_network/comms v0.0.6 // indirect
 	gitlab.com/xx_network/ring v0.0.3 // indirect
 	gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec // indirect
@@ -91,6 +90,3 @@ replace github.com/tyler-smith/go-bip39 => github.com/rcarback/go-bip39 v1.1.1
 replace nhooyr.io/websocket v1.8.6 => nhooyr.io/websocket v1.8.7
 
 replace github.com/lyft/protoc-gen-validate => github.com/envoyproxy/protoc-gen-validate v0.1.0
-
-// Force all dependencies to use the latest wasm-utils with Go 1.25+ fixes
-replace gitlab.com/elixxir/wasm-utils => gitlab.com/elixxir/wasm-utils v0.1.2

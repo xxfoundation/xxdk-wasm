@@ -10,7 +10,7 @@
 package channels
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"time"
 
 	"github.com/pkg/errors"
@@ -23,6 +23,7 @@ import (
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/crypto/message"
 	wChannels "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/channels"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"gitlab.com/xx_network/crypto/csprng"
 	"gitlab.com/xx_network/primitives/id"
@@ -33,8 +34,9 @@ var zeroUUID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
 // manager handles the event model and the message callbacks, which is used to
 // send information between the event model and the main thread.
 type manager struct {
-	wtm   *worker.ThreadManager
-	model channels.EventModel
+	wtm     *worker.ThreadManager
+	model   channels.EventModel
+	kvStore kv.Store // KV store for unified storage access (optional)
 }
 
 // registerCallbacks registers all the reception callbacks to manage messages

@@ -10,10 +10,9 @@
 package wasm
 
 import (
-	"fmt"
 	"syscall/js"
 
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 )
 
@@ -56,14 +55,22 @@ import (
 //
 // Returns:
 //   - Throws an error if starting the network follower fails.
-func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) (any, error) {
-	err := c.api.StartNetworkFollower(args[0].Int())
-	if err != nil {
-		return nil, err
-	}
+func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	timeout := args[0].Int()
 
-	storage.IncrementNumClientsRunning()
-	return js.Undefined(), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := c.api.StartNetworkFollower(timeout)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		storage.IncrementNumClientsRunning()
+		resolve(js.Undefined())
+	})
 }
 
 // StopNetworkFollower stops the network follower if it is running.
@@ -74,14 +81,19 @@ func (c *Cmix) StartNetworkFollower(_ js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - Throws an error if the follower is in the wrong state to stop or if it
 //     fails to stop.
-func (c *Cmix) StopNetworkFollower(js.Value, []js.Value) (any, error) {
-	err := c.api.StopNetworkFollower()
-	if err != nil {
-		return nil, err
-	}
+func (c *Cmix) StopNetworkFollower(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := c.api.StopNetworkFollower()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	storage.DecrementNumClientsRunning()
-	return js.Undefined(), nil
+		storage.DecrementNumClientsRunning()
+		resolve(js.Undefined())
+	})
 }
 
 // SetTrackNetworkPeriod allows changing the frequency that follower threads
@@ -118,12 +130,19 @@ func (c *Cmix) SetTrackNetworkPeriod(_ js.Value, args []js.Value) any {
 // Returns a promise:
 //   - A promise that resolves if the network is healthy and rejects if the
 //     network is not healthy.
-func (c *Cmix) WaitForNetwork(_ js.Value, args []js.Value) (any, error) {
+func (c *Cmix) WaitForNetwork(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	timeoutMS := args[0].Int()
-	if !c.api.WaitForNetwork(timeoutMS) {
-		return nil, fmt.Errorf("network did not become healthy within timeout")
-	}
-	return js.Undefined(), nil
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		if !c.api.WaitForNetwork(timeoutMS) {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New("network did not become healthy within timeout")
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+	})
 }
 
 // ReadyToSend determines if the network is ready to send messages on. It
@@ -157,13 +176,18 @@ func (c *Cmix) NetworkFollowerStatus(js.Value, []js.Value) any {
 //     NDF.
 //   - An error if it cannot get the node registration status. The most likely
 //     cause is that the network is unhealthy.
-func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) (any, error) {
-	b, err := c.api.GetNodeRegistrationStatus()
-	if err != nil {
-		return nil, err
-	}
+func (c *Cmix) GetNodeRegistrationStatus(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		b, err := c.api.GetNodeRegistrationStatus()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return utils.CopyBytesToJS(b), nil
+		resolve(utils.CopyBytesToJS(b))
+	})
 }
 
 // IsReady returns true if at least the given percent of node registrations have
@@ -177,13 +201,21 @@ func (c *Cmix) GetNodeRegistrationStatus(js.Value, []js.Value) (any, error) {
 // Returns:
 //   - JSON of [bindings.IsReadyInfo] (Uint8Array).
 //   - Throws TypeError if getting the information fails.
-func (c *Cmix) IsReady(_ js.Value, args []js.Value) (any, error) {
-	isReadyInfo, err := c.api.IsReady(args[0].Float())
-	if err != nil {
-		return nil, err
-	}
+func (c *Cmix) IsReady(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	percentage := args[0].Float()
 
-	return utils.CopyBytesToJS(isReadyInfo), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		isReadyInfo, err := c.api.IsReady(percentage)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(utils.CopyBytesToJS(isReadyInfo))
+	})
 }
 
 // PauseNodeRegistrations stops all node registrations and returns a function to
@@ -195,13 +227,21 @@ func (c *Cmix) IsReady(_ js.Value, args []js.Value) (any, error) {
 //
 // Returns:
 //   - Throws TypeError if pausing fails.
-func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) (any, error) {
-	err := c.api.PauseNodeRegistrations(args[0].Int())
-	if err != nil {
-		return nil, err
-	}
+func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	timeout := args[0].Int()
 
-	return js.Undefined(), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := c.api.PauseNodeRegistrations(timeout)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(js.Undefined())
+	})
 }
 
 // ChangeNumberOfNodeRegistrations changes the number of parallel node
@@ -214,13 +254,22 @@ func (c *Cmix) PauseNodeRegistrations(_ js.Value, args []js.Value) (any, error) 
 //
 // Returns:
 //   - Throws TypeError if changing registrations fails.
-func (c *Cmix) ChangeNumberOfNodeRegistrations(_ js.Value, args []js.Value) (any, error) {
-	err := c.api.ChangeNumberOfNodeRegistrations(args[0].Int(), args[1].Int())
-	if err != nil {
-		return nil, err
-	}
+func (c *Cmix) ChangeNumberOfNodeRegistrations(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	numRegistrations := args[0].Int()
+	timeout := args[1].Int()
 
-	return js.Undefined(), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := c.api.ChangeNumberOfNodeRegistrations(numRegistrations, timeout)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(js.Undefined())
+	})
 }
 
 // HasRunningProcessies checks if any background threads are running and returns
@@ -259,13 +308,18 @@ func (c *Cmix) IsHealthy(js.Value, []js.Value) any {
 //	  "FileTransfer{BatchBuilderThread, FilePartSendingThread#0, FilePartSendingThread#1, FilePartSendingThread#2, FilePartSendingThread#3}",
 //	  "MessageReception Worker 0"
 //	}
-func (c *Cmix) GetRunningProcesses(js.Value, []js.Value) (any, error) {
-	list, err := c.api.GetRunningProcesses()
-	if err != nil {
-		return nil, err
-	}
+func (c *Cmix) GetRunningProcesses(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		list, err := c.api.GetRunningProcesses()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return utils.CopyBytesToJS(list), nil
+		resolve(utils.CopyBytesToJS(list))
+	})
 }
 
 // networkHealthCallback adheres to the [bindings.NetworkHealthCallback]
@@ -442,15 +496,25 @@ func (tsc *trackCompressedServicesCallback) Callback(marshalData []byte, err err
 //
 // Returns:
 //   - Throws TypeError if the [E2e] ID is invalid.
-func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) (any, error) {
-	err := c.api.TrackServicesWithIdentity(args[0].Int(),
-		&trackServicesCallback{utils.WrapCB(args[0], "Callback")},
-		&trackCompressedServicesCallback{utils.WrapCB(args[0], "Callback")})
-	if err != nil {
-		return nil, err
-	}
+func (c *Cmix) TrackServicesWithIdentity(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	e2eID := args[0].Int()
+	callback1 := utils.WrapCB(args[1], "Callback")
+	callback2 := utils.WrapCB(args[2], "Callback")
 
-	return js.Undefined(), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := c.api.TrackServicesWithIdentity(e2eID,
+			&trackServicesCallback{callback1},
+			&trackCompressedServicesCallback{callback2})
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(js.Undefined())
+	})
 }
 
 // TrackServices will return, via a callback, the list of services that the

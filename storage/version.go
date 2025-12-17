@@ -10,14 +10,14 @@
 package storage
 
 import (
-	"os"
+	"io/fs"
 	"sync"
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/storage"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
 )
 
 // SEMVER is the current semantic version of xxDK WASM.
@@ -30,26 +30,34 @@ const (
 )
 
 // CheckAndStoreVersions checks that the stored xxDK WASM version matches the
-// current version and if not, upgrades it. It also stored the current xxDK
+// current version and if not, upgrades it. It also stores the current xxDK
 // client to storage.
+//
+// Uses the KV worker (IndexedDB-backed) for persistent storage instead of
+// localStorage. If the KV store is not yet available, it will skip version
+// tracking (versions will be tracked on next startup when KV is ready).
 //
 // On first load, only the xxDK WASM and xxDK client versions are stored.
 func CheckAndStoreVersions() error {
-	return checkAndStoreVersions(
-		SEMVER, bindings.GetVersion(), storage.GetLocalStorage())
+	store := kv.GetStore()
+	if store == nil {
+		jww.WARN.Print("KV store not available yet, skipping version check")
+		return nil
+	}
+	return checkAndStoreVersionsKV(SEMVER, bindings.GetVersion(), store)
 }
 
-func checkAndStoreVersions(
-	currentWasmVer, currentClientVer string, ls storage.LocalStorage) error {
+func checkAndStoreVersionsKV(
+	currentWasmVer, currentClientVer string, store kv.Store) error {
 	// Get the stored client version, if it exists
 	storedClientVer, err :=
-		initOrLoadStoredSemver(clientVerKey, currentClientVer, ls)
+		initOrLoadStoredSemverKV(clientVerKey, currentClientVer, store)
 	if err != nil {
 		return err
 	}
 
 	// Get the stored WASM versions, if it exists
-	storedWasmVer, err := initOrLoadStoredSemver(semverKey, currentWasmVer, ls)
+	storedWasmVer, err := initOrLoadStoredSemverKV(semverKey, currentWasmVer, store)
 	if err != nil {
 		return err
 	}
@@ -77,29 +85,29 @@ func checkAndStoreVersions(
 	// Upgrade path code goes here
 
 	// Save current versions
-	if err = ls.Set(clientVerKey, []byte(currentClientVer)); err != nil {
-		return errors.Wrapf(err, "localStorage: failed to set %q", clientVerKey)
+	if err = store.Set(clientVerKey, []byte(currentClientVer)); err != nil {
+		return errors.Wrapf(err, "kv: failed to set %q", clientVerKey)
 	}
-	if err = ls.Set(semverKey, []byte(currentWasmVer)); err != nil {
-		return errors.Wrapf(err, "localStorage: failed to set %q", semverKey)
+	if err = store.Set(semverKey, []byte(currentWasmVer)); err != nil {
+		return errors.Wrapf(err, "kv: failed to set %q", semverKey)
 	}
 
 	return nil
 }
 
-// initOrLoadStoredSemver returns the semantic version stored at the key in
-// local storage. If no version is stored, then the current version is stored
+// initOrLoadStoredSemverKV returns the semantic version stored at the key in
+// KV storage. If no version is stored, then the current version is stored
 // and returned.
-func initOrLoadStoredSemver(
-	key, currentVersion string, ls storage.LocalStorage) (string, error) {
-	storedVersion, err := ls.Get(key)
+func initOrLoadStoredSemverKV(
+	key, currentVersion string, store kv.Store) (string, error) {
+	storedVersion, err := store.Get(key)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+		if errors.Is(err, fs.ErrNotExist) {
 			// Save the current version if this is the first run
 			jww.INFO.Printf("Initialising %s to v%s", key, currentVersion)
-			if err = ls.Set(key, []byte(currentVersion)); err != nil {
+			if err = store.Set(key, []byte(currentVersion)); err != nil {
 				return "",
-					errors.Wrapf(err, "localStorage: failed to set %q", key)
+					errors.Wrapf(err, "kv: failed to set %q", key)
 			}
 			return currentVersion, nil
 		} else {

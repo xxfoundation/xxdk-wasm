@@ -10,11 +10,11 @@
 package wasm
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 )
 
@@ -67,23 +67,28 @@ type VersionInfo struct {
 // Returns:
 //   - JSON of [VersionInfo] (Uint8Array).
 //   - Throws an error if getting the version failed.
-func GetWasmSemanticVersion(_ js.Value, args []js.Value) (any, error) {
-	vi := VersionInfo{
-		Current: storage.SEMVER,
-		Updated: false,
-		Old:     storage.GetOldWasmSemVersion(),
-	}
+func GetWasmSemanticVersion(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		vi := VersionInfo{
+			Current: storage.SEMVER,
+			Updated: false,
+			Old:     storage.GetOldWasmSemVersion(),
+		}
 
-	if vi.Current != vi.Old {
-		vi.Updated = true
-	}
+		if vi.Current != vi.Old {
+			vi.Updated = true
+		}
 
-	data, err := json.Marshal(vi)
-	if err != nil {
-		return nil, err
-	}
+		data, err := json.Marshal(vi)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return utils.CopyBytesToJS(data), nil
+		resolve(utils.CopyBytesToJS(data))
+	})
 }
 
 // GetXXDKSemanticVersion returns the current version of the xxdk client, it's
@@ -92,20 +97,25 @@ func GetWasmSemanticVersion(_ js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - JSON of [VersionInfo] (Uint8Array).
 //   - Throws an error if getting the version failed.
-func GetXXDKSemanticVersion(_ js.Value, args []js.Value) (any, error) {
-	vi := VersionInfo{
-		Current: bindings.GetVersion(),
-		Updated: false,
-		Old:     storage.GetOldClientSemVersion(),
-	}
-	if vi.Current != vi.Old {
-		vi.Updated = true
-	}
+func GetXXDKSemanticVersion(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		vi := VersionInfo{
+			Current: bindings.GetVersion(),
+			Updated: false,
+			Old:     storage.GetOldClientSemVersion(),
+		}
+		if vi.Current != vi.Old {
+			vi.Updated = true
+		}
 
-	data, err := json.Marshal(vi)
-	if err != nil {
-		return nil, err
-	}
+		data, err := json.Marshal(vi)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return utils.CopyBytesToJS(data), nil
+		resolve(utils.CopyBytesToJS(data))
+	})
 }

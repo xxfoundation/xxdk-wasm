@@ -10,9 +10,10 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
+
+	"gitlab.com/elixxir/client/v4/bindings"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // E2e wraps the [bindings.E2e] object so its methods can be wrapped to be
@@ -35,34 +36,34 @@ func newE2eJS(api *bindings.E2e) map[string]any {
 
 		// e2eHandler.go
 		"GetReceptionID":          js.FuncOf(e.GetReceptionID),
-		"DeleteContact":           utils.SafeFunc(e.DeleteContact),
-		"GetAllPartnerIDs":        utils.SafeFunc(e.GetAllPartnerIDs),
+		"DeleteContact":           js.FuncOf(e.DeleteContact),
+		"GetAllPartnerIDs":        js.FuncOf(e.GetAllPartnerIDs),
 		"PayloadSize":             js.FuncOf(e.PayloadSize),
 		"SecondPartitionSize":     js.FuncOf(e.SecondPartitionSize),
 		"PartitionSize":           js.FuncOf(e.PartitionSize),
 		"FirstPartitionSize":      js.FuncOf(e.FirstPartitionSize),
-		"GetHistoricalDHPrivkey":  utils.SafeFunc(e.GetHistoricalDHPrivkey),
-		"GetHistoricalDHPubkey":   utils.SafeFunc(e.GetHistoricalDHPubkey),
-		"HasAuthenticatedChannel": utils.SafeFunc(e.HasAuthenticatedChannel),
-		"RemoveService":           utils.SafeFunc(e.RemoveService),
-		"SendE2E":                 utils.SafeFunc(e.SendE2E),
-		"AddService":              utils.SafeFunc(e.AddService),
-		"RegisterListener":        utils.SafeFunc(e.RegisterListener),
+		"GetHistoricalDHPrivkey":  js.FuncOf(e.GetHistoricalDHPrivkey),
+		"GetHistoricalDHPubkey":   js.FuncOf(e.GetHistoricalDHPubkey),
+		"HasAuthenticatedChannel": js.FuncOf(e.HasAuthenticatedChannel),
+		"RemoveService":           js.FuncOf(e.RemoveService),
+		"SendE2E":                 js.FuncOf(e.SendE2E),
+		"AddService":              js.FuncOf(e.AddService),
+		"RegisterListener":        js.FuncOf(e.RegisterListener),
 
 		// e2eAuth.go
-		"Request":                 utils.SafeFunc(e.Request),
-		"Confirm":                 utils.SafeFunc(e.Confirm),
-		"Reset":                   utils.SafeFunc(e.Reset),
-		"ReplayConfirm":           utils.SafeFunc(e.ReplayConfirm),
+		"Request":                 js.FuncOf(e.Request),
+		"Confirm":                 js.FuncOf(e.Confirm),
+		"Reset":                   js.FuncOf(e.Reset),
+		"ReplayConfirm":           js.FuncOf(e.ReplayConfirm),
 		"CallAllReceivedRequests": js.FuncOf(e.CallAllReceivedRequests),
-		"DeleteRequest":           utils.SafeFunc(e.DeleteRequest),
-		"DeleteAllRequests":       utils.SafeFunc(e.DeleteAllRequests),
-		"DeleteSentRequests":      utils.SafeFunc(e.DeleteSentRequests),
-		"DeleteReceiveRequests":   utils.SafeFunc(e.DeleteReceiveRequests),
-		"GetReceivedRequest":      utils.SafeFunc(e.GetReceivedRequest),
-		"VerifyOwnership":         utils.SafeFunc(e.VerifyOwnership),
-		"AddPartnerCallback":      utils.SafeFunc(e.AddPartnerCallback),
-		"DeletePartnerCallback":   utils.SafeFunc(e.DeletePartnerCallback),
+		"DeleteRequest":           js.FuncOf(e.DeleteRequest),
+		"DeleteAllRequests":       js.FuncOf(e.DeleteAllRequests),
+		"DeleteSentRequests":      js.FuncOf(e.DeleteSentRequests),
+		"DeleteReceiveRequests":   js.FuncOf(e.DeleteReceiveRequests),
+		"GetReceivedRequest":      js.FuncOf(e.GetReceivedRequest),
+		"VerifyOwnership":         js.FuncOf(e.VerifyOwnership),
+		"AddPartnerCallback":      js.FuncOf(e.AddPartnerCallback),
+		"DeletePartnerCallback":   js.FuncOf(e.DeletePartnerCallback),
 	}
 
 	return e2eMap
@@ -92,19 +93,25 @@ func (e *E2e) GetID(js.Value, []js.Value) any {
 //   - Javascript representation of the [E2e] object.
 //   - Throws an error if logging in fails.
 func Login(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		callbacks := newAuthCallbacks(args[1])
-		identity := utils.CopyBytesToGo(args[2])
-		e2eParamsJSON := utils.CopyBytesToGo(args[3])
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	cmixID := args[0].Int()
+	callbacks := newAuthCallbacks(args[1])
+	identity := utils.CopyBytesToGo(args[2])
+	e2eParamsJSON := utils.CopyBytesToGo(args[3])
 
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		newE2E, err := bindings.Login(
-			args[0].Int(), callbacks, identity, e2eParamsJSON)
+			cmixID, callbacks, identity, e2eParamsJSON)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
 
-		return newE2eJS(newE2E), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(newE2eJS(newE2E))
+		return
+	})
 }
 
 // LoginEphemeral creates and returns a new ephemeral [E2e] object and adds it
@@ -123,19 +130,25 @@ func Login(_ js.Value, args []js.Value) any {
 //   - Javascript representation of the [E2e] object.
 //   - Throws an error if logging in fails.
 func LoginEphemeral(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		callbacks := newAuthCallbacks(args[1])
-		identity := utils.CopyBytesToGo(args[2])
-		e2eParamsJSON := utils.CopyBytesToGo(args[3])
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	cmixID := args[0].Int()
+	callbacks := newAuthCallbacks(args[1])
+	identity := utils.CopyBytesToGo(args[2])
+	e2eParamsJSON := utils.CopyBytesToGo(args[3])
 
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		newE2E, err := bindings.LoginEphemeral(
-			args[0].Int(), callbacks, identity, e2eParamsJSON)
+			cmixID, callbacks, identity, e2eParamsJSON)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
 
-		return newE2eJS(newE2E), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(newE2eJS(newE2E))
+		return
+	})
 }
 
 // GetContact returns a [contact.Contact] object for the [E2e]
@@ -171,9 +184,18 @@ func (e *E2e) GetUdCertFromNdf(js.Value, []js.Value) any {
 //   - Marshalled bytes of [contact.Contact] (Uint8Array).
 //   - Throws an error if the contact file cannot be loaded.
 func (e *E2e) GetUdContactFromNdf(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return e.getUdContactFromNdfImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		// No args to parse
+		result, err := e.getUdContactFromNdfImpl(args)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(result)
+		return
+	})
 }
 
 func (e *E2e) getUdContactFromNdfImpl(_ []js.Value) (any, error) {

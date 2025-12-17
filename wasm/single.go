@@ -10,9 +10,10 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
+
+	"gitlab.com/elixxir/client/v4/bindings"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,7 +38,8 @@ import (
 //     passed into [Cmix.WaitForRoundResult] to see if the send succeeded
 //     (Uint8Array).
 //   - Rejected with an error if transmission fails.
-func TransmitSingleUse(_ js.Value, args []js.Value) (any, error) {
+func TransmitSingleUse(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	e2eID := args[0].Int()
 	recipient := utils.CopyBytesToGo(args[1])
 	tag := args[2].String()
@@ -45,13 +47,18 @@ func TransmitSingleUse(_ js.Value, args []js.Value) (any, error) {
 	paramsJSON := utils.CopyBytesToGo(args[4])
 	responseCB := &singleUseResponse{utils.WrapCB(args[5], "Callback")}
 
-	sendReport, err := bindings.TransmitSingleUse(
-		e2eID, recipient, tag, payload, paramsJSON, responseCB)
-	if err != nil {
-		return nil, err
-	}
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		sendReport, err := bindings.TransmitSingleUse(
+			e2eID, recipient, tag, payload, paramsJSON, responseCB)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return utils.CopyBytesToJS(sendReport), nil
+		resolve(utils.CopyBytesToJS(sendReport))
+	})
 }
 
 // Listen starts a single-use listener on a given tag using the passed in [E2e]
@@ -68,14 +75,23 @@ func TransmitSingleUse(_ js.Value, args []js.Value) (any, error) {
 //   - Javascript representation of the [Stopper] object, an interface
 //     containing a function used to stop the listener.
 //   - Throws an error if listening fails.
-func Listen(_ js.Value, args []js.Value) (any, error) {
+func Listen(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	e2eID := args[0].Int()
+	tag := args[1].String()
 	cb := &singleUseCallback{utils.WrapCB(args[2], "Callback")}
-	api, err := bindings.Listen(args[0].Int(), args[1].String(), cb)
-	if err != nil {
-		return nil, err
-	}
 
-	return newStopperJS(api), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		api, err := bindings.Listen(e2eID, tag, cb)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(newStopperJS(api))
+	})
 }
 
 ////////////////////////////////////////////////////////////////////////////////

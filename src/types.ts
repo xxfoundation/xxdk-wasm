@@ -24,7 +24,7 @@ export enum PrivacyLevel {
 
 export type Cipher = {
   GetID: () => number;
-  Decrypt: (plaintext: Uint8Array) => Uint8Array;
+  Decrypt: (plaintext: Uint8Array) => Promise<Uint8Array>;
 }
 
 export type ChannelManagerCallbacks = {
@@ -91,15 +91,15 @@ export type ChannelManager = {
     messageValidityTimeoutMilliseconds: number,
     cmixParams: Uint8Array
   ) => Promise<Uint8Array>;
-  IsChannelAdmin: (channelId: Uint8Array) => boolean;
+  IsChannelAdmin: (channelId: Uint8Array) => Promise<boolean>;
   GenerateChannel: (channelname: string, description: string, privacyLevel: PrivacyLevel) => Promise<string>;
   GetStorageTag: () => string | undefined;
-  SetNickname: (newNickname: string, channel: Uint8Array) => void;
-  GetNickname: (channelId: Uint8Array) => string;
+  SetNickname: (newNickname: string, channel: Uint8Array) => Promise<void>;
+  GetNickname: (channelId: Uint8Array) => Promise<string>;
   GetIdentity: () => Uint8Array;
   GetShareURL: (cmixId: number, host: string, maxUses: number, channelId: Uint8Array) => Uint8Array;
   JoinChannelFromURL: (url: string, password: string) => Uint8Array;
-  ExportPrivateIdentity: (password: string) => Uint8Array;
+  ExportPrivateIdentity: (password: string) => Promise<Uint8Array>;
   ExportChannelAdminKey: (channelId: Uint8Array, encryptionPassword: string) => Uint8Array;
   ImportChannelAdminKey: (channelId: Uint8Array, encryptionPassword: string, privateKey: Uint8Array) => void;
 }
@@ -120,9 +120,9 @@ export type DMClient = {
        GetPublicKey: () => Uint8Array;
        GetToken: () => number;
        GetIdentity: () => Uint8Array;
-       ExportPrivateIdentity: (password: string) => Uint8Array;
-       GetNickname: () => string;
-       SetNickname: (nickname: string) => void;
+       ExportPrivateIdentity: (password: string) => Promise<Uint8Array>;
+       GetNickname: () => Promise<string>;
+       SetNickname: (nickname: string) => Promise<void>;
        BlockPartner: (partnerPubKey: Uint8Array) => void;
        UnblockPartner: (partnerPubKey: Uint8Array) => void;
        IsBlocked: (partnerPubKey: Uint8Array) => boolean;

@@ -43,6 +43,7 @@
         "webpack-cli": "^5.1.4"
     },
     "dependencies": {
+        "base32768": "^5.0.0",
         "ts.data.json": "^2.2.0"
     }
 }

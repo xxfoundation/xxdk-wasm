@@ -12,11 +12,18 @@ package storage
 import (
 	"reflect"
 	"testing"
+
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
 )
 
 // Tests that three indexedDb database names stored with StoreIndexedDb are
 // retrieved with GetIndexedDbList.
 func TestStoreIndexedDb_GetIndexedDbList(t *testing.T) {
+	store := kv.GetStore()
+	if store == nil {
+		t.Skip("KV store not available")
+	}
+
 	expected := map[string]struct{}{"db1": {}, "db2": {}, "db3": {}}
 
 	for name := range expected {

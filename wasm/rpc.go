@@ -13,7 +13,7 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 
 	jww "github.com/spf13/jwalterweatherman"
 )
@@ -37,38 +37,41 @@ import (
 // Returns:
 //   - Javascript representation of the [DMClient] object.
 //   - Throws an error if creating the manager fails.
-func RPCSend(_ js.Value, args []js.Value) (any, error) {
+func RPCSend(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	cMixID := args[0].Int()
 	recipient := utils.CopyBytesToGo(args[1])
 	pubkey := utils.CopyBytesToGo(args[2])
 	request := utils.CopyBytesToGo(args[3])
 	var cb js.Value
 	hasCb := false
-	if len(args) >= 4 {
+	if len(args) >= 5 {
 		cb = args[4]
 		hasCb = true
 	}
 
-	r := bindings.RPCSend(cMixID, recipient, pubkey, request)
-	cbs := &rpcResponse{
-		responseFn: func(response []byte) {
-			if hasCb {
-				cb.Invoke(utils.CopyBytesToJS(response))
-				return
-			}
-			jww.INFO.Printf("[RPCSend] Callback: %s",
-				string(response))
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		r := bindings.RPCSend(cMixID, recipient, pubkey, request)
+		cbs := &rpcResponse{
+			responseFn: func(response []byte) {
+				if hasCb {
+					cb.Invoke(utils.CopyBytesToJS(response))
+					return
+				}
+				jww.INFO.Printf("[RPCSend] Callback: %s",
+					string(response))
 
-		},
-		errFn: func(err []byte) {
-			// Error callback - just log it
-			jww.ERROR.Printf("[RPCSend] Error: %s", string(err))
-		},
-	}
-	r.Callback(cbs)
-	// We resolve only once per promise rules, which means we take
-	// the final return value.
-	return utils.CopyBytesToJS(r.Await()), nil
+			},
+			errFn: func(err []byte) {
+				// Error callback - just log it
+				jww.ERROR.Printf("[RPCSend] Error: %s", string(err))
+			},
+		}
+		r.Callback(cbs)
+		// We resolve only once per promise rules, which means we take
+		// the final return value.
+		resolve(utils.CopyBytesToJS(r.Await()))
+	})
 }
 
 type rpcResponse struct {

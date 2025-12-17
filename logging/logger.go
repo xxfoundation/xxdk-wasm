@@ -15,7 +15,7 @@ import (
 
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
 
@@ -154,10 +154,10 @@ type LoggerJS struct {
 func newLoggerJS(l LoggerJS) map[string]any {
 	logFileWorker := map[string]any{
 		"StopLogging": js.FuncOf(l.StopLogging),
-		"GetFile":     utils.SafeFunc(l.GetFile),
+		"GetFile":     js.FuncOf(l.GetFile),
 		"Threshold":   js.FuncOf(l.Threshold),
 		"MaxSize":     js.FuncOf(l.MaxSize),
-		"Size":        utils.SafeFunc(l.Size),
+		"Size":        js.FuncOf(l.Size),
 		"Worker":      js.FuncOf(l.Worker),
 	}
 
@@ -180,8 +180,10 @@ func (l *LoggerJS) StopLogging(js.Value, []js.Value) any {
 //
 // Returns a promise:
 //   - Resolves to the log file contents (string).
-func (l *LoggerJS) GetFile(this js.Value, args []js.Value) (any, error) {
-	return string(l.api.GetFile()), nil
+func (l *LoggerJS) GetFile(_ js.Value, _ []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		resolve(string(l.api.GetFile()))
+	})
 }
 
 // Threshold returns the log level threshold used in the file.
@@ -207,8 +209,10 @@ func (l *LoggerJS) MaxSize(js.Value, []js.Value) any {
 //
 // Returns a promise:
 //   - Resolves to the current file size (int).
-func (l *LoggerJS) Size(this js.Value, args []js.Value) (any, error) {
-	return l.api.Size(), nil
+func (l *LoggerJS) Size(_ js.Value, _ []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		resolve(l.api.Size())
+	})
 }
 
 // Worker returns the web worker object.

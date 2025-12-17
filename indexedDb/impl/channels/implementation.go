@@ -11,7 +11,7 @@ package channels
 
 import (
 	"crypto/ed25519"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"strconv"
 	"strings"
 	"syscall/js"
@@ -28,7 +28,7 @@ import (
 	cryptoBroadcast "gitlab.com/elixxir/crypto/broadcast"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/crypto/message"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
 	"gitlab.com/xx_network/primitives/id"
 )

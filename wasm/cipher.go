@@ -17,7 +17,7 @@ import (
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/storage/utility"
 	"gitlab.com/elixxir/crypto/indexedDb"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // dbCipherTrackerSingleton is used to track DbCipher objects
@@ -88,10 +88,10 @@ type DbCipher struct {
 func newDbCipherJS(c *DbCipher) map[string]any {
 	DbCipherMap := map[string]any{
 		"GetID":         js.FuncOf(c.GetID),
-		"Encrypt":       utils.SafeFunc(c.Encrypt),
-		"Decrypt":       utils.SafeFunc(c.Decrypt),
-		"MarshalJSON":   utils.SafeFunc(c.MarshalJSON),
-		"UnmarshalJSON": utils.SafeFunc(c.UnmarshalJSON),
+		"Encrypt":       js.FuncOf(c.Encrypt),
+		"Decrypt":       js.FuncOf(c.Decrypt),
+		"MarshalJSON":   js.FuncOf(c.MarshalJSON),
+		"UnmarshalJSON": js.FuncOf(c.UnmarshalJSON),
 	}
 
 	return DbCipherMap
@@ -111,15 +111,19 @@ func newDbCipherJS(c *DbCipher) map[string]any {
 //   - JavaScript representation of the [DbCipher] object.
 //   - Throws an error if creating the cipher fails.
 func NewDatabaseCipher(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		cmixId := args[0].Int()
-		password := utils.CopyBytesToGo(args[1])
-		plaintTextBlockSize := args[2].Int()
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	cmixId := args[0].Int()
+	password := utils.CopyBytesToGo(args[1])
+	plaintTextBlockSize := args[2].Int()
 
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		// Get user from singleton
 		user, err := bindings.GetCMixInstance(cmixId)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
 
 		// Generate RNG
@@ -129,19 +133,25 @@ func NewDatabaseCipher(_ js.Value, args []js.Value) any {
 		salt, err := utility.NewOrLoadSalt(
 			user.Api.GetStorage().GetKV(), stream)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
 
 		// Construct a cipher
 		c, err := indexedDb.NewCipher(
 			password, salt, plaintTextBlockSize, stream)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
 
 		// Add to singleton and return
-		return newDbCipherJS(dbCipherTrackerSingleton.create(c)), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(newDbCipherJS(dbCipherTrackerSingleton.create(c)))
+	})
 }
 
 // GetID returns the ID for this [DbCipher] in the
@@ -164,13 +174,20 @@ func (c *DbCipher) GetID(js.Value, []js.Value) any {
 // Returns:
 //   - The ciphertext of the plaintext passed in (String).
 //   - Throws an error if it fails to encrypt the plaintext.
-func (c *DbCipher) Encrypt(this js.Value, args []js.Value) (any, error) {
-	ciphertext, err := c.api.Encrypt(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		return nil, err
-	}
+func (c *DbCipher) Encrypt(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	plaintext := utils.CopyBytesToGo(args[0])
 
-	return ciphertext, nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		ciphertext, err := c.api.Encrypt(plaintext)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(ciphertext)
+	})
 }
 
 // Decrypt will decrypt the passed in encrypted value. The plaintext will be
@@ -184,13 +201,20 @@ func (c *DbCipher) Encrypt(this js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - The plaintext of the ciphertext passed in (Uint8Array).
 //   - Throws an error if it fails to encrypt the plaintext.
-func (c *DbCipher) Decrypt(this js.Value, args []js.Value) (any, error) {
-	plaintext, err := c.api.Decrypt(args[0].String())
-	if err != nil {
-		return nil, err
-	}
+func (c *DbCipher) Decrypt(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	ciphertext := args[0].String()
 
-	return utils.CopyBytesToJS(plaintext), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		plaintext, err := c.api.Decrypt(ciphertext)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(plaintext))
+	})
 }
 
 // MarshalJSON marshals the cipher into valid JSON.
@@ -198,13 +222,18 @@ func (c *DbCipher) Decrypt(this js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - JSON of the cipher (Uint8Array).
 //   - Throws an error if marshalling fails.
-func (c *DbCipher) MarshalJSON(this js.Value, args []js.Value) (any, error) {
-	data, err := c.api.MarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-
-	return utils.CopyBytesToJS(data), nil
+func (c *DbCipher) MarshalJSON(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		// No args to parse
+		data, err := c.api.MarshalJSON()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(data))
+	})
 }
 
 // UnmarshalJSON unmarshalls JSON into the cipher.
@@ -218,10 +247,18 @@ func (c *DbCipher) MarshalJSON(this js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - JSON of the cipher (Uint8Array).
 //   - Throws an error if marshalling fails.
-func (c *DbCipher) UnmarshalJSON(this js.Value, args []js.Value) (any, error) {
-	err := c.api.UnmarshalJSON(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		return nil, err
-	}
-	return js.Undefined(), nil
+func (c *DbCipher) UnmarshalJSON(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	jsonData := utils.CopyBytesToGo(args[0])
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := c.api.UnmarshalJSON(jsonData)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+	})
 }

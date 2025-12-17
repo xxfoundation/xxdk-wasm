@@ -1,5 +1,44 @@
 import type { XXDKUtils } from './types';
-import { logFileWorkerPath, stateIndexedDbWorkerPath } from './paths';
+import { logFileWorkerPath, kvWorkerPath } from './paths';
+import { createKVStore, setKVWorkerUrl, cleanupKVWorkers } from './kv';
+
+/**
+ * Cleans up all workers (Go-managed and TypeScript-managed).
+ * This should be called before page unload or when shutting down the SDK.
+ *
+ * Workers cleaned up:
+ * - Go-managed: Channels, DM, other WASM workers (via StopWorkers)
+ * - TypeScript-managed: KV Worker (via cleanupKVWorkers)
+ * - Logger worker (via StopLogging)
+ */
+export function cleanupAllWorkers(): void {
+  console.log('[XXDK] Cleaning up all workers...');
+
+  // Stop all Go-managed workers (channels, DM, etc.)
+  if (typeof (window as any).StopWorkers === 'function') {
+    try {
+      (window as any).StopWorkers();
+      console.log('[XXDK] Go workers stopped');
+    } catch (e) {
+      console.warn('[XXDK] Failed to stop Go workers:', e);
+    }
+  }
+
+  // Stop TypeScript-managed KV worker
+  cleanupKVWorkers();
+
+  // Stop logger worker
+  if (window.logger) {
+    try {
+      window.logger.StopLogging();
+      console.log('[XXDK] Logger stopped');
+    } catch (e) {
+      console.warn('[XXDK] Failed to stop logger:', e);
+    }
+  }
+
+  console.log('[XXDK] All workers cleaned up');
+}
 
 const xxdkWasm: URL = require('../assets/wasm/xxdk.wasm');
 
@@ -23,11 +62,28 @@ declare global {
   }
 }
 
-export const InitXXDK = () => new Promise<XXDKUtils>(async (xxdkUtils) => {
-  await import('../wasm_exec.js');
-  const isReady = new Promise<void>((resolve) => {
-    window!.onWasmInitialized = resolve;
-  });
+// Guard to prevent duplicate WASM initialization (e.g., from React re-renders)
+let xxdkInitialized = false;
+let xxdkInitPromise: Promise<XXDKUtils> | null = null;
+
+export const InitXXDK = () => {
+  // Return existing promise if already initializing or initialized
+  if (xxdkInitPromise) {
+    console.log('[XXDK] Initialization already in progress or complete, returning existing promise');
+    return xxdkInitPromise;
+  }
+
+  xxdkInitPromise = new Promise<XXDKUtils>(async (resolve, reject) => {
+    if (xxdkInitialized) {
+      console.warn('[XXDK] Already initialized, skipping duplicate initialization');
+      return;
+    }
+    xxdkInitialized = true;
+
+    await import('../wasm_exec.js');
+    const isReady = new Promise<void>((resolve) => {
+      window!.onWasmInitialized = resolve;
+    });
 
   const xxdkWasmPath = new URL(window!.xxdkBasePath.toString() + xxdkWasm.toString());
   console.log("Fetching xxdkWASM: " + xxdkWasmPath);
@@ -55,10 +111,29 @@ export const InitXXDK = () => new Promise<XXDKUtils>(async (xxdkUtils) => {
     throw new Error(`Failed to fetch main WASM: ${mainWasmResponse.status} ${mainWasmResponse.statusText}`);
   }
 
+  console.log("[XXDK] DEBUG: Starting WebAssembly.instantiateStreaming...");
   let stream = await WebAssembly?.instantiateStreaming(
     mainWasmResponse, go.importObject);
+  console.log("[XXDK] DEBUG: WebAssembly instantiated, calling go.run()...");
   go.run(stream.instance);
-  await isReady;
+  console.log("[XXDK] DEBUG: go.run() called (async), awaiting isReady (onWasmInitialized callback)...");
+
+  // Add a timeout to detect if onWasmInitialized is never called
+  const timeoutPromise = new Promise<void>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error('[XXDK] TIMEOUT: onWasmInitialized was never called after 30 seconds. Go WASM may have crashed or hung during initialization.'));
+    }, 30000);
+  });
+
+  try {
+    await Promise.race([isReady, timeoutPromise]);
+    console.log("[XXDK] DEBUG: onWasmInitialized callback received, WASM is ready!");
+  } catch (err) {
+    console.error("[XXDK] DEBUG: Error waiting for WASM initialization:", err);
+    throw err;
+  }
+
+  // Note: KV worker registration with Go happens inside createKVStore() when the worker is created
 
   // Get functions from WASM
   // All functions wrapped in SafeFunc return Promises
@@ -83,10 +158,12 @@ export const InitXXDK = () => new Promise<XXDKUtils>(async (xxdkUtils) => {
   const IsNicknameValid = wasmRaw.IsNicknameValid as any;
   const LoadChannelsManagerWithIndexedDb = wasmRaw.LoadChannelsManagerWithIndexedDb as any;
   const LoadCmix = wasmRaw.LoadCmix as any;
+  const LoadCmixWithKV = wasmRaw.LoadCmixWithKV as any;
   const LoadNotifications = wasmRaw.LoadNotifications as any;
   const LoadNotificationsDummy = wasmRaw.LoadNotificationsDummy as any;
   const NewChannelsManagerWithIndexedDb = wasmRaw.NewChannelsManagerWithIndexedDb as any;
   const NewCmix = wasmRaw.NewCmix as any;
+  const NewCmixWithKV = wasmRaw.NewCmixWithKV as any;
   const NewDatabaseCipher = wasmRaw.NewDatabaseCipher as any;
   const NewDMClientWithIndexedDb = wasmRaw.NewDMClientWithIndexedDb as any;
   const NewDummyTrafficManager = wasmRaw.NewDummyTrafficManager as any;
@@ -113,167 +190,85 @@ export const InitXXDK = () => new Promise<XXDKUtils>(async (xxdkUtils) => {
         w.addEventListener('message', ev => {
           resolve(atob(JSON.parse(ev.data).data))
         })
-        w.postMessage(JSON.stringify({ tag: 'GetFileExt' }))
+        const message = {
+          tag: 'GetFileExt',
+          id: 0,
+          response: false,
+          data: ''
+        };
+        const messageBytes = new TextEncoder().encode(JSON.stringify(message));
+        w.postMessage(messageBytes);
       });
     };
 
     window.logger = logger
   }
 
-  // GenericKeyValue implementation that checks for worker on every call
-  // Falls back to direct IndexedDB if state worker is not available
-  const createGenericKeyValue = async (storageDir: string) => {
-    // Lazy state model initialization
-    let stateModel: any = null;
-    let stateModelPath: string | null = null;
+  // Initialize KV Worker URL for persistent IndexedDB storage
+  // This must be called before any createKVStore calls
+  try {
+    const kvWorkerUrl = await kvWorkerPath();
+    setKVWorkerUrl(kvWorkerUrl);
+    console.log('[XXDK] KV Worker URL initialized:', kvWorkerUrl);
+  } catch (err) {
+    console.warn('[XXDK] Failed to initialize KV Worker, falling back to direct IndexedDB:', err);
+  }
 
-    // Fallback IndexedDB setup
-    const dbName = `xxdk-kv-${storageDir}`;
-    const storeName = 'genericKV';
-    let db: IDBDatabase | null = null;
-
-    const initFallbackDb = async (): Promise<IDBDatabase> => {
-      if (db) return db;
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open(dbName, 1);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => {
-          db = request.result;
-          resolve(request.result);
-        };
-        request.onupgradeneeded = (event) => {
-          const database = (event.target as IDBOpenDBRequest).result;
-          if (!database.objectStoreNames.contains(storeName)) {
-            database.createObjectStore(storeName);
-          }
-        };
-      });
-    };
-
-    // Check for worker availability on each call
-    const getStateModel = async () => {
-      const wasmRawCheck = window as any;
-      if (wasmRawCheck.NewState && typeof wasmRawCheck.NewState === 'function') {
-        if (!stateModel || !stateModelPath) {
-          console.log('[XXDK] Initializing state worker for GenericKeyValue');
-          const workerPath = await stateIndexedDbWorkerPath();
-          stateModelPath = workerPath.toString();
-          stateModel = await wasmRawCheck.NewState(storageDir, stateModelPath);
-        }
-        return stateModel;
-      }
-      return null;
-    };
-
-    return {
-      Get: async (key: string): Promise<Uint8Array> => {
-        const model = await getStateModel();
-        if (model) {
-          return await model.Get(key);
-        } else {
-          // Fallback to direct IndexedDB
-          const database = await initFallbackDb();
-          return new Promise((resolve, reject) => {
-            const transaction = database.transaction([storeName], 'readonly');
-            const store = transaction.objectStore(storeName);
-            const request = store.get(key);
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => {
-              if (request.result === undefined) {
-                reject(new Error(`Key not found: ${key}`));
-              } else {
-                resolve(request.result);
-              }
-            };
-          });
-        }
-      },
-      Set: async (key: string, value: Uint8Array): Promise<void> => {
-        const model = await getStateModel();
-        if (model) {
-          return await model.Set(key, value);
-        } else {
-          // Fallback to direct IndexedDB
-          const database = await initFallbackDb();
-          return new Promise((resolve, reject) => {
-            const transaction = database.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.put(value, key);
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve();
-          });
-        }
-      },
-      Delete: async (key: string): Promise<void> => {
-        const model = await getStateModel();
-        if (model) {
-          return await model.Delete(key);
-        } else {
-          // Fallback to direct IndexedDB
-          const database = await initFallbackDb();
-          return new Promise((resolve, reject) => {
-            const transaction = database.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.delete(key);
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve();
-          });
-        }
-      },
-      Keys: async (): Promise<Uint8Array> => {
-        const model = await getStateModel();
-        if (model) {
-          return await model.Keys();
-        } else {
-          // Fallback to direct IndexedDB
-          const database = await initFallbackDb();
-          return new Promise((resolve, reject) => {
-            const transaction = database.transaction([storeName], 'readonly');
-            const store = transaction.objectStore(storeName);
-            const request = store.getAllKeys();
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => {
-              const keys = request.result as string[];
-              const encoder = new TextEncoder();
-              resolve(encoder.encode(JSON.stringify(keys)));
-            };
-          });
-        }
-      }
-    };
+  // Ensure KV Worker is initialized for the given storage directory
+  // This creates the KV Worker and registers it with Go via SetKVWorkerManager
+  const ensureKVWorker = async (storageDir: string): Promise<void> => {
+    // createKVStore initializes the worker and calls SetKVWorkerManager
+    await createKVStore(storageDir);
+    console.log('[XXDK] KV Worker initialized for:', storageDir);
   };
 
-  // Wrapper for NewCmix that automatically creates and uses GenericKeyValue
+  // Wrapper for NewCmix that ensures KV Worker is ready
   const NewCmixWrapper = async (
     ndf: string,
     storageDir: string,
     password: Uint8Array,
     registrationCode: string
   ) => {
-    console.log('[XXDK] NewCmix called - creating GenericKeyValue for:', storageDir);
-    const kv = await createGenericKeyValue(storageDir);
-    return NewCmix(kv, ndf, storageDir, password, registrationCode);
+    console.log('[XXDK] NewCmixWrapper called with storageDir:', storageDir);
+    await ensureKVWorker(storageDir);
+    // kvPath is passed but Go uses the global store set by SetKVWorkerManager
+    const result = await NewCmixWithKV(storageDir, ndf, storageDir, password, registrationCode);
+    console.log('[XXDK] NewCmixWithKV returned:', result ? 'success' : 'null/undefined');
+    return result;
   };
 
-  // Wrapper for LoadCmix that automatically creates and uses GenericKeyValue
+  // Wrapper for LoadCmix that ensures KV Worker is ready
   const LoadCmixWrapper = async (
     storageDirectory: string,
     password: Uint8Array,
     cmixParams: Uint8Array
   ) => {
-    console.log('[XXDK] LoadCmix called - creating GenericKeyValue for:', storageDirectory);
-    const kv = await createGenericKeyValue(storageDirectory);
-    return LoadCmix(kv, storageDirectory, password, cmixParams);
+    console.log('[XXDK] LoadCmixWrapper called with storageDir:', storageDirectory);
+    await ensureKVWorker(storageDirectory);
+    // kvPath is passed but Go uses the global store set by SetKVWorkerManager
+    const result = await LoadCmixWithKV(storageDirectory, storageDirectory, password, cmixParams);
+    console.log('[XXDK] LoadCmixWithKV returned:', result ? 'success' : 'null/undefined');
+    return result;
   };
+
+  // Register cleanup handler to terminate workers on page unload/reload
+  // This ensures IndexedDB connections are released properly
+  window.addEventListener('beforeunload', () => {
+    console.log('[XXDK] Page unloading...');
+    cleanupAllWorkers();
+  });
+  console.log('[XXDK] Registered beforeunload cleanup handler');
 
   // Return WASM functions (SafeFunc automatically provides Promises)
   // Note: NewCmix and LoadCmix are wrapped to automatically use GenericKeyValue
-  xxdkUtils({
+  console.log('[XXDK] Resolving InitXXDK promise with utils');
+  resolve({
+    // Wrappers that auto-create and manage GenericKeyValue (recommended)
     NewCmix: NewCmixWrapper,
     LoadCmix: LoadCmixWrapper,
-    // Also expose the raw KV-based functions for advanced users
-    NewCmixWithKV: NewCmix,
-    LoadCmixWithKV: LoadCmix,
+    // Raw functions for advanced users who want to manage their own KV
+    NewCmixWithKV: NewCmixWithKV,
+    LoadCmixWithKV: LoadCmixWithKV,
     LoadNotifications,
     LoadNotificationsDummy,
     GetChannelInfo,
@@ -306,3 +301,6 @@ export const InitXXDK = () => new Promise<XXDKUtils>(async (xxdkUtils) => {
     RPCSend
   });
 });
+
+return xxdkInitPromise;
+};

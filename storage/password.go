@@ -11,11 +11,11 @@ package storage
 
 import (
 	"crypto/cipher"
-	"encoding/json"
 	"io"
-	"os"
+	"io/fs"
 	"syscall/js"
 
+	json "github.com/goccy/go-json"
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/chacha20poly1305"
@@ -24,19 +24,10 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/crypto/hash"
-	"gitlab.com/elixxir/wasm-utils/storage"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
 	"gitlab.com/xx_network/crypto/csprng"
 )
-
-// jsArgsToAny converts a slice of js.Value to a slice of any for variadic functions.
-func jsArgsToAny(args []js.Value) []any {
-	result := make([]any, len(args))
-	for i, arg := range args {
-		result[i] = arg
-	}
-	return result
-}
 
 // Data lengths.
 const (
@@ -105,14 +96,21 @@ const (
 //   - Resolves to internal password (Uint8Array).
 //   - Rejects with an error on failure.
 func GetOrInitPassword(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		externalPassword := args[0].String()
+	// IMPORTANT: Copy args to Go types BEFORE CreatePromise.
+	// The goroutine inside CreatePromise runs later when js.Value
+	// references may be invalid.
+	externalPassword := args[0].String()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		internalPassword, err := getOrInit(externalPassword)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return utils.CopyBytesToJS(internalPassword), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(utils.CopyBytesToJS(internalPassword))
+	})
 }
 
 // ChangeExternalPassword allows a user to change their external password.
@@ -125,13 +123,20 @@ func GetOrInitPassword(_ js.Value, args []js.Value) any {
 //   - Resolves on success.
 //   - Rejects with an error on failure.
 func ChangeExternalPassword(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		err := changeExternalPassword(args[0].String(), args[1].String())
+	// IMPORTANT: Copy args to Go types BEFORE CreatePromise.
+	oldPassword := args[0].String()
+	newPassword := args[1].String()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := changeExternalPassword(oldPassword, newPassword)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return js.Undefined(), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(js.Undefined())
+	})
 }
 
 // VerifyPassword determines if the user-provided password is correct.
@@ -148,13 +153,17 @@ func VerifyPassword(_ js.Value, args []js.Value) any {
 // getOrInit is the private function for GetOrInitPassword that is used for
 // testing.
 func getOrInit(externalPassword string) ([]byte, error) {
-	localStorage := storage.GetLocalStorage()
-	internalPassword, err := getInternalPassword(externalPassword, localStorage)
+	store := kv.GetStore()
+	if store == nil {
+		return nil, errors.New("KV store not available")
+	}
+
+	internalPassword, err := getInternalPassword(externalPassword, store)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+		if errors.Is(err, fs.ErrNotExist) {
 			rng := csprng.NewSystemRNG()
 			return initInternalPassword(
-				externalPassword, localStorage, rng, defaultParams())
+				externalPassword, store, rng, defaultParams())
 		}
 
 		return nil, err
@@ -169,9 +178,13 @@ func changeExternalPassword(oldExternalPassword, newExternalPassword string) err
 	// NOTE: the following no longer works in synchronized environments, so
 	// disabled in produciton.
 	jww.FATAL.Panicf("cannot change password, unimplemented")
-	localStorage := storage.GetLocalStorage()
+	store := kv.GetStore()
+	if store == nil {
+		return errors.New("KV store not available")
+	}
+
 	internalPassword, err := getInternalPassword(
-		oldExternalPassword, localStorage)
+		oldExternalPassword, store)
 	if err != nil {
 		return err
 	}
@@ -180,16 +193,16 @@ func changeExternalPassword(oldExternalPassword, newExternalPassword string) err
 	if err != nil {
 		return err
 	}
-	if err = localStorage.Set(saltKey, salt); err != nil {
-		return errors.Wrapf(err, "localStorage: failed to set %q", saltKey)
+	if err = store.Set(saltKey, salt); err != nil {
+		return errors.Wrapf(err, "kv: failed to set %q", saltKey)
 	}
 
 	key := deriveKey(newExternalPassword, salt, defaultParams())
 
 	encryptedInternalPassword := encryptPassword(
 		internalPassword, key, csprng.NewSystemRNG())
-	if err = localStorage.Set(passwordKey, encryptedInternalPassword); err != nil {
-		return errors.Wrapf(err, "localStorage: failed to set %q", passwordKey)
+	if err = store.Set(passwordKey, encryptedInternalPassword); err != nil {
+		return errors.Wrapf(err, "kv: failed to set %q", passwordKey)
 	}
 
 	return nil
@@ -198,14 +211,18 @@ func changeExternalPassword(oldExternalPassword, newExternalPassword string) err
 // verifyPassword is the private function for VerifyPassword that is used for
 // testing.
 func verifyPassword(externalPassword string) bool {
-	_, err := getInternalPassword(externalPassword, storage.GetLocalStorage())
+	store := kv.GetStore()
+	if store == nil {
+		return false
+	}
+	_, err := getInternalPassword(externalPassword, store)
 	return err == nil
 }
 
 // initInternalPassword generates a new internal password, stores an encrypted
-// version in local storage, and returns it.
+// version in KV storage, and returns it.
 func initInternalPassword(externalPassword string,
-	localStorage storage.LocalStorage, csprng io.Reader,
+	store kv.Store, csprng io.Reader,
 	params argonParams) ([]byte, error) {
 	internalPassword := make([]byte, internalPasswordLen)
 
@@ -231,9 +248,9 @@ func initInternalPassword(externalPassword string,
 	if err != nil {
 		return nil, err
 	}
-	if err = localStorage.Set(saltKey, salt); err != nil {
+	if err = store.Set(saltKey, salt); err != nil {
 		return nil,
-			errors.Wrapf(err, "localStorage: failed to set %q", saltKey)
+			errors.Wrapf(err, "kv: failed to set %q", saltKey)
 	}
 
 	// Store argon2 parameters
@@ -241,37 +258,37 @@ func initInternalPassword(externalPassword string,
 	if err != nil {
 		return nil, err
 	}
-	if err = localStorage.Set(argonParamsKey, paramsData); err != nil {
+	if err = store.Set(argonParamsKey, paramsData); err != nil {
 		return nil,
-			errors.Wrapf(err, "localStorage: failed to set %q", argonParamsKey)
+			errors.Wrapf(err, "kv: failed to set %q", argonParamsKey)
 	}
 
 	key := deriveKey(externalPassword, salt, params)
 
 	encryptedInternalPassword := encryptPassword(internalPassword, key, csprng)
-	if err = localStorage.Set(passwordKey, encryptedInternalPassword); err != nil {
+	if err = store.Set(passwordKey, encryptedInternalPassword); err != nil {
 		return nil,
-			errors.Wrapf(err, "localStorage: failed to set %q", passwordKey)
+			errors.Wrapf(err, "kv: failed to set %q", passwordKey)
 	}
 
 	return internalPassword, nil
 }
 
-// getInternalPassword retrieves the internal password from local storage,
+// getInternalPassword retrieves the internal password from KV storage,
 // decrypts it, and returns it.
 func getInternalPassword(
-	externalPassword string, localStorage storage.LocalStorage) ([]byte, error) {
-	encryptedInternalPassword, err := localStorage.Get(passwordKey)
+	externalPassword string, store kv.Store) ([]byte, error) {
+	encryptedInternalPassword, err := store.Get(passwordKey)
 	if err != nil {
 		return nil, errors.WithMessage(err, getPasswordStorageErr)
 	}
 
-	salt, err := localStorage.Get(saltKey)
+	salt, err := store.Get(saltKey)
 	if err != nil {
 		return nil, errors.WithMessage(err, getSaltStorageErr)
 	}
 
-	paramsData, err := localStorage.Get(argonParamsKey)
+	paramsData, err := store.Get(argonParamsKey)
 	if err != nil {
 		return nil, errors.WithMessage(err, getParamsStorageErr)
 	}
@@ -340,11 +357,15 @@ type argonParams struct {
 }
 
 // defaultParams returns the recommended general purposes parameters.
+// NOTE: Threads is set to 1 for WASM because multi-threaded argon2
+// spawns multiple goroutines that can trigger Go WASM GC issues
+// ("found pointer to free object") when combined with concurrent
+// js.Value operations (like logging to a web worker).
 func defaultParams() argonParams {
 	return argonParams{
 		Time:    1,
 		Memory:  64 * 1024, // ~64 MB
-		Threads: 4,
+		Threads: 1,         // Single-threaded for WASM stability
 	}
 }
 

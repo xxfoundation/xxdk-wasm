@@ -11,7 +11,7 @@ package channels
 
 import (
 	"bytes"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"errors"
 	"fmt"
 	"os"
@@ -30,8 +30,8 @@ import (
 	"gitlab.com/elixxir/crypto/fileTransfer"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	"gitlab.com/elixxir/crypto/message"
-	"gitlab.com/elixxir/wasm-utils/storage"
 	"gitlab.com/elixxir/xxdk-wasm/indexedDb/impl"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
 	"gitlab.com/xx_network/crypto/csprng"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/netTime"
@@ -130,7 +130,15 @@ func TestWasmModel_GetMessage(t *testing.T) {
 		}
 		testString := "TestWasmModel_GetMessage" + cs
 		t.Run(testString, func(t *testing.T) {
-			storage.GetLocalStorage().Clear()
+			// Clear KV store
+			if store := kv.GetStore(); store != nil {
+				keysBytes, _ := store.Keys()
+				var keys []string
+				json.Unmarshal(keysBytes, &keys)
+				for _, key := range keys {
+					_ = store.Delete(key)
+				}
+			}
 			testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
 
 			eventModel, err := newWASMModel(testString, c, dummyEU)
@@ -160,7 +168,15 @@ func TestWasmModel_GetMessage(t *testing.T) {
 
 // Happy path, insert message and delete it
 func TestWasmModel_DeleteMessage(t *testing.T) {
-	storage.GetLocalStorage().Clear()
+	// Clear KV store
+	if store := kv.GetStore(); store != nil {
+		keysBytes, _ := store.Keys()
+		var keys []string
+		json.Unmarshal(keysBytes, &keys)
+		for _, key := range keys {
+			_ = store.Delete(key)
+		}
+	}
 	testString := "TestWasmModel_DeleteMessage"
 	testMsgId := message.DeriveChannelMessageID(&id.ID{1}, 0, []byte(testString))
 	eventModel, err := newWASMModel(testString, nil, dummyEU)
@@ -215,7 +231,15 @@ func Test_wasmModel_UpdateSentStatus(t *testing.T) {
 			cs = "_withCipher"
 		}
 		t.Run("Test_wasmModel_UpdateSentStatus"+cs, func(t *testing.T) {
-			storage.GetLocalStorage().Clear()
+			// Clear KV store
+		if store := kv.GetStore(); store != nil {
+			keysBytes, _ := store.Keys()
+			var keys []string
+			json.Unmarshal(keysBytes, &keys)
+			for _, key := range keys {
+				_ = store.Delete(key)
+			}
+		}
 			testString := "Test_wasmModel_UpdateSentStatus" + cs
 			testMsgId := message.DeriveChannelMessageID(
 				&id.ID{1}, 0, []byte(testString))
@@ -289,7 +313,15 @@ func Test_wasmModel_JoinChannel_LeaveChannel(t *testing.T) {
 			cs = "_withCipher"
 		}
 		t.Run("Test_wasmModel_JoinChannel_LeaveChannel"+cs, func(t *testing.T) {
-			storage.GetLocalStorage().Clear()
+			// Clear KV store
+		if store := kv.GetStore(); store != nil {
+			keysBytes, _ := store.Keys()
+			var keys []string
+			json.Unmarshal(keysBytes, &keys)
+			for _, key := range keys {
+				_ = store.Delete(key)
+			}
+		}
 			eventModel, err2 := newWASMModel("test", c, dummyEU)
 			if err2 != nil {
 				t.Fatal(err2)
@@ -341,7 +373,15 @@ func Test_wasmModel_UUIDTest(t *testing.T) {
 			cs = "_withCipher"
 		}
 		t.Run("Test_wasmModel_UUIDTest"+cs, func(t *testing.T) {
-			storage.GetLocalStorage().Clear()
+			// Clear KV store
+		if store := kv.GetStore(); store != nil {
+			keysBytes, _ := store.Keys()
+			var keys []string
+			json.Unmarshal(keysBytes, &keys)
+			for _, key := range keys {
+				_ = store.Delete(key)
+			}
+		}
 			testString := "testHello" + cs
 			eventModel, err2 := newWASMModel(testString, c, dummyEU)
 			if err2 != nil {
@@ -388,7 +428,15 @@ func Test_wasmModel_DuplicateReceives(t *testing.T) {
 		}
 		testString := "Test_wasmModel_DuplicateReceives" + cs
 		t.Run(testString, func(t *testing.T) {
-			storage.GetLocalStorage().Clear()
+			// Clear KV store
+		if store := kv.GetStore(); store != nil {
+			keysBytes, _ := store.Keys()
+			var keys []string
+			json.Unmarshal(keysBytes, &keys)
+			for _, key := range keys {
+				_ = store.Delete(key)
+			}
+		}
 			eventModel, err := newWASMModel(testString, c, dummyEU)
 			if err != nil {
 				t.Fatal(err)
@@ -437,7 +485,15 @@ func Test_wasmModel_deleteMsgByChannel(t *testing.T) {
 		}
 		testString := "Test_wasmModel_deleteMsgByChannel" + cs
 		t.Run(testString, func(t *testing.T) {
-			storage.GetLocalStorage().Clear()
+			// Clear KV store
+		if store := kv.GetStore(); store != nil {
+			keysBytes, _ := store.Keys()
+			var keys []string
+			json.Unmarshal(keysBytes, &keys)
+			for _, key := range keys {
+				_ = store.Delete(key)
+			}
+		}
 			totalMessages := 10
 			expectedMessages := 5
 			eventModel, err := newWASMModel(testString, c, dummyEU)
@@ -508,7 +564,15 @@ func TestWasmModel_receiveHelper_UniqueIndex(t *testing.T) {
 			cs = "_withCipher"
 		}
 		t.Run("TestWasmModel_receiveHelper_UniqueIndex"+cs, func(t *testing.T) {
-			storage.GetLocalStorage().Clear()
+			// Clear KV store
+		if store := kv.GetStore(); store != nil {
+			keysBytes, _ := store.Keys()
+			var keys []string
+			json.Unmarshal(keysBytes, &keys)
+			for _, key := range keys {
+				_ = store.Delete(key)
+			}
+		}
 			testString := fmt.Sprintf("test_receiveHelper_UniqueIndex_%d", i)
 			eventModel, err := newWASMModel(testString, c, dummyEU)
 			if err != nil {

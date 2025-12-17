@@ -18,7 +18,7 @@ import (
 	"github.com/hack-pad/go-indexeddb/idb"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 	"syscall/js"
 	"time"
 )
@@ -150,7 +150,7 @@ func GetAll(db *idb.Database, objectStoreName string) ([]js.Value, error) {
 			return nil
 		})
 	if err != nil {
-		return nil, errors.WithMessagef(parentErr, err.Error())
+		return nil, errors.WithMessagef(parentErr, "%s", err.Error())
 	}
 	return result, nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
 	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 )
@@ -63,6 +64,24 @@ var channelsCmd = &cobra.Command{
 				}
 
 				jww.INFO.Print("TEST channel")
+			})
+
+		// Register callback for KV Worker MessageChannel
+		m.wtm.RegisterMessageChannelCallback(string(kv.PortOp),
+			func(port js.Value, channelName string) {
+				jww.INFO.Printf("[CH] Received KV port for channel: %s", channelName)
+
+				kvStore, err := kv.NewWorkerThread(port, channelName)
+				if err != nil {
+					jww.ERROR.Printf("[CH] Failed to create KV WorkerThreadStore: %+v", err)
+					return
+				}
+
+				// Register globally so code can use kv.GetStore()
+				kv.SetStore(kvStore)
+				// Also store locally for direct access
+				m.kvStore = kvStore
+				jww.INFO.Print("[CH] KV WorkerThreadStore created successfully")
 			})
 
 		m.wtm.SignalReady()

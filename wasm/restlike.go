@@ -10,9 +10,10 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
 	"syscall/js"
+
+	"gitlab.com/elixxir/client/v4/bindings"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // RestlikeRequest performs a normal restlike request.
@@ -29,19 +30,25 @@ import (
 //     (Uint8Array).
 //   - Rejected with an error if parsing the parameters or making the request
 //     fails.
-func RestlikeRequest(_ js.Value, args []js.Value) (any, error) {
+func RestlikeRequest(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	cmixId := args[0].Int()
 	connectionID := args[1].Int()
 	request := utils.CopyBytesToGo(args[2])
 	e2eParamsJSON := utils.CopyBytesToGo(args[3])
 
-	msg, err := bindings.RestlikeRequest(
-		cmixId, connectionID, request, e2eParamsJSON)
-	if err != nil {
-		return nil, err
-	}
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		msg, err := bindings.RestlikeRequest(
+			cmixId, connectionID, request, e2eParamsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return utils.CopyBytesToJS(msg), nil
+		resolve(utils.CopyBytesToJS(msg))
+	})
 }
 
 // RestlikeRequestAuth performs an authenticated restlike request.
@@ -58,17 +65,23 @@ func RestlikeRequest(_ js.Value, args []js.Value) (any, error) {
 //     (Uint8Array).
 //   - Rejected with an error if parsing the parameters or making the request
 //     fails.
-func RestlikeRequestAuth(_ js.Value, args []js.Value) (any, error) {
+func RestlikeRequestAuth(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	cmixId := args[0].Int()
 	authConnectionID := args[1].Int()
 	request := utils.CopyBytesToGo(args[2])
 	e2eParamsJSON := utils.CopyBytesToGo(args[3])
 
-	msg, err := bindings.RestlikeRequestAuth(
-		cmixId, authConnectionID, request, e2eParamsJSON)
-	if err != nil {
-		return nil, err
-	}
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		msg, err := bindings.RestlikeRequestAuth(
+			cmixId, authConnectionID, request, e2eParamsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return utils.CopyBytesToJS(msg), nil
+		resolve(utils.CopyBytesToJS(msg))
+	})
 }

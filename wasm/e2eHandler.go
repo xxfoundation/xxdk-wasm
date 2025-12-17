@@ -12,7 +12,7 @@ package wasm
 import (
 	"syscall/js"
 
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // GetReceptionID returns the marshalled default IDs.
@@ -30,12 +30,18 @@ func (e *E2e) GetReceptionID(js.Value, []js.Value) any {
 //
 // Returns:
 //   - Throws TypeError if deleting the partner fails.
-func (e *E2e) DeleteContact(_ js.Value, args []js.Value) (any, error) {
-	err := e.api.DeleteContact(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		return nil, err
-	}
-	return js.Undefined(), nil
+func (e *E2e) DeleteContact(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := e.api.DeleteContact(utils.CopyBytesToGo(args[0]))
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+		return
+	})
 }
 
 // GetAllPartnerIDs returns a list of all partner IDs that the user has an E2E
@@ -44,12 +50,18 @@ func (e *E2e) DeleteContact(_ js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - JSON of array of [id.ID] (Uint8Array).
 //   - Throws TypeError if getting partner IDs fails.
-func (e *E2e) GetAllPartnerIDs(js.Value, []js.Value) (any, error) {
-	partnerIDs, err := e.api.GetAllPartnerIDs()
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(partnerIDs), nil
+func (e *E2e) GetAllPartnerIDs(js.Value, []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		partnerIDs, err := e.api.GetAllPartnerIDs()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(partnerIDs))
+		return
+	})
 }
 
 // PayloadSize returns the max payload size for a partitionable E2E message.
@@ -96,12 +108,18 @@ func (e *E2e) FirstPartitionSize(js.Value, []js.Value) any {
 // Returns:
 //   - JSON of [cyclic.Int] (Uint8Array).
 //   - Throws TypeError if getting the key fails.
-func (e *E2e) GetHistoricalDHPrivkey(js.Value, []js.Value) (any, error) {
-	privKey, err := e.api.GetHistoricalDHPrivkey()
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(privKey), nil
+func (e *E2e) GetHistoricalDHPrivkey(js.Value, []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		privKey, err := e.api.GetHistoricalDHPrivkey()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(privKey))
+		return
+	})
 }
 
 // GetHistoricalDHPubkey returns the user's marshalled historical DH public key.
@@ -110,12 +128,18 @@ func (e *E2e) GetHistoricalDHPrivkey(js.Value, []js.Value) (any, error) {
 // Returns:
 //   - JSON of [cyclic.Int] (Uint8Array).
 //   - Throws TypeError if getting the key fails.
-func (e *E2e) GetHistoricalDHPubkey(js.Value, []js.Value) (any, error) {
-	pubKey, err := e.api.GetHistoricalDHPubkey()
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(pubKey), nil
+func (e *E2e) GetHistoricalDHPubkey(js.Value, []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		pubKey, err := e.api.GetHistoricalDHPubkey()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(pubKey))
+		return
+	})
 }
 
 // HasAuthenticatedChannel returns true if an authenticated channel with the
@@ -127,12 +151,18 @@ func (e *E2e) GetHistoricalDHPubkey(js.Value, []js.Value) (any, error) {
 // Returns:
 //   - Existence of authenticated channel (boolean).
 //   - Throws TypeError if unmarshalling the ID or getting the channel fails.
-func (e *E2e) HasAuthenticatedChannel(_ js.Value, args []js.Value) (any, error) {
-	exists, err := e.api.HasAuthenticatedChannel(utils.CopyBytesToGo(args[0]))
-	if err != nil {
-		return nil, err
-	}
-	return exists, nil
+func (e *E2e) HasAuthenticatedChannel(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		exists, err := e.api.HasAuthenticatedChannel(utils.CopyBytesToGo(args[0]))
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(exists)
+		return
+	})
 }
 
 // RemoveService removes all services for the given tag.
@@ -142,13 +172,18 @@ func (e *E2e) HasAuthenticatedChannel(_ js.Value, args []js.Value) (any, error) 
 //
 // Returns:
 //   - Throws TypeError if removing the services fails.
-func (e *E2e) RemoveService(_ js.Value, args []js.Value) (any, error) {
-	err := e.api.RemoveService(args[0].String())
-	if err != nil {
-		return nil, err
-	}
-
-	return js.Undefined(), nil
+func (e *E2e) RemoveService(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := e.api.RemoveService(args[0].String())
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+		return
+	})
 }
 
 // SendE2E send a message containing the payload to the recipient of the passed
@@ -164,18 +199,23 @@ func (e *E2e) RemoveService(_ js.Value, args []js.Value) (any, error) {
 //   - Resolves to the JSON of the [bindings.E2ESendReport], which can be passed
 //     into [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //   - Rejected with an error if sending fails.
-func (e *E2e) SendE2E(_ js.Value, args []js.Value) (any, error) {
-	mt := args[0].Int()
-	recipientId := utils.CopyBytesToGo(args[1])
-	payload := utils.CopyBytesToGo(args[2])
-	e2eParams := utils.CopyBytesToGo(args[3])
+func (e *E2e) SendE2E(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		mt := args[0].Int()
+		recipientId := utils.CopyBytesToGo(args[1])
+		payload := utils.CopyBytesToGo(args[2])
+		e2eParams := utils.CopyBytesToGo(args[3])
 
-	sendReport, err := e.api.SendE2E(mt, recipientId, payload, e2eParams)
-	if err != nil {
-		return nil, err
-	}
-
-	return utils.CopyBytesToJS(sendReport), nil
+		sendReport, err := e.api.SendE2E(mt, recipientId, payload, e2eParams)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(sendReport))
+		return
+	})
 }
 
 // processor wraps Javascript callbacks to adhere to the [bindings.Processor]
@@ -226,18 +266,23 @@ func (p *processor) String() string {
 //
 // Returns:
 //   - Throws TypeError if registering the service fails.
-func (e *E2e) AddService(_ js.Value, args []js.Value) (any, error) {
-	p := &processor{
-		utils.WrapCB(args[1], "Process"),
-		utils.WrapCB(args[1], "String"),
-	}
+func (e *E2e) AddService(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		p := &processor{
+			utils.WrapCB(args[1], "Process"),
+			utils.WrapCB(args[1], "String"),
+		}
 
-	err := e.api.AddService(args[0].String(), p)
-	if err != nil {
-		return nil, err
-	}
-
-	return js.Undefined(), nil
+		err := e.api.AddService(args[0].String(), p)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+		return
+	})
 }
 
 // RegisterListener registers a new listener.
@@ -252,14 +297,19 @@ func (e *E2e) AddService(_ js.Value, args []js.Value) (any, error) {
 //
 // Returns:
 //   - Throws TypeError if registering the service fails.
-func (e *E2e) RegisterListener(_ js.Value, args []js.Value) (any, error) {
-	recipientId := utils.CopyBytesToGo(args[0])
-	l := &listener{utils.WrapCB(args[2], "Hear"), utils.WrapCB(args[2], "Name")}
+func (e *E2e) RegisterListener(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		recipientId := utils.CopyBytesToGo(args[0])
+		l := &listener{utils.WrapCB(args[2], "Hear"), utils.WrapCB(args[2], "Name")}
 
-	err := e.api.RegisterListener(recipientId, args[1].Int(), l)
-	if err != nil {
-		return nil, err
-	}
-
-	return js.Undefined(), nil
+		err := e.api.RegisterListener(recipientId, args[1].Int(), l)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+		return
+	})
 }

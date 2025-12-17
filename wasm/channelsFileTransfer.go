@@ -13,7 +13,7 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // ChannelsFileTransfer wraps the [bindings.ChannelsFileTransfer] object so its
@@ -62,20 +62,21 @@ func newChannelsFileTransferJS(api *bindings.ChannelsFileTransfer) map[string]an
 //     object.
 //   - Rejected with an error if creating the file transfer object fails.
 func InitChannelsFileTransfer(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return initChannelsFileTransferImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
-}
-
-func initChannelsFileTransferImpl(args []js.Value) (any, error) {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	e2eID := args[0].Int()
 	paramsJson := utils.CopyBytesToGo(args[1])
 
-	cft, err := bindings.InitChannelsFileTransfer(e2eID, paramsJson)
-	if err != nil {
-		return nil, err
-	}
-	return newChannelsFileTransferJS(cft), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		cft, err := bindings.InitChannelsFileTransfer(e2eID, paramsJson)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(newChannelsFileTransferJS(cft))
+		return
+	})
 }
 
 // GetExtensionBuilderID returns the ID of the extension builder in the tracker.
@@ -156,24 +157,23 @@ func (cft *ChannelsFileTransfer) MaxPreviewSize(js.Value, []js.Value) any {
 //     identifies the file (Uint8Array).
 //   - Rejected with an error if initiating the upload fails.
 func (cft *ChannelsFileTransfer) Upload(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return cft.uploadImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
-}
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	fileData := utils.CopyBytesToGo(args[0])
+	retry := float32(args[1].Float())
+	progressCB := &ftSentCallback{utils.WrapCB(args[2], "Callback")}
+	period := args[3].Int()
 
-func (cft *ChannelsFileTransfer) uploadImpl(args []js.Value) (any, error) {
-	var (
-		fileData   = utils.CopyBytesToGo(args[0])
-		retry      = float32(args[1].Float())
-		progressCB = &ftSentCallback{utils.WrapCB(args[2], "Callback")}
-		period     = args[3].Int()
-	)
-
-	fileID, err := cft.api.Upload(fileData, retry, progressCB, period)
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(fileID), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		fileID, err := cft.api.Upload(fileData, retry, progressCB, period)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(fileID))
+		return
+	})
 }
 
 // Send sends the specified file info to the channel. Once a file is uploaded
@@ -202,30 +202,29 @@ func (cft *ChannelsFileTransfer) uploadImpl(args []js.Value) (any, error) {
 //   - Resolves to the JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Rejected with an error if sending fails.
 func (cft *ChannelsFileTransfer) Send(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return cft.sendImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
-}
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	channelIdBytes := utils.CopyBytesToGo(args[0])
+	fileLinkJSON := utils.CopyBytesToGo(args[1])
+	fileName := args[2].String()
+	fileType := args[3].String()
+	preview := utils.CopyBytesToGo(args[4])
+	validUntilMS := args[5].Int()
+	cmixParamsJSON := utils.CopyBytesToGo(args[6])
+	pingsJSON := utils.CopyBytesToGo(args[7])
 
-func (cft *ChannelsFileTransfer) sendImpl(args []js.Value) (any, error) {
-	var (
-		channelIdBytes = utils.CopyBytesToGo(args[0])
-		fileLinkJSON   = utils.CopyBytesToGo(args[1])
-		fileName       = args[2].String()
-		fileType       = args[3].String()
-		preview        = utils.CopyBytesToGo(args[4])
-		validUntilMS   = args[5].Int()
-		cmixParamsJSON = utils.CopyBytesToGo(args[6])
-		pingsJSON      = utils.CopyBytesToGo(args[7])
-	)
-
-	fileID, err := cft.api.Send(channelIdBytes, fileLinkJSON,
-		fileName, fileType, preview, validUntilMS,
-		cmixParamsJSON, pingsJSON)
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(fileID), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		fileID, err := cft.api.Send(channelIdBytes, fileLinkJSON,
+			fileName, fileType, preview, validUntilMS,
+			cmixParamsJSON, pingsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(fileID))
+		return
+	})
 }
 
 // RegisterSentProgressCallback allows for the registration of a callback to
@@ -262,24 +261,23 @@ func (cft *ChannelsFileTransfer) sendImpl(args []js.Value) (any, error) {
 //   - Rejected with an error if registering the callback fails.
 func (cft *ChannelsFileTransfer) RegisterSentProgressCallback(
 	_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return cft.registerSentProgressCallbackImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
-}
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	fileIDBytes := utils.CopyBytesToGo(args[0])
+	progressCB := &ftSentCallback{utils.WrapCB(args[1], "Callback")}
+	periodMS := args[2].Int()
 
-func (cft *ChannelsFileTransfer) registerSentProgressCallbackImpl(args []js.Value) (any, error) {
-	var (
-		fileIDBytes = utils.CopyBytesToGo(args[0])
-		progressCB  = &ftSentCallback{utils.WrapCB(args[1], "Callback")}
-		periodMS    = args[2].Int()
-	)
-
-	err := cft.api.RegisterSentProgressCallback(
-		fileIDBytes, progressCB, periodMS)
-	if err != nil {
-		return nil, err
-	}
-	return js.Undefined(), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := cft.api.RegisterSentProgressCallback(
+			fileIDBytes, progressCB, periodMS)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+		return
+	})
 }
 
 // RetryUpload retries uploading a failed file upload. Returns an error if the
@@ -305,23 +303,22 @@ func (cft *ChannelsFileTransfer) registerSentProgressCallbackImpl(args []js.Valu
 //   - Resolves on success (void).
 //   - Rejected with an error if registering retrying the upload fails.
 func (cft *ChannelsFileTransfer) RetryUpload(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return cft.retryUploadImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
-}
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	fileIDBytes := utils.CopyBytesToGo(args[0])
+	progressCB := &ftSentCallback{utils.WrapCB(args[1], "Callback")}
+	periodMS := args[2].Int()
 
-func (cft *ChannelsFileTransfer) retryUploadImpl(args []js.Value) (any, error) {
-	var (
-		fileIDBytes = utils.CopyBytesToGo(args[0])
-		progressCB  = &ftSentCallback{utils.WrapCB(args[1], "Callback")}
-		periodMS    = args[2].Int()
-	)
-
-	err := cft.api.RetryUpload(fileIDBytes, progressCB, periodMS)
-	if err != nil {
-		return nil, err
-	}
-	return js.Undefined(), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := cft.api.RetryUpload(fileIDBytes, progressCB, periodMS)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+		return
+	})
 }
 
 // CloseSend deletes a file from the internal storage once a transfer has
@@ -339,19 +336,20 @@ func (cft *ChannelsFileTransfer) retryUploadImpl(args []js.Value) (any, error) {
 //   - Rejected with an error if the file has not failed or completed or if
 //     closing failed.
 func (cft *ChannelsFileTransfer) CloseSend(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return cft.closeSendImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
-}
-
-func (cft *ChannelsFileTransfer) closeSendImpl(args []js.Value) (any, error) {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	fileIDBytes := utils.CopyBytesToGo(args[0])
 
-	err := cft.api.CloseSend(fileIDBytes)
-	if err != nil {
-		return nil, err
-	}
-	return js.Undefined(), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := cft.api.CloseSend(fileIDBytes)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+		return
+	})
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,23 +386,22 @@ func (cft *ChannelsFileTransfer) closeSendImpl(args []js.Value) (any, error) {
 //     identifies the file. (Uint8Array).
 //   - Rejected with an error if downloading fails.
 func (cft *ChannelsFileTransfer) Download(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return cft.downloadImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
-}
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	fileInfoJSON := utils.CopyBytesToGo(args[0])
+	progressCB := &ftReceivedCallback{utils.WrapCB(args[1], "Callback")}
+	periodMS := args[2].Int()
 
-func (cft *ChannelsFileTransfer) downloadImpl(args []js.Value) (any, error) {
-	var (
-		fileInfoJSON = utils.CopyBytesToGo(args[0])
-		progressCB   = &ftReceivedCallback{utils.WrapCB(args[1], "Callback")}
-		periodMS     = args[2].Int()
-	)
-
-	fileID, err := cft.api.Download(fileInfoJSON, progressCB, periodMS)
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(fileID), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		fileID, err := cft.api.Download(fileInfoJSON, progressCB, periodMS)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(fileID))
+		return
+	})
 }
 
 // RegisterReceivedProgressCallback allows for the registration of a callback to
@@ -440,24 +437,23 @@ func (cft *ChannelsFileTransfer) downloadImpl(args []js.Value) (any, error) {
 //   - Rejected with an error if registering the callback fails.
 func (cft *ChannelsFileTransfer) RegisterReceivedProgressCallback(
 	_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		return cft.registerReceivedProgressCallbackImpl(args)
-	}).Invoke(jsArgsToAny(args)...)
-}
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	fileIDBytes := utils.CopyBytesToGo(args[0])
+	progressCB := &ftReceivedCallback{utils.WrapCB(args[1], "Callback")}
+	periodMS := args[2].Int()
 
-func (cft *ChannelsFileTransfer) registerReceivedProgressCallbackImpl(args []js.Value) (any, error) {
-	var (
-		fileIDBytes = utils.CopyBytesToGo(args[0])
-		progressCB  = &ftReceivedCallback{utils.WrapCB(args[1], "Callback")}
-		periodMS    = args[2].Int()
-	)
-
-	err := cft.api.RegisterReceivedProgressCallback(
-		fileIDBytes, progressCB, periodMS)
-	if err != nil {
-		return nil, err
-	}
-	return js.Undefined(), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := cft.api.RegisterReceivedProgressCallback(
+			fileIDBytes, progressCB, periodMS)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+		return
+	})
 }
 
 ////////////////////////////////////////////////////////////////////////////////

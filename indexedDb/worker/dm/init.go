@@ -11,7 +11,7 @@ package dm
 
 import (
 	"crypto/ed25519"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -19,6 +19,7 @@ import (
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/dm"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
 	"gitlab.com/elixxir/xxdk-wasm/logging"
 	"gitlab.com/elixxir/xxdk-wasm/storage"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
@@ -62,6 +63,21 @@ func NewWASMEventModel(path, wasmJsPath string, encryption idbCrypto.Cipher,
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create message channel "+
 			"between DM indexedDb worker and logger")
+	}
+
+	// Create MessageChannel between worker and KV Worker for unified KV access
+	if kv.HasKVWorker() {
+		err = kv.CreateKVChannelForWorker(wh.GetWorker(), "dmIndexedDbKV")
+		if err != nil {
+			jww.WARN.Printf("Failed to create message channel between "+
+				"DM indexedDb worker and KV worker: %+v", err)
+			// Don't fail - KV access is optional for DM worker
+		} else {
+			jww.INFO.Print("[DM] MessageChannel to KV Worker created")
+		}
+	} else {
+		jww.DEBUG.Print("[DM] KV Worker not available, " +
+			"skipping KV MessageChannel setup")
 	}
 
 	// Store the database name

@@ -11,7 +11,7 @@ package dm
 
 import (
 	"crypto/ed25519"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"time"
 
 	jww "github.com/spf13/jwalterweatherman"

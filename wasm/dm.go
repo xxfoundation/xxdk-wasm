@@ -12,14 +12,14 @@ package wasm
 
 import (
 	"encoding/base64"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"syscall/js"
 
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/client/v4/bindings"
 	"gitlab.com/elixxir/client/v4/dm"
 	"gitlab.com/elixxir/crypto/codename"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 	indexDB "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
 )
 
@@ -43,27 +43,27 @@ func newDMClientJS(api *bindings.DMClient) map[string]any {
 		"GetPublicKey":          js.FuncOf(cm.GetPublicKey),
 		"GetToken":              js.FuncOf(cm.GetToken),
 		"GetIdentity":           js.FuncOf(cm.GetIdentity),
-		"ExportPrivateIdentity": utils.SafeFunc(cm.ExportPrivateIdentity),
-		"GetNickname":           utils.SafeFunc(cm.GetNickname),
-		"SetNickname":           utils.SafeFunc(cm.SetNickname),
-		"BlockPartner":          utils.SafeFunc(cm.BlockPartner),
-		"UnblockPartner":        utils.SafeFunc(cm.UnblockPartner),
-		"IsBlocked":             utils.SafeFunc(cm.IsBlocked),
-		"GetBlockedPartners":    utils.SafeFunc(cm.GetBlockedPartners),
+		"ExportPrivateIdentity": js.FuncOf(cm.ExportPrivateIdentity),
+		"GetNickname":           js.FuncOf(cm.GetNickname),
+		"SetNickname":           js.FuncOf(cm.SetNickname),
+		"BlockPartner":          js.FuncOf(cm.BlockPartner),
+		"UnblockPartner":        js.FuncOf(cm.UnblockPartner),
+		"IsBlocked":             js.FuncOf(cm.IsBlocked),
+		"GetBlockedPartners":    js.FuncOf(cm.GetBlockedPartners),
 		"GetDatabaseName":       js.FuncOf(cm.GetDatabaseName),
 		// Share URL
-		"GetShareURL": utils.SafeFunc(cm.GetShareURL),
+		"GetShareURL": js.FuncOf(cm.GetShareURL),
 		// DM Sending Methods and Reports
-		"SendText":      utils.SafeFunc(cm.SendText),
-		"SendReply":     utils.SafeFunc(cm.SendReply),
-		"SendReaction":  utils.SafeFunc(cm.SendReaction),
-		"SendSilent":    utils.SafeFunc(cm.SendSilent),
-		"SendInvite":    utils.SafeFunc(cm.SendInvite),
-		"DeleteMessage": utils.SafeFunc(cm.DeleteMessage),
-		"Send":          utils.SafeFunc(cm.Send),
+		"SendText":      js.FuncOf(cm.SendText),
+		"SendReply":     js.FuncOf(cm.SendReply),
+		"SendReaction":  js.FuncOf(cm.SendReaction),
+		"SendSilent":    js.FuncOf(cm.SendSilent),
+		"SendInvite":    js.FuncOf(cm.SendInvite),
+		"DeleteMessage": js.FuncOf(cm.DeleteMessage),
+		"Send":          js.FuncOf(cm.Send),
 		// Notifications
-		"GetNotificationLevel":        utils.SafeFunc(cm.GetNotificationLevel),
-		"SetMobileNotificationsLevel": utils.SafeFunc(cm.SetMobileNotificationsLevel),
+		"GetNotificationLevel":        js.FuncOf(cm.GetNotificationLevel),
+		"SetMobileNotificationsLevel": js.FuncOf(cm.SetMobileNotificationsLevel),
 	}
 	return dmClientMap
 }
@@ -111,19 +111,24 @@ func (dmCBS *dmCallbacks) EventUpdate(eventType int64, jsonData []byte) {
 //   - Javascript representation of the [DMClient] object.
 //   - Throws an error if creating the manager fails.
 func NewDMClient(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		cmixID := args[0].Int()
-		notificationsID := args[1].Int()
-		privateIdentity := utils.CopyBytesToGo(args[2])
-		em := newDMReceiverBuilder(args[3])
-		cbs := newDmCallbacks(args[4])
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	cmixID := args[0].Int()
+	notificationsID := args[1].Int()
+	privateIdentity := utils.CopyBytesToGo(args[2])
+	em := newDMReceiverBuilder(args[3])
+	cbs := newDmCallbacks(args[4])
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		cm, err :=
 			bindings.NewDMClient(cmixID, notificationsID, privateIdentity, em, cbs)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return newDMClientJS(cm), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(newDMClientJS(cm))
+	})
 }
 
 // NewDMClientWithIndexedDb creates a new [DMClient] from a private identity
@@ -157,20 +162,25 @@ func NewDMClient(_ js.Value, args []js.Value) any {
 //   - Rejected with an error if loading indexedDbWorker or the manager fails.
 //   - Throws an error if the cipher ID does not correspond to a cipher.
 func NewDMClientWithIndexedDb(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		cmixID := args[0].Int()
-		notificationsID := args[1].Int()
-		cipherID := args[2].Int()
-		wasmJsPath := args[3].String()
-		privateIdentity := utils.CopyBytesToGo(args[4])
-		cbs := newDmCallbacks(args[5])
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	cmixID := args[0].Int()
+	notificationsID := args[1].Int()
+	cipherID := args[2].Int()
+	wasmJsPath := args[3].String()
+	privateIdentity := utils.CopyBytesToGo(args[4])
+	cbs := newDmCallbacks(args[5])
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		cipher, err := dbCipherTrackerSingleton.get(cipherID)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return newDMClientWithIndexedDb(
-			cmixID, notificationsID, wasmJsPath, privateIdentity, cipher, cbs), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(newDMClientWithIndexedDb(
+			cmixID, notificationsID, wasmJsPath, privateIdentity, cipher, cbs))
+	})
 }
 
 // NewDMClientWithIndexedDbUnsafe creates a new [DMClient] from a private
@@ -212,35 +222,39 @@ func NewDMClientWithIndexedDbUnsafe(_ js.Value, args []js.Value) any {
 }
 func newDMClientWithIndexedDb(cmixID, notificationsID int, wasmJsPath string,
 	privateIdentity []byte, cipher *DbCipher, cbs *dmCallbacks) any {
-	handler := js.FuncOf(func(_ js.Value, promiseArgs []js.Value) any {
-		resolve := promiseArgs[0]
-		reject := promiseArgs[1]
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		pi, err := codename.UnmarshalPrivateIdentity(privateIdentity)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		dmPath := base64.RawStdEncoding.EncodeToString(pi.PubKey[:])
 
-		go func() {
-			pi, err := codename.UnmarshalPrivateIdentity(privateIdentity)
-			if err != nil {
-				reject.Invoke(js.Global().Get("Error").New(err.Error()))
-				return
-			}
-			dmPath := base64.RawStdEncoding.EncodeToString(pi.PubKey[:])
-			model, err :=
-				indexDB.NewWASMEventModel(dmPath, wasmJsPath, cipher.api, cbs)
-			if err != nil {
-				reject.Invoke(js.Global().Get("Error").New(err.Error()))
-				return
-			}
-			cm, err := bindings.NewDMClientWithGoEventModel(
-				cmixID, notificationsID, privateIdentity, model, cbs)
-			if err != nil {
-				reject.Invoke(js.Global().Get("Error").New(err.Error()))
-			} else {
-				resolve.Invoke(newDMClientJS(cm))
-			}
-		}()
-		return nil
+		// Handle nil cipher case (for Unsafe variant)
+		var model dm.EventModel
+		if cipher != nil {
+			model, err = indexDB.NewWASMEventModel(dmPath, wasmJsPath, cipher.api, cbs)
+		} else {
+			model, err = indexDB.NewWASMEventModel(dmPath, wasmJsPath, nil, cbs)
+		}
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		cm, err := bindings.NewDMClientWithGoEventModel(
+			cmixID, notificationsID, privateIdentity, model, cbs)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+		} else {
+			resolve(newDMClientJS(cm))
+		}
 	})
-
-	return utils.Promise.New(handler)
 }
 
 // GetID returns the ECDH Public Key for this [DMClient] in the [DMClient]
@@ -282,12 +296,20 @@ func (dmc *DMClient) GetIdentity(js.Value, []js.Value) any {
 // Returns:
 //   - Encrypted private identity bytes (Uint8Array).
 //   - Throws TypeError if exporting the identity fails.
-func (dmc *DMClient) ExportPrivateIdentity(this js.Value, args []js.Value) (any, error) {
-	i, err := dmc.api.ExportPrivateIdentity(args[0].String())
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(i), nil
+func (dmc *DMClient) ExportPrivateIdentity(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	password := args[0].String()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		i, err := dmc.api.ExportPrivateIdentity(password)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(i))
+	})
 }
 
 // GetNickname gets the nickname associated with this DM user. Throws an error
@@ -296,12 +318,18 @@ func (dmc *DMClient) ExportPrivateIdentity(this js.Value, args []js.Value) (any,
 // Returns:
 //   - The nickname (string).
 //   - Throws an error if the channel has no nickname set.
-func (dmc *DMClient) GetNickname(this js.Value, args []js.Value) (any, error) {
-	nickname, err := dmc.api.GetNickname()
-	if err != nil {
-		return nil, err
-	}
-	return nickname, nil
+func (dmc *DMClient) GetNickname(this js.Value, args []js.Value) any {
+	// No args to parse
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		nickname, err := dmc.api.GetNickname()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(nickname)
+	})
 }
 
 // SetNickname sets the nickname to use for this user.
@@ -311,12 +339,20 @@ func (dmc *DMClient) GetNickname(this js.Value, args []js.Value) (any, error) {
 //
 // Returns:
 //   - Throws an error if setting the nickname fails.
-func (dmc *DMClient) SetNickname(this js.Value, args []js.Value) (any, error) {
-	err := dmc.api.SetNickname(args[0].String())
-	if err != nil {
-		return nil, err
-	}
-	return js.Undefined(), nil
+func (dmc *DMClient) SetNickname(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	nickname := args[0].String()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := dmc.api.SetNickname(nickname)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+	})
 }
 
 // BlockPartner prevents receiving messages and notifications from the partner.
@@ -326,10 +362,14 @@ func (dmc *DMClient) SetNickname(this js.Value, args []js.Value) (any, error) {
 //
 // Returns:
 //   - Throws an error if blocking fails.
-func (dmc *DMClient) BlockPartner(this js.Value, args []js.Value) (any, error) {
+func (dmc *DMClient) BlockPartner(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	partnerPubKey := utils.CopyBytesToGo(args[0])
-	dmc.api.BlockPartner(partnerPubKey)
-	return js.Undefined(), nil
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		dmc.api.BlockPartner(partnerPubKey)
+		resolve(js.Undefined())
+	})
 }
 
 // UnblockPartner unblocks a blocked partner to allow DM messages.
@@ -339,10 +379,14 @@ func (dmc *DMClient) BlockPartner(this js.Value, args []js.Value) (any, error) {
 //
 // Returns:
 //   - Throws an error if unblocking fails.
-func (dmc *DMClient) UnblockPartner(this js.Value, args []js.Value) (any, error) {
+func (dmc *DMClient) UnblockPartner(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	partnerPubKey := utils.CopyBytesToGo(args[0])
-	dmc.api.UnblockPartner(partnerPubKey)
-	return js.Undefined(), nil
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		dmc.api.UnblockPartner(partnerPubKey)
+		resolve(js.Undefined())
+	})
 }
 
 // IsBlocked indicates if the given partner is blocked.
@@ -353,10 +397,14 @@ func (dmc *DMClient) UnblockPartner(this js.Value, args []js.Value) (any, error)
 //
 // Returns:
 //   - boolean
-func (dmc *DMClient) IsBlocked(this js.Value, args []js.Value) (any, error) {
+func (dmc *DMClient) IsBlocked(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	partnerPubKey := utils.CopyBytesToGo(args[0])
-	isBlocked := dmc.api.IsBlocked(partnerPubKey)
-	return isBlocked, nil
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		isBlocked := dmc.api.IsBlocked(partnerPubKey)
+		resolve(isBlocked)
+	})
 }
 
 // GetBlockedPartners returns all partners who are blocked by this user.
@@ -371,9 +419,12 @@ func (dmc *DMClient) IsBlocked(this js.Value, args []js.Value) (any, error) {
 //	  "4JLRzgtW1SZ9c5pE+v0WwrGPj1t19AuU6Gg5IND5ymA=",
 //	  "CWDqF1bnhulW2pko+zgmbDZNaKkmNtFdUgY4bTm2DhA="
 //	]
-func (dmc *DMClient) GetBlockedPartners(this js.Value, args []js.Value) (any, error) {
-	blocked := utils.CopyBytesToJS(dmc.api.GetBlockedPartners())
-	return blocked, nil
+func (dmc *DMClient) GetBlockedPartners(this js.Value, args []js.Value) any {
+	// No args to parse
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		blocked := utils.CopyBytesToJS(dmc.api.GetBlockedPartners())
+		resolve(blocked)
+	})
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -399,21 +450,28 @@ func (dmc *DMClient) GetBlockedPartners(this js.Value, args []js.Value) (any, er
 // Returns:
 //   - JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Throws an error if sending fails.
-func (dmc *DMClient) SendText(this js.Value, args []js.Value) (any, error) {
+func (dmc *DMClient) SendText(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	partnerPubKeyBytes := utils.CopyBytesToGo(args[0])
 	partnerToken := int32(args[1].Int())
 	message := args[2].String()
 	leaseTimeMS := int64(args[3].Int())
 	cmixParamsJSON := utils.CopyBytesToGo(args[4])
-	jww.DEBUG.Printf("SendText(%s, %d, %s...)",
-		base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
-		partnerToken, truncate(message, 10))
-	sendReport, err := dmc.api.SendText(partnerPubKeyBytes, partnerToken,
-		message, leaseTimeMS, cmixParamsJSON)
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(sendReport), nil
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		jww.DEBUG.Printf("SendText(%s, %d, %s...)",
+			base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
+			partnerToken, truncate(message, 10))
+		sendReport, err := dmc.api.SendText(partnerPubKeyBytes, partnerToken,
+			message, leaseTimeMS, cmixParamsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(sendReport))
+	})
 }
 
 // SendReply is used to send a formatted direct message reply.
@@ -447,24 +505,31 @@ func (dmc *DMClient) SendText(this js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Throws an error if sending fails.
-func (dmc *DMClient) SendReply(this js.Value, args []js.Value) (any, error) {
+func (dmc *DMClient) SendReply(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	partnerPubKeyBytes := utils.CopyBytesToGo(args[0])
 	partnerToken := int32(args[1].Int())
 	replyMessage := args[2].String()
 	replyToBytes := utils.CopyBytesToGo(args[3])
 	leaseTimeMS := int64(args[4].Int())
 	cmixParamsJSON := utils.CopyBytesToGo(args[5])
-	jww.DEBUG.Printf("SendReply(%s, %d, %s: %s...)",
-		base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
-		partnerToken,
-		base64.RawStdEncoding.EncodeToString(replyToBytes),
-		truncate(replyMessage, 10))
-	sendReport, err := dmc.api.SendReply(partnerPubKeyBytes, partnerToken,
-		replyMessage, replyToBytes, leaseTimeMS, cmixParamsJSON)
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(sendReport), nil
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		jww.DEBUG.Printf("SendReply(%s, %d, %s: %s...)",
+			base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
+			partnerToken,
+			base64.RawStdEncoding.EncodeToString(replyToBytes),
+			truncate(replyMessage, 10))
+		sendReport, err := dmc.api.SendReply(partnerPubKeyBytes, partnerToken,
+			replyMessage, replyToBytes, leaseTimeMS, cmixParamsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(sendReport))
+	})
 }
 
 // SendReaction is used to send a reaction to a message over a channel.
@@ -489,23 +554,30 @@ func (dmc *DMClient) SendReply(this js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Throws an error if sending fails.
-func (dmc *DMClient) SendReaction(this js.Value, args []js.Value) (any, error) {
+func (dmc *DMClient) SendReaction(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	partnerPubKeyBytes := utils.CopyBytesToGo(args[0])
 	partnerToken := int32(args[1].Int())
 	reaction := args[2].String()
 	reactToBytes := utils.CopyBytesToGo(args[3])
 	cmixParamsJSON := utils.CopyBytesToGo(args[4])
-	jww.DEBUG.Printf("SendReaction(%s, %d, %s: %s...)",
-		base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
-		partnerToken,
-		base64.RawStdEncoding.EncodeToString(reactToBytes),
-		truncate(reaction, 10))
-	sendReport, err := dmc.api.SendReaction(partnerPubKeyBytes,
-		partnerToken, reaction, reactToBytes, cmixParamsJSON)
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(sendReport), nil
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		jww.DEBUG.Printf("SendReaction(%s, %d, %s: %s...)",
+			base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
+			partnerToken,
+			base64.RawStdEncoding.EncodeToString(reactToBytes),
+			truncate(reaction, 10))
+		sendReport, err := dmc.api.SendReaction(partnerPubKeyBytes,
+			partnerToken, reaction, reactToBytes, cmixParamsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(sendReport))
+	})
 }
 
 // SendSilent is used to send to a channel a message with no notifications.
@@ -524,18 +596,23 @@ func (dmc *DMClient) SendReaction(this js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Throws an error if sending fails.
-func (dmc *DMClient) SendSilent(this js.Value, args []js.Value) (any, error) {
-	var (
-		partnerPubKeyBytes = utils.CopyBytesToGo(args[0])
-		partnerToken       = int32(args[1].Int())
-		cmixParamsJSON     = utils.CopyBytesToGo(args[2])
-	)
-	sendReport, err := dmc.api.SendSilent(
-		partnerPubKeyBytes, partnerToken, cmixParamsJSON)
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(sendReport), nil
+func (dmc *DMClient) SendSilent(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	partnerPubKeyBytes := utils.CopyBytesToGo(args[0])
+	partnerToken := int32(args[1].Int())
+	cmixParamsJSON := utils.CopyBytesToGo(args[2])
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		sendReport, err := dmc.api.SendSilent(
+			partnerPubKeyBytes, partnerToken, cmixParamsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(sendReport))
+	})
 }
 
 // SendInvite is used to send to a DM partner an invitation to another
@@ -560,22 +637,27 @@ func (dmc *DMClient) SendSilent(this js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Throws an error if sending fails.
-func (dmc *DMClient) SendInvite(this js.Value, args []js.Value) (any, error) {
-	var (
-		partnerPubKeyBytes = utils.CopyBytesToGo(args[0])
-		partnerToken       = int32(args[1].Int())
-		inviteToJSON       = utils.CopyBytesToGo(args[2])
-		msg                = args[3].String()
-		host               = args[4].String()
-		cmixParamsJSON     = utils.CopyBytesToGo(args[5])
-	)
-	sendReport, err := dmc.api.SendInvite(
-		partnerPubKeyBytes, partnerToken, inviteToJSON, msg, host,
-		cmixParamsJSON)
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(sendReport), nil
+func (dmc *DMClient) SendInvite(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	partnerPubKeyBytes := utils.CopyBytesToGo(args[0])
+	partnerToken := int32(args[1].Int())
+	inviteToJSON := utils.CopyBytesToGo(args[2])
+	msg := args[3].String()
+	host := args[4].String()
+	cmixParamsJSON := utils.CopyBytesToGo(args[5])
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		sendReport, err := dmc.api.SendInvite(
+			partnerPubKeyBytes, partnerToken, inviteToJSON, msg, host,
+			cmixParamsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(sendReport))
+	})
 }
 
 // DeleteMessage sends a message to the partner to delete a message this user
@@ -593,21 +675,28 @@ func (dmc *DMClient) SendInvite(this js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Throws an error if sending fails.
-func (dmc *DMClient) DeleteMessage(this js.Value, args []js.Value) (any, error) {
+func (dmc *DMClient) DeleteMessage(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	partnerPubKeyBytes := utils.CopyBytesToGo(args[0])
 	partnerToken := int32(args[1].Int())
 	targetMessageIdBytes := utils.CopyBytesToGo(args[2])
 	cmixParamsJSON := utils.CopyBytesToGo(args[3])
-	jww.DEBUG.Printf("DeleteMessage(%s, %d, %s)",
-		base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
-		partnerToken,
-		base64.RawStdEncoding.EncodeToString(targetMessageIdBytes))
-	sendReport, err := dmc.api.DeleteMessage(partnerPubKeyBytes,
-		partnerToken, targetMessageIdBytes, cmixParamsJSON)
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(sendReport), nil
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		jww.DEBUG.Printf("DeleteMessage(%s, %d, %s)",
+			base64.RawStdEncoding.EncodeToString(partnerPubKeyBytes)[:8],
+			partnerToken,
+			base64.RawStdEncoding.EncodeToString(targetMessageIdBytes))
+		sendReport, err := dmc.api.DeleteMessage(partnerPubKeyBytes,
+			partnerToken, targetMessageIdBytes, cmixParamsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(sendReport))
+	})
 }
 
 // Send is used to send a raw message. In general, it
@@ -640,19 +729,26 @@ func (dmc *DMClient) DeleteMessage(this js.Value, args []js.Value) (any, error) 
 // Returns:
 //   - JSON of [bindings.ChannelSendReport] (Uint8Array).
 //   - Throws an error if sending fails.
-func (dmc *DMClient) Send(this js.Value, args []js.Value) (any, error) {
+func (dmc *DMClient) Send(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	partnerPubKeyBytes := utils.CopyBytesToGo(args[0])
 	partnerToken := int32(args[1].Int())
 	messageType := args[2].Int()
 	plaintext := utils.CopyBytesToGo(args[3])
 	leaseTimeMS := int64(args[4].Int())
 	cmixParamsJSON := utils.CopyBytesToGo(args[5])
-	sendReport, err := dmc.api.Send(partnerPubKeyBytes, partnerToken,
-		messageType, plaintext, leaseTimeMS, cmixParamsJSON)
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(sendReport), nil
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		sendReport, err := dmc.api.Send(partnerPubKeyBytes, partnerToken,
+			messageType, plaintext, leaseTimeMS, cmixParamsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(sendReport))
+	})
 }
 
 // GetDatabaseName returns the storage tag, so users listening to the database
@@ -705,13 +801,20 @@ type DMUser struct {
 // Returns:
 //   - JSON of [DMShareURL] (Uint8Array).
 //   - Throws an exception on error.
-func (dmc *DMClient) GetShareURL(this js.Value, args []js.Value) (any, error) {
+func (dmc *DMClient) GetShareURL(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	host := args[0].String()
-	urlReport, err := dmc.api.GetShareURL(host)
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(urlReport), nil
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		urlReport, err := dmc.api.GetShareURL(host)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(utils.CopyBytesToJS(urlReport))
+	})
 }
 
 // GetNotificationLevel gets the notification level for a given DM partner's
@@ -723,13 +826,20 @@ func (dmc *DMClient) GetShareURL(this js.Value, args []js.Value) (any, error) {
 // Returns:
 //   - The [dm.NotificationLevel] of the DM conversation (int).
 //   - Throws an error if getting the notification level fails.
-func (dmc *DMClient) GetNotificationLevel(this js.Value, args []js.Value) (any, error) {
+func (dmc *DMClient) GetNotificationLevel(this js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	partnerPubKey := utils.CopyBytesToGo(args[0])
-	level, err := dmc.api.GetNotificationLevel(partnerPubKey)
-	if err != nil {
-		return nil, err
-	}
-	return level, nil
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		level, err := dmc.api.GetNotificationLevel(partnerPubKey)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(level)
+	})
 }
 
 // SetMobileNotificationsLevel sets the notification level for the given DM
@@ -742,14 +852,21 @@ func (dmc *DMClient) GetNotificationLevel(this js.Value, args []js.Value) (any, 
 // Returns:
 //   - Throws an error if setting the notification level fails.
 func (dmc *DMClient) SetMobileNotificationsLevel(this js.Value,
-	args []js.Value) (any, error) {
+	args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	partnerPubKey := utils.CopyBytesToGo(args[0])
 	level := args[1].Int()
-	err := dmc.api.SetMobileNotificationsLevel(partnerPubKey, level)
-	if err != nil {
-		return nil, err
-	}
-	return js.Undefined(), nil
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := dmc.api.SetMobileNotificationsLevel(partnerPubKey, level)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+	})
 }
 
 // DecodeDMShareURL decodes the user's URL into a [DMUser].
@@ -762,14 +879,19 @@ func (dmc *DMClient) SetMobileNotificationsLevel(this js.Value,
 //   - JSON of [DMUser] (Uint8Array).
 //   - Throws an exception on error.
 func DecodeDMShareURL(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		url := args[0].String()
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	url := args[0].String()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		report, err := bindings.DecodeDMShareURL(url)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return utils.CopyBytesToJS(report), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(utils.CopyBytesToJS(report))
+	})
 }
 
 // GetDmNotificationReportsForMe checks the notification data against the filter
@@ -809,16 +931,21 @@ func DecodeDMShareURL(_ js.Value, args []js.Value) any {
 //	  {"partner": "5MY652JsVv5YLE6wGRHIFZBMvLklACnT5UtHxmEOJ4o=", "type": 2}
 //	]
 func GetDmNotificationReportsForMe(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		notificationFilterJson := utils.CopyBytesToGo(args[0])
-		notificationDataCsv := args[1].String()
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	notificationFilterJson := utils.CopyBytesToGo(args[0])
+	notificationDataCsv := args[1].String()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		forMe, err := bindings.GetDmNotificationReportsForMe(
 			notificationFilterJson, notificationDataCsv)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return utils.CopyBytesToJS(forMe), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(utils.CopyBytesToJS(forMe))
+	})
 }
 
 // //////////////////////////////////////////////////////////////////////////////

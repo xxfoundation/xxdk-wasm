@@ -10,26 +10,39 @@
 package wasm
 
 import (
-	"gitlab.com/elixxir/client/v4/bindings"
 	"reflect"
+	"syscall/js"
 	"testing"
+
+	"gitlab.com/elixxir/client/v4/bindings"
 )
 
-// Tests that the map representing Cmix returned by newCmixJS contains all of
+// Tests that the js.Value representing Cmix returned by newCmixJS contains all of
 // the methods on Cmix.
 func Test_newCmixJS(t *testing.T) {
 	cmixType := reflect.TypeOf(&Cmix{})
 
-	cmix := newCmixJS(&bindings.Cmix{})
-	if len(cmix) != cmixType.NumMethod() {
+	cmixAny := newCmixJS(&bindings.Cmix{})
+	cmix := cmixAny.(js.Value)
+
+	// Count methods by checking each expected method exists
+	methodCount := 0
+	for i := 0; i < cmixType.NumMethod(); i++ {
+		method := cmixType.Method(i)
+		if !cmix.Get(method.Name).IsUndefined() {
+			methodCount++
+		}
+	}
+
+	if methodCount != cmixType.NumMethod() {
 		t.Errorf("Cmix JS object does not have all methods."+
-			"\nexpected: %d\nreceived: %d", cmixType.NumMethod(), len(cmix))
+			"\nexpected: %d\nreceived: %d", cmixType.NumMethod(), methodCount)
 	}
 
 	for i := 0; i < cmixType.NumMethod(); i++ {
 		method := cmixType.Method(i)
 
-		if _, exists := cmix[method.Name]; !exists {
+		if cmix.Get(method.Name).IsUndefined() {
 			t.Errorf("Method %s does not exist.", method.Name)
 		}
 	}

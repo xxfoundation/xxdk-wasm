@@ -10,7 +10,7 @@
 package dm
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -19,6 +19,7 @@ import (
 	"gitlab.com/elixxir/crypto/fastRNG"
 	idbCrypto "gitlab.com/elixxir/crypto/indexedDb"
 	wDm "gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/dm"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
 	"gitlab.com/elixxir/xxdk-wasm/worker"
 	"gitlab.com/xx_network/crypto/csprng"
 )
@@ -28,8 +29,9 @@ var zeroUUID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
 // manager handles the event model and the message callbacks, which is used to
 // send information between the event model and the main thread.
 type manager struct {
-	wtm   *worker.ThreadManager
-	model dm.EventModel
+	wtm     *worker.ThreadManager
+	model   dm.EventModel
+	kvStore kv.Store // KV store for unified storage access (optional)
 }
 
 // registerCallbacks registers all the reception callbacks to manage messages

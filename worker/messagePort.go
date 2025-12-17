@@ -13,26 +13,25 @@ import (
 	"context"
 	"syscall/js"
 
-	"github.com/hack-pad/safejs"
 	"github.com/pkg/errors"
 
-	"gitlab.com/elixxir/wasm-utils/utils"
+	"gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // MessagePort wraps a Javascript MessagePort object.
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/MessagePort
 type MessagePort struct {
-	safejs.Value
+	js.Value
 }
 
 // NewMessagePort wraps the given MessagePort.
-func NewMessagePort(v safejs.Value) (MessagePort, error) {
-	method, err := v.Get("postMessage")
+func NewMessagePort(v js.Value) (MessagePort, error) {
+	method, err := jsutil.Get(v, "postMessage")
 	if err != nil {
 		return MessagePort{}, err
 	}
-	if method.Type() != safejs.TypeFunction {
+	if method.Type() != js.TypeFunction {
 		return MessagePort{}, errors.New("postMessage is not a function")
 	}
 	return MessagePort{v}, nil
@@ -40,21 +39,33 @@ func NewMessagePort(v safejs.Value) (MessagePort, error) {
 
 // PostMessage sends a message from the port.
 func (mp MessagePort) PostMessage(message any) error {
-	_, err := mp.Call("postMessage", message)
+	_, err := jsutil.Call(mp.Value, "postMessage", message)
 	return err
 }
 
 // PostMessageTransfer sends a message from the port and transfers ownership of
 // objects to other browsing contexts.
 func (mp MessagePort) PostMessageTransfer(message any, transfer ...any) error {
-	_, err := mp.Call("postMessage", message, transfer)
+	_, err := jsutil.Call(mp.Value, "postMessage", message, transfer)
 	return err
 }
 
 // PostMessageTransferBytes sends the message bytes from the port via transfer.
 func (mp MessagePort) PostMessageTransferBytes(message []byte) error {
-	buffer := utils.CopyBytesToJS(message)
-	return mp.PostMessageTransfer(buffer, buffer.Get("buffer"))
+	// Create Uint8Array and copy bytes
+	buffer := jsutil.Uint8Array.New(len(message))
+	js.CopyBytesToJS(buffer, message)
+
+	// Transfer the underlying ArrayBuffer
+	mp.Value.Call("postMessage", buffer, []any{buffer.Get("buffer")})
+	return nil
+}
+
+// PostMessageString sends a string message from the port.
+// This is simpler and more efficient than PostMessageTransferBytes for JSON messages.
+func (mp MessagePort) PostMessageString(message string) error {
+	mp.Value.Call("postMessage", message)
+	return nil
 }
 
 // Listen registers listeners on the MessagePort and returns all events on the
@@ -69,20 +80,41 @@ func (mp MessagePort) Listen(
 	}()
 
 	events := make(chan MessageEvent)
-	messageHandler, err := nonBlocking(func(args []safejs.Value) {
-		events <- parseMessageEvent(args[0])
+
+	// IMPORTANT: We must extract data from args SYNCHRONOUSLY (while js.Value is valid),
+	// but send to channel in a GOROUTINE (to not block the JS event loop).
+	// This prevents both "marked free object in span" errors AND deadlocks.
+
+	messageHandler, err := jsutil.FuncOf(func(_ js.Value, args []js.Value) any {
+		// Extract synchronously while args[0] is valid
+		event := parseMessageEvent(args[0])
+		// Send in goroutine to not block JS
+		go func() { events <- event }()
+		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	errorHandler, err := nonBlocking(func(args []safejs.Value) {
-		events <- MessageEvent{err: js.Error{Value: safejs.Unsafe(args[0])}}
+	errorHandler, err := jsutil.FuncOf(func(_ js.Value, args []js.Value) any {
+		// Extract error message synchronously while args[0] is valid
+		jsErr := js.Error{Value: args[0]}
+		event := MessageEvent{
+			err:       errors.New(jsErr.Error()),
+			eventType: MessageEventTypeUnknown,
+		}
+		// Send in goroutine to not block JS
+		go func() { events <- event }()
+		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	messageErrorHandler, err := nonBlocking(func(args []safejs.Value) {
-		events <- parseMessageEvent(args[0])
+	messageErrorHandler, err := jsutil.FuncOf(func(_ js.Value, args []js.Value) any {
+		// Extract synchronously while args[0] is valid
+		event := parseMessageEvent(args[0])
+		// Send in goroutine to not block JS
+		go func() { events <- event }()
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -90,45 +122,35 @@ func (mp MessagePort) Listen(
 
 	go func() {
 		<-ctx.Done()
-		_, err := mp.Call("removeEventListener", "message", messageHandler)
-		if err == nil {
-			messageHandler.Release()
-		}
-		_, err = mp.Call("removeEventListener", "error", errorHandler)
-		if err == nil {
-			errorHandler.Release()
-		}
-		_, err = mp.Call("removeEventListener", "messageerror", messageErrorHandler)
-		if err == nil {
-			messageErrorHandler.Release()
-		}
+		jsutil.Call(mp.Value, "removeEventListener", "message", messageHandler)
+		jsutil.ReleaseFunc(messageHandler)
+		jsutil.Call(mp.Value, "removeEventListener", "error", errorHandler)
+		jsutil.ReleaseFunc(errorHandler)
+		jsutil.Call(mp.Value, "removeEventListener", "messageerror", messageErrorHandler)
+		jsutil.ReleaseFunc(messageErrorHandler)
 		close(events)
 	}()
-	_, err = mp.Call("addEventListener", "message", messageHandler)
+
+	_, err = jsutil.Call(mp.Value, "addEventListener", "message", messageHandler)
 	if err != nil {
 		return nil, err
 	}
-	_, err = mp.Call("addEventListener", "error", errorHandler)
+	_, err = jsutil.Call(mp.Value, "addEventListener", "error", errorHandler)
 	if err != nil {
 		return nil, err
 	}
-	_, err = mp.Call("addEventListener", "messageerror", messageErrorHandler)
+	_, err = jsutil.Call(mp.Value, "addEventListener", "messageerror", messageErrorHandler)
 	if err != nil {
 		return nil, err
 	}
-	if start, err := mp.Get("start"); err == nil {
-		if truthy, err := start.Truthy(); err == nil && truthy {
-			if _, err := mp.Call("start"); err != nil {
-				return nil, err
-			}
+
+	// Check if port needs to be started (MessagePort from MessageChannel)
+	start, err := jsutil.Get(mp.Value, "start")
+	if err == nil && start.Truthy() {
+		if _, err := jsutil.Call(mp.Value, "start"); err != nil {
+			return nil, err
 		}
 	}
-	return events, nil
-}
 
-func nonBlocking(fn func(args []safejs.Value)) (safejs.Func, error) {
-	return safejs.FuncOf(func(_ safejs.Value, args []safejs.Value) any {
-		go fn(args)
-		return nil
-	})
+	return events, nil
 }

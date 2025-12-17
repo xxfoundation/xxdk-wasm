@@ -14,8 +14,9 @@ import (
 	"syscall/js"
 	"time"
 
-	"github.com/hack-pad/safejs"
 	"github.com/pkg/errors"
+
+	"gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // initID is the ID for the first item in the callback list. If the list only
@@ -125,20 +126,11 @@ func NewManager(aURL, name string, messageLogging bool) (*Manager, error) {
 func NewManagerFromScript(
 	jsScript, name string, messageLogging bool) (*Manager, error) {
 
-	blob, err := jsBlob.New([]any{jsScript}, map[string]any{
+	blob := jsBlob.New([]any{jsScript}, map[string]any{
 		"type": "text/javascript",
 	})
-	if err != nil {
-		return nil, err
-	}
-	objectURL, err := jsURL.Call("createObjectURL", blob)
-	if err != nil {
-		return nil, err
-	}
-	objectURLStr, err := objectURL.String()
-	if err != nil {
-		return nil, err
-	}
+	objectURL := jsURL.Call("createObjectURL", blob)
+	objectURLStr := objectURL.String()
 
 	return NewManager(objectURLStr, name, messageLogging)
 }
@@ -181,10 +173,14 @@ func (m *Manager) RegisterCallback(tag Tag, receiverCB ReceiverCallback) {
 // GetWorker returns the Worker wrapper for the Worker Javascript object. This
 // is returned so the worker object can be returned to the Javascript layer for
 // it to communicate with the worker thread.
-func (m *Manager) GetWorker() js.Value { return safejs.Unsafe(m.w.Value) }
+func (m *Manager) GetWorker() js.Value { return m.w.Value }
 
 // Name returns the name of the web worker object.
 func (m *Manager) Name() string { return m.mm.name }
+
+// GetMessageManager returns the underlying MessageManager for direct message passing.
+// This is useful when you need to create a Store that communicates via the Manager.
+func (m *Manager) GetMessageManager() *MessageManager { return m.mm }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Worker Wrapper                                                             //
@@ -198,10 +194,10 @@ type Worker struct {
 }
 
 var (
-	jsWorker         = safejs.MustGetGlobal("Worker")
-	jsMessageChannel = safejs.MustGetGlobal("MessageChannel")
-	jsURL            = safejs.MustGetGlobal("URL")
-	jsBlob           = safejs.MustGetGlobal("Blob")
+	jsWorker         = js.Global().Get("Worker")
+	jsMessageChannel = js.Global().Get("MessageChannel")
+	jsURL            = js.Global().Get("URL")
+	jsBlob           = js.Global().Get("Blob")
 )
 
 // NewWorker creates a Javascript Worker object that executes the script at the
@@ -211,10 +207,7 @@ var (
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/Worker
 func NewWorker(aURL string, options map[string]any) (w Worker, err error) {
-	v, err := jsWorker.New(aURL, options)
-	if err != nil {
-		return Worker{}, err
-	}
+	v := jsWorker.New(aURL, options)
 
 	mp, err := NewMessagePort(v)
 	if err != nil {
@@ -229,8 +222,37 @@ func NewWorker(aURL string, options map[string]any) (w Worker, err error) {
 //
 // Doc: https://developer.mozilla.org/en-US/docs/Web/API/Worker/terminate
 func (w Worker) Terminate() error {
-	_, err := w.Call("terminate")
+	_, err := jsutil.Call(w.Value, "terminate")
 	return err
+}
+
+// NewManagerFromWorker creates a Manager from an existing JavaScript Worker
+// object. This is useful when the worker was created by JavaScript/TypeScript
+// code and needs to be wrapped for use with CreateMessageChannel.
+//
+// Unlike NewManager, this does not wait for a ready signal since the worker
+// may already be initialized.
+func NewManagerFromWorker(workerJS js.Value, name string, p Params) (*Manager, error) {
+	mp, err := NewMessagePort(workerJS)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create MessagePort wrapper")
+	}
+
+	w := Worker{MessagePort: mp}
+
+	mm, err := NewMessageManager(workerJS, name+"-main", p)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to construct message manager")
+	}
+
+	m := &Manager{
+		mm: mm,
+		w:  w,
+	}
+
+	Tracker.add(m)
+
+	return m, nil
 }
 
 // newWorkerOptions creates a new Javascript object containing optional

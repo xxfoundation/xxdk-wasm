@@ -10,21 +10,26 @@
 package storage
 
 import (
-	"encoding/json"
-	"os"
+	json "github.com/goccy/go-json"
+	"io/fs"
 
 	"github.com/pkg/errors"
 
-	"gitlab.com/elixxir/wasm-utils/storage"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
 )
 
 const indexedDbListKey = "xxDkWasmIndexedDbList"
 
 // GetIndexedDbList returns the list of stored indexedDb databases.
 func GetIndexedDbList() (map[string]struct{}, error) {
+	store := kv.GetStore()
+	if store == nil {
+		return nil, errors.New("KV store not available")
+	}
+
 	list := make(map[string]struct{})
-	listBytes, err := storage.GetLocalStorage().Get(indexedDbListKey)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
+	listBytes, err := store.Get(indexedDbListKey)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	} else if err == nil {
 		err = json.Unmarshal(listBytes, &list)
@@ -38,6 +43,11 @@ func GetIndexedDbList() (map[string]struct{}, error) {
 
 // StoreIndexedDb saved the indexedDb database name to storage.
 func StoreIndexedDb(databaseName string) error {
+	store := kv.GetStore()
+	if store == nil {
+		return errors.New("KV store not available")
+	}
+
 	list, err := GetIndexedDbList()
 	if err != nil {
 		return err
@@ -50,10 +60,10 @@ func StoreIndexedDb(databaseName string) error {
 		return err
 	}
 
-	err = storage.GetLocalStorage().Set(indexedDbListKey, listBytes)
+	err = store.Set(indexedDbListKey, listBytes)
 	if err != nil {
 		return errors.Wrapf(err,
-			"localStorage: failed to set %q", indexedDbListKey)
+			"kv: failed to set %q", indexedDbListKey)
 	}
 
 	return nil

@@ -39,8 +39,8 @@ export type DMClient = {
     cmixParams: Uint8Array
   ) => Promise<void>;
   GetIdentity: () => Uint8Array;
-  SetNickname: (nickname: string) => void;
-  GetNickname: () => string;
+  SetNickname: (nickname: string) => Promise<void>;
+  GetNickname: () => Promise<string>;
   GetDatabaseName: () => string;
   BlockPartner: (pubkey: Uint8Array) => Promise<void>;
   UnblockPartner: (pubkey: Uint8Array) => Promise<void>;
@@ -118,13 +118,13 @@ export type CMixParams = {
 
 export type DatabaseCipher  = {
   id: number;
-  decrypt: (encrypted: string) => string;
+  decrypt: (encrypted: string) => Promise<string>;
 };
 
 
 export type RawCipher = {
   GetID: () => number;
-  Decrypt: (plaintext: string) => Uint8Array;
+  Decrypt: (plaintext: string) => Promise<Uint8Array>;
 }
 
 

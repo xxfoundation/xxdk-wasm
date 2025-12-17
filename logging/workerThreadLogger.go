@@ -15,7 +15,6 @@ import (
 	"math"
 	"syscall/js"
 
-	"github.com/hack-pad/safejs"
 	jww "github.com/spf13/jwalterweatherman"
 
 	"gitlab.com/elixxir/xxdk-wasm/worker"
@@ -35,7 +34,7 @@ func newThreadLogger(threshold jww.Threshold, channelName string,
 	messagePort js.Value) (*threadLogger, error) {
 	p := worker.DefaultParams()
 	p.MessageLogging = false
-	mm, err := worker.NewMessageManager(safejs.Safe(messagePort),
+	mm, err := worker.NewMessageManager(messagePort,
 		channelName+"-worker", p)
 	if err != nil {
 		return nil, err

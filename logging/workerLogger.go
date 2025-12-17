@@ -11,10 +11,13 @@ package logging
 
 import (
 	"encoding/binary"
-	"encoding/json"
+	"fmt"
 	"io"
 	"math"
+	"sync/atomic"
+	"time"
 
+	json "github.com/goccy/go-json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
@@ -24,9 +27,12 @@ import (
 // workerLogger manages the recording of jwalterweatherman logs to the in-memory
 // file buffer in a remote Worker thread.
 type workerLogger struct {
-	threshold      jww.Threshold
-	maxLogFileSize int
-	wm             *worker.Manager
+	threshold         jww.Threshold
+	maxLogFileSize    int
+	wm                *worker.Manager
+	logChan           chan []byte
+	dropCounter       uint64
+	lastDropReportSec int64 // Unix timestamp of last drop report (atomic)
 }
 
 // newWorkerLogger starts logging to an in-memory log file in a remote Worker
@@ -45,13 +51,17 @@ func newWorkerLogger(threshold jww.Threshold, maxLogFileSize int,
 		threshold:      threshold,
 		maxLogFileSize: maxLogFileSize,
 		wm:             wm,
+		logChan:        make(chan []byte, 100), // Buffer up to 100 log messages to limit memory pressure
 	}
+
+	// Start background goroutine to drain log messages
+	go wl.logWriter()
 
 	// Register the callback used by the Javascript to request the log file.
 	// This prevents an error print when GetFileExtTag is not registered.
+	// Note: Cannot log here as it would cause infinite recursion through workerLogger
 	wl.wm.RegisterCallback(GetFileExtTag, func([]byte, func([]byte)) {
-		jww.DEBUG.Print("[LOG] Received file requested from external " +
-			"Javascript. Ignoring file.")
+		// Ignoring external file request
 	})
 
 	data, err := json.Marshal(wl.maxLogFileSize)
@@ -63,7 +73,9 @@ func newWorkerLogger(threshold jww.Threshold, maxLogFileSize int,
 	response, err := wl.wm.SendMessage(NewLogFileTag, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to initialize the log file listener")
-	} else if response != nil {
+	} else if len(response) > 0 {
+		// Note: Use len(response) > 0 instead of response != nil because
+		// base64.DecodeString("") returns []byte{} (empty, not nil)
 		return nil, errors.Wrap(errors.New(string(response)),
 			"failed to initialize the log file listener")
 	}
@@ -77,8 +89,49 @@ func newWorkerLogger(threshold jww.Threshold, maxLogFileSize int,
 
 // Write adheres to the io.Writer interface and sends the log entries to the
 // worker to be added to the file buffer. Always returns the length of p.
+// Drops messages if the buffer is full to prevent blocking.
 func (wl *workerLogger) Write(p []byte) (n int, err error) {
-	return len(p), wl.wm.SendNoResponse(WriteLogTag, p)
+	// Make a copy since p may be reused by the caller
+	msg := make([]byte, len(p))
+	copy(msg, p)
+
+	select {
+	case wl.logChan <- msg:
+		// Successfully buffered
+	default:
+		// Buffer full, drop message and increment counter
+		atomic.AddUint64(&wl.dropCounter, 1)
+	}
+
+	return len(p), nil
+}
+
+// logWriter runs in a background goroutine and drains the log channel,
+// sending messages to the worker thread.
+func (wl *workerLogger) logWriter() {
+	const dropReportIntervalSec = 5 // Report drops at most once per 5 seconds
+
+	for msg := range wl.logChan {
+		// Check if any messages were dropped and report it (throttled)
+		dropped := atomic.LoadUint64(&wl.dropCounter)
+		if dropped > 0 {
+			now := time.Now().Unix()
+			lastReport := atomic.LoadInt64(&wl.lastDropReportSec)
+
+			// Only report if enough time has passed since last report
+			if now-lastReport >= dropReportIntervalSec {
+				if atomic.CompareAndSwapInt64(&wl.lastDropReportSec, lastReport, now) {
+					// Reset counter and report
+					dropped = atomic.SwapUint64(&wl.dropCounter, 0)
+					dropMsg := []byte(fmt.Sprintf("[LOG] Dropped %d log messages due to backpressure\n", dropped))
+					_ = wl.wm.SendNoResponse(WriteLogTag, dropMsg)
+				}
+			}
+		}
+
+		// Send the actual log message
+		_ = wl.wm.SendNoResponse(WriteLogTag, msg)
+	}
 }
 
 // Listen adheres to the [jwalterweatherman.LogListener] type and returns the
@@ -95,19 +148,19 @@ func (wl *workerLogger) Listen(threshold jww.Threshold) io.Writer {
 func (wl *workerLogger) StopLogging() {
 	wl.threshold = math.MaxInt
 
-	err := wl.wm.Stop()
-	if err != nil {
-		jww.ERROR.Printf("[LOG] Failed to terminate log worker: %+v", err)
-	} else {
-		jww.DEBUG.Printf("[LOG] Terminated log worker.")
-	}
+	// Close the log channel to stop the writer goroutine
+	close(wl.logChan)
+
+	// Note: Cannot log here as logChan is closed and could cause recursion
+	_ = wl.wm.Stop()
 }
 
 // GetFile returns the entire log file.
 func (wl *workerLogger) GetFile() []byte {
 	response, err := wl.wm.SendMessage(GetFileTag, nil)
 	if err != nil {
-		jww.FATAL.Panicf("[LOG] Failed to get log file from worker: %+v", err)
+		// Cannot use jww logging here as it would cause infinite recursion
+		panic(fmt.Sprintf("[LOG] Failed to get log file from worker: %+v", err))
 	}
 
 	return response
@@ -127,7 +180,8 @@ func (wl *workerLogger) MaxSize() int {
 func (wl *workerLogger) Size() int {
 	response, err := wl.wm.SendMessage(SizeTag, nil)
 	if err != nil {
-		jww.FATAL.Panicf("[LOG] Failed to get log size from worker: %+v", err)
+		// Cannot use jww logging here as it would cause infinite recursion
+		panic(fmt.Sprintf("[LOG] Failed to get log size from worker: %+v", err))
 	}
 
 	return int(binary.LittleEndian.Uint64(response))

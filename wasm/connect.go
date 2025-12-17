@@ -13,7 +13,7 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // Connection wraps the [bindings.Connection] object so its methods can be
@@ -29,10 +29,10 @@ func newConnectJS(api *bindings.Connection) map[string]any {
 	connectionMap := map[string]any{
 		// connect.go
 		"GetId":            js.FuncOf(c.GetId),
-		"SendE2E":          utils.SafeFunc(c.SendE2E),
-		"Close":            utils.SafeFunc(c.Close),
+		"SendE2E":          js.FuncOf(c.SendE2E),
+		"Close":            js.FuncOf(c.Close),
 		"GetPartner":       js.FuncOf(c.GetPartner),
-		"RegisterListener": utils.SafeFunc(c.RegisterListener),
+		"RegisterListener": js.FuncOf(c.RegisterListener),
 	}
 
 	return connectionMap
@@ -61,17 +61,23 @@ func (c *Connection) GetId(js.Value, []js.Value) any {
 // Returns a promise:
 //   - Resolves to a Javascript representation of the [Connection] object.
 //   - Rejected with an error if loading the parameters or connecting fails.
-func (c *Cmix) Connect(_ js.Value, args []js.Value) (any, error) {
+func (c *Cmix) Connect(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	e2eID := args[0].Int()
 	recipientContact := utils.CopyBytesToGo(args[1])
 	e2eParamsJSON := utils.CopyBytesToGo(args[2])
 
-	api, err := c.api.Connect(e2eID, recipientContact, e2eParamsJSON)
-	if err != nil {
-		return nil, err
-	}
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		api, err := c.api.Connect(e2eID, recipientContact, e2eParamsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return newConnectJS(api), nil
+		resolve(newConnectJS(api))
+	})
 }
 
 // SendE2E is a wrapper for sending specifically to the [Connection]'s
@@ -85,29 +91,41 @@ func (c *Cmix) Connect(_ js.Value, args []js.Value) (any, error) {
 //   - Resolves to the JSON of the [bindings.E2ESendReport], which can be passed
 //     into [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //   - Rejected with an error if sending fails.
-func (c *Connection) SendE2E(_ js.Value, args []js.Value) (any, error) {
+func (c *Connection) SendE2E(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	e2eID := args[0].Int()
 	payload := utils.CopyBytesToGo(args[1])
 
-	sendReport, err := c.api.SendE2E(e2eID, payload)
-	if err != nil {
-		return nil, err
-	}
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		sendReport, err := c.api.SendE2E(e2eID, payload)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return utils.CopyBytesToJS(sendReport), nil
+		resolve(utils.CopyBytesToJS(sendReport))
+	})
 }
 
 // Close deletes this [Connection]'s [partner.Manager] and releases resources.
 //
 // Returns:
 //   - Throws an error if closing fails.
-func (c *Connection) Close(js.Value, []js.Value) (any, error) {
-	err := c.api.Close()
-	if err != nil {
-		return nil, err
-	}
+func (c *Connection) Close(_ js.Value, args []js.Value) any {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		// No args to parse
+		err := c.api.Close()
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return js.Undefined(), nil
+		resolve(js.Undefined())
+	})
 }
 
 // GetPartner returns the [partner.Manager] for this [Connection].
@@ -146,12 +164,21 @@ func (l *listener) Name() string { return l.name().String() }
 //
 // Returns:
 //   - Throws an error is registering the listener fails.
-func (c *Connection) RegisterListener(_ js.Value, args []js.Value) (any, error) {
-	err := c.api.RegisterListener(args[0].Int(),
-		&listener{utils.WrapCB(args[1], "Hear"), utils.WrapCB(args[1], "Name")})
-	if err != nil {
-		return nil, err
-	}
+func (c *Connection) RegisterListener(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	messageType := args[0].Int()
+	hearCB := utils.WrapCB(args[1], "Hear")
+	nameCB := utils.WrapCB(args[1], "Name")
 
-	return js.Undefined(), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := c.api.RegisterListener(messageType, &listener{hearCB, nameCB})
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(js.Undefined())
+	})
 }

@@ -5,4 +5,5 @@ export * from './types';
 export * from './paths';
 
 export { GetDefaultNDF } from './ndf';
-export { InitXXDK } from './xxdk';
+export { InitXXDK, cleanupAllWorkers } from './xxdk';
+export { createKVStore, cleanupKVWorkers, type KVStore } from './kv';

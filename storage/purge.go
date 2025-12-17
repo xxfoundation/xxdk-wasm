@@ -10,15 +10,16 @@
 package storage
 
 import (
+	"fmt"
 	"sync/atomic"
 	"syscall/js"
 
+	json "github.com/goccy/go-json"
 	"github.com/hack-pad/go-indexeddb/idb"
-	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 
-	"gitlab.com/elixxir/wasm-utils/storage"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
 )
 
 // numClientsRunning is an atomic that tracks the current number of Cmix
@@ -53,23 +54,32 @@ func DecrementNumClientsRunning() {
 //   - Rejects with an error if the password is incorrect or if not all cMix followers
 //     have been stopped.
 func Purge(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		userPassword := args[0].String()
 
 		// Check the password
 		if !verifyPassword(userPassword) {
-			return nil, errors.New("invalid password")
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New("invalid password")
+			reject(errorObject)
+			return
 		}
 
 		// Verify all Cmix followers are stopped
 		if n := atomic.LoadUint64(&numClientsRunning); n != 0 {
-			return nil, errors.Errorf("%d cMix followers running; all need to be stopped", n)
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(fmt.Sprintf("%d cMix followers running; all need to be stopped", n))
+			reject(errorObject)
+			return
 		}
 
 		// Get all indexedDb database names
 		databaseList, err := GetIndexedDbList()
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to get list of indexedDb database names")
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(fmt.Sprintf("failed to get list of indexedDb database names: %+v", err))
+			reject(errorObject)
+			return
 		}
 		jww.DEBUG.Printf("[PURGE] Found %d databases to delete: %s",
 			len(databaseList), databaseList)
@@ -78,17 +88,30 @@ func Purge(_ js.Value, args []js.Value) any {
 		for dbName := range databaseList {
 			_, err = idb.Global().DeleteDatabase(dbName)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to delete indexedDb database %q", dbName)
+				errorConstructor := js.Global().Get("Error")
+				errorObject := errorConstructor.New(fmt.Sprintf("failed to delete indexedDb database %q: %+v", dbName, err))
+				reject(errorObject)
+				return
 			}
 		}
 
-		// Get local storage
-		ls := storage.GetLocalStorage()
+		// Clear all KV Worker keys
+		store := kv.GetStore()
+		if store != nil {
+			keysBytes, err := store.Keys()
+			if err == nil {
+				var keys []string
+				if err := json.Unmarshal(keysBytes, &keys); err == nil {
+					for _, key := range keys {
+						_ = store.Delete(key)
+					}
+					jww.DEBUG.Printf("[PURGE] Deleted %d KV Worker keys", len(keys))
+				}
+			}
+		} else {
+			jww.WARN.Print("[PURGE] KV store not available, skipping KV cleanup")
+		}
 
-		// Clear all local storage saved by this WASM project
-		n := ls.Clear()
-		jww.DEBUG.Printf("[PURGE] Cleared %d WASM keys in local storage", n)
-
-		return js.Undefined(), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(js.Undefined())
+	})
 }

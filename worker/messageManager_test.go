@@ -10,15 +10,14 @@
 package worker
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"reflect"
 	"strconv"
 	"syscall/js"
 	"testing"
 	"time"
 
-	"github.com/hack-pad/safejs"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 func TestNewMessageManager(t *testing.T) {
@@ -131,7 +130,7 @@ func TestMessageManager_processReceivedPort(t *testing.T) {
 	}
 
 	obj := map[string]any{
-		"port":    safejs.Unsafe(port1.Value),
+		"port":    port1.Value,
 		"channel": utils.CopyBytesToJS([]byte(channelName)),
 		"key":     utils.CopyBytesToJS([]byte(key))}
 
@@ -302,7 +301,7 @@ func TestMessageManager_RegisterMessageChannelCallback(t *testing.T) {
 	}
 
 	obj := map[string]any{
-		"port":    safejs.Unsafe(port1.Value),
+		"port":    port1.Value,
 		"channel": utils.CopyBytesToJS([]byte(channelName)),
 		"key":     utils.CopyBytesToJS([]byte(key))}
 

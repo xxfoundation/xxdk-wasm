@@ -11,13 +11,12 @@ package workerThread
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"os"
 	"syscall/js"
 
 	"github.com/armon/circbuf"
-	"github.com/hack-pad/safejs"
+	json "github.com/goccy/go-json"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 
@@ -150,7 +149,7 @@ func (wlf *workerLogFile) registerLogWorker(port js.Value, channelName string) {
 	p := worker.DefaultParams()
 	p.MessageLogging = false
 	mm, err := worker.NewMessageManager(
-		safejs.Safe(port), channelName+"-logger", p)
+		port, channelName+"-logger", p)
 	if err != nil {
 		jww.FATAL.Panic(err)
 	}

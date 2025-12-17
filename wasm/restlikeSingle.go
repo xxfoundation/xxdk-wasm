@@ -13,7 +13,7 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // RestlikeCallback wraps Javascript callbacks to adhere to the
@@ -51,19 +51,25 @@ func (rlc *restlikeCallback) Callback(payload []byte, err error) {
 //     [Cmix.WaitForRoundResult] to see if the send succeeded (Uint8Array).
 //   - Rejected with an error if parsing the parameters or making the request
 //     fails.
-func RequestRestLike(_ js.Value, args []js.Value) (any, error) {
+func RequestRestLike(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	e2eID := args[0].Int()
 	recipient := utils.CopyBytesToGo(args[1])
 	request := utils.CopyBytesToGo(args[2])
 	paramsJSON := utils.CopyBytesToGo(args[3])
 
-	msg, err := bindings.RequestRestLike(
-		e2eID, recipient, request, paramsJSON)
-	if err != nil {
-		return nil, err
-	}
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		msg, err := bindings.RequestRestLike(
+			e2eID, recipient, request, paramsJSON)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return utils.CopyBytesToJS(msg), nil
+		resolve(utils.CopyBytesToJS(msg))
+	})
 }
 
 // AsyncRequestRestLike sends an asynchronous restlike request to a given
@@ -83,18 +89,24 @@ func RequestRestLike(_ js.Value, args []js.Value) (any, error) {
 //
 // Returns:
 //   - Throws an error if parsing the parameters or making the request fails.
-func AsyncRequestRestLike(_ js.Value, args []js.Value) (any, error) {
+func AsyncRequestRestLike(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	e2eID := args[0].Int()
 	recipient := utils.CopyBytesToGo(args[1])
 	request := utils.CopyBytesToGo(args[2])
 	paramsJSON := utils.CopyBytesToGo(args[3])
 	cb := &restlikeCallback{utils.WrapCB(args[4], "Callback")}
 
-	err := bindings.AsyncRequestRestLike(
-		e2eID, recipient, request, paramsJSON, cb)
-	if err != nil {
-		return nil, err
-	}
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := bindings.AsyncRequestRestLike(
+			e2eID, recipient, request, paramsJSON, cb)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
 
-	return js.Undefined(), nil
+		resolve(js.Undefined())
+	})
 }

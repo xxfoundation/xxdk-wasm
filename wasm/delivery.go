@@ -13,7 +13,7 @@ import (
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
 
 // SetDashboardURL is a function which modifies the base dashboard URL that is
@@ -82,14 +82,23 @@ func (mdc *messageDeliveryCallback) EventCallback(
 // Returns:
 //   - Throws an error if the parameters are invalid or getting round results
 //     fails.
-func (c *Cmix) WaitForRoundResult(_ js.Value, args []js.Value) (any, error) {
+func (c *Cmix) WaitForRoundResult(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	roundList := utils.CopyBytesToGo(args[0])
-	mdc := &messageDeliveryCallback{utils.WrapCB(args[1], "EventCallback")}
+	eventCB := utils.WrapCB(args[1], "EventCallback")
+	timeout := args[2].Int()
 
-	err := c.api.WaitForRoundResult(roundList, mdc, args[2].Int())
-	if err != nil {
-		return nil, err
-	}
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		mdc := &messageDeliveryCallback{eventCB}
 
-	return js.Undefined(), nil
+		err := c.api.WaitForRoundResult(roundList, mdc, timeout)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(js.Undefined())
+	})
 }

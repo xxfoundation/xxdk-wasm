@@ -17,13 +17,20 @@ import (
 	"strings"
 	"testing"
 
-	"gitlab.com/elixxir/wasm-utils/storage"
+	json "github.com/goccy/go-json"
+
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
 	"gitlab.com/xx_network/crypto/csprng"
 )
 
 // Tests that running getOrInit twice returns the same internal password both
 // times.
 func Test_getOrInit(t *testing.T) {
+	store := kv.GetStore()
+	if store == nil {
+		t.Skip("KV store not available")
+	}
+
 	externalPassword := "myPassword"
 	internalPassword, err := getOrInit(externalPassword)
 	if err != nil {
@@ -79,7 +86,19 @@ func Test_getOrInit(t *testing.T) {
 // Tests that verifyPassword returns true for a valid password and false for an
 // invalid password
 func Test_verifyPassword(t *testing.T) {
-	storage.GetLocalStorage().Clear()
+	store := kv.GetStore()
+	if store == nil {
+		t.Skip("KV store not available")
+	}
+
+	// Clear KV store
+	keysBytes, _ := store.Keys()
+	var keys []string
+	json.Unmarshal(keysBytes, &keys)
+	for _, key := range keys {
+		_ = store.Delete(key)
+	}
+
 	externalPassword := "myPassword"
 
 	if _, err := getOrInit(externalPassword); err != nil {
@@ -96,27 +115,31 @@ func Test_verifyPassword(t *testing.T) {
 }
 
 // Tests that the internal password returned by initInternalPassword matches
-// the encrypted one saved to local storage.
+// the encrypted one saved to KV storage.
 func Test_initInternalPassword(t *testing.T) {
+	store := kv.GetStore()
+	if store == nil {
+		t.Skip("KV store not available")
+	}
+
 	externalPassword := "myPassword"
-	ls := storage.GetLocalStorage()
 	rng := csprng.NewSystemRNG()
 
 	internalPassword, err := initInternalPassword(
-		externalPassword, ls, rng, defaultParams())
+		externalPassword, store, rng, defaultParams())
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
 
 	// Attempt to retrieve encrypted internal password from storage
-	encryptedInternalPassword, err := ls.Get(passwordKey)
+	encryptedInternalPassword, err := store.Get(passwordKey)
 	if err != nil {
 		t.Errorf(
 			"Failed to load encrypted internal password from storage: %+v", err)
 	}
 
 	// Attempt to retrieve salt from storage
-	salt, err := ls.Get(saltKey)
+	salt, err := store.Get(saltKey)
 	if err != nil {
 		t.Errorf("Failed to load salt from storage: %+v", err)
 	}
@@ -139,13 +162,17 @@ func Test_initInternalPassword(t *testing.T) {
 // Tests that initInternalPassword returns an error when the RNG returns an
 // error when read.
 func Test_initInternalPassword_CsprngReadError(t *testing.T) {
+	store := kv.GetStore()
+	if store == nil {
+		t.Skip("KV store not available")
+	}
+
 	externalPassword := "myPassword"
-	ls := storage.GetLocalStorage()
 	b := bytes.NewBuffer([]byte{})
 
 	expectedErr := strings.Split(readInternalPasswordErr, "%")[0]
 
-	_, err := initInternalPassword(externalPassword, ls, b, defaultParams())
+	_, err := initInternalPassword(externalPassword, store, b, defaultParams())
 	if err == nil || !strings.Contains(err.Error(), expectedErr) {
 		t.Errorf("Unexpected error when RNG returns a read error."+
 			"\nexpected: %s\nreceived: %+v", expectedErr, err)
@@ -156,7 +183,7 @@ func Test_initInternalPassword_CsprngReadError(t *testing.T) {
 // return enough bytes.
 // func Test_initInternalPassword_CsprngReadNumBytesError(t *testing.T) {
 // 	externalPassword := "myPassword"
-// 	ls := storage.GetLocalStorage()
+// 	ls := GetLocalStorage()
 // 	b := bytes.NewBuffer(make([]byte, internalPasswordLen/2))
 
 // 	expectedErr := fmt.Sprintf(
@@ -170,19 +197,23 @@ func Test_initInternalPassword_CsprngReadError(t *testing.T) {
 // }
 
 // Tests that getInternalPassword returns the internal password that is saved
-// to local storage by initInternalPassword.
+// to KV storage by initInternalPassword.
 func Test_getInternalPassword(t *testing.T) {
+	store := kv.GetStore()
+	if store == nil {
+		t.Skip("KV store not available")
+	}
+
 	externalPassword := "myPassword"
-	ls := storage.GetLocalStorage()
 	rng := csprng.NewSystemRNG()
 
 	internalPassword, err := initInternalPassword(
-		externalPassword, ls, rng, defaultParams())
+		externalPassword, store, rng, defaultParams())
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
 
-	loadedInternalPassword, err := getInternalPassword(externalPassword, ls)
+	loadedInternalPassword, err := getInternalPassword(externalPassword, store)
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -195,15 +226,26 @@ func Test_getInternalPassword(t *testing.T) {
 }
 
 // Tests that getInternalPassword returns an error when the password cannot be
-// loaded from local storage.
+// loaded from KV storage.
 func Test_getInternalPassword_LocalStorageGetPasswordError(t *testing.T) {
+	store := kv.GetStore()
+	if store == nil {
+		t.Skip("KV store not available")
+	}
+
 	externalPassword := "myPassword"
-	ls := storage.GetLocalStorage()
-	ls.Clear()
+
+	// Clear KV store
+	keysBytes, _ := store.Keys()
+	var keys []string
+	json.Unmarshal(keysBytes, &keys)
+	for _, key := range keys {
+		_ = store.Delete(key)
+	}
 
 	expectedErr := strings.Split(getPasswordStorageErr, "%")[0]
 
-	_, err := getInternalPassword(externalPassword, ls)
+	_, err := getInternalPassword(externalPassword, store)
 	if err == nil || !strings.Contains(err.Error(), expectedErr) {
 		t.Errorf("Unexpected error when password cannot be loaded from storage."+
 			"\nexpected: %s\nreceived: %+v", expectedErr, err)
@@ -211,18 +253,30 @@ func Test_getInternalPassword_LocalStorageGetPasswordError(t *testing.T) {
 }
 
 // Tests that getInternalPassword returns an error when the salt cannot be
-// loaded from local storage.
+// loaded from KV storage.
 func Test_getInternalPassword_LocalStorageGetError(t *testing.T) {
+	store := kv.GetStore()
+	if store == nil {
+		t.Skip("KV store not available")
+	}
+
 	externalPassword := "myPassword"
-	ls := storage.GetLocalStorage()
-	ls.Clear()
-	if err := ls.Set(passwordKey, []byte("password")); err != nil {
+
+	// Clear KV store
+	keysBytes, _ := store.Keys()
+	var keys []string
+	json.Unmarshal(keysBytes, &keys)
+	for _, key := range keys {
+		_ = store.Delete(key)
+	}
+
+	if err := store.Set(passwordKey, []byte("password")); err != nil {
 		t.Fatalf("Failed to set %q: %+v", passwordKey, err)
 	}
 
 	expectedErr := strings.Split(getSaltStorageErr, "%")[0]
 
-	_, err := getInternalPassword(externalPassword, ls)
+	_, err := getInternalPassword(externalPassword, store)
 	if err == nil || !strings.Contains(err.Error(), expectedErr) {
 		t.Errorf("Unexpected error when salt cannot be loaded from storage."+
 			"\nexpected: %s\nreceived: %+v", expectedErr, err)
@@ -232,22 +286,34 @@ func Test_getInternalPassword_LocalStorageGetError(t *testing.T) {
 // Tests that getInternalPassword returns an error when the password cannot be
 // decrypted.
 func Test_getInternalPassword_DecryptPasswordError(t *testing.T) {
+	store := kv.GetStore()
+	if store == nil {
+		t.Skip("KV store not available")
+	}
+
 	externalPassword := "myPassword"
-	ls := storage.GetLocalStorage()
-	ls.Clear()
-	if err := ls.Set(saltKey, []byte("salt")); err != nil {
+
+	// Clear KV store
+	keysBytes, _ := store.Keys()
+	var keys []string
+	json.Unmarshal(keysBytes, &keys)
+	for _, key := range keys {
+		_ = store.Delete(key)
+	}
+
+	if err := store.Set(saltKey, []byte("salt")); err != nil {
 		t.Errorf("failed to set %q: %+v", saltKey, err)
 	}
-	if err := ls.Set(passwordKey, []byte("password")); err != nil {
+	if err := store.Set(passwordKey, []byte("password")); err != nil {
 		t.Errorf("failed to set %q: %+v", passwordKey, err)
 	}
-	if err := ls.Set(argonParamsKey, []byte(`{"Time": 1, "Memory": 65536, "Threads": 4}`)); err != nil {
+	if err := store.Set(argonParamsKey, []byte(`{"Time": 1, "Memory": 65536, "Threads": 4}`)); err != nil {
 		t.Errorf("failed to set %q: %+v", argonParamsKey, err)
 	}
 
 	expectedErr := strings.Split(decryptPasswordErr, "%")[0]
 
-	_, err := getInternalPassword(externalPassword, ls)
+	_, err := getInternalPassword(externalPassword, store)
 	if err == nil || !strings.Contains(err.Error(), expectedErr) {
 		t.Errorf("Unexpected error when the password is decrypted."+
 			"\nexpected: %s\nreceived: %+v", expectedErr, err)

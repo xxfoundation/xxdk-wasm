@@ -11,16 +11,13 @@ package wasm
 
 import (
 	"fmt"
-	"sync/atomic"
+	"sync"
 	"syscall/js"
 
 	"gitlab.com/elixxir/client/v4/bindings"
-	"gitlab.com/elixxir/wasm-utils/utils"
+	"gitlab.com/elixxir/xxdk-wasm/indexedDb/worker/kv"
+	utils "gitlab.com/elixxir/xxdk-wasm/jsutil"
 )
-
-// initializing prevents a synchronized Cmix object from being loaded while one
-// is being initialized.
-var initializing atomic.Bool
 
 // Cmix wraps the [bindings.Cmix] object so its methods can be wrapped to be
 // Javascript compatible.
@@ -28,125 +25,148 @@ type Cmix struct {
 	api *bindings.Cmix
 }
 
-// GenericKeyValue implements [bindings.GenericKeyValue] by wrapping a JavaScript object.
-// It stores the parent js.Value to prevent the JavaScript callbacks from being garbage collected.
+// GenericKeyValue implements [bindings.GenericKeyValue] by wrapping a kv.Store.
+// The kv.Store communicates with the KV Worker via MessageChannel, providing
+// persistent IndexedDB storage for all components.
 type GenericKeyValue struct {
-	parent js.Value // Keep the parent object alive to prevent callback GC
-	get    func(args ...any) js.Value
-	set    func(args ...any) js.Value
-	delete func(args ...any) js.Value
-	keys   func(args ...any) js.Value
+	store kv.Store
 }
 
-// kvRegistry stores references to prevent JS GC
-var kvRegistry = js.Global().Get("Map").New()
-var kvCounter int
+// Global GenericKeyValue instance (singleton since there's only one KV Worker)
+var (
+	genericKV   *GenericKeyValue
+	genericKVMu sync.Mutex
+)
 
-// newGenericKeyValue maps the functions of the Javascript object matching
-// [bindings.GenericKeyValue] to a GenericKeyValue.
-func newGenericKeyValue(arg js.Value) *GenericKeyValue {
-	fmt.Println("[DEBUG] newGenericKeyValue: arg type:", arg.Type())
+// getGenericKeyValue returns a GenericKeyValue that wraps the global kv.Store.
+// This requires SetKVWorkerManager to have been called first.
+// The kvPath parameter is passed for error messages; the underlying EKV handles namespacing.
+func getGenericKeyValue(kvPath string) *GenericKeyValue {
+	genericKVMu.Lock()
+	defer genericKVMu.Unlock()
 
-	// Register in JS Map to prevent GC
-	kvCounter++
-	kvRegistry.Call("set", kvCounter, arg)
-	fmt.Println("[DEBUG] newGenericKeyValue: Registered KV with ID:", kvCounter)
-
-	return &GenericKeyValue{
-		parent: arg, // Store parent to keep callbacks alive!
-		get:    utils.WrapCB(arg, "Get"),
-		set:    utils.WrapCB(arg, "Set"),
-		delete: utils.WrapCB(arg, "Delete"),
-		keys:   utils.WrapCB(arg, "Keys"),
+	if genericKV != nil {
+		return genericKV
 	}
+
+	// Get the global store from the kv package (set by SetKVWorkerManager)
+	store := kv.GetStore()
+	if store == nil {
+		panic("GenericKeyValue: KV Worker not initialized. " +
+			"Ensure SetKVWorkerManager was called before NewCmix/LoadCmix (kvPath: " + kvPath + ")")
+	}
+
+	genericKV = &GenericKeyValue{store: store}
+	return genericKV
 }
 
 // Get implements [bindings.GenericKeyValue.Get]
-func (kv *GenericKeyValue) Get(key string) ([]byte, error) {
-	v, awaitErr := utils.Await(kv.get(key))
-	if awaitErr != nil {
-		return nil, js.Error{Value: awaitErr[0]}
-	}
-	return utils.CopyBytesToGo(v[0]), nil
+func (g *GenericKeyValue) Get(key string) ([]byte, error) {
+	return g.store.Get(key)
 }
 
 // Set implements [bindings.GenericKeyValue.Set]
-func (kv *GenericKeyValue) Set(key string, value []byte) error {
-	_, awaitErr := utils.Await(kv.set(key, utils.CopyBytesToJS(value)))
-	if awaitErr != nil {
-		return js.Error{Value: awaitErr[0]}
-	}
-	return nil
+func (g *GenericKeyValue) Set(key string, value []byte) error {
+	return g.store.Set(key, value)
 }
 
 // Delete implements [bindings.GenericKeyValue.Delete]
-func (kv *GenericKeyValue) Delete(key string) error {
-	_, awaitErr := utils.Await(kv.delete(key))
-	if awaitErr != nil {
-		return js.Error{Value: awaitErr[0]}
-	}
-	return nil
+func (g *GenericKeyValue) Delete(key string) error {
+	return g.store.Delete(key)
 }
 
 // Keys implements [bindings.GenericKeyValue.Keys]
-func (kv *GenericKeyValue) Keys() ([]byte, error) {
-	v, awaitErr := utils.Await(kv.keys())
-	if awaitErr != nil {
-		return nil, js.Error{Value: awaitErr[0]}
-	}
-	return utils.CopyBytesToGo(v[0]), nil
+func (g *GenericKeyValue) Keys() ([]byte, error) {
+	return g.store.Keys()
 }
 
-// newCmixJS creates a new Javascript compatible object (map[string]any) that
-// matches the [Cmix] structure.
-func newCmixJS(api *bindings.Cmix) map[string]any {
+// newCmixJS creates a new Javascript compatible object (js.Value) that
+// matches the [Cmix] structure. Returns js.Value directly to avoid encoding issues.
+func newCmixJS(api *bindings.Cmix) any {
 	c := Cmix{api}
-	cmix := map[string]any{
-		// cmix.go
-		"GetID":          js.FuncOf(c.GetID),
-		"GetReceptionID": js.FuncOf(c.GetReceptionID),
-		"EKVGet":         utils.SafeFunc(c.EKVGet),
-		"EKVSet":         utils.SafeFunc(c.EKVSet),
 
-		// identity.go
-		"MakeReceptionIdentity":                       utils.SafeFunc(c.MakeReceptionIdentity),
-		"MakeLegacyReceptionIdentity":                 utils.SafeFunc(c.MakeLegacyReceptionIdentity),
-		"GetReceptionRegistrationValidationSignature": js.FuncOf(c.GetReceptionRegistrationValidationSignature),
+	// Create JavaScript object directly to avoid Go map encoding issues
+	obj := js.Global().Get("Object").New()
 
-		// follow.go
-		"StartNetworkFollower":            utils.SafeFunc(c.StartNetworkFollower),
-		"StopNetworkFollower":             utils.SafeFunc(c.StopNetworkFollower),
-		"SetTrackNetworkPeriod":           js.FuncOf(c.SetTrackNetworkPeriod),
-		"WaitForNetwork":                  utils.SafeFunc(c.WaitForNetwork),
-		"ReadyToSend":                     js.FuncOf(c.ReadyToSend),
-		"NetworkFollowerStatus":           js.FuncOf(c.NetworkFollowerStatus),
-		"GetNodeRegistrationStatus":       utils.SafeFunc(c.GetNodeRegistrationStatus),
-		"IsReady":                         utils.SafeFunc(c.IsReady),
-		"PauseNodeRegistrations":          utils.SafeFunc(c.PauseNodeRegistrations),
-		"ChangeNumberOfNodeRegistrations": utils.SafeFunc(c.ChangeNumberOfNodeRegistrations),
-		"HasRunningProcessies":            js.FuncOf(c.HasRunningProcessies),
-		"IsHealthy":                       js.FuncOf(c.IsHealthy),
-		"GetRunningProcesses":             utils.SafeFunc(c.GetRunningProcesses),
-		"AddHealthCallback":               js.FuncOf(c.AddHealthCallback),
-		"RemoveHealthCallback":            js.FuncOf(c.RemoveHealthCallback),
-		"RegisterClientErrorCallback":     js.FuncOf(c.RegisterClientErrorCallback),
-		"TrackServicesWithIdentity":       utils.SafeFunc(c.TrackServicesWithIdentity),
-		"TrackServices":                   js.FuncOf(c.TrackServices),
+	// cmix.go
+	obj.Set("GetID", js.FuncOf(c.GetID))
+	obj.Set("GetReceptionID", js.FuncOf(c.GetReceptionID))
+	obj.Set("EKVGet", js.FuncOf(c.EKVGet))
+	obj.Set("EKVSet", js.FuncOf(c.EKVSet))
 
-		// connect.go
-		"Connect": utils.SafeFunc(c.Connect),
+	// identity.go
+	obj.Set("MakeReceptionIdentity", js.FuncOf(c.MakeReceptionIdentity))
+	obj.Set("MakeLegacyReceptionIdentity", js.FuncOf(c.MakeLegacyReceptionIdentity))
+	obj.Set("GetReceptionRegistrationValidationSignature", js.FuncOf(c.GetReceptionRegistrationValidationSignature))
 
-		// delivery.go
-		"WaitForRoundResult": utils.SafeFunc(c.WaitForRoundResult),
+	// follow.go
+	obj.Set("StartNetworkFollower", js.FuncOf(c.StartNetworkFollower))
+	obj.Set("StopNetworkFollower", js.FuncOf(c.StopNetworkFollower))
+	obj.Set("SetTrackNetworkPeriod", js.FuncOf(c.SetTrackNetworkPeriod))
+	obj.Set("WaitForNetwork", js.FuncOf(c.WaitForNetwork))
+	obj.Set("ReadyToSend", js.FuncOf(c.ReadyToSend))
+	obj.Set("NetworkFollowerStatus", js.FuncOf(c.NetworkFollowerStatus))
+	obj.Set("GetNodeRegistrationStatus", js.FuncOf(c.GetNodeRegistrationStatus))
+	obj.Set("IsReady", js.FuncOf(c.IsReady))
+	obj.Set("PauseNodeRegistrations", js.FuncOf(c.PauseNodeRegistrations))
+	obj.Set("ChangeNumberOfNodeRegistrations", js.FuncOf(c.ChangeNumberOfNodeRegistrations))
+	obj.Set("HasRunningProcessies", js.FuncOf(c.HasRunningProcessies))
+	obj.Set("IsHealthy", js.FuncOf(c.IsHealthy))
+	obj.Set("GetRunningProcesses", js.FuncOf(c.GetRunningProcesses))
+	obj.Set("AddHealthCallback", js.FuncOf(c.AddHealthCallback))
+	obj.Set("RemoveHealthCallback", js.FuncOf(c.RemoveHealthCallback))
+	obj.Set("RegisterClientErrorCallback", js.FuncOf(c.RegisterClientErrorCallback))
+	obj.Set("TrackServicesWithIdentity", js.FuncOf(c.TrackServicesWithIdentity))
+	obj.Set("TrackServices", js.FuncOf(c.TrackServices))
 
-		// authenticatedConnection.go
-		"ConnectWithAuthentication": utils.SafeFunc(c.ConnectWithAuthentication),
-	}
+	// connect.go
+	obj.Set("Connect", js.FuncOf(c.Connect))
 
-	return cmix
+	// delivery.go
+	obj.Set("WaitForRoundResult", js.FuncOf(c.WaitForRoundResult))
+
+	// authenticatedConnection.go
+	obj.Set("ConnectWithAuthentication", js.FuncOf(c.ConnectWithAuthentication))
+
+	// Return as any - js.Value will be passed through without encoding
+	return obj
 }
 
 // NewCmix creates user storage, generates keys, connects, and registers with
+// the network. Note that this does not register a username/identity, but merely
+// creates a new cryptographic identity for adding such information at a later date.
+//
+// Users of this function should delete the storage directory on error.
+//
+// Parameters:
+//   - args[0] - NDF JSON ([ndf.NetworkDefinition]) (string).
+//   - args[1] - Storage directory path (string).
+//   - args[2] - Password used for storage (Uint8Array).
+//   - args[3] - Registration code (string).
+//
+// Returns a promise:
+//   - Resolves on success.
+//   - Rejected with an error if creating a new cMix client fails.
+func NewCmix(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	ndfJSON := args[0].String()
+	storageDir := args[1].String()
+	password := utils.CopyBytesToGo(args[2])
+	registrationCode := args[3].String()
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := bindings.NewCmix(ndfJSON, storageDir, password, registrationCode)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+		resolve(js.Undefined())
+	})
+}
+
+// NewCmixWithKV creates user storage, generates keys, connects, and registers with
 // the network using a GenericKeyValue for storage. Note that this does not
 // register a username/identity, but merely creates a new cryptographic identity
 // for adding such information at a later date.
@@ -154,7 +174,7 @@ func newCmixJS(api *bindings.Cmix) map[string]any {
 // Users of this function should delete the storage directory on error.
 //
 // Parameters:
-//   - args[0] - Javascript [GenericKeyValue] implementation.
+//   - args[0] - Global path string (e.g., "__xxdkKvInstance") where the KV object is stored.
 //   - args[1] - NDF JSON ([ndf.NetworkDefinition]) (string).
 //   - args[2] - Storage directory path (string).
 //   - args[3] - Password used for storage (Uint8Array).
@@ -163,30 +183,84 @@ func newCmixJS(api *bindings.Cmix) map[string]any {
 // Returns a promise:
 //   - Resolves on success.
 //   - Rejected with an error if creating a new cMix client fails.
-func NewCmix(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		fmt.Println("[DEBUG] NewCmix: Starting")
-		kv := newGenericKeyValue(args[0])
-		fmt.Println("[DEBUG] NewCmix: Created GenericKeyValue, parent stored:", !kv.parent.IsUndefined())
-		ndfJSON := args[1].String()
-		storageDir := args[2].String()
-		password := utils.CopyBytesToGo(args[3])
-		registrationCode := args[4].String()
+func NewCmixWithKV(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	kvPath := args[0].String()
+	ndfJSON := args[1].String()
+	storageDir := args[2].String()
+	password := utils.CopyBytesToGo(args[3])
+	registrationCode := args[4].String()
 
-		fmt.Println("[DEBUG] NewCmix: Calling bindings.NewCmixWithKV")
-		err := bindings.NewCmixWithKV(kv, ndfJSON, storageDir, password, registrationCode)
-		fmt.Println("[DEBUG] NewCmix: Returned from bindings.NewCmixWithKV, err:", err)
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		fmt.Println("[DEBUG] NewCmixWithKV called, storageDir:", storageDir, "kvPath:", kvPath)
+
+		// Get the GenericKeyValue that wraps the KV Worker store
+		kvStore := getGenericKeyValue(kvPath)
+
+		fmt.Println("[DEBUG] Calling bindings.NewCmixWithKV")
+		err := bindings.NewCmixWithKV(kvStore, ndfJSON, storageDir, password, registrationCode)
 		if err != nil {
-			return nil, err
+			fmt.Println("[DEBUG] bindings.NewCmixWithKV error:", err)
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return js.Undefined(), nil
-	}).Invoke(jsArgsToAny(args)...)
+
+		fmt.Println("[DEBUG] bindings.NewCmixWithKV succeeded")
+		resolve(js.Undefined())
+	})
 }
 
-// LoadCmix will load an existing user storage backed by a key-value store from
-// the storageDir using the
-// password. This will fail if the user storage does not exist or the password
-// is incorrect.
+// LoadCmixWithKV will load an existing user storage backed by a key-value store from
+// the storageDir using the password. This will fail if the user storage does not exist
+// or the password is incorrect.
+//
+// The password is passed as a byte array so that it can be cleared from memory
+// and stored as securely as possible using the MemGuard library.
+//
+// LoadCmixWithKV does not block on network connection and instead loads and starts
+// subprocesses to perform network operations.
+//
+// Parameters:
+//   - args[0] - Global path string (e.g., "__xxdkKvInstance") where the KV object is stored.
+//   - args[1] - Storage directory path (string).
+//   - args[2] - Password used for storage (Uint8Array).
+//   - args[3] - JSON of [xxdk.CMIXParams] (Uint8Array).
+//
+// Returns a promise:
+//   - Resolves to a Javascript representation of the [Cmix] object.
+//   - Rejected with an error if loading [Cmix] fails.
+func LoadCmixWithKV(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	kvPath := args[0].String()
+	storageDir := args[1].String()
+	password := utils.CopyBytesToGo(args[2])
+	cmixParamsJSON := utils.CopyBytesToGo(args[3])
+
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		fmt.Println("[DEBUG] LoadCmixWithKV called, kvPath:", kvPath)
+		fmt.Println("[DEBUG] LoadCmixWithKV CreatePromise starting")
+
+		kvStore := getGenericKeyValue(kvPath)
+
+		fmt.Println("[DEBUG] Calling bindings.LoadCmixWithKV")
+		net, err := bindings.LoadCmixWithKV(kvStore, storageDir, password, cmixParamsJSON)
+		if err != nil {
+			fmt.Println("[DEBUG] bindings.LoadCmixWithKV error:", err)
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		fmt.Println("[DEBUG] bindings.LoadCmixWithKV succeeded, returning newCmixJS")
+		resolve(newCmixJS(net))
+	})
+}
+
+// LoadCmix will load an existing user storage from the storageDir using the password.
+// This will fail if the user storage does not exist or the password is incorrect.
 //
 // The password is passed as a byte array so that it can be cleared from memory
 // and stored as securely as possible using the MemGuard library.
@@ -203,19 +277,22 @@ func NewCmix(_ js.Value, args []js.Value) any {
 //   - Resolves to a Javascript representation of the [Cmix] object.
 //   - Rejected with an error if loading [Cmix] fails.
 func LoadCmix(_ js.Value, args []js.Value) any {
-	return utils.SafeFunc(func(this js.Value, args []js.Value) (any, error) {
-		storageDir := args[0].String()
-		password := utils.CopyBytesToGo(args[1])
-		cmixParamsJSON := utils.CopyBytesToGo(args[2])
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
+	storageDir := args[0].String()
+	password := utils.CopyBytesToGo(args[1])
+	cmixParamsJSON := utils.CopyBytesToGo(args[2])
 
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
 		net, err := bindings.LoadCmix(storageDir, password, cmixParamsJSON)
 		if err != nil {
-			return nil, err
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
 		}
-		return newCmixJS(net), nil
-	}).Invoke(jsArgsToAny(args)...)
+		resolve(newCmixJS(net))
+	})
 }
-
 
 // UnloadCmix will unload an existing cMix instance
 //
@@ -245,7 +322,6 @@ func (c *Cmix) GetReceptionID(js.Value, []js.Value) any {
 	return utils.CopyBytesToJS(c.api.GetReceptionID())
 }
 
-
 // EKVGet allows access to a value inside the secure encrypted key value store.
 //
 // Parameters:
@@ -254,14 +330,21 @@ func (c *Cmix) GetReceptionID(js.Value, []js.Value) any {
 // Returns a promise:
 //   - Resolves to the value (Uint8Array)
 //   - Rejected with an error if accessing the KV fails.
-func (c *Cmix) EKVGet(this js.Value, args []js.Value) (any, error) {
+func (c *Cmix) EKVGet(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	key := args[0].String()
 
-	val, err := c.api.EKVGet(key)
-	if err != nil {
-		return nil, err
-	}
-	return utils.CopyBytesToJS(val), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		val, err := c.api.EKVGet(key)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(utils.CopyBytesToJS(val))
+	})
 }
 
 // EKVSet sets a value inside the secure encrypted key value store.
@@ -273,13 +356,20 @@ func (c *Cmix) EKVGet(this js.Value, args []js.Value) (any, error) {
 // Returns a promise:
 //   - Resolves on a successful save (void).
 //   - Rejected with an error if saving fails.
-func (c *Cmix) EKVSet(this js.Value, args []js.Value) (any, error) {
+func (c *Cmix) EKVSet(_ js.Value, args []js.Value) any {
+	// ✅ Parse ALL args BEFORE CreatePromise to avoid race conditions
 	key := args[0].String()
 	val := utils.CopyBytesToGo(args[1])
 
-	err := c.api.EKVSet(key, val)
-	if err != nil {
-		return nil, err
-	}
-	return js.Undefined(), nil
+	return utils.CreatePromise(func(resolve, reject func(...any) js.Value) {
+		err := c.api.EKVSet(key, val)
+		if err != nil {
+			errorConstructor := js.Global().Get("Error")
+			errorObject := errorConstructor.New(err.Error())
+			reject(errorObject)
+			return
+		}
+
+		resolve(js.Undefined())
+	})
 }
